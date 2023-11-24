@@ -1,0 +1,46 @@
+name: "Poetry"
+description: "Install Poetry and setup a virtual environment (inspired by https://github.com/packetcoders/action-setup-cache-python-poetry)"
+
+inputs:
+  python-version:
+    description: Python Version
+    required: true
+  poetry-version:
+    description: Poetry Version
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Python ${{ inputs.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Load cached Poetry Binary
+      id: cached-poetry-binary
+      uses: actions/cache@v3
+      with:
+        path: ~/.local
+        key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ inputs.poetry-version }}
+
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: ${{ inputs.poetry-version }}
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+
+    - uses: actions/cache@v3
+      id: cached-poetry-dependencies
+      name: Define a cache for the virtual environment based on the dependencies lock file
+      with:
+        path: ./.venv
+        key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('poetry.lock') }}
+        restore-keys: |
+          venv-${{ inputs.python-version }}-
+
+    - name: Install dependencies
+      if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+      shell: bash -l {0}
+      run: poetry install

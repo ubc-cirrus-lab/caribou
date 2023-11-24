@@ -1,0 +1,69 @@
+name: linting-and-tests
+on: [pull_request]
+
+defaults:
+  run:
+    shell: bash -l {0}
+
+jobs:
+  pep8:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup poetry
+        uses: ./.github/actions/poetry
+      - name: Run black
+        run: |
+          poetry run black --version
+          poetry run black --check multi_x_serverless --verbose
+
+  pylint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup poetry
+        uses: ./.github/actions/poetry
+      - name: Run pylint
+        run: |
+          poetry run pylint --version
+          poetry run pylint multi_x_serverless
+
+  pytest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup poetry
+        uses: ./.github/actions/poetry
+      - name: Run tests
+        run: |
+          poetry run pytest multi_x_serverless --cov-reset --cache-clear --cov-fail-under=90
+          poetry run pytest > pytest-coverage.txt
+      - name: Comment coverage
+        uses: coroo/pytest-coverage-commentator@v1.0.2
+
+  mypy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup poetry
+        uses: ./.github/actions/poetry
+      - name: Run mypy
+        run: |
+          poetry run mypy --version
+          poetry run mypy multi_x_serverless
+  
+  isort:
+    runs-on: ubuntu-latest¨
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup poetry
+        uses: ./.github/actions/poetry
+      - name: Run isort
+        run: |
+          poetry run isort --version
+          poetry run isort multi_x_serverless --check --diff

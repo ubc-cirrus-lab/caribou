@@ -1,0 +1,114 @@
+[tool.poetry]
+name = "multi-x-serverless"
+version = "0.1.0"
+description = ""
+license = "Apache-2.0"
+authors = [
+    "Viktor Gsteiger <v.gsteiger@gmail.com>",
+]
+readme = "README.md"
+repository = "https://github.com/ubc-cirrus-lab/TODO"
+
+[tool.poetry.scripts]
+playground = "multi_x_serverless.playground.main:main"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+pyyaml = "^6.0.1"
+boto3 = "^1.29.5"
+jsonschema = "^4.20.0"
+
+[tool.poetry.extras]
+# This can be used for a more fine-grained dependency management in the future
+
+[tool.poetry.group.dev.dependencies]
+autopep8 = "^2.0.4"
+pytest = "^7.4.3"
+coverage = "^7.3.2"
+mypy = "^1.7.0"
+types-pyyaml = "^6.0.12.12"
+types-jsonschema = "^4.20.0.0"
+isort = "^5.12.0"
+setuptools = "^69.0.2"
+black = "^23.11.0"
+pylint = "^3.0.2"
+pytest-cov = "^4.1.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.autopep8]
+max_line_length = 120
+in-place = true
+recursive = true
+aggressive = 3
+
+[tool.coverage.run]
+branch = true
+omit = [
+    "**/*/__init__.py"
+    ]
+
+[tool.coverage.html]
+directory = "coverage_html_report"
+
+[tool.mypy]
+python_version = "3.10"
+mypy_path = "multi_x_serverless"
+check_untyped_defs = true
+disallow_untyped_defs = true
+follow_imports = "skip"
+ignore_missing_imports = true
+pretty = true
+exclude = [
+    "multi_x_serverless/tests"
+    ]
+
+[tool.isort]
+profile = "black"
+line_length = 120
+skip_gitignore = true
+extend_skip_glob = [
+    "**/*/__init__.py",
+    "**/tests/**",
+    "**/*.pyi",
+    "**/*.pyc"
+    ]
+
+[tool.black]
+line-length = 120
+target-version = ["py38"]
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''
+
+[tool.pylint]
+max-line-length = 120
+disable = [
+      "C0116",  # Missing function or method docstring
+      "C0114",  # Missing module docstring
+      "C0115",  # Missing class docstring
+    ]
+ignore = [
+    "tests"
+    ]
+
+[tool.pytest.ini_options]
+testpaths = ["multi_x_serverless/tests"]
+addopts = [
+      "--cov=multi_x_serverless",
+      "--cov-report=html",
+    ]
