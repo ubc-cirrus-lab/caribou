@@ -7,3 +7,5 @@ Multi-X-Serverless
 ## Development
 
 ## About
+
+## License
