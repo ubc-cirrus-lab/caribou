@@ -1,6 +1,7 @@
 import os
 
-from .remote_logging import get_logger, Logger
+from .datacenter import Datacenter
+from .location import Location, get_location
 
 files = os.listdir(os.path.dirname(__file__))
 files.remove("__init__.py")

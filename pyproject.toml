@@ -17,6 +17,11 @@ python = "^3.10"
 pyyaml = "^6.0.1"
 boto3 = "^1.29.5"
 jsonschema = "^4.20.0"
+googlemaps = "^4.10.0"
+bs4 = "^0.0.1"
+chalice = "^1.29.0"
+google-auth = "^2.23.4"
+google-cloud-storage = "^2.13.0"
 
 [tool.poetry.extras]
 # This can be used for a more fine-grained dependency management in the future
@@ -101,6 +106,8 @@ disable = [
       "C0116",  # Missing function or method docstring
       "C0114",  # Missing module docstring
       "C0115",  # Missing class docstring
+      "W0621",  # Redefining name %r from outer scope (line %s) (we need this for our logging)
+      "R0913",  # Too many arguments
     ]
 ignore = [
     "tests"

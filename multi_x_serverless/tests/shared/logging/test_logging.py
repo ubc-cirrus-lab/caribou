@@ -8,7 +8,6 @@ import time
 
 
 class TestLogger(unittest.TestCase):
-
     @patch("boto3.client")
     def setUp(self, mock_boto3_client):
         self.mock_s3 = MagicMock()

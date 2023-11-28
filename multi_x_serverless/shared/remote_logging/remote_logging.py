@@ -1,4 +1,3 @@
-import atexit
 import datetime
 import logging
 import logging.config
@@ -6,10 +5,10 @@ import os
 from contextlib import contextmanager
 from pathlib import Path
 
-import yaml
-from jsonschema import validate
 import boto3
+import yaml
 from botocore.exceptions import NoCredentialsError
+from jsonschema import validate
 
 
 class Logger:
@@ -47,7 +46,7 @@ class Logger:
 
         if reset_logger:
             self.update_logger()
-    
+
     def connect(self) -> bool:
         try:
             self.__s3.list_buckets()
@@ -74,11 +73,6 @@ class Logger:
         logging.config.dictConfig(self.__config)
         self.logger = logging.getLogger(self.__component_name)
 
-    def __cleanup(self) -> None:
-        print("Cleaning up logger")
-        print(self.__component_name)
-        self.store_log()
-
     def info(self, message: str) -> None:
         self.logger.info(message)
 
@@ -93,10 +87,19 @@ class Logger:
 
 
 @contextmanager
-def get_logger(component_name: str = "test") -> Logger:
-    # usage: with get_logger(__name__) as logger:
-    logger = Logger(component_name=component_name)
-    try:
-        yield logger
-    finally:
-        logger.store_log()
+def get_logger(component_name: str = "test", remote: bool = False) -> Logger:
+    # usage: with get_logger(__name__) as logger:
+    if remote:
+        logger = Logger(component_name=component_name)
+        try:
+            yield logger
+        finally:
+            logger.store_log()
+    else:
+        logger = logging.getLogger(component_name)
+        logger.setLevel(logging.DEBUG)
+        logger.addHandler(logging.StreamHandler())
+        try:
+            yield logger
+        finally:
+            pass

@@ -1,0 +1,8 @@
+{
+    "version": "1.0",
+    "app_name": "multi-x-serverless-latency-tracker-aws-ping",
+    "autogen_policy": false,
+    "stages": {
+      "prod": {}
+    }
+  }

@@ -1,7 +1,6 @@
 from multi_x_serverless.shared.remote_logging import get_logger
 
 with get_logger(__name__) as logger:
-
     logger.info("Test info message")
 
     logger.error("Test error message")
@@ -19,6 +18,6 @@ with get_logger(__name__) as logger:
 
         logger.warning("Test warning message")
 
-        raise Exception("Test exception")
+        raise RuntimeError("Test error")
 
     test_function(logger)
