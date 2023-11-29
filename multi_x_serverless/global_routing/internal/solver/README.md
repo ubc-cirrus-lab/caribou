@@ -81,7 +81,7 @@ Minimize: $$Z = \sum_{r \in R} \sum_{s \in R} \sum_{f \in F} (P_{\text{CO2}} \cd
 3. Additional constraints based on user priorities and acceptable boundaries:
 
 - Explicit regions where the user does not want the function to run (for GDPR reasons):
-    $$X_{rf} = 0 \quad \forall f \in F, r \in \text{ExplicitNonDeployRegions}$$
+   $$X_{rf} = 0 \quad \forall f \in F, r \in \text{ExplicitNonDeployRegions}$$
 
 4. Constraints related to the relationship between regions for latency:
   $$L_{rs} \leq M \cdot (1 - Z_{rsf}) + M \cdot L_{\text{max}} \cdot Z_{rsf} \quad \forall r, s \in R, f \in F$$
