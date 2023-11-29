@@ -290,10 +290,14 @@ def get_compute_cost_with_unit(compute_cost: dict) -> list[dict]:
     return result
 
 
-def write_results(results, table_name):
+def write_results(results: list[dict], table_name: str) -> None:
     client = boto3.client(
         "dynamodb",
         region_name=DEFAULT_REGION,
     )
 
-    client.batch_write_item(RequestItems={table_name: results})
+    # Split the results into chunks of 25 items
+    chunks = [results[i:i+25] for i in range(0, len(results), 25)]
+
+    for chunk in chunks:
+        client.batch_write_item(RequestItems={table_name: chunk})
