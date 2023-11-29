@@ -35,7 +35,6 @@ def get_current_time():
 
 def get_aws_regions() -> list[dict]:
     region = get_curr_region()
-    print(region)
     client = boto3.client("ec2", region)
     response = client.describe_regions()
     return response["Regions"]

@@ -7,5 +7,5 @@ REGIONS=$(aws ec2 describe-regions \
 
 for region in $REGIONS; do
     export AWS_DEFAULT_REGION=$region
-    chalice deploy --stage prod
+    chalice delete --stage prod
 done

@@ -22,6 +22,7 @@ bs4 = "^0.0.1"
 chalice = "^1.29.0"
 google-auth = "^2.23.4"
 google-cloud-storage = "^2.13.0"
+google-cloud-compute = "^1.14.1"
 
 [tool.poetry.extras]
 # This can be used for a more fine-grained dependency management in the future
