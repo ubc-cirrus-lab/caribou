@@ -79,7 +79,8 @@ Minimize: $$Z = \sum_{r \in R} \sum_{s \in R} \sum_{f \in F} (P_{\text{CO2}} \cd
   $$\text{CO2}_{rf} \leq \text{UserCarbonLimit} \quad \forall r \in R, f \in F$$
 
 3. Additional constraints based on user priorities and acceptable boundaries:
-  - Explicit regions where the user does not want the function to run (for GDPR reasons):
+
+- Explicit regions where the user does not want the function to run (for GDPR reasons):
     $$X_{rf} = 0 \quad \forall f \in F, r \in \text{ExplicitNonDeployRegions}$$
 
 4. Constraints related to the relationship between regions for latency:
@@ -89,6 +90,7 @@ Minimize: $$Z = \sum_{r \in R} \sum_{s \in R} \sum_{f \in F} (P_{\text{CO2}} \cd
   $$Z_{rsf} \in \{0, 1\} \quad \forall r, s \in R, f \in F$$
 
 **Where:**
+
 - $R$ is the set of deployment regions.
 - $F$ is the set of functions in the workflow.
 - $C_{r}$ is the estimated monthly cost for region $r \in R$.
