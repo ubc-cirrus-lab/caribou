@@ -5,5 +5,6 @@
   "stages": {
     "prod": {
     }
-  }
+  },
+  "lambda_timeout" : 120
 }

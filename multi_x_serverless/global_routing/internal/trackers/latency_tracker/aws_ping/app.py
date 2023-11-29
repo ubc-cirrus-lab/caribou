@@ -22,7 +22,7 @@ logger = logging.getLogger()
 app = Chalice(app_name="aws_ping")
 
 
-@app.schedule("rate(6 hours)")
+@app.schedule("rate(3 hours)")
 def ping(event: Any) -> None:  # pylint: disable=unused-argument
     from_aws_to_gcp()
     from_aws_to_aws()

@@ -18,12 +18,18 @@ The constraints affect three areas that the solver can optimize for:
 
 ## Inputs
 
-- Function region to region execution time
-- Function region to region data latency
-- Grid CO2e emissions per region
-- Region to region data transfer cost
-- Region pricing
-- Region to region round-trip time latency
+- Function region to region execution time (ms):
+  - A list of execution times where each item represents a region
+  - This is obtained by example runs and is not available at the initial deployment of the workflow (i.e. the data is collected over time)
+- Function region to region data latency (ms)
+  - A list of data transfer latencies where each item represents a region
+  - This is obtained by example runs and is not available at the initial deployment of the workflow (i.e. the data is collected over time)
+- Grid CO2e emissions per region (gCO2e/kWh)
+  - A list of CO2e emissions where each item represents a region
+  - This is obtained using the `grid_co2` package and is currently updated every 6 hours
+- Region to region data transfer cost ($/GB)
+- Region pricing ($/GB-s)
+- Region to region round-trip time latency (ms)
 - Resource requirements
 
 ## Assumptions
