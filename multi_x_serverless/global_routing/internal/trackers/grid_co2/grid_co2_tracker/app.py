@@ -1,8 +1,10 @@
-from chalice import Chalice
-import boto3
-import json
-import requests
 import datetime
+import json
+from typing import Any
+
+import boto3
+import requests
+from chalice import Chalice
 
 app = Chalice(app_name="grid_co2_tracker")
 DEFAULT_REGION = "us-west-2"
@@ -12,11 +14,11 @@ GRID_CO2_TABLE_NAME = "multi-x-serverless-datacenter-grid-co2"
 
 
 @app.schedule("rate(30 minutes)")
-def index(event):
+def index(event: Any) -> None:  # pylint: disable=unused-argument
     update_grid_co2()
 
 
-def get_electricity_map_api_key():
+def get_electricity_map_api_key() -> str:
     client = boto3.client(
         service_name="secretsmanager",
         region_name=DEFAULT_REGION,
@@ -31,7 +33,7 @@ def get_electricity_map_api_key():
     return api_key
 
 
-def update_grid_co2():
+def update_grid_co2() -> None:
     api_key = get_electricity_map_api_key()
 
     # Retrieve all regions and their coordinates
@@ -70,7 +72,7 @@ def update_grid_co2():
         )
 
     # Split the results into chunks of 25 items
-    chunks = [results[i:i+25] for i in range(0, len(results), 25)]
+    chunks = [results[i: i + 25] for i in range(0, len(results), 25)]
 
     for chunk in chunks:
         client.batch_write_item(RequestItems={GRID_CO2_TABLE_NAME: chunk})

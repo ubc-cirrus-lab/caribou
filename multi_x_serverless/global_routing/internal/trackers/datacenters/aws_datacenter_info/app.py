@@ -1,10 +1,12 @@
-from chalice import Chalice
+import datetime
+import json
+from typing import Any
+
+import boto3
+import googlemaps
 import requests
 from bs4 import BeautifulSoup
-import boto3
-import datetime
-import googlemaps
-import json
+from chalice import Chalice
 
 app = Chalice(app_name="aws_datacenter_info")
 
@@ -14,8 +16,8 @@ DEFAULT_REGION = "us-west-2"
 IGNORED_REGIONS = ["us-gov-west-1", "us-gov-east-1"]
 
 
-@app.schedule('rate(10 days)')
-def scrape(event):
+@app.schedule("rate(10 days)")
+def scrape(event: Any) -> None:  # pylint: disable=unused-argument
     client = boto3.client(
         service_name="secretsmanager",
         region_name=DEFAULT_REGION,
@@ -30,7 +32,7 @@ def scrape(event):
     update_aws_datacenter_info(api_key)
 
 
-def scrape_aws_locations(api_key) -> dict[str, tuple[float, float]]:
+def scrape_aws_locations(api_key: str) -> dict[str, tuple[float, float]]:
     url = "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html#concepts-available-regions"  # pylint: disable=line-too-long
     response = requests.get(url, timeout=5)
 
@@ -63,7 +65,7 @@ def scrape_aws_locations(api_key) -> dict[str, tuple[float, float]]:
     return regions
 
 
-def get_location(location_name: str, api_key) -> tuple[float, float]:
+def get_location(location_name: str, api_key: str) -> tuple[float, float]:
     gmaps = googlemaps.Client(key=api_key)
 
     if location_name == "Columbus":
@@ -77,7 +79,7 @@ def get_location(location_name: str, api_key) -> tuple[float, float]:
     return lat, lng
 
 
-def get_aws_product_skus(price_list: dict, client) -> tuple[str, str, str, str, str, str]:
+def get_aws_product_skus(price_list: dict, client: boto3.client) -> tuple[str, str, str, str, str, str]:
     """
     Returns the product UIDs for the invocation and duration of a Lambda function
 
@@ -121,7 +123,7 @@ def get_aws_product_skus(price_list: dict, client) -> tuple[str, str, str, str, 
     )
 
 
-def update_aws_datacenter_info(api_key) -> None:  # pylint: disable=too-many-locals
+def update_aws_datacenter_info(api_key: str) -> None:  # pylint: disable=too-many-locals
     """
     Updates the AWS datacenter info table in DynamoDB
     """
@@ -297,7 +299,7 @@ def write_results(results: list[dict], table_name: str) -> None:
     )
 
     # Split the results into chunks of 25 items
-    chunks = [results[i:i+25] for i in range(0, len(results), 25)]
+    chunks = [results[i: i + 25] for i in range(0, len(results), 25)]
 
     for chunk in chunks:
         client.batch_write_item(RequestItems={table_name: chunk})

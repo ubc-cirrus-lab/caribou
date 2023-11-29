@@ -39,6 +39,7 @@ setuptools = "^69.0.2"
 black = "^23.11.0"
 pylint = "^3.0.2"
 pytest-cov = "^4.1.0"
+types-requests = "^2.31.0.10"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
@@ -109,6 +110,8 @@ disable = [
       "C0115",  # Missing class docstring
       "W0621",  # Redefining name %r from outer scope (line %s) (we need this for our logging)
       "R0913",  # Too many arguments
+      "R0801",  # Similar lines in %s files (we will have this because of how serverless functions need to be self-contained)
+      "W0511",  # TODO
     ]
 ignore = [
     "tests"

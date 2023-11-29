@@ -9,7 +9,7 @@ AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
 
 
-def get_curr_region():
+def get_curr_region() -> str:
     my_session = boto3.session.Session()
     my_region = my_session.region_name
     if my_region:
@@ -17,7 +17,7 @@ def get_curr_region():
     return "us-west-2"
 
 
-def write_results(results, table_name):
+def write_results(results: dict, table_name: str) -> None:
     client = boto3.client(
         "dynamodb",
         region_name="us-west-2",
@@ -28,7 +28,7 @@ def write_results(results, table_name):
     client.batch_write_item(RequestItems={table_name: results})
 
 
-def get_current_time():
+def get_current_time() -> str:
     time = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
     return time
 

@@ -4,16 +4,16 @@ import re
 import requests
 from bs4 import BeautifulSoup
 
-from multi_x_serverless.global_routing.internal.trackers.constants import AWS_DATACENTER_INFO_TABLE_NAME
 from multi_x_serverless.global_routing.internal.trackers.shared import get_item_from_dynamodb
 
 GOOGLE_API_KEY = os.environ.get("MULTI_X_SERVERLESS_GOOGLE_API_KEY")
+AWS_DATACENTER_INFO_TABLE_NAME = "multi-x-serverless-datacenter-info"
 
 
 def calculate_aws_compute_cost(
-    price_dimensions: dict, estimated_gb_seconds_per_month: int, compute_free_tier: float
+    price_dimensions: dict, estimated_gb_seconds_per_month: float, compute_free_tier: float
 ) -> float:
-    compute_cost = 0
+    compute_cost = 0.0
 
     if estimated_gb_seconds_per_month <= compute_free_tier:
         return compute_cost
@@ -112,9 +112,9 @@ def get_gcp_price_for_function(  # pylint: disable=too-many-branches,too-many-st
     soup = BeautifulSoup(response.content, "html.parser")
 
     tables = soup.find_all("table")
-    invocation_price = 0
-    compute_price = 0
-    networking_price = 0
+    invocation_price = 0.0
+    compute_price = 0.0
+    networking_price = 0.0
     free_gb_seconds = 400000
     free_ghz_seconds = 200000
     free_egress_data = 5
@@ -214,7 +214,7 @@ def get_price_for_function(
     estimated_number_of_requests_per_month: in number of requests
     estimated_data_egress: in MB
     """
-    pricing = 0
+    pricing = 0.0
     if provider == "aws":
         pricing = get_aws_price_for_function(
             region_code,

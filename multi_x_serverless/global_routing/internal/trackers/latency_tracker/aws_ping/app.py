@@ -1,16 +1,18 @@
-from chalice import Chalice
-import socket
-import boto3
-from timeit import default_timer as timer
 import datetime
+import logging
+import socket
 import time
+from timeit import default_timer as timer
+from typing import Any
+
+import boto3
+from chalice import Chalice
 
 # import json
 
 # from google.oauth2 import service_account
 # from google.cloud.compute_v1.services.regions.client import RegionsClient
 
-import logging
 
 PING_RESULTS_TABLE_NAME = "multi-x-serverless-ping-results"
 DEFAULT_REGION = "us-west-2"
@@ -21,12 +23,12 @@ app = Chalice(app_name="aws_ping")
 
 
 @app.schedule("rate(6 hours)")
-def ping(event):
+def ping(event: Any) -> None:  # pylint: disable=unused-argument
     from_aws_to_gcp()
     from_aws_to_aws()
 
 
-def measure_latency(endpoint, provider, region_code):
+def measure_latency(endpoint: str, provider: str, region_code: str) -> dict:
     measurements = 5
     duration_measurements = []
 
@@ -56,7 +58,7 @@ def measure_latency(endpoint, provider, region_code):
         time.sleep(1)
 
     if len(duration_measurements) == 0:
-        return None
+        return {}
 
     max_duration = max(duration_measurements)
     min_duration = min(duration_measurements)
@@ -94,7 +96,7 @@ def measure_latency(endpoint, provider, region_code):
     }
 
 
-def from_aws_to_gcp():
+def from_aws_to_gcp() -> None:
     regions = get_gcp_regions()
     results = []
 
@@ -109,7 +111,7 @@ def from_aws_to_gcp():
         write_results(results)
 
 
-def from_aws_to_aws():
+def from_aws_to_aws() -> None:
     regions = get_aws_regions()
     results = []
 
@@ -154,13 +156,13 @@ def get_gcp_regions() -> list[dict]:
     return []
 
 
-def write_results(results):
+def write_results(results: list[dict]) -> None:
     client = boto3.client(
         "dynamodb",
         region_name=DEFAULT_REGION,
     )
 
-    chunks = [results[i:i+25] for i in range(0, len(results), 25)]
+    chunks = [results[i: i + 25] for i in range(0, len(results), 25)]
 
     for chunk in chunks:
         client.batch_write_item(RequestItems={PING_RESULTS_TABLE_NAME: chunk})

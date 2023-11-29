@@ -3,7 +3,7 @@ import argparse
 import yaml
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=str, default="./multi_x_serverless/config/global_routing/config.yaml")
 
