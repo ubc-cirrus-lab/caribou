@@ -1,5 +1,7 @@
 #  Interesting findings and quirks with working with AWS Lambda and Chalice
 
+- To make your life easier before working on our project once run `aws configure` to setup your account (you will need your AWS access key and secret key). This will create a `~/.aws/credentials` file which will be used by the AWS CLI to authenticate you. You can also set the default region to `us-west-2` (Oregon) which is the region we are using as home region for our project due to its close proximity to Vancouver.
+
 - AWS Lambda sends its logs to CloudWatch, which is generally horrible to display errors. To actually find the logs we are looking for go to Logs Insights and run the following query:
 
     ```sql
