@@ -102,3 +102,9 @@ Minimize: $$Z = \sum_{r \in R} \sum_{s \in R} \sum_{f \in F} (P_{\text{CO2}} \cd
 - $Z_{rsf}$ is a binary variable indicating whether function $f$ is executed in region $r$ immediately after region $s$.
 - $M$ is a sufficiently large constant.
 - The user-defined limits are the maximum acceptable latency, cost, and carbon emissions. These can be absolute values or relative values (e.g. 10% increase in cost is acceptable compared to running the workflow in the home region).
+
+## Implementation
+
+The constraint filters are calculated using our cost, carbon, runtime model which is precalculated where the result is a matrix of workflow stages and possible locations. These filters are subsequently applied to retrieve a set of potential locations for each workflow stage (or none where the stage is run in the defined home region).
+
+In the end, one out of four optimization modes is applied to this set of locations. We either minimize carbon, cost, or carbon/cost given a runtime tolerance window.
