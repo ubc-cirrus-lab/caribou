@@ -27,8 +27,8 @@ def filter_regions(regions: np.ndarray, workflow_description: dict) -> np.ndarra
         return regions
 
 
-def get_cost_for_region_function(region: str, function: dict) -> float:
-    return 0.0
+def get_cost_for_region_function(region: str, function: dict) -> callable:
+    return lambda function, function_runtime_measurements: 0.0
 
 
 def get_cost_matrix(regions: np.ndarray, functions: np.ndarray) -> np.ndarray:
@@ -36,6 +36,16 @@ def get_cost_matrix(regions: np.ndarray, functions: np.ndarray) -> np.ndarray:
     for i in range(len(functions)):
         for j in range(len(regions)):
             cost_matrix[i][j] = get_cost_for_region_function(regions[j], functions[i])
+
+
+def get_runtime_for_region_function(region: str, destination_region: str) -> callable:
+    return lambda function, function_runtime_measurements: 0.0
+
+
+def get_runtime_array(regions: np.ndarray) -> np.ndarray:
+    latency_matrix = np.zeros(len(regions))
+    for i in range(len(regions)):
+        latency_matrix[i] = get_runtime_coefficient_for_region(regions[i])
 
 
 def get_latency_coefficient_for_region(region: str, destination_region: str) -> float:
@@ -51,8 +61,8 @@ def get_latency_matrix(regions: np.ndarray) -> np.ndarray:
     return latency_matrix
 
 
-def get_execution_carbon_for_region_function(region: str, function: dict) -> float:
-    return 0.0
+def get_execution_carbon_for_region_function(region: str, function: dict) -> callable:
+    return lambda function, function_runtime_measurements: 0.0
 
 
 def get_execution_carbon_matrix(regions: np.ndarray, functions: np.ndarray) -> np.ndarray:
@@ -110,70 +120,89 @@ def find_viable_deployment_options(
     # We also keep track of the cost, runtime and carbon of the deployment option
     # Every time any of these metrics is breaking the constraints given in the workflow description we stop building the deployment option and move on to the next one
 
-    cost_matrix: np.ndarray = get_cost_matrix(regions, workflow_description["functions"])
-    latency_matrix: np.ndarray = get_latency_matrix(regions)
-    execution_carbon_matrix: np.ndarray = get_execution_carbon_matrix(regions, workflow_description["functions"])
-    transmission_carbon_matrix: np.ndarray = get_transmission_carbon_matrix(regions)
-
-    initial_start_hop = workflow_description["start_hop"]
+    region_to_index = {region: i for i, region in enumerate(regions)}
+    function_to_spec = {function["name"]: function for function in workflow_description["functions"]}
 
     dag, function_name_to_spec = build_dag(workflow_description)
 
-    # We start with the initial node which is start_hop and we go to the initial node(s) of the DAG.
-    # For every initial node we start building the deployment option recursively
+    initial_start_hop_region = workflow_description["start_hop"]
 
-    region_to_index = {region: index for index, region in enumerate(regions)}
+    successors_of_first_hop = [node for node, in_degree in dag.in_degree() if in_degree == 0]
 
-    deployment_options = np.array([])
+    dag.add_node(initial_start_hop_region)
+    for initial_node in successors_of_first_hop:
+        dag.add_edge(initial_start_hop_region, initial_node)
 
-    root_nodes = [node for node, in_degree in dag.in_degree() if in_degree == 0]
+    sorted_functions = nx.topological_sort(dag)
 
-    for root_node in root_nodes:
-        visited_nodes = set()
+    cost_matrix: np.ndarray = get_cost_matrix(regions, sorted_functions)
+    latency_matrix: np.ndarray = get_latency_matrix(regions)
+    runtime_array: np.ndarray = get_runtime_array(regions)
+    execution_carbon_matrix: np.ndarray = get_execution_carbon_matrix(regions, sorted_functions)
+    transmission_carbon_matrix: np.ndarray = get_transmission_carbon_matrix(regions)
 
-        initial_latency = latency_matrix[region_to_index[initial_start_hop]][region_to_index[root_node]]
-        initial_transmission_cost = get_egress_cost(
-            initial_start_hop, root_node, function_data_transfer_size_measurements[initial_start_hop]
-        )
-        initial_transmission_carbon = transmission_carbon_matrix[region_to_index[initial_start_hop]][
-            region_to_index[root_node]
-        ]
+    deployment_options = np.array([({initial_start_hop_region: initial_start_hop_region}, 0, 0, 0)])
 
-        viable_deployment_options = find_viable_deployment_options_recursive(
-            regions,
-            function_runtime_measurements,
-            function_data_transfer_size_measurements,
-            workflow_description,
-            dag,
-            region_to_index,
-            visited_nodes,
-            root_node,
-            initial_start_hop,
-            initial_transmission_cost,
-            initial_latency,
-            initial_transmission_carbon,
-        )
+    for i, function in enumerate(sorted_functions[1:]):
+        new_deployment_options = []
+        current_index = i + 1
+        for region in regions:
+            cost_of_function_in_region = cost_matrix[current_index][region_to_index[region]](
+                function_to_spec[function], function_runtime_measurements[function]
+            )
+            runtime_of_function_in_region = runtime_array[region_to_index[region]](
+                function_to_spec[function], function_runtime_measurements[function]
+            )
+            execution_carbon_of_function_in_region = execution_carbon_matrix[current_index][region_to_index[region]](
+                function_to_spec[function], function_runtime_measurements[function]
+            )
 
-        np.hstack((deployment_options, viable_deployment_options))
+            for deployment_option in deployment_options:
+                new_transmission_carbon = 0.0
+                new_transmission_cost = 0.0
+                new_transmission_latency = 0.0
 
-    return deployment_options
+                for predecessor in dag.predecessors(function):
+                    new_transmission_carbon += (
+                        transmission_carbon_matrix[region_to_index[deployment_option[0][predecessor]]][
+                            region_to_index[region]
+                        ]
+                        * function_data_transfer_size_measurements[function]
+                    )
+                    new_transmission_cost += get_egress_cost(
+                        deployment_option[0][predecessor], region, function_data_transfer_size_measurements[function]
+                    )
+                    new_transmission_latency += latency_matrix[region_to_index[deployment_option[0][predecessor]]][
+                        region_to_index[region]
+                    ]
 
+                if (
+                    deployment_option[1] + cost_of_function_in_region + new_transmission_cost
+                    > workflow_description["constraints"]["cost"]
+                    or deployment_option[2] + runtime_of_function_in_region + new_transmission_latency
+                    > workflow_description["constraints"]["runtime"]
+                    or deployment_option[3] + execution_carbon_of_function_in_region + new_transmission_carbon
+                    > workflow_description["constraints"]["carbon"]
+                ):
+                    continue
 
-def find_viable_deployment_options_recursive(
-    regions: np.ndarray,
-    function_runtime_measurements: dict,
-    function_data_transfer_size_measurements: dict,
-    workflow_description: dict,
-    dag: nx.DiGraph,
-    region_to_index: dict,
-    visited_nodes: set,
-    next_node: str,
-    current_region: str,
-    current_cost: float,
-    current_runtime: float,
-    current_carbon: float,
-) -> list[tuple[list[str], float, float, float]]:
-    pass
+                new_deployment_option = (
+                    deployment_option[0].copy(),
+                    deployment_option[1] + cost_of_function_in_region,
+                    deployment_option[2] + runtime_of_function_in_region,
+                    deployment_option[3] + execution_carbon_of_function_in_region,
+                )
+
+                new_deployment_option[0][function] = region
+                new_deployment_options.append(new_deployment_option)
+
+            new_deployment_options = [
+                deployment_option
+                for deployment_option in new_deployment_options
+                if len(deployment_option[0]) == current_index + 1
+            ]
+
+        deployment_options = np.array(new_deployment_options)
 
 
 def sort_deployment_options(viable_deployment_options: np.ndarray, workflow_description: dict) -> np.ndarray:

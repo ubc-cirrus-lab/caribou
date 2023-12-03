@@ -21,6 +21,17 @@
           items: { type: "string" },
           description: "The regions that are filtered out for the workflow. The workflow will not be deployed in these regions.",
         },
+      constraints:
+        {
+          type: "object",
+          properties:
+            {
+              cost: { type: "number", minimum: 0 },
+              runtime: { type: "number", minimum: 0 },
+              carbon: { type: "number", minimum: 0 },
+            },
+          description: "The constraints for the workflow. The constraints are the maximum values for the objectives. If the workflow cannot be deployed within the constraints, it will not be deployed.",
+        },
       objectives:
         {
           type: "array",
@@ -37,10 +48,10 @@
           description: "The objectives for the workflow. Each objective has a name and a weight between 0 and 1.",
         },
       start_hop:
-      {
-        type: "string",
-        description: "For now we assume a start hop which is where the client is calling the workflow from. In a future iteration this will msot likely be transformed into a location distribution."
-      },
+        {
+          type: "string",
+          description: "For now we assume a start hop which is where the client is calling the workflow from. In a future iteration this will msot likely be transformed into a location distribution.",
+        },
       functions:
         {
           type: "array",
