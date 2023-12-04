@@ -16,7 +16,6 @@ if [ -z "$TABLE_EXISTS" ]; then
         --key-schema \
             AttributeName=region_code,KeyType=HASH \
             AttributeName=provider,KeyType=RANGE \
-        --provisioned-throughput \
-            ReadCapacityUnits=10,WriteCapacityUnits=10 \
+        --billing-mode PAY_PER_REQUEST \
         --region $REGION
 fi
