@@ -75,6 +75,12 @@
                       required: ["cpu", "memory"],
                       description: "The resource request for the stage. The resource request will be mapped to the cloud provider's resource request in a best-effort manner.",
                     },
+                  estimated_invocations_per_month:
+                    {
+                      type: "integer",
+                      minimum: -1,
+                      description: "The estimated number of invocations per month for the stage.",
+                    },
                   estimated_time:
                     {
                       type: "integer",

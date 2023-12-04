@@ -37,8 +37,50 @@ class Solver:
         return regions
 
     def get_cost_for_region_function(self, region: str, function: dict) -> callable:
-        # TODO: Implement logic to retrieve the cost of the function in the given region
-        return lambda function, function_runtime_measurements: 0.0
+        # The function is a lambda function that takes the function spec, the function runtime measurement in ms, and the provider.
+        def cost(function, function_runtime_measurements, provider):
+            stored_aws_data = get_item_from_dynamodb({"region_code": region}, AWS_DATACENTER_INFO_TABLE_NAME)
+            if stored_aws_data:
+                stored_aws_data = stored_aws_data["data"]
+                free_invocations = int(stored_aws_data["free_invocations"]["N"])
+                free_compute_gb_s = int(stored_aws_data["free_compute_gb_s"]["N"])
+
+                if "architecture" in function["resource_request"]:
+                    architecture = function["resource_request"]["architecture"]
+                else:
+                    architecture = "x86_64"
+
+                estimated_number_of_requests_per_month = function["estimated_invocations_per_month"]
+
+                invocation_cost = float(stored_aws_data["invocation_cost_" + architecture]["N"])
+
+                if estimated_number_of_requests_per_month > free_invocations:
+                    invocation_cost = invocation_cost * (
+                        (estimated_number_of_requests_per_month - free_invocations) / 1000000
+                    )
+                else:
+                    invocation_cost = 0
+
+                estimated_memory = function["resource_request"]["memory"] / 1000  # GB
+                estimated_duration = (
+                    sum(function_runtime_measurements) / len(function_runtime_measurements)
+                ) / 1000  # s
+
+                estimated_gb_seconds_per_month = (
+                    estimated_memory * estimated_duration * estimated_number_of_requests_per_month
+                )
+
+                compute_cost = 0.0
+                if provider == "AWS":
+                    compute_cost = calculate_aws_compute_cost(
+                        stored_aws_data["compute_cost_" + architecture + "_gb_s"],
+                        estimated_gb_seconds_per_month,
+                        free_compute_gb_s,
+                    )
+
+            return invocation_cost + compute_cost
+
+        return cost
 
     def get_cost_matrix(self, regions: np.ndarray, functions: np.ndarray) -> np.ndarray:
         cost_matrix = np.zeros((len(functions), len(regions)))
@@ -229,7 +271,7 @@ class Solver:
             print("Number of new deployment options:", len(new_deployment_options))
 
             deployment_options = new_deployment_options
-    
+
         return deployment_options
 
     def sort_deployment_options(self, viable_deployment_options: np.ndarray, workflow_description: dict) -> np.ndarray:
@@ -273,3 +315,38 @@ class Solver:
         # Return the best deployment option
         # TODO (vGsteiger): We
         return sorted_deployment_options[select_deplyoment_number]
+
+
+def get_item_from_dynamodb(key: dict, table_name: str) -> dict:
+    """
+    Gets an item from a DynamoDB table
+
+    key: dict with the key of the item to get
+    table_name: name of the table
+    """
+    dynamodb = boto3.resource(
+        "dynamodb",
+        region_name=DEFAULT_REGION,
+    )
+    table = dynamodb.Table(table_name)
+    response = table.get_item(Key=key)
+    return response["Item"]
+
+
+def calculate_aws_compute_cost(
+    price_dimensions: dict, estimated_gb_seconds_per_month: float, compute_free_tier: float
+) -> float:
+    compute_cost = 0.0
+
+    if estimated_gb_seconds_per_month <= compute_free_tier:
+        return compute_cost
+
+    estimated_gb_seconds_per_month -= compute_free_tier
+
+    for price_dimension in price_dimensions.values():
+        if estimated_gb_seconds_per_month <= int(price_dimension["endRange"]):
+            compute_cost += float(price_dimension["pricePerUnit"]["USD"]) * estimated_gb_seconds_per_month
+            break
+        compute_cost += float(price_dimension["pricePerUnit"]["USD"]) * int(price_dimension["endRange"])
+        estimated_gb_seconds_per_month -= int(price_dimension["endRange"])
+    return compute_cost
