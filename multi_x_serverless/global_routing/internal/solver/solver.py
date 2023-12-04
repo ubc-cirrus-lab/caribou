@@ -1,9 +1,12 @@
 import boto3
+from boto3.dynamodb.conditions import Key
+from functools import reduce
 import networkx as nx
 import numpy as np
 
 AWS_DATACENTER_INFO_TABLE_NAME = "multi-x-serverless-datacenter-info"
 DEFAULT_REGION = "us-west-2"
+GRID_CO2_TABLE_NAME = "multi-x-serverless-datacenter-grid-co2"
 
 
 class Solver:
@@ -39,11 +42,15 @@ class Solver:
     def get_cost_for_region_function(self, region: str, function: dict) -> callable:
         # The function is a lambda function that takes the function spec, the function runtime measurement in ms, and the provider.
         def cost(function, function_runtime_measurements, provider):
-            stored_aws_data = get_item_from_dynamodb({"region_code": region}, AWS_DATACENTER_INFO_TABLE_NAME)
-            if stored_aws_data:
-                stored_aws_data = stored_aws_data["data"]
-                free_invocations = int(stored_aws_data["free_invocations"]["N"])
-                free_compute_gb_s = int(stored_aws_data["free_compute_gb_s"]["N"])
+            # TODO: This might profit from caching
+            table = ""
+            if provider == "AWS":
+                table = AWS_DATACENTER_INFO_TABLE_NAME
+            datacenter_data = get_item_from_dynamodb({"region_code": region}, table)
+            if datacenter_data:
+                datacenter_data = datacenter_data["data"]
+                free_invocations = int(datacenter_data["free_invocations"]["N"])
+                free_compute_gb_s = int(datacenter_data["free_compute_gb_s"]["N"])
 
                 if "architecture" in function["resource_request"]:
                     architecture = function["resource_request"]["architecture"]
@@ -52,7 +59,7 @@ class Solver:
 
                 estimated_number_of_requests_per_month = function["estimated_invocations_per_month"]
 
-                invocation_cost = float(stored_aws_data["invocation_cost_" + architecture]["N"])
+                invocation_cost = float(datacenter_data["invocation_cost_" + architecture]["N"])
 
                 if estimated_number_of_requests_per_month > free_invocations:
                     invocation_cost = invocation_cost * (
@@ -73,10 +80,14 @@ class Solver:
                 compute_cost = 0.0
                 if provider == "AWS":
                     compute_cost = calculate_aws_compute_cost(
-                        stored_aws_data["compute_cost_" + architecture + "_gb_s"],
+                        datacenter_data["compute_cost_" + architecture + "_gb_s"],
                         estimated_gb_seconds_per_month,
                         free_compute_gb_s,
                     )
+            else:
+                print(f"Could not find data for region {region} and provider {provider}")
+                invocation_cost = 0.0
+                compute_cost = 0.0
 
             return invocation_cost + compute_cost
 
@@ -111,8 +122,53 @@ class Solver:
         return latency_matrix
 
     def get_execution_carbon_for_region_function(self, region: str, function: dict) -> callable:
-        # TODO: Implement logic to retrieve the execution carbon of the function in the given region
-        return lambda function, function_runtime_measurements: 0.0
+        # The function is a lambda function that takes the function spec, the function runtime measurement in ms, and the provider.
+        def cost(function, function_runtime_measurements, provider):
+            # TODO: This might profit from caching
+            table = ""
+            if provider == "AWS":
+                table = AWS_DATACENTER_INFO_TABLE_NAME
+            datacenter_data = get_item_from_dynamodb({"region_code": region, "provider": provider}, table)
+            grid_co2_data = get_item_from_dynamodb(
+                {"region_code": region, "provider": provider}, GRID_CO2_TABLE_NAME, limit=1, order="desc"
+            )
+
+            if datacenter_data and grid_co2_data:
+                datacenter_data = datacenter_data["data"]
+                grid_co2_data = grid_co2_data["data"]
+
+                runtime_in_hours = (
+                    (sum(function_runtime_measurements) / len(function_runtime_measurements)) / 1000 / 60 / 60
+                )  # ms -> h
+
+                # Average power from compute
+                # Compute Watt-Hours = Average Watts * vCPU Hours
+                # GCP: Median Min Watts: 0.71 Median Max Watts: 4.26
+                # In terms of kW
+                average_kW_compute = (0.71 + 0.5 * (4.26 - 0.71)) / 1000
+                vCPU = function["resource_request"]["vCPU"]
+                compute_kWh = average_kW_compute * vCPU * runtime_in_hours
+
+                # They used 0.000392 Kilowatt Hour / Gigabyte Hour (0.000392 kWh/Gbh) -> 0.000000392 kWh/Mb
+                memory_kw_mb = 0.000000392
+                memory = function["resource_request"]["memory"]  # MB
+                memory_kWh = memory_kw_mb * memory * runtime_in_hours
+
+                cloud_provider_usage_kWh = compute_kWh + memory_kWh
+
+                operational_emission = (
+                    cloud_provider_usage_kWh
+                    * (1 - datacenter_data["CFE"])
+                    * datacenter_data["PUE"]
+                    * grid_co2_data["carbon_intensity"]
+                )
+
+                return operational_emission
+            else:
+                print(f"Could not find data for region {region} and provider {provider}")
+                return 0.0
+
+        return cost
 
     def get_execution_carbon_matrix(self, regions: np.ndarray, functions: np.ndarray) -> np.ndarray:
         execution_carbon_matrix = np.zeros((len(functions), len(regions)))
@@ -317,7 +373,7 @@ class Solver:
         return sorted_deployment_options[select_deplyoment_number]
 
 
-def get_item_from_dynamodb(key: dict, table_name: str) -> dict:
+def get_item_from_dynamodb(key: dict, table_name: str, limit: int = None, order: str = "asc") -> dict:
     """
     Gets an item from a DynamoDB table
 
@@ -329,8 +385,17 @@ def get_item_from_dynamodb(key: dict, table_name: str) -> dict:
         region_name=DEFAULT_REGION,
     )
     table = dynamodb.Table(table_name)
-    response = table.get_item(Key=key)
-    return response["Item"]
+    if not limit:
+        response = table.get_item(Key=key)
+    else:
+        key_conditions = [Key(k).eq(key[k]) for k in key]
+        if order == "asc":
+            response = table.query(KeyConditionExpression=reduce(lambda x, y: x & y, key_conditions), Limit=limit)
+        elif order == "desc":
+            response = table.query(
+                KeyConditionExpression=reduce(lambda x, y: x & y, key_conditions), Limit=limit, ScanIndexForward=False
+            )
+    return response["Items"]
 
 
 def calculate_aws_compute_cost(

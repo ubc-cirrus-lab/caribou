@@ -12,10 +12,10 @@ if [ -z "$TABLE_EXISTS" ]; then
         --table-name $TABLE_NAME \
         --attribute-definitions \
             AttributeName=timestamp,AttributeType=S \
-            AttributeName=region,AttributeType=S \
+            AttributeName=region_code,AttributeType=S \
         --key-schema \
-            AttributeName=timestamp,KeyType=HASH \
-            AttributeName=region,KeyType=RANGE \
+            AttributeName=timestamp,KeyType=RANGE \
+            AttributeName=region_code,KeyType=HASH \
         --billing-mode PAY_PER_REQUEST \
         --region $REGION
 fi

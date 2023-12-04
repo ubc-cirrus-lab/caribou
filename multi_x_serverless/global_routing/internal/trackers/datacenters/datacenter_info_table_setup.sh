@@ -14,8 +14,8 @@ if [ -z "$TABLE_EXISTS" ]; then
             AttributeName=region_code,AttributeType=S \
             AttributeName=provider,AttributeType=S \
         --key-schema \
-            AttributeName=region_code,KeyType=HASH \
-            AttributeName=provider,KeyType=RANGE \
+            AttributeName=region_code,KeyType=RANGE \
+            AttributeName=provider,KeyType=HASH \
         --billing-mode PAY_PER_REQUEST \
         --region $REGION
 fi

@@ -62,7 +62,7 @@ def update_grid_co2() -> None:
             {
                 "PutRequest": {
                     "Item": {
-                        "region": {"S": region},
+                        "region_code": {"S": region},
                         "provider": {"S": provider},
                         "timestamp": {
                             "S": get_current_time(),

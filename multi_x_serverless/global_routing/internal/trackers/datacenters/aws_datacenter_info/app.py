@@ -255,6 +255,12 @@ def update_aws_datacenter_info(api_key: str) -> None:  # pylint: disable=too-man
                     "transmission_cost_gb": {
                         "N": str(transmission_cost),
                     },
+                    "cfe": {
+                        "N": str(0.0),  # TODO (vGsteiger): Implement
+                    },
+                    "pue": {
+                        "N": str(1.0),  # TODO (vGsteiger): Implement
+                    },
                     "location": {
                         "M": {
                             "lat": {

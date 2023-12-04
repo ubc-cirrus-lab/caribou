@@ -14,8 +14,8 @@ if [ -z "$TABLE_EXISTS" ]; then
             AttributeName=timestamp,AttributeType=S \
             AttributeName=region_from,AttributeType=S \
         --key-schema \
-            AttributeName=timestamp,KeyType=HASH \
-            AttributeName=region_from,KeyType=RANGE \
+            AttributeName=timestamp,KeyType=RANGE \
+            AttributeName=region_from,KeyType=HASH \
         --billing-mode PAY_PER_REQUEST \
         --region $REGION
 fi
