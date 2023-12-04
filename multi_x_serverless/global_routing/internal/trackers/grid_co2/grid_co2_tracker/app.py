@@ -50,6 +50,7 @@ def update_grid_co2() -> None:
 
     for item in response["Items"]:
         region = item["region_code"]["S"]
+        provider = item["provider"]["S"]
         latitude = float(item["location"]["M"]["lat"]["N"])
         longitude = float(item["location"]["M"]["lng"]["N"])
 
@@ -62,6 +63,7 @@ def update_grid_co2() -> None:
                 "PutRequest": {
                     "Item": {
                         "region": {"S": region},
+                        "provider": {"S": provider},
                         "timestamp": {
                             "S": get_current_time(),
                         },
