@@ -19,7 +19,7 @@
         {
           type: "array",
           items: { type: "string" },
-          description: "The regions that are filtered out for the workflow. The workflow will not be deployed in these regions. The strings are the provider (e.g. aws) and the region (e.g. us-east-1) separated by a colon.",
+          description: "The regions that are filtered out for the workflow. The workflow will not be deployed in these regions. The strings are the provider (e.g. AWS) and the region (e.g. us-east-1) separated by a colon.",
         },
       constraints:
         {

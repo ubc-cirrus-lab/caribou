@@ -30,7 +30,7 @@ class Solver:
                 [
                     region
                     for region in regions
-                    if f"{region[0]}:{region[1]}" not in workflow_description["filtered_regions"]
+                    if f"{region[1]}:{region[0]}" not in workflow_description["filtered_regions"]
                 ]
             )
 
@@ -53,7 +53,7 @@ class Solver:
     def get_runtime_array(self, regions: np.ndarray) -> np.ndarray:
         runtime_array = np.zeros(len(regions))
         for i, region in enumerate(regions):
-            runtime_array[i] = self.get_runtime_coefficient_for_region(region)
+            runtime_array[i] = self.get_runtime_for_region_function(region)
         return runtime_array
 
     def get_latency_coefficient_for_region(self, region: str, destination_region: str) -> float:
@@ -122,23 +122,15 @@ class Solver:
         function_runtime_measurements: dict,
         function_data_transfer_size_measurements: dict,
         workflow_description: dict,
-    ) -> np.ndarray:
+    ) -> list[tuple[dict, float, float, float]]:
         # First we build the DAG and some auxiliary data structures
-        region_to_index = {region: i for i, region in enumerate(regions)}
+        region_to_index = {region[0]: i for i, region in enumerate(regions)}
+        print(region_to_index)
         function_to_spec = {function["name"]: function for function in workflow_description["functions"]}
 
         dag = self.build_dag(workflow_description)
 
         # Now we can start the actual algorithm
-        # We start by adding the start hop region to the DAG and connecting it to all functions that have no predecessors
-        initial_start_hop_region = workflow_description["start_hop"]
-
-        successors_of_first_hop = [node for node, in_degree in dag.in_degree() if in_degree == 0]
-
-        dag.add_node(initial_start_hop_region)
-        for initial_node in successors_of_first_hop:
-            dag.add_edge(initial_start_hop_region, initial_node)
-
         # Because the DAG is acyclic, we can use topological sort to get the order in which we need to process the functions
         sorted_functions = list(nx.topological_sort(dag))
 
@@ -150,25 +142,33 @@ class Solver:
         execution_carbon_matrix: np.ndarray = self.get_execution_carbon_matrix(regions, sorted_functions)
         transmission_carbon_matrix: np.ndarray = self.get_transmission_carbon_matrix(regions)
 
+        # Add the start hop region to the DAG
+        initial_start_hop_region = workflow_description["start_hop"]
+
+        successors_of_first_hop = [node for node, in_degree in dag.in_degree() if in_degree == 0]
+
+        dag.add_node(initial_start_hop_region)
+        for initial_node in successors_of_first_hop:
+            dag.add_edge(initial_start_hop_region, initial_node)
+
         # The initial deployment option is the start hop region
-        deployment_options = np.array([({initial_start_hop_region: initial_start_hop_region}, 0, 0, 0)])
+        deployment_options = [({initial_start_hop_region: initial_start_hop_region}, 0, 0, 0)]
 
         # Now we iterate over all functions and compute the viable deployment options for each function
-        for i, function in enumerate(sorted_functions[1:]):
-            new_deployment_options = np.array([])
-            current_index = i + 1  # We start at 1 because the first function is the start hop
+        for i, function in enumerate(sorted_functions):
+            new_deployment_options = []
             # We iterate over all regions and compute the viable deployment options for each region
             for region, provider in regions:
                 # Calculate the cost, runtime and carbon of the function in the new region
-                cost_of_function_in_region = cost_matrix[current_index][region_to_index[region]](
+                cost_of_function_in_region = cost_matrix[i][region_to_index[region]](
                     function_to_spec[function], function_runtime_measurements[function], provider
                 )
                 runtime_of_function_in_region = runtime_array[region_to_index[region]](
                     function_to_spec[function], function_runtime_measurements[function], provider
                 )
-                execution_carbon_of_function_in_region = execution_carbon_matrix[current_index][
-                    region_to_index[region]
-                ](function_to_spec[function], function_runtime_measurements[function], provider)
+                execution_carbon_of_function_in_region = execution_carbon_matrix[i][region_to_index[region]](
+                    function_to_spec[function], function_runtime_measurements[function], provider
+                )
 
                 # We iterate over all viable deployment options for the previous function and
                 # compute the viable deployment options for the current function.
@@ -186,7 +186,7 @@ class Solver:
                             ]
                             * function_data_transfer_size_measurements[function]
                         )
-                        new_transmission_cost += self.get_egress_cost(
+                        new_transmission_cost += (
                             egress_cost_matrix[region_to_index[deployment_option[0][predecessor]]][
                                 region_to_index[region]
                             ]
@@ -210,22 +210,27 @@ class Solver:
 
                     new_deployment_option = (
                         deployment_option[0].copy(),
-                        deployment_option[1] + cost_of_function_in_region,
-                        deployment_option[2] + runtime_of_function_in_region,
-                        deployment_option[3] + execution_carbon_of_function_in_region,
+                        deployment_option[1] + cost_of_function_in_region + new_transmission_cost,
+                        deployment_option[2] + runtime_of_function_in_region + new_transmission_latency,
+                        deployment_option[3] + execution_carbon_of_function_in_region + new_transmission_carbon,
                     )
 
                     new_deployment_option[0][function] = region
-                    np.append(new_deployment_options, new_deployment_option)
+                    new_deployment_options.append(new_deployment_option)
 
             # We only keep the viable deployment options
             new_deployment_options = [
                 deployment_option
                 for deployment_option in new_deployment_options
-                if len(deployment_option[0]) == current_index + 1
+                if len(deployment_option[0].keys())
+                == i + 2  # + 2 because we added the start hop region and the current function
             ]
 
+            print("Number of new deployment options:", len(new_deployment_options))
+
             deployment_options = new_deployment_options
+    
+        return deployment_options
 
     def sort_deployment_options(self, viable_deployment_options: np.ndarray, workflow_description: dict) -> np.ndarray:
         # TODO: Implement logic to sort the viable deployment options
