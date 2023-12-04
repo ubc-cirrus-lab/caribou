@@ -88,8 +88,18 @@ def get_transmission_carbon_matrix(regions: np.ndarray) -> np.ndarray:
             transmission_carbon_matrix[j][i] = transmission_carbon_matrix[i][j]
 
 
-def get_egress_cost(region: str, destination_region: str, transmission_size: float) -> float:
+def get_egress_cost_coefficient_for_region_and_destination_region(region: str, destination_region: str) -> float:
     return 0.0
+
+
+def get_egress_cost_matrix(regions: np.ndarray) -> np.ndarray:
+    egress_cost_matrix = np.zeros((len(regions), len(regions)))
+    for i in range(len(regions)):
+        for j in range(i, len(regions)):
+            egress_cost_matrix[i][j] = get_egress_cost_coefficient_for_region_and_destination_region(
+                regions[i], regions[j]
+            )
+            egress_cost_matrix[j][i] = egress_cost_matrix[i][j]
 
 
 def build_dag(workflow_description: dict) -> tuple[nx.DiGraph, dict]:
@@ -136,8 +146,9 @@ def find_viable_deployment_options(
     sorted_functions = nx.topological_sort(dag)
 
     cost_matrix: np.ndarray = get_cost_matrix(regions, sorted_functions)
-    latency_matrix: np.ndarray = get_latency_matrix(regions)
+    egress_cost_matrix: np.ndarray = get_egress_cost_matrix(regions)
     runtime_array: np.ndarray = get_runtime_array(regions)
+    latency_matrix: np.ndarray = get_latency_matrix(regions)
     execution_carbon_matrix: np.ndarray = get_execution_carbon_matrix(regions, sorted_functions)
     transmission_carbon_matrix: np.ndarray = get_transmission_carbon_matrix(regions)
 
@@ -170,11 +181,13 @@ def find_viable_deployment_options(
                         * function_data_transfer_size_measurements[function]
                     )
                     new_transmission_cost += get_egress_cost(
-                        deployment_option[0][predecessor], region, function_data_transfer_size_measurements[function]
+                        egress_cost_matrix[region_to_index[deployment_option[0][predecessor]]][region_to_index[region]]
+                        * function_data_transfer_size_measurements[function]
                     )
-                    new_transmission_latency += latency_matrix[region_to_index[deployment_option[0][predecessor]]][
-                        region_to_index[region]
-                    ]
+                    new_transmission_latency += (
+                        latency_matrix[region_to_index[deployment_option[0][predecessor]]][region_to_index[region]]
+                        * function_data_transfer_size_measurements[function]
+                    )
 
                 if (
                     deployment_option[1] + cost_of_function_in_region + new_transmission_cost
