@@ -162,7 +162,7 @@ def write_results(results: list[dict]) -> None:
         region_name=DEFAULT_REGION,
     )
 
-    chunks = [results[i: i + 25] for i in range(0, len(results), 25)]
+    chunks = [results[i : i + 25] for i in range(0, len(results), 25)]
 
     for chunk in chunks:
         client.batch_write_item(RequestItems={PING_RESULTS_TABLE_NAME: chunk})
