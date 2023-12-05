@@ -1,6 +1,6 @@
 import boto3
 
-from .shared import AWS_DATACENTER_INFO_TABLE_NAME, DEFAULT_REGION
+from .utils import AWS_DATACENTER_INFO_TABLE_NAME, DEFAULT_REGION
 
 
 def get_regions() -> list[tuple[str, str]]:
@@ -17,7 +17,7 @@ def get_regions() -> list[tuple[str, str]]:
         TableName=AWS_DATACENTER_INFO_TABLE_NAME,
     )
 
-    return [(item["region_code"], item["provider"]) for item in response["Items"]]
+    return [(item["region_code"]["S"], item["provider"]["S"]) for item in response["Items"]]
 
 
 def filter_regions(regions: list[tuple[str, str]], workflow_description: dict) -> list[tuple[str, str]]:

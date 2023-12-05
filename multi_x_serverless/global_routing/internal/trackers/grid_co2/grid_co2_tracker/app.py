@@ -74,7 +74,7 @@ def update_grid_co2() -> None:
         )
 
     # Split the results into chunks of 25 items
-    chunks = [results[i: i + 25] for i in range(0, len(results), 25)]
+    chunks = [results[i : i + 25] for i in range(0, len(results), 25)]
 
     for chunk in chunks:
         client.batch_write_item(RequestItems={GRID_CO2_TABLE_NAME: chunk})

@@ -1,6 +1,7 @@
 from functools import reduce
 
 import boto3
+import networkx as nx
 from boto3.dynamodb.conditions import Key
 
 AWS_DATACENTER_INFO_TABLE_NAME = "multi-x-serverless-datacenter-info"
@@ -31,3 +32,12 @@ def get_item_from_dynamodb(key: dict, table_name: str, limit: int = -1, order: s
                 KeyConditionExpression=reduce(lambda x, y: x & y, key_conditions), Limit=limit, ScanIndexForward=False
             )
     return response["Items"]
+
+
+def get_dag(workflow_description: dict) -> nx.DiGraph:
+    dag = nx.DiGraph()
+    for function in workflow_description["functions"]:
+        dag.add_node(function["name"])
+        for next_function in function["next_functions"]:
+            dag.add_edge(function["name"], next_function["name"])
+    return dag

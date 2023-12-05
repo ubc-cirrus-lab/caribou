@@ -1,6 +1,6 @@
 from typing import Callable
 
-from .shared import AWS_DATACENTER_INFO_TABLE_NAME, GRID_CO2_TABLE_NAME, get_item_from_dynamodb
+from .utils import AWS_DATACENTER_INFO_TABLE_NAME, GRID_CO2_TABLE_NAME, get_item_from_dynamodb
 
 
 def get_execution_carbon_for_region_function(region_provider: tuple[str, str]) -> Callable:

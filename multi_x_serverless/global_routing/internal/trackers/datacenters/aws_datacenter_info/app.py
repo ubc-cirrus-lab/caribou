@@ -308,7 +308,7 @@ def update_aws_datacenter_info(api_key: str) -> None:  # pylint: disable=too-man
 
         transmission_cost_gb = {}
         for region, price in region_to_destination_transmission_cost[region_code].items():
-            transmission_cost_gb[region] = str(price)
+            transmission_cost_gb[region] = {"N": str(price)}
 
         item = {
             "PutRequest": {
@@ -376,8 +376,14 @@ def get_compute_cost_with_unit(compute_cost: dict) -> list[dict]:
     for value in compute_cost.values():
         result.append(
             {
-                "beginRange": str(value["beginRange"]),
-                "pricePerUnit": str(value["pricePerUnit"]["USD"]),
+                "M": {
+                    "beginRange": {
+                        "N": str(value["beginRange"]),
+                    },
+                    "pricePerUnit": {
+                        "N": str(value["pricePerUnit"]["USD"]),
+                    },
+                }
             }
         )
     return result
@@ -390,7 +396,7 @@ def write_results(results: list[dict], table_name: str) -> None:
     )
 
     # Split the results into chunks of 25 items
-    chunks = [results[i: i + 25] for i in range(0, len(results), 25)]
+    chunks = [results[i : i + 25] for i in range(0, len(results), 25)]
 
     for chunk in chunks:
         client.batch_write_item(RequestItems={table_name: chunk})

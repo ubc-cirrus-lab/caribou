@@ -4,15 +4,7 @@ from .chalicelib.carbon import get_execution_carbon_matrix, get_transmission_car
 from .chalicelib.cost import get_cost_matrix, get_egress_cost_matrix
 from .chalicelib.regions import filter_regions, get_regions
 from .chalicelib.runtime import get_latency_matrix, get_runtime_array
-
-
-def build_dag(workflow_description: dict) -> nx.DiGraph:
-    dag = nx.DiGraph()
-    for function in workflow_description["functions"]:
-        dag.add_node(function["name"])
-        for next_function in function["next_functions"]:
-            dag.add_edge(function["name"], next_function["name"])
-    return dag
+from .chalicelib.utils import get_dag
 
 
 def find_viable_deployment_options(  # pylint: disable=too-many-locals
@@ -25,7 +17,7 @@ def find_viable_deployment_options(  # pylint: disable=too-many-locals
     region_to_index = {region[0]: i for i, region in enumerate(regions)}
     function_to_spec = {function["name"]: function for function in workflow_description["functions"]}
 
-    dag = build_dag(workflow_description)
+    dag = get_dag(workflow_description)
 
     # Now we can start the actual algorithm
     # Because the DAG is acyclic, we can use topological sort to get the order in which we need to process the functions
