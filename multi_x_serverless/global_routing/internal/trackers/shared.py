@@ -40,17 +40,6 @@ def get_aws_regions() -> list[dict]:
     return response["Regions"]
 
 
-def get_gcp_regions() -> list[dict]:
-    # creds = ga_credentials.AnonymousCredentials()
-
-    # TODO (vGsteiger): Change to use the API
-    # client = compute_v1.RegionsClient(credentials=creds)
-    # project = "multi-x-serverless"
-    # response = client.list(project=project)
-    # return response["items"]
-    return []
-
-
 def create_aws_table_if_not_exists(
     table_name: str, key_schema: list, attribute_definitions: list, provisioned_throughput: dict
 ) -> None:

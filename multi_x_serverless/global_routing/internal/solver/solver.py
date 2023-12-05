@@ -243,7 +243,6 @@ class Solver:
     ) -> list[tuple[dict, float, float, float]]:
         # First we build the DAG and some auxiliary data structures
         region_to_index = {region[0]: i for i, region in enumerate(regions)}
-        print(region_to_index)
         function_to_spec = {function["name"]: function for function in workflow_description["functions"]}
 
         dag = self.build_dag(workflow_description)
@@ -344,8 +343,6 @@ class Solver:
                 == i + 2  # + 2 because we added the start hop region and the current function
             ]
 
-            print("Number of new deployment options:", len(new_deployment_options))
-
             deployment_options = new_deployment_options
 
         return deployment_options
@@ -389,7 +386,6 @@ class Solver:
         )
 
         # Return the best deployment option
-        # TODO (vGsteiger): We
         return sorted_deployment_options[select_deplyoment_number]
 
 
