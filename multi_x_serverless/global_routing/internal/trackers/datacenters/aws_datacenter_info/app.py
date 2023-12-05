@@ -290,7 +290,7 @@ def update_aws_datacenter_info(api_key: str) -> None:  # pylint: disable=too-man
 
         transmission_cost_gb = {}
         for region, price in region_to_region_to_transmission_cost[region_code].items():
-            transmission_cost_gb[region] = {"N": str(price)}
+            transmission_cost_gb[region] = str(price)
 
         item = {
             "PutRequest": {
@@ -358,14 +358,8 @@ def get_compute_cost_with_unit(compute_cost: dict) -> list[dict]:
     for value in compute_cost.values():
         result.append(
             {
-                "M": {
-                    "beginRange": {
-                        "N": str(value["beginRange"]),
-                    },
-                    "pricePerUnit": {
-                        "N": str(value["pricePerUnit"]["USD"]),
-                    },
-                }
+                "beginRange": : str(value["beginRange"]),
+                "pricePerUnit": str(value["pricePerUnit"]["USD"]),
             }
         )
     return result
