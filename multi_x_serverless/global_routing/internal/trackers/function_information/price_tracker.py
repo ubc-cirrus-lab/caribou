@@ -51,13 +51,9 @@ def get_aws_price_for_function(  # pylint: disable=too-many-locals
         stored_aws_data = stored_aws_data["data"]
         free_invocations = int(stored_aws_data["free_invocations"]["N"])
         free_compute_gb_s = int(stored_aws_data["free_compute_gb_s"]["N"])
-        free_data_egress_gb = int(stored_aws_data["free_data_egress_gb"]["N"])
 
         transmission_cost_gb = float(stored_aws_data["transmission_cost_gb"]["N"])
-        if estimated_data_egress > free_data_egress_gb:
-            transmission_cost = ((estimated_data_egress / 1000) - free_data_egress_gb) * transmission_cost_gb
-        else:
-            transmission_cost = 0
+        transmission_cost = estimated_data_egress * transmission_cost_gb
 
         invocation_cost_gb = float(stored_aws_data["invocation_cost_" + architecture + "_gb_s"]["N"])
         if estimated_number_of_requests_per_month > free_invocations:

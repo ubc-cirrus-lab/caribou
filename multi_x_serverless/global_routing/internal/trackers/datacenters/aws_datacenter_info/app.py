@@ -138,7 +138,6 @@ def update_aws_datacenter_info(api_key: str) -> None:  # pylint: disable=too-man
     # TODO (vGsteiger): In a potential future version we would have to retrieve this information
     # from the price list of AmazonEC2 (also where we would get the VM information from)
     transmission_cost = 0.09
-    free_data_egress_gb = 100000
 
     results = []
 
@@ -236,9 +235,6 @@ def update_aws_datacenter_info(api_key: str) -> None:  # pylint: disable=too-man
                     },
                     "free_compute_gb_s": {
                         "N": str(free_compute_gb_s),
-                    },
-                    "free_data_egress_gb": {
-                        "N": str(free_data_egress_gb),
                     },
                     "invocation_cost_arm64": {
                         "N": str(invocation_cost_arm64),

@@ -40,13 +40,14 @@ class Solver:
         return regions
 
     def get_cost_for_region_function(self, region: str, function: dict) -> callable:
-        # The function is a lambda function that takes the function spec, the function runtime measurement in ms, and the provider.
-        def cost(function, function_runtime_measurements, provider):
+        region, provider = region
+        # The function is a lambda function that takes the function spec and the function runtime measurement in ms
+        table = ""
+        if provider == "AWS":
+            table = AWS_DATACENTER_INFO_TABLE_NAME
+        datacenter_data = get_item_from_dynamodb({"region_code": region}, table)
+        def cost(function, function_runtime_measurements):
             # TODO: This might profit from caching
-            table = ""
-            if provider == "AWS":
-                table = AWS_DATACENTER_INFO_TABLE_NAME
-            datacenter_data = get_item_from_dynamodb({"region_code": region}, table)
             if datacenter_data:
                 datacenter_data = datacenter_data["data"]
                 free_invocations = int(datacenter_data["free_invocations"]["N"])
@@ -100,6 +101,8 @@ class Solver:
                 cost_matrix[i][j] = self.get_cost_for_region_function(region, function)
 
     def get_runtime_for_region_function(self, region: str, destination_region: str) -> callable:
+        region, provider = region
+        destination_region, destination_provider = destination_region
         # TODO: Implement logic to retrieve the runtime of the function in the given region
         return lambda function, function_runtime_measurements: 0.0
 
@@ -110,6 +113,8 @@ class Solver:
         return runtime_array
 
     def get_latency_coefficient_for_region(self, region: str, destination_region: str) -> float:
+        region, provider = region
+        destination_region, destination_provider = destination_region
         # TODO: Implement logic to retrieve the latency coefficient between the two regions
         return 0.0
 
@@ -122,17 +127,17 @@ class Solver:
         return latency_matrix
 
     def get_execution_carbon_for_region_function(self, region: str, function: dict) -> callable:
-        # The function is a lambda function that takes the function spec, the function runtime measurement in ms, and the provider.
+        # The function is a lambda function that takes the function spec and the function runtime measurement in ms
+        region, provider = region
+        table = ""
+        if provider == "AWS":
+            table = AWS_DATACENTER_INFO_TABLE_NAME
+        datacenter_data = get_item_from_dynamodb({"region_code": region, "provider": provider}, table)
+        grid_co2_data = get_item_from_dynamodb(
+            {"region_code": region, "provider": provider}, GRID_CO2_TABLE_NAME, limit=1, order="desc"
+        )
         def cost(function, function_runtime_measurements, provider):
             # TODO: This might profit from caching
-            table = ""
-            if provider == "AWS":
-                table = AWS_DATACENTER_INFO_TABLE_NAME
-            datacenter_data = get_item_from_dynamodb({"region_code": region, "provider": provider}, table)
-            grid_co2_data = get_item_from_dynamodb(
-                {"region_code": region, "provider": provider}, GRID_CO2_TABLE_NAME, limit=1, order="desc"
-            )
-
             if datacenter_data and grid_co2_data:
                 datacenter_data = datacenter_data["data"]
                 grid_co2_data = grid_co2_data["data"]
@@ -191,17 +196,32 @@ class Solver:
                 ] = self.get_transmission_carbon_coefficient_for_region_and_destination_region(region1, region2)
                 transmission_carbon_matrix[j][i] = transmission_carbon_matrix[i][j]
 
-    def get_egress_cost_coefficient_for_region_and_destination_region(
+    def get_egress_cost_for_region_and_destination_region_function(
         self, region: str, destination_region: str
     ) -> float:
-        # TODO: Implement logic to retrieve the egress cost coefficient between the two regions
-        return 0.0
+        region, provider = region
+        destination_region, destination_provider = destination_region
+
+        table = ""
+        if provider == "AWS":
+            table = AWS_DATACENTER_INFO_TABLE_NAME
+        datacenter_data = get_item_from_dynamodb({"region_code": region}, table)
+        # The function is a lambda function that takes the function spec, the function runtime measurement in ms, and the provider.
+        def cost(function, function_data_transmission_measurements, provider):
+            if region == destination_region:
+                if provider == "AWS":
+                    return 0.01 * function_data_transmission_measurements
+
+            transmission_cost_gb = float(datacenter_data["transmission_cost_gb"]["N"])
+            return transmission_cost_gb * function_data_transmission_measurements
+
+        return cost
 
     def get_egress_cost_matrix(self, regions: np.ndarray) -> np.ndarray:
         egress_cost_matrix = np.zeros((len(regions), len(regions)))
         for i, region1 in enumerate(regions):
             for j, region2 in enumerate(regions[i:], start=i):
-                egress_cost_matrix[i][j] = self.get_egress_cost_coefficient_for_region_and_destination_region(
+                egress_cost_matrix[i][j] = self.get_egress_cost_for_region_and_destination_region_function(
                     region1, region2
                 )
                 egress_cost_matrix[j][i] = egress_cost_matrix[i][j]

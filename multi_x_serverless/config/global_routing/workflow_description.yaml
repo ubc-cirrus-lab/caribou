@@ -67,7 +67,7 @@
                       type: "object",
                       properties:
                         {
-                          vcpu: { type: "integer" },
+                          vCPU: { type: "integer" },
                           memory: { type: "integer" },
                           architecture:
                             { type: "enum", enum: ["x86_64", "arm64"] },
