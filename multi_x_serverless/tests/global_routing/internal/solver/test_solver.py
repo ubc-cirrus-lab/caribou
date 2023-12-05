@@ -1,8 +1,8 @@
-from multi_x_serverless.global_routing.internal.solver import Solver
 import numpy as np
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
-from multi_x_serverless.global_routing.internal.solver import Solver
+from multi_x_serverless.global_routing.internal.solver.chalicelib.regions import get_regions, filter_regions
+from multi_x_serverless.global_routing.internal.solver.chalicelib.cost import get_cost_matrix, get_egress_cost_matrix
 import networkx as nx
 import random
 
@@ -20,38 +20,29 @@ class TestSolver(TestCase):
         }
         mock_client.return_value.scan.return_value = mock_response
 
-        # Create an instance of the Solver class
-        solver = Solver()
-
         # Call the get_regions function
-        regions = solver.get_regions()
+        regions = get_regions()
 
         # Assert the expected results
         expected_regions = np.array([("us-west-2", "AWS"), ("eu-west-1", "Azure")])
         np.testing.assert_array_equal(regions, expected_regions)
 
     def test_filter_regions(self):
-        # Create an instance of the Solver class
-        solver = Solver()
-
         # Create a mock regions array
         regions = np.array([("us-west-2", "AWS"), ("eu-west-1", "Azure")])
 
         workflow_description = {"filtered_regions": ["Azure:eu-west-1"]}
 
         # Call the filter_regions function
-        filtered_regions = solver.filter_regions(regions, workflow_description)
+        filtered_regions = filter_regions(regions, workflow_description)
 
         # Assert the expected results
         expected_filtered_regions = np.array([("us-west-2", "AWS")])
         np.testing.assert_array_equal(filtered_regions, expected_filtered_regions)
 
     def test_find_viable_deployment_options(self):
-        # Create an instance of the Solver class
-        solver = Solver()
-
         # Mock the other functions of Solver
-        solver.get_cost_matrix = MagicMock(
+        get_cost_matrix = MagicMock(
             return_value=np.array(
                 [
                     [lambda x, y, z: 1, lambda x, y, z: 2],
@@ -60,7 +51,7 @@ class TestSolver(TestCase):
                 ]
             )
         )
-        solver.get_egress_cost_matrix = MagicMock(
+        get_egress_cost_matrix = MagicMock(
             return_value=np.array(
                 [
                     [1.5, 0.6],
@@ -68,8 +59,8 @@ class TestSolver(TestCase):
                 ]
             )
         )
-        solver.get_runtime_array = MagicMock(return_value=np.array([lambda x, y, z: 1.2, lambda x, y, z: 0.4]))
-        solver.get_latency_matrix = MagicMock(
+        get_runtime_array = MagicMock(return_value=np.array([lambda x, y, z: 1.2, lambda x, y, z: 0.4]))
+        get_latency_matrix = MagicMock(
             return_value=np.array(
                 [
                     [1.8, 0.2],
@@ -77,7 +68,7 @@ class TestSolver(TestCase):
                 ]
             )
         )
-        solver.get_execution_carbon_matrix = MagicMock(
+        get_execution_carbon_matrix = MagicMock(
             return_value=np.array(
                 [
                     [lambda x, y, z: 1.5, lambda x, y, z: 0.6],
@@ -86,7 +77,7 @@ class TestSolver(TestCase):
                 ]
             )
         )
-        solver.get_transmission_carbon_matrix = MagicMock(
+        get_transmission_carbon_matrix = MagicMock(
             return_value=np.array(
                 [
                     [0.5, 0.6],
@@ -102,7 +93,7 @@ class TestSolver(TestCase):
         dag.add_edge("A", "B")
         dag.add_edge("B", "C")
         dag.add_edge("A", "C")
-        solver.build_dag = MagicMock(return_value=dag)
+        build_dag = MagicMock(return_value=dag)
 
         regions = np.array([("us-west-2", "AWS"), ("eu-west-1", "Azure")])
 
@@ -137,7 +128,7 @@ class TestSolver(TestCase):
         }
 
         # Call the find_viable_deployment_options function
-        viable_options = solver.find_viable_deployment_options(
+        viable_options = find_viable_deployment_options(
             regions, function_runtime_measurements, function_data_transfer_size_measurements, workflow_description
         )
 

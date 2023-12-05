@@ -1,10 +1,10 @@
 import datetime
 import json
-from typing import Any
-import Levenshtein
+from typing import Any, Optional
 
 import boto3
 import googlemaps
+import Levenshtein
 import requests
 from bs4 import BeautifulSoup
 from chalice import Chalice
@@ -127,40 +127,42 @@ def get_aws_product_skus(price_list: dict, client: boto3.client) -> tuple[str, s
     )
 
 
-def find_objects_with_pattern(data, pattern):
+def find_objects_with_pattern(data: dict, pattern: str) -> list[dict]:
     results = []
 
-    def search_objects(obj, parent=None):
-        if isinstance(obj, dict):
-            for key, value in obj.items():
-                if isinstance(value, dict):
-                    search_objects(value, key)
-                elif isinstance(value, str) and pattern in value:
-                    results.append({"key": key, "value": value, "parent": parent})
+    def search_objects(obj: dict, parent: Optional[str] = None) -> None:
+        for key, value in obj.items():
+            if isinstance(value, dict):
+                search_objects(value, key)
+            elif isinstance(value, str) and pattern in value:
+                results.append({"key": key, "value": value, "parent": parent})
 
     search_objects(data)
 
     return results
 
 
-def update_aws_datacenter_info(api_key: str) -> None:  # pylint: disable=too-many-locals
-    """
-    Updates the AWS datacenter info table in DynamoDB
-    """
-    client = boto3.client("pricing", region_name="us-east-1")  # Only available in us-east-1
+def fuzzy_match_region(original_destination_region: str, region_name_to_code: dict[str, str]) -> str:
+    min_distance = 100
+    destination_region = ""
+    for region_name, inner_region_code in region_name_to_code.items():
+        distance = Levenshtein.distance(original_destination_region, region_name)
+        if distance < min_distance:
+            min_distance = distance
+            destination_region = inner_region_code
+    return destination_region
 
-    aws_locations, region_name_to_code = scrape_aws_locations(api_key)
 
-    transmission_cost_response = client.list_price_lists(
-        ServiceCode="AmazonEC2", EffectiveDate=datetime.datetime.now(), CurrencyCode="USD"
-    )
-
-    alternative_region_names = {}
-    region_to_region_to_transmission_cost = {}
+def get_region_to_destination_transmission_cost(  # pylint: disable=too-many-locals
+    transmission_cost_response: dict, client: boto3.client, region_name_to_code: dict
+) -> dict:
+    alternative_region_names: dict = {}
+    region_to_destination_transmission_cost = {}
     for price_list in transmission_cost_response["PriceLists"]:
         region_code = price_list["RegionCode"]
         if region_code in IGNORED_REGIONS:
             continue
+
         price_list_arn = price_list["PriceListArn"]
         price_list_file = client.get_price_list_file_url(PriceListArn=price_list_arn, FileFormat="JSON")
 
@@ -178,29 +180,26 @@ def update_aws_datacenter_info(api_key: str) -> None:  # pylint: disable=too-man
             price_str = entry["value"].split("$")[1].split(" ")[0]
             price = float(price_str)
 
-            # The destination region is not always a region code, but sometimes a region name and sometimes different than the one that we have in our dictionary
+            # The destination region is not always a region code, but sometimes a region name and
+            # sometimes different than the one that we have in our dictionary
             if destination_region in region_name_to_code:
-                destination_region = region_name_to_code[destination_region]
+                cleaned_destination_region = region_name_to_code[destination_region]
+            elif destination_region in alternative_region_names:  # pylint: disable=consider-using-get
+                cleaned_destination_region = alternative_region_names[destination_region]
             else:
-                if destination_region in alternative_region_names:
-                    destination_region = alternative_region_names[destination_region]
-                else:
-                    # Use fuzzy matching to find the correct region code
-                    # Find the region code that has the smallest Levenshtein distance to the destination region
-                    min_distance = 100
-                    for region_name, inner_region_code in region_name_to_code.items():
-                        distance = Levenshtein.distance(destination_region, region_name)
-                        if distance < min_distance:
-                            min_distance = distance
-                            destination_region = inner_region_code
+                # Use fuzzy matching to find the correct region code
+                # Find the region code that has the smallest Levenshtein distance to the destination region
+                cleaned_destination_region = fuzzy_match_region(destination_region, region_name_to_code)
 
-            if destination_region not in region_to_transmissison_cost:
-                region_to_transmissison_cost[destination_region] = price
+            if cleaned_destination_region not in region_to_transmissison_cost:
+                region_to_transmissison_cost[cleaned_destination_region] = price
 
         # For all regions that we don't have a transmission cost for, use the most common transmission cost
         max_arg = set(region_to_transmissison_cost.values())
         if len(max_arg) == 0:
-            most_common_transmission_cost = 0.09
+            most_common_transmission_cost = (
+                0.09  # Some regions are not covered by the way that we get the transmission cost
+            )
         else:
             most_common_transmission_cost = max(max_arg, key=list(region_to_transmissison_cost.values()).count)
 
@@ -208,7 +207,26 @@ def update_aws_datacenter_info(api_key: str) -> None:  # pylint: disable=too-man
             if inner_region_code not in region_to_transmissison_cost:
                 region_to_transmissison_cost[inner_region_code] = most_common_transmission_cost
 
-        region_to_region_to_transmission_cost[region_code] = region_to_transmissison_cost
+        region_to_destination_transmission_cost[region_code] = region_to_transmissison_cost
+
+    return region_to_destination_transmission_cost
+
+
+def update_aws_datacenter_info(api_key: str) -> None:  # pylint: disable=too-many-locals
+    """
+    Updates the AWS datacenter info table in DynamoDB
+    """
+    client = boto3.client("pricing", region_name="us-east-1")  # Only available in us-east-1
+
+    aws_locations, region_name_to_code = scrape_aws_locations(api_key)
+
+    transmission_cost_response = client.list_price_lists(
+        ServiceCode="AmazonEC2", EffectiveDate=datetime.datetime.now(), CurrencyCode="USD"
+    )
+
+    region_to_destination_transmission_cost = get_region_to_destination_transmission_cost(
+        transmission_cost_response, client, region_name_to_code
+    )
 
     response = client.list_price_lists(
         ServiceCode="AWSLambda", EffectiveDate=datetime.datetime.now(), CurrencyCode="USD"
@@ -289,7 +307,7 @@ def update_aws_datacenter_info(api_key: str) -> None:  # pylint: disable=too-man
         compute_cost_x86_64_with_unit = get_compute_cost_with_unit(compute_cost_x86_64)
 
         transmission_cost_gb = {}
-        for region, price in region_to_region_to_transmission_cost[region_code].items():
+        for region, price in region_to_destination_transmission_cost[region_code].items():
             transmission_cost_gb[region] = str(price)
 
         item = {
@@ -358,7 +376,7 @@ def get_compute_cost_with_unit(compute_cost: dict) -> list[dict]:
     for value in compute_cost.values():
         result.append(
             {
-                "beginRange": : str(value["beginRange"]),
+                "beginRange": str(value["beginRange"]),
                 "pricePerUnit": str(value["pricePerUnit"]["USD"]),
             }
         )
@@ -372,7 +390,7 @@ def write_results(results: list[dict], table_name: str) -> None:
     )
 
     # Split the results into chunks of 25 items
-    chunks = [results[i : i + 25] for i in range(0, len(results), 25)]
+    chunks = [results[i: i + 25] for i in range(0, len(results), 25)]
 
     for chunk in chunks:
         client.batch_write_item(RequestItems={table_name: chunk})
