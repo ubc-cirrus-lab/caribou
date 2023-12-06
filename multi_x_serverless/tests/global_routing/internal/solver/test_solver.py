@@ -83,8 +83,6 @@ def test_find_viable_deployment_options_large_dag_many_regions(
         regions, function_runtime_measurements, function_data_transfer_size_measurements, workflow_description
     )
 
-    print(viable_options)
-    assert False
     # Assert the expected results
     for option in viable_options:
         assert option[1] <= cost_constraint
