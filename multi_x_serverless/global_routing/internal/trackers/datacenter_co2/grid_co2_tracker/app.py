@@ -10,12 +10,12 @@ app = Chalice(app_name="grid_co2_tracker")
 DEFAULT_REGION = "us-west-2"
 WORLD_AVERAGE_CO2_INTENSITY = 475.0
 AWS_DATACENTER_INFO_TABLE_NAME = "multi-x-serverless-datacenter-info"
-GRID_CO2_TABLE_NAME = "multi-x-serverless-datacenter-grid-co2"
+DATACENTER_GRID_CO2_TABLE_NAME = "multi-x-serverless-datacenter-grid-co2"
 
 
 @app.schedule("rate(30 minutes)")
 def index(event: Any) -> None:  # pylint: disable=unused-argument
-    update_grid_co2()
+    update_datacenter_grid_co2()
 
 
 def get_electricity_map_api_key() -> str:
@@ -33,7 +33,7 @@ def get_electricity_map_api_key() -> str:
     return api_key
 
 
-def update_grid_co2() -> None:
+def update_datacenter_grid_co2() -> None:
     api_key = get_electricity_map_api_key()
 
     # Retrieve all regions and their coordinates
@@ -77,7 +77,7 @@ def update_grid_co2() -> None:
     chunks = [results[i : i + 25] for i in range(0, len(results), 25)]
 
     for chunk in chunks:
-        client.batch_write_item(RequestItems={GRID_CO2_TABLE_NAME: chunk})
+        client.batch_write_item(RequestItems={DATACENTER_GRID_CO2_TABLE_NAME: chunk})
 
 
 def get_current_time() -> str:
@@ -92,7 +92,7 @@ def get_carbon_intensity_geo(location: tuple[float, float], api_key: str) -> flo
     url = "https://api-access.electricitymaps.com/free-tier/carbon-intensity/latest?"
 
     r = requests.get(
-        url + "lon=" + str(location[0]) + "&lat=" + str(location[1]),
+        url + "lat=" + str(location[0]) + "&lon=" + str(location[1]),
         headers={"auth-token": api_key},
         timeout=5,
     )
@@ -115,3 +115,7 @@ def get_carbon_intensity_geo(location: tuple[float, float], api_key: str) -> flo
         f"Error getting carbon intensity from Electricity Maps API: {r.status_code} for {location[0]}, {location[1]}"  # pylint: disable=line-too-long
     )
     raise RuntimeError("Error getting carbon intensity from Electricity Maps API, status code: " + str(r.status_code))
+
+
+# if __name__ == "__main__":
+#     update_datacenter_grid_co2()

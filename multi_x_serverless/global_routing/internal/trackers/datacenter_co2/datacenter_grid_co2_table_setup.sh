@@ -1,6 +1,6 @@
 #!/bin/bash
 
-TABLE_NAME="multi-x-serverless-datacenter-info"
+TABLE_NAME="multi-x-serverless-datacenter-grid-co2"
 REGION="us-west-2"
 
 # Check if the table exists
@@ -12,10 +12,10 @@ if [ -z "$TABLE_EXISTS" ]; then
         --table-name $TABLE_NAME \
         --attribute-definitions \
             AttributeName=region_code,AttributeType=S \
-            AttributeName=provider,AttributeType=S \
+            AttributeName=timestamp,AttributeType=S \
         --key-schema \
-            AttributeName=region_code,KeyType=RANGE \
-            AttributeName=provider,KeyType=HASH \
+            AttributeName=region_code,KeyType=HASH \
+            AttributeName=timestamp,KeyType=RANGE \
         --billing-mode PAY_PER_REQUEST \
         --region $REGION
 fi

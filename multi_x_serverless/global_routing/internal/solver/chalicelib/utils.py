@@ -7,6 +7,9 @@ from boto3.dynamodb.conditions import Key
 AWS_DATACENTER_INFO_TABLE_NAME = "multi-x-serverless-datacenter-info"
 DEFAULT_REGION = "us-west-2"
 GRID_CO2_TABLE_NAME = "multi-x-serverless-datacenter-grid-co2"
+TRANSMISSION_CO2_TABLE_NAME = "multi-x-serverless-transmission-co2"
+# From https://www.cloudcarbonfootprint.org/docs/methodology/
+ENERGY_CONSUMPTION_PER_GB = 0.001
 
 
 def get_item_from_dynamodb(key: dict, table_name: str, limit: int = -1, order: str = "asc") -> dict:

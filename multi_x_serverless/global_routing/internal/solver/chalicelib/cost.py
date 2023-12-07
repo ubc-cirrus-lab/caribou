@@ -110,7 +110,7 @@ def get_egress_cost_for_region_and_destination_region_function(
         transmission_cost_gb = float(datacenter_data["transmission_cost_gb"][destination_region])
         estimated_data_transmission = (
             sum(function_data_transmission_measurements) / len(function_data_transmission_measurements)
-        ) / 1000  # s
+        ) / 1000  # GB
         return transmission_cost_gb * estimated_data_transmission
 
     return cost

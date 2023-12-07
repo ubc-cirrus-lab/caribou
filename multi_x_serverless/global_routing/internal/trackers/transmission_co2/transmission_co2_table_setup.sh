@@ -1,6 +1,6 @@
 #!/bin/bash
 
-TABLE_NAME="multi-x-serverless-datacenter-grid-co2"
+TABLE_NAME="multi-x-serverless-transmission-co2"
 REGION="us-west-2"
 
 # Check if the table exists
@@ -11,11 +11,11 @@ if [ -z "$TABLE_EXISTS" ]; then
     aws dynamodb create-table \
         --table-name $TABLE_NAME \
         --attribute-definitions \
+            AttributeName=region_from_to_codes,AttributeType=S \
             AttributeName=timestamp,AttributeType=S \
-            AttributeName=region_code,AttributeType=S \
         --key-schema \
+            AttributeName=region_from_to_codes,KeyType=HASH \
             AttributeName=timestamp,KeyType=RANGE \
-            AttributeName=region_code,KeyType=HASH \
         --billing-mode PAY_PER_REQUEST \
         --region $REGION
 fi

@@ -1,6 +1,11 @@
 from typing import Callable
 
-from .utils import AWS_DATACENTER_INFO_TABLE_NAME, GRID_CO2_TABLE_NAME, get_item_from_dynamodb
+from .utils import (
+    AWS_DATACENTER_INFO_TABLE_NAME,
+    GRID_CO2_TABLE_NAME,
+    TRANSMISSION_CO2_TABLE_NAME,
+    get_item_from_dynamodb,
+)
 
 
 def get_execution_carbon_for_region_function(region_provider: tuple[str, str]) -> Callable:
@@ -73,11 +78,16 @@ def get_transmission_carbon_coefficient_for_region_and_destination_region(
 ) -> float:
     region, provider = region_provider  # pylint: disable=unused-variable
     destination_region, destination_provider = destination_region_provider  # pylint: disable=unused-variable
-    # TODO: Implement logic to retrieve the transmission carbon coefficient between the two regions
-    return 0.0
+    table = TRANSMISSION_CO2_TABLE_NAME
+    region_from_to_codes = provider + ":" + region + ":" + destination_provider + ":" + destination_region
+
+    transmission_co2_data = get_item_from_dynamodb(
+        {"region_from_to_codes": region_from_to_codes}, GRID_CO2_TABLE_NAME, limit=1, order="desc"
+    )
+    return transmission_co2_data["data"]["carbon_intensity"]
 
 
-def get_transmission_carbon_matrix(regions: list[tuple[str, str]]) -> list[list[float]]:
+def get_transmission_carbon_matrix(regions: list[tuple[str, str]], latenices: list[list[float]]) -> list[list[float]]:
     transmission_carbon_matrix: list = []
     for i, region1 in enumerate(regions):
         transmission_carbon_matrix.append([])

@@ -11,11 +11,11 @@ if [ -z "$TABLE_EXISTS" ]; then
     aws dynamodb create-table \
         --table-name $TABLE_NAME \
         --attribute-definitions \
-            AttributeName=timestamp,AttributeType=S \
             AttributeName=region_from,AttributeType=S \
+            AttributeName=timestamp,AttributeType=S \
         --key-schema \
-            AttributeName=timestamp,KeyType=RANGE \
             AttributeName=region_from,KeyType=HASH \
+            AttributeName=timestamp,KeyType=RANGE \
         --billing-mode PAY_PER_REQUEST \
         --region $REGION
 fi

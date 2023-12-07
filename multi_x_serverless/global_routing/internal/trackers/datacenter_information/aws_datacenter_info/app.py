@@ -17,7 +17,7 @@ DEFAULT_REGION = "us-west-2"
 IGNORED_REGIONS = ["us-gov-west-1", "us-gov-east-1"]
 
 
-# @app.schedule("rate(10 days)")
+@app.schedule("rate(10 days)")
 def scrape(event: Any) -> None:  # pylint: disable=unused-argument
     client = boto3.client(
         service_name="secretsmanager",
@@ -402,5 +402,5 @@ def write_results(results: list[dict], table_name: str) -> None:
         client.batch_write_item(RequestItems={table_name: chunk})
 
 
-if __name__ == "__main__":
-    scrape(None)
+# if __name__ == "__main__":
+#     scrape(None)

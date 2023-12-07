@@ -4,7 +4,7 @@ from .chalicelib.carbon import get_execution_carbon_matrix, get_transmission_car
 from .chalicelib.cost import get_cost_matrix, get_egress_cost_matrix
 from .chalicelib.regions import filter_regions, get_regions
 from .chalicelib.runtime import get_latency_matrix, get_runtime_array
-from .chalicelib.utils import get_dag
+from .chalicelib.utils import get_dag, ENERGY_CONSUMPTION_PER_GB
 
 
 def find_viable_deployment_options(  # pylint: disable=too-many-locals
@@ -70,19 +70,25 @@ def find_viable_deployment_options(  # pylint: disable=too-many-locals
                 new_transmission_latency: float = 0.0
 
                 for predecessor in dag.predecessors(function):
+                    transmission_latency = (
+                        latency_matrix[region_to_index[deployment_option[0][predecessor]]][region_to_index[region]]
+                        * function_data_transfer_size_measurements[function]
+                    )
+                    # (gCO2) = (Data Size in GB) * (Energy Consumption per GB) * (CO2 Emissions per kWh) * (Latency in hours)
+                    # Where (CO2 Emissions per kWh) are calculated as a coefficient in the transmission carbon matrix
+                    # Coefficient for Energy Consumption per GB: 0.001 kWh/Gb
                     new_transmission_carbon += (
                         transmission_carbon_matrix[region_to_index[deployment_option[0][predecessor]]][
                             region_to_index[region]
                         ]
-                        * function_data_transfer_size_measurements[function]
+                        * (function_data_transfer_size_measurements[function] / 1000)
+                        * (transmission_latency / 3600000)
+                        * ENERGY_CONSUMPTION_PER_GB
                     )
                     new_transmission_cost += egress_cost_matrix[region_to_index[deployment_option[0][predecessor]]][
                         region_to_index[region]
                     ](function_data_transfer_size_measurements[function])
-                    new_transmission_latency += (
-                        latency_matrix[region_to_index[deployment_option[0][predecessor]]][region_to_index[region]]
-                        * function_data_transfer_size_measurements[function]
-                    )
+                    new_transmission_latency += transmission_latency
 
                 # If we violate any of the constraints, we discard the deployment option
                 if (
@@ -133,6 +139,16 @@ def run(
     function_data_transfer_size_measurements: dict,
     select_deplyoment_number: int = 0,
 ) -> tuple[dict, float, float, float]:
+    """
+    Args:
+        workflow_description (dict): A dictionary representing the workflow description.
+        function_runtime_measurements (dict): A dictionary containing the runtime measurements of each function in seconds.
+        function_data_transfer_size_measurements (dict): A dictionary containing the data transfer size measurements of each function in MB.
+        select_deployment_number (int, optional): The index of the deployment option to select. Defaults to 0.
+
+    Returns:
+        tuple[dict, float, float, float]: A tuple containing the selected deployment option, its cost, runtime, and carbon footprint.
+    """
     # To be called with a workflow description of n functions and a list of n integers
     # representing the runtime of each function.
     # The m regions are retrieved from the DynamoDB table "multi-x-serverless-datacenter-info".
