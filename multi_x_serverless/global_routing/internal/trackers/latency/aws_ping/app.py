@@ -17,19 +17,22 @@ from chalice import Chalice
 PING_RESULTS_TABLE_NAME = "multi-x-serverless-ping-results"
 DEFAULT_REGION = "us-west-2"
 
+DYNAMO_DB = boto3.resource("dynamodb", region_name="us-west-2")
+RESULTS_TABLE = DYNAMO_DB.Table(PING_RESULTS_TABLE_NAME)
+
 logger = logging.getLogger()
 
 app = Chalice(app_name="aws_ping")
 
 
-@app.schedule("rate(3 hours)")
+@app.schedule("rate(1 hour)")
 def ping(event: Any) -> None:  # pylint: disable=unused-argument
     from_aws_to_gcp()
     from_aws_to_aws()
 
 
 def measure_latency(endpoint: str, provider: str, region_code: str) -> dict:
-    measurements = 5
+    measurements = 10
     duration_measurements = []
 
     payload = b"A" * (1024 * 1024)  # 1MB payload
@@ -56,6 +59,7 @@ def measure_latency(endpoint: str, provider: str, region_code: str) -> dict:
         end = timer()
         duration = end - start
         if success:
+            duration = int(duration * 1000)  # convert to ms
             duration_measurements.append(duration)
 
         time.sleep(1)
@@ -63,58 +67,25 @@ def measure_latency(endpoint: str, provider: str, region_code: str) -> dict:
     if len(duration_measurements) == 0:
         return {}
 
-    max_duration = max(duration_measurements)
-    min_duration = min(duration_measurements)
-    avg_duration = sum(duration_measurements) / len(duration_measurements)
-
     return {
-        "PutRequest": {
-            "Item": {
-                "timestamp": {
-                    "S": get_current_time(),
-                },
-                "region_from_to_codes": {
-                    "S": "aws" + ":" + get_curr_aws_region() + ":" + provider + ":" + region_code,
-                },
-                "region_from": {
-                    "S": get_curr_aws_region(),
-                },
-                "region_to": {
-                    "S": region_code,
-                },
-                "provider_from": {
-                    "S": "aws",
-                },
-                "provider_to": {
-                    "S": provider,
-                },
-                "max_duration": {
-                    "N": str(max_duration),
-                },
-                "min_duration": {
-                    "N": str(min_duration),
-                },
-                "avg_duration": {
-                    "N": str(avg_duration),
-                },
-            }
-        }
+        "timestamp": get_current_time(),
+        "region_from_to_codes": "aws" + ":" + get_curr_aws_region() + ":" + provider + ":" + region_code,
+        "region_from": get_curr_aws_region(),
+        "region_to": region_code,
+        "provider_from": "aws",
+        "provider_to": provider,
+        "measurements": duration_measurements,
     }
 
 
 def from_aws_to_gcp() -> None:
     regions = get_gcp_regions()
-    results = []
 
     for region in regions:
         region_code = region["RegionName"]
         endpoint = "https://storage." + region_code + ".rep.googleapis.com/"
         result = measure_latency(endpoint, "gcp", region_code)
-        if result:
-            results.append(result)
-
-    if len(results) > 0:
-        write_results(results)
+        RESULTS_TABLE.put_item(Item=result)
 
 
 def from_aws_to_aws() -> None:
@@ -130,10 +101,7 @@ def from_aws_to_aws() -> None:
 
         endpoint = "ec2." + region_code + ".amazonaws.com"
         result = measure_latency(endpoint, "aws", region_code)
-        if result:
-            results.append(result)
-
-    write_results(results)
+        RESULTS_TABLE.put_item(Item=result)
 
 
 def get_aws_regions() -> list[dict]:
@@ -160,18 +128,6 @@ def get_gcp_regions() -> list[dict]:
     # project = "multi-x-serverless"
     # response = client.list(project=project)
     return []
-
-
-def write_results(results: list[dict]) -> None:
-    client = boto3.client(
-        "dynamodb",
-        region_name=DEFAULT_REGION,
-    )
-
-    chunks = [results[i : i + 25] for i in range(0, len(results), 25)]
-
-    for chunk in chunks:
-        client.batch_write_item(RequestItems={PING_RESULTS_TABLE_NAME: chunk})
 
 
 def get_current_time() -> str:

@@ -3,7 +3,7 @@
     "Statement": [
         {
             "Action": [
-                "dynamodb:BatchWriteItem",
+                "dynamodb:PutItem",
                 "dynamodb:ListTables",
                 "dynamodb:CreateTable"
             ],
