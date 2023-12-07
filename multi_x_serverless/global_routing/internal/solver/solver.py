@@ -72,8 +72,8 @@ def find_viable_deployment_options(  # pylint: disable=too-many-locals
                 for predecessor in dag.predecessors(function):
                     transmission_latency = (
                         latency_matrix[region_to_index[deployment_option[0][predecessor]]][region_to_index[region]]
-                        * function_data_transfer_size_measurements[function]
-                    )
+                        * 1000  # (ms) = (Latency in seconds) * 1000
+                    ) * function_data_transfer_size_measurements[function]
                     # (gCO2) = (Data Size in GB) * (Energy Consumption per GB) * (CO2 Emissions per kWh) * (Latency in hours)
                     # Where (CO2 Emissions per kWh) are calculated as a coefficient in the transmission carbon matrix
                     # Coefficient for Energy Consumption per GB: 0.001 kWh/Gb

@@ -12,7 +12,7 @@ source_table = dynamodb.Table("multi-x-serverless-ping-results")
 target_table = dynamodb.Table("multi-x-serverless-network-latencies")
 
 
-@app.schedule("rate(1 day)")
+# @app.schedule("rate(1 day)")
 def run(event: Any) -> None:  # pylint: disable=unused-argument
     current_date = datetime.date.today().isoformat()
 
@@ -24,6 +24,7 @@ def run(event: Any) -> None:  # pylint: disable=unused-argument
         for region_to, percentiles in region_to_dict.items():
             average = percentiles["average"]
             item = {
+                "region_from_to_codes": region_from + ":" + region_to,
                 "region_from": region_from.split(":")[1],
                 "region_to": region_to.split(":")[1],
                 "average": average,
@@ -71,3 +72,7 @@ def calculate_averages(items: list) -> dict:
             }
 
     return averages
+
+
+if __name__ == "__main__":
+    run(None)

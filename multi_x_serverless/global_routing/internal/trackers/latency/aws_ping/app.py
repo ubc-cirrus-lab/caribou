@@ -73,6 +73,9 @@ def measure_latency(endpoint: str, provider: str, region_code: str) -> dict:
                 "timestamp": {
                     "S": get_current_time(),
                 },
+                "region_from_to_codes": {
+                    "S": "aws" + ":" + get_curr_aws_region() + ":" + provider + ":" + region_code,
+                },
                 "region_from": {
                     "S": get_curr_aws_region(),
                 },
