@@ -6,5 +6,5 @@
     "prod": {
     }
   },
-  "lambda_timeout" : 120
+  "lambda_timeout" : 240
 }

@@ -38,7 +38,7 @@ def measure_latency(endpoint: str, provider: str, region_code: str) -> dict:
         success = False
 
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.settimeout(1)
+        s.settimeout(5)
 
         start = timer()
         try:
@@ -182,3 +182,7 @@ def get_curr_aws_region() -> str:
     if my_region:
         return my_region
     return DEFAULT_REGION
+
+
+# if __name__ == "__main__":
+#     ping(None)

@@ -23,7 +23,7 @@ REQUEST_THRESHOLD = 1
 REQUEST_BACKOFF = 1
 
 
-# @app.schedule("rate(30 minutes)")
+@app.schedule("rate(30 minutes)")
 def index(event: Any) -> None:  # pylint: disable=unused-argument
     update_transmission_co2()
 
@@ -234,5 +234,5 @@ def get_carbon_intensity_geo(location: tuple[float, float], api_key: str) -> flo
     raise RuntimeError("Error getting carbon intensity from Electricity Maps API, status code: " + str(r.status_code))
 
 
-if __name__ == "__main__":
-    update_transmission_co2()
+# if __name__ == "__main__":
+#     update_transmission_co2()
