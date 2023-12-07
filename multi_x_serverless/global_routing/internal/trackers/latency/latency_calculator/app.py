@@ -1,5 +1,6 @@
 import datetime
 from typing import Any
+import numpy as np
 
 import boto3
 from boto3.dynamodb.conditions import Attr
@@ -12,7 +13,7 @@ source_table = dynamodb.Table("multi-x-serverless-ping-results")
 target_table = dynamodb.Table("multi-x-serverless-network-latencies")
 
 
-# @app.schedule("rate(1 day)")
+@app.schedule("rate(1 day)")
 def run(event: Any) -> None:  # pylint: disable=unused-argument
     current_date = datetime.date.today().isoformat()
 
@@ -46,7 +47,9 @@ def calculate_averages(items: list) -> dict:
         provider_from = item["provider_from"]
         region_to = item["region_to"]
         provider_to = item["provider_to"]
-        latency = item["avg_duration"]
+        latencies = []
+        for measurement in item["measurements"]:
+            latencies.append(int(measurement))
 
         combined_from = provider_from + ":" + region_from
         combined_to = provider_to + ":" + region_to
@@ -56,23 +59,24 @@ def calculate_averages(items: list) -> dict:
         if combined_to not in averages[combined_from]:
             averages[combined_from][combined_to] = []
 
-        averages[combined_from][combined_to].append(latency)
+        averages[combined_from][combined_to].extend(latencies)
 
     # Calculate average, 50th, 90th, 95th, 99th percentile
     for region_from, region_to_dict in averages.items():
         for region_to, latencies in region_to_dict.items():
-            latencies.sort()
+            np_latencies = np.array(latencies)
 
             region_to_dict[region_to] = {
-                "average": sum(latencies) / len(latencies),
-                "50th": latencies[int(len(latencies) * 0.5)],
-                "90th": latencies[int(len(latencies) * 0.9)],
-                "95th": latencies[int(len(latencies) * 0.95)],
-                "99th": latencies[int(len(latencies) * 0.99)],
+                "average": int(np.average(np_latencies)),
+                "5th": int(np.percentile(np_latencies, 5)),
+                "50th": int(np.percentile(np_latencies, 50)),
+                "90th": int(np.percentile(np_latencies, 90)),
+                "95th": int(np.percentile(np_latencies, 95)),
+                "99th": int(np.percentile(np_latencies, 99)),
             }
 
     return averages
 
 
-if __name__ == "__main__":
-    run(None)
+# if __name__ == "__main__":
+#     run(None)

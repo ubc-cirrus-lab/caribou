@@ -90,7 +90,6 @@ def from_aws_to_gcp() -> None:
 
 def from_aws_to_aws() -> None:
     regions = get_aws_regions()
-    results = []
 
     excluded_regions = {"us-gov-east-1", "us-gov-west-1"}
 
