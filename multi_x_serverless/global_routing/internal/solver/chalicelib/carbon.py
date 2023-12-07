@@ -76,13 +76,12 @@ def get_execution_carbon_matrix(regions: list[tuple[str, str]], number_of_functi
 def get_transmission_carbon_coefficient_for_region_and_destination_region(
     region_provider: tuple[str, str], destination_region_provider: tuple[str, str]
 ) -> float:
-    region, provider = region_provider  # pylint: disable=unused-variable
-    destination_region, destination_provider = destination_region_provider  # pylint: disable=unused-variable
-    table = TRANSMISSION_CO2_TABLE_NAME
+    region, provider = region_provider
+    destination_region, destination_provider = destination_region_provider
     region_from_to_codes = provider + ":" + region + ":" + destination_provider + ":" + destination_region
 
     transmission_co2_data = get_item_from_dynamodb(
-        {"region_from_to_codes": region_from_to_codes}, GRID_CO2_TABLE_NAME, limit=1, order="desc"
+        {"region_from_to_codes": region_from_to_codes}, TRANSMISSION_CO2_TABLE_NAME, limit=1, order="desc"
     )
     return transmission_co2_data["data"]["carbon_intensity"]
 

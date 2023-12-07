@@ -32,6 +32,8 @@ def measure_latency(endpoint: str, provider: str, region_code: str) -> dict:
     measurements = 5
     duration_measurements = []
 
+    payload = b"A" * (1024 * 1024)  # 1MB payload
+
     for _ in range(measurements):
         success = False
 
@@ -41,6 +43,7 @@ def measure_latency(endpoint: str, provider: str, region_code: str) -> dict:
         start = timer()
         try:
             s.connect((endpoint, 443))
+            s.sendall(payload)  # Send the payload
             s.shutdown(socket.SHUT_RD)
             success = True
         except socket.timeout:
