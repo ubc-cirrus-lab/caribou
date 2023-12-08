@@ -8,16 +8,16 @@ from chalice import Chalice
 
 app = Chalice(app_name="latency_calculator")
 
-dynamodb = boto3.resource("dynamodb", region_name="us-west-2")
-source_table = dynamodb.Table("multi-x-serverless-ping-results")
-target_table = dynamodb.Table("multi-x-serverless-network-latencies")
+DYNAMO_DB = boto3.resource("dynamodb", region_name="us-west-2")
+PING_RESULTS_TABLE = DYNAMO_DB.Table("multi-x-serverless-ping-results")
+NETWORK_LATENCIES_TABLE = DYNAMO_DB.Table("multi-x-serverless-network-latencies")
 
 
 @app.schedule("rate(1 day)")
 def run(event: Any) -> None:  # pylint: disable=unused-argument
     current_date = datetime.date.today().isoformat()
 
-    response = source_table.scan(FilterExpression=Attr("timestamp").begins_with(current_date))
+    response = PING_RESULTS_TABLE.scan(FilterExpression=Attr("timestamp").begins_with(current_date))
 
     averages = calculate_averages(response["Items"])
 
@@ -37,7 +37,7 @@ def run(event: Any) -> None:  # pylint: disable=unused-argument
                 "95th": percentiles["95th"],
                 "99th": percentiles["99th"],
             }
-            target_table.put_item(Item=item)
+            NETWORK_LATENCIES_TABLE.put_item(Item=item)
 
 
 def calculate_averages(items: list) -> dict:

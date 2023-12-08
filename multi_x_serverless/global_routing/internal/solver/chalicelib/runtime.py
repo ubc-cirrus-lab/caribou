@@ -32,7 +32,7 @@ def get_latency_coefficient_for_region(
         limit=1,
         order="desc",
     )
-    return latency_coefficient["data"]["average"]
+    return latency_coefficient["data"]["95th"]
 
 
 def get_latency_matrix(regions: list[tuple[str, str]]) -> list[list[float]]:
