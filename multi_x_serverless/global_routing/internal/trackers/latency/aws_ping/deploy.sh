@@ -12,6 +12,13 @@ OPT_IN_REGIONS=(
     me-south-1
     me-central-1
     il-central-1
+    sa-east-1  # The following are already included but incur data transfer costs
+    ap-south-1
+    ap-northeast-3
+    ap-northeast-2
+    ap-southeast-1
+    ap-southeast-2
+    ap-northeast-1
 )
 
 # Get all AWS regions
