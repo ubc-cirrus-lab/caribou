@@ -62,8 +62,7 @@ def update_datacenter_grid_co2() -> None:
             {
                 "PutRequest": {
                     "Item": {
-                        "region_code": {"S": region},
-                        "provider": {"S": provider},
+                        "region_code_provider": {"S": region + ":" + provider},
                         "timestamp": {
                             "S": get_current_time(),
                         },

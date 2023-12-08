@@ -10,8 +10,8 @@ from .chalicelib.utils import get_dag, ENERGY_CONSUMPTION_PER_GB
 
 def find_viable_deployment_options(  # pylint: disable=too-many-locals
     regions: list[tuple[str, str]],
-    function_runtime_measurements: dict,
-    function_data_transfer_size_measurements: dict,
+    function_runtime_measurements: dict[str, list[float]],
+    function_data_transfer_size_measurements: dict[str, list[float]],
     workflow_description: dict,
 ) -> list[tuple[dict, float, float, float]]:
     # First we build the DAG and some auxiliary data structures
@@ -72,7 +72,7 @@ def find_viable_deployment_options(  # pylint: disable=too-many-locals
 
                 for predecessor in dag.predecessors(function):
                     transmission_latency = (
-                        # latency_matrix[region_to_index[deployment_option[0][predecessor]]][region_to_index[region]]
+                        latency_matrix[region_to_index[deployment_option[0][predecessor]]][region_to_index[region]]
                     ) * function_data_transfer_size_measurements[function]
                     # (gCO2) = (Data Size in GB) * (Energy Consumption per GB) * (CO2 Emissions per kWh) * (Latency in hours)
                     # Where (CO2 Emissions per kWh) are calculated as a coefficient in the transmission carbon matrix
@@ -110,6 +110,8 @@ def find_viable_deployment_options(  # pylint: disable=too-many-locals
 
                 new_deployment_option[0][function] = region
                 new_deployment_options.append(new_deployment_option)
+        
+        print(new_deployment_options)
 
         # We only keep the viable deployment options
         new_deployment_options = [

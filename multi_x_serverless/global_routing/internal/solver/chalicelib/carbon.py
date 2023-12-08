@@ -5,7 +5,7 @@ from .utils import (
     GRID_CO2_TABLE_NAME,
     TRANSMISSION_CO2_TABLE_NAME,
     get_item_from_dynamodb,
-    AWS
+    AWS,
 )
 
 
@@ -17,8 +17,12 @@ def get_execution_carbon_for_region_function(region_provider: tuple[str, str]) -
         table = AWS_DATACENTER_INFO_TABLE_NAME
     datacenter_data = get_item_from_dynamodb({"region_code": region, "provider": provider}, table)
     grid_co2_data = get_item_from_dynamodb(
-        {"region_code": region, "provider": provider}, GRID_CO2_TABLE_NAME, limit=1, order="desc"
+        {"region_code_provider": region + ":" + provider}, GRID_CO2_TABLE_NAME, limit=1, order="desc"
     )
+    if len(grid_co2_data) > 0:
+        grid_co2_data = grid_co2_data[0]
+    else:
+        raise Exception(f"Could not find data for region {region} and provider {provider}")
 
     def cost(
         function_spec: dict,
@@ -28,9 +32,6 @@ def get_execution_carbon_for_region_function(region_provider: tuple[str, str]) -
     ) -> float:
         # TODO: This might profit from caching
         if datacenter_data and grid_co2_data:
-            datacenter_data = datacenter_data["data"]
-            grid_co2_data = grid_co2_data["data"]
-
             runtime_in_hours = (
                 (sum(function_runtime_measurements) / len(function_runtime_measurements)) / 1000 / 60 / 60
             )  # ms -> h
@@ -71,6 +72,7 @@ def get_execution_carbon_matrix(regions: list[tuple[str, str]], number_of_functi
         execution_carbon_matrix.append([])
         for region_provider in regions:
             execution_carbon_matrix[i].append(get_execution_carbon_for_region_function(region_provider))
+            break
     return execution_carbon_matrix
 
 
@@ -87,8 +89,7 @@ def get_transmission_carbon_coefficient_for_region_and_destination_region(
 
     if len(transmission_co2_data) == 0:
         return 100.0  # Assume a high transmission carbon if we don't have the data
-    print(transmission_co2_data)
-    return transmission_co2_data["data"]["carbon_intensity"]
+    return transmission_co2_data[0]["carbon_intensity"]
 
 
 def get_transmission_carbon_matrix(regions: list[tuple[str, str]]) -> list[list[float]]:

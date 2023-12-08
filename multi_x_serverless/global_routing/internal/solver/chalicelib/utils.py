@@ -13,18 +13,19 @@ LATENCY_TABLE_NAME = "multi-x-serverless-network-latencies"
 ENERGY_CONSUMPTION_PER_GB = 0.001
 AWS = "aws"
 OPT_IN_REGIONS = [
-    'af-south-1',
-    'ap-east-1',
-    'ap-south-2',
-    'ap-southeast-3',
-    'ap-southeast-4',
-    'eu-south-1',
-    'eu-south-2',
-    'eu-central-2',
-    'me-south-1',
-    'me-central-1',
-    'il-central-1'
+    "af-south-1",
+    "ap-east-1",
+    "ap-south-2",
+    "ap-southeast-3",
+    "ap-southeast-4",
+    "eu-south-1",
+    "eu-south-2",
+    "eu-central-2",
+    "me-south-1",
+    "me-central-1",
+    "il-central-1",
 ]
+
 
 def get_item_from_dynamodb(key: dict, table_name: str, limit: int = -1, order: str = "asc") -> dict:
     """
@@ -45,9 +46,7 @@ def get_item_from_dynamodb(key: dict, table_name: str, limit: int = -1, order: s
         if order == "asc":
             response = table.query(KeyConditionExpression=reduce(lambda x, y: x & y, key_conditions), Limit=limit)
         elif order == "desc":
-            response = table.query(
-                KeyConditionExpression=reduce(lambda x, y: x & y, key_conditions), Limit=limit, ScanIndexForward=False
-            )
+            response = table.query(KeyConditionExpression=reduce(lambda x, y: x & y, key_conditions), Limit=limit, ScanIndexForward=False)
 
     if "Items" in response:
         return response["Items"]

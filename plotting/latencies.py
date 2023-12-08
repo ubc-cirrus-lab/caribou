@@ -95,11 +95,25 @@ df[latency_columns] = df[latency_columns].apply(pd.to_numeric, errors="coerce")
 # Create a pivot table
 pivot_df = df.pivot_table(index="From", columns="To")
 
+order = [
+    'ap-southeast-1', 'ap-southeast-2',  # Asia Pacific (Singapore, Sydney)
+    'ap-northeast-1', 'ap-northeast-2', 'ap-northeast-3',  # Asia Pacific (Tokyo, Seoul, Osaka)
+    'ap-south-1',  # Asia Pacific (Mumbai)
+    'eu-central-1',  # EU (Frankfurt)
+    'eu-north-1',  # EU (Stockholm)
+    'eu-west-1', 'eu-west-2', 'eu-west-3',  # EU (Ireland, London, Paris)
+    'ca-central-1',  # Canada (Central)
+    'us-east-1', 'us-east-2',  # US East (N. Virginia, Ohio)
+    'us-west-1', 'us-west-2'  # US West (N. California, Oregon)
+    'sa-east-1',  # South America (Sao Paulo)
+]
+
 for metric in metrics:
     plt.figure(figsize=(12, 8))
-    sns.heatmap(pivot_df[metric], annot=True, fmt=".2f", cmap="YlGnBu", annot_kws={"size": 4})
-    plt.title(f"Heatmap of {metric}")
-    plt.gca().invert_xaxis()
+    local_df = pivot_df[metric].copy()
+    local_df = local_df.reindex(index=order, columns=order)
+    sns.heatmap(local_df, annot=True, fmt=".2f", cmap="YlGnBu", annot_kws={"size": 4})
+    plt.title(f"Latency for transmitting 1MB of data, {metric}")
     plt.tight_layout()
 
     plt.savefig(f"plots/latencies_{metric}.png", dpi=300)

@@ -16,9 +16,8 @@ def get_cost_for_region_function(region_provider: tuple[str, str]) -> Callable:
     ) -> float:
         # TODO: This might profit from caching
         if datacenter_data:
-            datacenter_data = datacenter_data["data"]
-            free_invocations = int(datacenter_data["free_invocations"]["N"])
-            free_compute_gb_s = int(datacenter_data["free_compute_gb_s"]["N"])
+            free_invocations = int(datacenter_data["free_invocations"])
+            free_compute_gb_s = int(datacenter_data["free_compute_gb_s"])
 
             if "architecture" in function_spec["resource_request"]:
                 architecture = function_spec["resource_request"]["architecture"]
@@ -27,7 +26,7 @@ def get_cost_for_region_function(region_provider: tuple[str, str]) -> Callable:
 
             estimated_number_of_requests_per_month = function_spec["estimated_invocations_per_month"]
 
-            invocation_cost = float(datacenter_data["invocation_cost_" + architecture]["N"])
+            invocation_cost = float(datacenter_data["invocation_cost_" + architecture])
 
             if estimated_number_of_requests_per_month > free_invocations:
                 invocation_cost = invocation_cost * (
