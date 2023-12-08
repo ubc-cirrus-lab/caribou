@@ -102,4 +102,4 @@ for metric in metrics:
     plt.gca().invert_xaxis()
     plt.tight_layout()
 
-    plt.savefig(f"plots/latencies_{metric}.pdf")
+    plt.savefig(f"plots/latencies_{metric}.png", dpi=300)
