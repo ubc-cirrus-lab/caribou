@@ -1,13 +1,13 @@
 from typing import Callable
 
-from .utils import AWS_DATACENTER_INFO_TABLE_NAME, get_item_from_dynamodb
+from .utils import AWS_DATACENTER_INFO_TABLE_NAME, get_item_from_dynamodb, AWS
 
 
 def get_cost_for_region_function(region_provider: tuple[str, str]) -> Callable:
     region, provider = region_provider
     # The function is a lambda function that takes the function spec and the function runtime measurement in ms
     table = ""
-    if provider == "AWS":
+    if provider == AWS:
         table = AWS_DATACENTER_INFO_TABLE_NAME
     datacenter_data = get_item_from_dynamodb({"region_code": region, "provider": provider}, table)
 
@@ -44,7 +44,7 @@ def get_cost_for_region_function(region_provider: tuple[str, str]) -> Callable:
             )
 
             compute_cost = 0.0
-            if provider == "AWS":
+            if provider == AWS:
                 compute_cost = calculate_aws_compute_cost(
                     datacenter_data["compute_cost_" + architecture + "_gb_s"],
                     estimated_gb_seconds_per_month,
@@ -94,11 +94,11 @@ def get_egress_cost_for_region_and_destination_region_function(
     region, provider = region_provider
     destination_region, destination_provider = destination_region_provider
 
-    if destination_provider != "AWS":
+    if destination_provider != AWS:
         raise RuntimeError("Other transmission costs not yet implemented")
 
     table = ""
-    if provider == "AWS":
+    if provider == AWS:
         table = AWS_DATACENTER_INFO_TABLE_NAME
     datacenter_data = get_item_from_dynamodb({"region_code": region, "provider": provider}, table)
 

@@ -5,6 +5,7 @@ from .utils import (
     GRID_CO2_TABLE_NAME,
     TRANSMISSION_CO2_TABLE_NAME,
     get_item_from_dynamodb,
+    AWS
 )
 
 
@@ -12,7 +13,7 @@ def get_execution_carbon_for_region_function(region_provider: tuple[str, str]) -
     # The function is a lambda function that takes the function spec and the function runtime measurement in ms
     region, provider = region_provider
     table = ""
-    if provider == "AWS":
+    if provider == AWS:
         table = AWS_DATACENTER_INFO_TABLE_NAME
     datacenter_data = get_item_from_dynamodb({"region_code": region, "provider": provider}, table)
     grid_co2_data = get_item_from_dynamodb(
@@ -83,10 +84,14 @@ def get_transmission_carbon_coefficient_for_region_and_destination_region(
     transmission_co2_data = get_item_from_dynamodb(
         {"region_from_to_codes": region_from_to_codes}, TRANSMISSION_CO2_TABLE_NAME, limit=1, order="desc"
     )
+
+    if len(transmission_co2_data) == 0:
+        return 100.0  # Assume a high transmission carbon if we don't have the data
+    print(transmission_co2_data)
     return transmission_co2_data["data"]["carbon_intensity"]
 
 
-def get_transmission_carbon_matrix(regions: list[tuple[str, str]], latenices: list[list[float]]) -> list[list[float]]:
+def get_transmission_carbon_matrix(regions: list[tuple[str, str]]) -> list[list[float]]:
     transmission_carbon_matrix: list = []
     for i, region1 in enumerate(regions):
         transmission_carbon_matrix.append([])

@@ -27,6 +27,7 @@ numpy = "^1.26.2"
 networkx = "^3.2.1"
 levenshtein = "^0.23.0"
 pandas = "^2.1.3"
+tqdm = "^4.66.1"
 
 [tool.poetry.extras]
 # This can be used for a more fine-grained dependency management in the future

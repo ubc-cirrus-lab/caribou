@@ -1,10 +1,10 @@
-import datetime
 from typing import Any
 import numpy as np
 
 import boto3
 from boto3.dynamodb.conditions import Attr
 from chalice import Chalice
+from datetime import datetime, timezone
 
 app = Chalice(app_name="latency_calculator")
 
@@ -15,7 +15,7 @@ NETWORK_LATENCIES_TABLE = DYNAMO_DB.Table("multi-x-serverless-network-latencies"
 
 @app.schedule("rate(1 day)")
 def run(event: Any) -> None:  # pylint: disable=unused-argument
-    current_date = datetime.date.today().isoformat()
+    current_date = datetime.now(timezone.utc).date().isoformat()
 
     response = PING_RESULTS_TABLE.scan(FilterExpression=Attr("timestamp").begins_with(current_date))
 

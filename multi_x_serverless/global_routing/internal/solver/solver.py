@@ -1,4 +1,5 @@
 import networkx as nx
+from tqdm import tqdm
 
 from .chalicelib.carbon import get_execution_carbon_matrix, get_transmission_carbon_matrix
 from .chalicelib.cost import get_cost_matrix, get_egress_cost_matrix
@@ -45,7 +46,7 @@ def find_viable_deployment_options(  # pylint: disable=too-many-locals
     deployment_options = [({initial_start_hop_region: initial_start_hop_region}, 0.0, 0.0, 0.0)]
 
     # Now we iterate over all functions and compute the viable deployment options for each function
-    for i, function in enumerate(sorted_functions):
+    for i, function in enumerate(tqdm(sorted_functions)):
         new_deployment_options = []
         # We iterate over all regions and compute the viable deployment options for each region
         for region, _ in regions:

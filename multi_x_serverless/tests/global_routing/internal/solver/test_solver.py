@@ -22,7 +22,7 @@ def test_find_viable_deployment_options_large_dag_many_regions(
     get_execution_carbon_matrix,
     get_transmission_carbon_matrix,
     get_dag,
-):
+) -> None:
     # Mock the other functions of Solver
     get_cost_matrix.return_value = [
         [lambda x, y: random.randint(1, 10) for _ in range(NUMBER_OF_REGIONS)] for _ in range(NUMBER_OF_FUNCTIONS)

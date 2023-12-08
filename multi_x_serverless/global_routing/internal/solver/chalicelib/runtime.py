@@ -21,18 +21,20 @@ def get_latency_coefficient_for_region(
     region, provider = region_provider
     destination_region, destination_provider = destination_region_provider
 
+    region_from_to_codes = provider + ":" + region + ":" + destination_provider + ":" + destination_region
+
     latency_coefficient = get_item_from_dynamodb(
         {
-            "region_from": region,
-            "provider_from": provider,
-            "region_to": destination_region,
-            "provider_to": destination_provider,
+            "region_from_to_codes": region_from_to_codes,
         },
         LATENCY_TABLE_NAME,
         limit=1,
         order="desc",
     )
-    return latency_coefficient["data"]["95th"]
+
+    if len(latency_coefficient) == 0:
+        return 1000.0 # Assume a high latency if we don't have the data
+    return latency_coefficient[0]["95th"]
 
 
 def get_latency_matrix(regions: list[tuple[str, str]]) -> list[list[float]]:

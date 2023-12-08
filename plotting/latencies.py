@@ -97,10 +97,9 @@ pivot_df = df.pivot_table(index="From", columns="To")
 
 for metric in metrics:
     plt.figure(figsize=(12, 8))
-    print(pivot_df[metric])
     sns.heatmap(pivot_df[metric], annot=True, fmt=".2f", cmap="YlGnBu", annot_kws={"size": 4})
     plt.title(f"Heatmap of {metric}")
-
+    plt.gca().invert_xaxis()
     plt.tight_layout()
 
     plt.savefig(f"plots/latencies_{metric}.pdf")
