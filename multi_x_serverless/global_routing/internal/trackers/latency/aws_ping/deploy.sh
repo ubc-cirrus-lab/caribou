@@ -30,6 +30,7 @@ REGIONS=$(aws ec2 describe-regions \
 # Deploy to regions not in the exclusion list
 for region in $REGIONS; do
     if [[ ! " ${OPT_IN_REGIONS[@]} " =~ " ${region} " ]]; then
+        echo "Deploying to region: $region"
         export AWS_DEFAULT_REGION=$region
         chalice deploy --stage prod
     else
