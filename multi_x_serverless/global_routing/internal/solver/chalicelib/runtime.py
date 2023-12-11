@@ -4,8 +4,14 @@ from .utils import LATENCY_TABLE_NAME, get_item_from_dynamodb
 
 def get_runtime_for_region_function(region_provider: tuple[str, str]) -> Callable:
     region, provider = region_provider  # pylint: disable=unused-variable
-    # TODO: Implement logic to retrieve the runtime of the function in the given region
-    return lambda function, function_runtime_measurements: 0.0
+    def cost(
+        function_spec: dict, function_runtime_measurements: list[float]
+    ) -> float:
+        # Currently we assume that the runtime is the average of the measurements not depending on the region
+        # TODO (Daniel): This might not be true for all functions
+        return (sum(function_runtime_measurements) / len(function_runtime_measurements))
+        
+    return cost
 
 
 def get_runtime_array(regions: list[tuple[str, str]]) -> list[Callable]:
