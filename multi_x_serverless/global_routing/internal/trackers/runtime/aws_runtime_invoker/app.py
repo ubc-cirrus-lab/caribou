@@ -20,7 +20,8 @@ app = Chalice(app_name='runtime_invoker')
 def invoke_lambda_functions(event: Any) -> None:  # pylint: disable=unused-argument
     # Get the current location of the invoker and the starting time
     current_region = get_curr_aws_region()
-    current_time = get_current_time()
+    current_time = get_current_time(False)
+    current_time_abr = get_current_time(True)
     provider = 'aws'
     iterations = 10
 
@@ -45,7 +46,7 @@ def invoke_lambda_functions(event: Any) -> None:  # pylint: disable=unused-argum
             successfull_invocations = len(execution_times)
             timing_result = calculate_stats(execution_times)
 
-            results = (function_name, provider, current_time, current_region, experiment_name, payload, successfull_invocations, timing_result['mean'], timing_result['std_dev'], timing_result['min'], timing_result['max'], timing_result['5th_percentile'], timing_result['50th_percentile'], timing_result['90th_percentile'], timing_result['95th_percentile'], timing_result['99th_percentile'])
+            results = (function_name, provider, current_time, current_time_abr, current_region, experiment_name, payload, successfull_invocations, timing_result['mean'], timing_result['std_dev'], timing_result['min'], timing_result['max'], timing_result['5th_percentile'], timing_result['50th_percentile'], timing_result['90th_percentile'], timing_result['95th_percentile'], timing_result['99th_percentile'])
 
             write_results(results)
 
@@ -86,8 +87,11 @@ def invoke_lambda_function(FunctionArn, function_region, payload = None):
 
     return execution_only_duration
 
-def get_current_time() -> str:
-    time = datetime.datetime.utcnow().strftime("%Y-%m-%d %H UCT")
+def get_current_time(abr=True) -> str:
+    if abr:
+        time = datetime.datetime.utcnow().strftime("%Y-%m-%d %H UCT")
+    else:
+        time = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
     return time
 
 def write_results(result) -> None:
@@ -95,11 +99,12 @@ def write_results(result) -> None:
     target_table = dynamodb.Table(RUNTIME_RESULTS_TABLE_NAME)
 
     # Unpack result input
-    function_name, provider, current_time, current_region, experiment_name, payload, successful_invocations, mean, std_dev, min, max, p5, p50, p90, p95, p99 = result
+    function_name, provider, current_time, current_time_abr, current_region, experiment_name, payload, successful_invocations, mean, std_dev, min, max, p5, p50, p90, p95, p99 = result
     # Create an Item to be stored in DynamoDB
     item = {
         "timestamp": current_time,
         "compound": f"{function_name}_{provider}_{current_region}_{experiment_name}",
+        "abbreviated_time": current_time_abr,
         "function_name": function_name,
         "provider": provider,
         'region': current_region,
