@@ -4,8 +4,7 @@
         {
             "Action": [
                 "dynamodb:PutItem",
-                "dynamodb:ListTables",
-                "dynamodb:CreateTable"
+                "dynamodb:ListTables"
             ],
             "Resource": "*",
             "Effect": "Allow"
