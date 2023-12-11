@@ -26,6 +26,7 @@ def invoke_lambda_functions(event: Any) -> None:  # pylint: disable=unused-argum
     iterations = 10
 
     print("Running fpo tests for region:", current_region)
+    print("Started at:", str(current_time))
 
     # Get all the lambda functions in the current region
     functions = get_lambda_functions_with_name('fpo-io-prod-lambda_handler', current_region)
@@ -49,7 +50,6 @@ def invoke_lambda_functions(event: Any) -> None:  # pylint: disable=unused-argum
             results = (function_name, provider, current_time, current_time_abr, current_region, experiment_name, payload, successfull_invocations, timing_result['mean'], timing_result['std_dev'], timing_result['min'], timing_result['max'], timing_result['5th_percentile'], timing_result['50th_percentile'], timing_result['90th_percentile'], timing_result['95th_percentile'], timing_result['99th_percentile'])
 
             write_results(results)
-
 
 # Function to calculate statistics
 def calculate_stats(data):
