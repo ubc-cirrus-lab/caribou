@@ -1,6 +1,7 @@
 import datetime
 import json
 from typing import Any
+import time
 
 import boto3
 import requests
@@ -11,6 +12,11 @@ DEFAULT_REGION = "us-west-2"
 WORLD_AVERAGE_CO2_INTENSITY = 475.0
 AWS_DATACENTER_INFO_TABLE_NAME = "multi-x-serverless-datacenter-info"
 DATACENTER_GRID_CO2_TABLE_NAME = "multi-x-serverless-datacenter-grid-co2"
+
+REQUEST_CACHE: dict = {}
+LAST_REQUEST = datetime.datetime.now()
+REQUEST_THRESHOLD = 1
+REQUEST_BACKOFF = 1
 
 
 @app.schedule("rate(30 minutes)")
@@ -88,7 +94,14 @@ def get_carbon_intensity_geo(location: tuple[float, float], api_key: str) -> flo
     """
     Returns the carbon intensity of the grid at a given location in gCO2eq/kWh
     """
+    cache_key = str(location[0]) + str(location[1])
+    if cache_key in REQUEST_CACHE:
+        return REQUEST_CACHE[cache_key]
+    global LAST_REQUEST
     url = "https://api-access.electricitymaps.com/free-tier/carbon-intensity/latest?"
+
+    if (datetime.datetime.now() - LAST_REQUEST).total_seconds() < REQUEST_THRESHOLD:
+        time.sleep(REQUEST_BACKOFF)
 
     r = requests.get(
         url + "lat=" + str(location[0]) + "&lon=" + str(location[1]),
@@ -96,11 +109,10 @@ def get_carbon_intensity_geo(location: tuple[float, float], api_key: str) -> flo
         timeout=5,
     )
 
+    LAST_REQUEST = datetime.datetime.now()
+
     if r.status_code == 200:
         json_data = r.json()
-        if "error" in json_data and "No recent data for zone" in json_data["error"]:
-            print(f"No recent data for zone {location[0]}, {location[1]}")
-            return WORLD_AVERAGE_CO2_INTENSITY
 
         if "carbonIntensity" not in json_data:
             print(
@@ -108,7 +120,12 @@ def get_carbon_intensity_geo(location: tuple[float, float], api_key: str) -> flo
             )
             raise RuntimeError("Error getting carbon intensity from Electricity Maps API, no carbon intensity")
 
+        REQUEST_CACHE[cache_key] = json_data["carbonIntensity"]
         return json_data["carbonIntensity"]
+
+    if r.status_code == 404 and "No recent data for zone" in r.text:
+        REQUEST_CACHE[cache_key] = WORLD_AVERAGE_CO2_INTENSITY
+        return WORLD_AVERAGE_CO2_INTENSITY
 
     print(
         f"Error getting carbon intensity from Electricity Maps API: {r.status_code} for {location[0]}, {location[1]}"  # pylint: disable=line-too-long
