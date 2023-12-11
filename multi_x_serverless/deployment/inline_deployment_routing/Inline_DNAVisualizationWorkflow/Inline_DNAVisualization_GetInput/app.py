@@ -1,11 +1,36 @@
 from chalice import Chalice
 
-app = Chalice(app_name='DNAVisualization_GetInput')
+import base64
+import json
+import datetime
+import logging
+import uuid
+from random import randint
+from sys import getsizeof
+import numpy as np
+import random
+
+app = Chalice(app_name='Inline_DNAVisualization_GetInput')
 
 
 @app.route('/')
-def index():
-    return {'hello': 'world'}
+def index(methods=['PUT']):
+    request = app.current_request
+    body = request.json_body
+
+    gen_file_name = body['gen_file_name']
+
+    message_json = json.dumps({
+        'genFileName': gen_file_name,
+    })
+
+    message_bytes = message_json.encode('utf-8')
+    msgID = uuid.uuid4().hex
+
+
+
+
+
 
 
 # The view function above will return {"hello": "world"}
