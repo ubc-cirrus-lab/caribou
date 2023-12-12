@@ -11,6 +11,7 @@ def get_runtime_for_region_function(region_provider: tuple[str, str]) -> Callabl
         # TODO (Daniel): This might not be true for all functions
         return (sum(function_runtime_measurements) / len(function_runtime_measurements))
         
+        # return function_runtime_measurements
     return cost
 
 

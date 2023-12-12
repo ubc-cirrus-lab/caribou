@@ -7,8 +7,10 @@ from multi_x_serverless.global_routing.internal.solver.solver import find_viable
 from multi_x_serverless.global_routing.internal.solver.chalicelib.regions import get_regions
 from multi_x_serverless.global_routing.internal.solver.chalicelib.utils import DEFAULT_REGION, OPT_IN_REGIONS
 
-NUMBER_OF_REGIONS = 10
-NUMBER_OF_FUNCTIONS = 5
+# NUMBER_OF_REGIONS = 10
+# NUMBER_OF_FUNCTIONS = 5
+NUMBER_OF_REGIONS = 5
+NUMBER_OF_FUNCTIONS = 2
 
 COST_CONSTRAINT = 100000
 RUNTIME_CONSTRAINT = 100000
@@ -35,8 +37,9 @@ workflow_description = {
     },
 }
 
-function_runtime_measurements = {i: random.randint(1, 10) for i in range(NUMBER_OF_FUNCTIONS)}
+function_runtime_measurements = {i: [random.randint(1, 10)] for i in range(NUMBER_OF_FUNCTIONS)}
 function_data_transfer_size_measurements = {i: random.randint(1, 10) for i in range(NUMBER_OF_FUNCTIONS)}
+
 
 print("Starting to find viable deployment options")
 
@@ -60,6 +63,8 @@ def test_find_viable_deployment_options(mock_get_dag: MagicMock) -> None:
     regions = get_regions()
     regions = [region for region in regions if region[0] not in OPT_IN_REGIONS]
     regions = regions[:NUMBER_OF_REGIONS]
+    workflow_description["start_hop"] = regions[0][0]
+    
     viable_options = find_viable_deployment_options(
         regions, function_runtime_measurements, function_data_transfer_size_measurements, workflow_description
     )
