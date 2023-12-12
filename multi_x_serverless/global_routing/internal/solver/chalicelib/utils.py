@@ -15,25 +15,26 @@ ENERGY_CONSUMPTION_PER_GB = 0.001
 AWS = "aws"
 
 OPT_IN_REGIONS = [
-    'af-south-1',
-    'ap-east-1',
-    'ap-south-2',
-    'ap-southeast-3',
-    'ap-southeast-4',
-    'eu-south-1',
-    'eu-south-2',
-    'eu-central-2',
-    'me-south-1',
-    'me-central-1',
-    'il-central-1',
-    'sa-east-1',  # The following are already included but incur data transfer costs
-    'ap-south-1',
-    'ap-northeast-3',
-    'ap-northeast-2',
-    'ap-southeast-1',
-    'ap-southeast-2',
-    'ap-northeast-1'
+    "af-south-1",
+    "ap-east-1",
+    "ap-south-2",
+    "ap-southeast-3",
+    "ap-southeast-4",
+    "eu-south-1",
+    "eu-south-2",
+    "eu-central-2",
+    "me-south-1",
+    "me-central-1",
+    "il-central-1",
+    "sa-east-1",  # The following are already included but incur data transfer costs
+    "ap-south-1",
+    "ap-northeast-3",
+    "ap-northeast-2",
+    "ap-southeast-1",
+    "ap-southeast-2",
+    "ap-northeast-1",
 ]
+
 
 def convert_decimals_to_float(item):
     """
@@ -43,6 +44,7 @@ def convert_decimals_to_float(item):
         if isinstance(value, decimal.Decimal):
             item[key] = float(value)
     return item
+
 
 def get_item_from_dynamodb(key: dict, table_name: str, limit: int = -1, order: str = "asc") -> dict:
     """
@@ -65,7 +67,7 @@ def get_item_from_dynamodb(key: dict, table_name: str, limit: int = -1, order: s
         table.load()
     except dynamodb.meta.client.exceptions.ResourceNotFoundException as e:
         return []  # Table does not exist or cannot be accessed
-    
+
     # If table exists, we can try accessing elements
     if limit < 1:
         response = table.get_item(Key=key)
@@ -74,9 +76,10 @@ def get_item_from_dynamodb(key: dict, table_name: str, limit: int = -1, order: s
         if order == "asc":
             response = table.query(KeyConditionExpression=reduce(lambda x, y: x & y, key_conditions), Limit=limit)
         elif order == "desc":
-            response = table.query(KeyConditionExpression=reduce(lambda x, y: x & y, key_conditions), Limit=limit, ScanIndexForward=False)
+            response = table.query(
+                KeyConditionExpression=reduce(lambda x, y: x & y, key_conditions), Limit=limit, ScanIndexForward=False
+            )
 
-    
     if "Items" in response:
         items = response["Items"]
         items = [convert_decimals_to_float(item) for item in items]
@@ -85,14 +88,6 @@ def get_item_from_dynamodb(key: dict, table_name: str, limit: int = -1, order: s
         items = convert_decimals_to_float(items)
 
     return items
-
-    # items = [convert_decimals_to_float(item) for item in items]
-    # if "Items" in response:
-        
-    #     return response["Items"]
-
-    # return response["Item"]
-    
 
 
 def get_dag(workflow_description: dict) -> nx.DiGraph:
