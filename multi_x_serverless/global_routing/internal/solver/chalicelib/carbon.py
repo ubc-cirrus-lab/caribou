@@ -32,6 +32,8 @@ def get_execution_carbon_for_region_function(region_provider: tuple[str, str]) -
     ) -> float:
         # TODO: This might profit from caching
         if datacenter_data and grid_co2_data:
+            # print(datacenter_data)
+            # print(grid_co2_data)
             runtime_in_hours = (
                 (sum(function_runtime_measurements) / len(function_runtime_measurements)) / 1000 / 60 / 60
             )  # ms -> h
@@ -53,8 +55,8 @@ def get_execution_carbon_for_region_function(region_provider: tuple[str, str]) -
 
             operational_emission = (
                 cloud_provider_usage_kwh
-                * (1 - datacenter_data["CFE"])
-                * datacenter_data["PUE"]
+                * (1 - datacenter_data["cfe"])
+                * datacenter_data["pue"]
                 * grid_co2_data["carbon_intensity"]
             )
 
@@ -70,9 +72,12 @@ def get_execution_carbon_matrix(regions: list[tuple[str, str]], number_of_functi
     execution_carbon_matrix: list = []
     for i in range(number_of_functions):
         execution_carbon_matrix.append([])
+        # print('\n\nAll regions:', regions)
         for region_provider in regions:
             execution_carbon_matrix[i].append(get_execution_carbon_for_region_function(region_provider))
-            break
+            # break # Solver need to use multiple regions, this break brakes solver.
+
+    # print('execution_carbon_matrix:', execution_carbon_matrix, '\n\n')
     return execution_carbon_matrix
 
 
@@ -89,7 +94,7 @@ def get_transmission_carbon_coefficient_for_region_and_destination_region(
 
     if len(transmission_co2_data) == 0:
         return 100.0  # Assume a high transmission carbon if we don't have the data
-    return transmission_co2_data[0]["carbon_intensity"]
+    return float(transmission_co2_data[0]["carbon_intensity"])
 
 
 def get_transmission_carbon_matrix(regions: list[tuple[str, str]]) -> list[list[float]]:

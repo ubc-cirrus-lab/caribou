@@ -36,7 +36,11 @@ def get_cost_for_region_function(region_provider: tuple[str, str]) -> Callable:
                 invocation_cost = 0
 
             estimated_memory = function_spec["resource_request"]["memory"] / 1000  # GB
+
+            # print(type(function_runtime_measurements), function_runtime_measurements)
             estimated_duration = (sum(function_runtime_measurements) / len(function_runtime_measurements)) / 1000  # s
+            # estimated_duration = function_runtime_measurements / 1000
+
 
             estimated_gb_seconds_per_month = (
                 estimated_memory * estimated_duration * estimated_number_of_requests_per_month
@@ -106,10 +110,9 @@ def get_egress_cost_for_region_and_destination_region_function(
         destination_region: str = destination_region,
         datacenter_data: dict = datacenter_data,
     ) -> float:
+        # print(function_data_transmission_measurements)
         transmission_cost_gb = float(datacenter_data["transmission_cost_gb"][destination_region])
-        estimated_data_transmission = (
-            sum(function_data_transmission_measurements) / len(function_data_transmission_measurements)
-        ) / 1000  # GB
+        estimated_data_transmission = function_data_transmission_measurements / 1000  # GB
         return transmission_cost_gb * estimated_data_transmission
 
     return cost
