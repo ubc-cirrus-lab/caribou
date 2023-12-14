@@ -1,0 +1,5 @@
+workflow_name: "{{ workflow_name }}"
+environment_variables:
+  - name: "ENV_VAR_1"
+    value: "value_1"
+iam_policy_file: "iam_policy.json"
