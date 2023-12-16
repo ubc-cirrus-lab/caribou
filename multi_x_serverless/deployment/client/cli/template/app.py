@@ -1,11 +1,11 @@
 import json
 import uuid
-from ServerlessWrapper import MultiXServerlessWorkflow
+from multi_x_serverless.deployment.client import MultiXServerlessWorkflow
 
 workflow = MultiXServerlessWorkflow("{{ workflow_name }}")
 
 
-@workflow.serverless_function(name="First-Function", entry_point=True)
+@workflow.serverless_function(name="First-Function", entry_point=True, timeout=60, memory=128)
 def first_function(event, context):
     payload = {
         "hello": "world",

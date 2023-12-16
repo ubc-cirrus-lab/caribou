@@ -79,6 +79,10 @@ class MultiXServerlessWorkflow:
 
             func.entry_point = entry_point
 
+            if entry_point:
+                func.routing_decision = None
+                # TODO: Get routing decision from platform
+
             self.register_function(func, handler_name, entry_point, timeout, memory, region_group)
             return func
 
@@ -94,12 +98,14 @@ class MultiXServerlessWorkflow:
         # Do not wait for response
         frame = inspect.currentframe().f_back
 
-        if hasattr(frame, "entry_point") and frame.entry_point:
-            # Get routing decision
-            pass
+        routing_decision = None
+        if frame.f_locals.get("entry_point"):
+            routing_decision = frame.f_locals.get("routing_decision")
         else:
-            # Get routing decision from message
-            pass
+            args, _, _, values = inspect.getargvalues(frame)
+            routing_decision = args[0]["routing_decision"]
+
+        # TODO: Post message to messaging services
 
     def get_predecessor_data(self) -> Any:
         """
@@ -107,6 +113,7 @@ class MultiXServerlessWorkflow:
         """
         # Check if all predecessor functions have returned
         # If not, abort this function call, another function will eventually be called
+        # TODO: Check if all predecessor functions have returned
         pass
 
     def register_function(

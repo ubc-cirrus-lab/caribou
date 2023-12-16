@@ -12,9 +12,8 @@ from multi_x_serverless.deployment.client.deploy.models import (
     Workflow,
 )
 from multi_x_serverless.deployment.client.deploy.executor import Executor
-from multi_x_serverless.deployment.client.deploy.builder import (
-    create_build_stage,
-    BuildStage,
+from multi_x_serverless.deployment.client.deploy.deployment_packager import (
+    DeploymentPackager,
 )
 
 
@@ -27,14 +26,14 @@ class Deployer(object):
         config: Config,
         session: Session,
         workflow_builder: WorkflowBuilder,
-        build_stage: BuildStage,
+        deployment_packager: DeploymentPackager,
         deployment_planner: DeploymentPlanner,
         executor: Executor,
     ) -> None:
         self._config = config
         self._session = session
         self._workflow_builder = workflow_builder
-        self._build_stage = build_stage
+        self._deployment_packager = deployment_packager
         self._deployment_planner = deployment_planner
         self._executor = executor
 
@@ -52,7 +51,7 @@ class Deployer(object):
         self._upload_workflow_to_solver(workflow)
 
         # Build the workflow resources, e.g. deployment packages, iam roles, etc.
-        self._build_stage.execute(self._config, workflow)
+        self._deployment_packager.build(self._config, workflow)
 
         # Chain the commands needed to deploy all the built resources to the serverless platform
         deployment_plan = self._deployment_planner.plan_deployment(self._config, workflow)
@@ -67,6 +66,7 @@ class Deployer(object):
         return deployed_resources
 
     def _upload_workflow_to_solver(self, workflow: Workflow):
+        # TODO: Implement based on API defined by Daniel
         pass
 
 
@@ -75,7 +75,7 @@ def create_default_deployer(config: Config, session: Session) -> Deployer:
         config,
         session,
         WorkflowBuilder(),
-        BuildStage(create_build_stage(config)),
+        DeploymentPackager(),
         DeploymentPlanner(),
         Executor(session),
     )
