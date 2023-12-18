@@ -1,7 +1,7 @@
 import datetime
 import json
-from typing import Any
 import time
+from typing import Any
 
 import boto3
 import requests

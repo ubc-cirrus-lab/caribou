@@ -1,11 +1,12 @@
 import random
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 import networkx as nx
 import numpy as np
 
-from multi_x_serverless.global_routing.internal.solver.solver import find_viable_deployment_options
 from multi_x_serverless.global_routing.internal.solver.chalicelib.regions import get_regions
 from multi_x_serverless.global_routing.internal.solver.chalicelib.utils import DEFAULT_REGION, OPT_IN_REGIONS
+from multi_x_serverless.global_routing.internal.solver.solver import find_viable_deployment_options
 
 # NUMBER_OF_REGIONS = 10
 # NUMBER_OF_FUNCTIONS = 5

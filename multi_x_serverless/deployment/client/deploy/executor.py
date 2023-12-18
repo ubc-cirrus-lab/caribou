@@ -1,18 +1,18 @@
-from botocore.session import Session
-
 from typing import Any
 
+from botocore.session import Session
+
+from multi_x_serverless.deployment.client.config import Config
+from multi_x_serverless.deployment.client.deploy.clients import AWSClient
 from multi_x_serverless.deployment.client.deploy.models import (
-    Instruction,
+    APICall,
     DeploymentPlan,
-    Resource,
+    Instruction,
     RecordResourceValue,
     RecordResourceVariable,
-    APICall,
+    Resource,
     Variable,
 )
-from multi_x_serverless.deployment.client.deploy.clients import AWSClient
-from multi_x_serverless.deployment.client.config import Config
 
 
 class Executor(object):

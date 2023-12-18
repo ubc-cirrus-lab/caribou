@@ -1,16 +1,16 @@
-from multi_x_serverless.deployment.client.deploy.models import (
-    Workflow,
-    Function,
-    IAMRole,
-    DeploymentPackage,
-    FunctionInstance,
-)
-from multi_x_serverless.deployment.client.wrapper import MultiXServerlessFunction
-from multi_x_serverless.deployment.client.config import Config
-
 import os
 import queue
 import uuid
+
+from multi_x_serverless.deployment.client.config import Config
+from multi_x_serverless.deployment.client.deploy.models import (
+    DeploymentPackage,
+    Function,
+    FunctionInstance,
+    IAMRole,
+    Workflow,
+)
+from multi_x_serverless.deployment.client.wrapper import MultiXServerlessFunction
 
 
 class WorkflowBuilder(object):
@@ -21,7 +21,7 @@ class WorkflowBuilder(object):
         # 1. Set of functions (Resources) that are deployed to a serverless platform
         # 2. A DAG of the workflow that defines the order of execution of the function instances (one function can be executed multiple times with different inputs and different predecessors)
 
-        # Both of these are later used to build the DAG
+        # Both of these are later used to build the DAG
         function_name_to_function: dict[str, MultiXServerlessFunction] = {}
         entry_point: MultiXServerlessFunction = None
 
@@ -54,7 +54,7 @@ class WorkflowBuilder(object):
 
         # Now we build the DAG
         # function_instances maps function instance names to function instances.
-        # If a function has multiple predecessors (is waiting for predecessor data) then there 
+        # If a function has multiple predecessors (is waiting for predecessor data) then there
         # will only be one instance of the function.
         # Otherwise, there will be one instance of the function for every function that calls it.
         function_instances: dict[str, FunctionInstance] = {}
@@ -79,7 +79,7 @@ class WorkflowBuilder(object):
             functions_to_visit.put((successor.name, predecessor_instance.name))
 
         while not functions_to_visit.empty():
-            function_to_visit, predecessor_instance_name: tuple[str, str] = functions_to_visit.get()
+            function_to_visit, predecessor_instance_name = functions_to_visit.get()
             function: MultiXServerlessFunction = function_name_to_function[function_to_visit]
             function_instance_name = (
                 f"{function.name}-{uuid.uuid4()}" if not function.is_waiting_for_predecessors() else function.name
@@ -97,7 +97,7 @@ class WorkflowBuilder(object):
                 )
                 for successor in function.get_successors(config.workflow_app):
                     functions_to_visit.put(successor.name)
-            
+
             edges.append((predecessor_instance_name, function_instance_name))
 
         return Workflow(resources=resources.values(), functions=function_instances.values(), edges=edges)

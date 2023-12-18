@@ -1,13 +1,13 @@
 import datetime
+import json
 import logging
 import socket
-import json
 import time
-import numpy as np
 from timeit import default_timer as timer
 from typing import Any
 
 import boto3
+import numpy as np
 from chalice import Chalice
 
 RUNTIME_RESULTS_TABLE_NAME = "multi-x-serverless-runtime-tracker"

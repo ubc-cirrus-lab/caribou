@@ -1,11 +1,12 @@
-from chalice import Chalice
-import boto3
+import json
 
 # Function specific informaitons
 import math
 import os
 import time
-import json
+
+import boto3
+from chalice import Chalice
 
 app = Chalice(app_name="fpo-io")
 

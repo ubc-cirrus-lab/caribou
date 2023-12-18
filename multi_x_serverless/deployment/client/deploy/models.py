@@ -1,10 +1,10 @@
 from __future__ import annotations
-from dataclasses import dataclass, field
 
-from typing import Optional, Any
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Any, Optional
 
 from multi_x_serverless.deployment.client.config import Config
-from enum import Enum
 
 
 @dataclass

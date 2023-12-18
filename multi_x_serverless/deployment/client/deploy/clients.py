@@ -1,7 +1,7 @@
-from boto3.session import Session
-
-from typing import Any
 import time
+from typing import Any
+
+from boto3.session import Session
 
 from multi_x_serverless.deployment.client.config import Config
 

@@ -1,12 +1,12 @@
-from chalice import Chalice
+import datetime
+import json
+import math
+import time
 from typing import Any
+
 import boto3
 import requests
-import math
-import datetime
-import time
-
-import json
+from chalice import Chalice
 
 app = Chalice(app_name="transmission_co2_tracker")
 DEFAULT_REGION = "us-west-2"

@@ -1,9 +1,9 @@
+import decimal
 from functools import reduce
 
 import boto3
 import networkx as nx
 from boto3.dynamodb.conditions import Key
-import decimal
 
 AWS_DATACENTER_INFO_TABLE_NAME = "multi-x-serverless-datacenter-info"
 DEFAULT_REGION = "us-west-2"

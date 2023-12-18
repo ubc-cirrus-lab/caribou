@@ -1,11 +1,11 @@
-from multi_x_serverless.deployment.client.wrapper import MultiXServerlessWorkflow
-from multi_x_serverless.deployment.client.deploy.models import Resource
-
+import os
+import sys
 from typing import Any
 
-import sys
-import os
 import yaml
+
+from multi_x_serverless.deployment.client.deploy.models import Resource
+from multi_x_serverless.deployment.client.wrapper import MultiXServerlessWorkflow
 
 
 class Config(object):

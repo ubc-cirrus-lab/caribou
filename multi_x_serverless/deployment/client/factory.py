@@ -1,18 +1,18 @@
+import importlib
 import os
 import sys
-import importlib
+
 import yaml
 from botocore.session import Session
+
 from multi_x_serverless.deployment.client.config import Config
-from multi_x_serverless.deployment.client.wrapper import MultiXServerlessWorkflow
+from multi_x_serverless.deployment.client.constants import multi_x_serverless_version
 from multi_x_serverless.deployment.client.deploy.deployer import (
     Deployer,
     create_default_deployer,
     create_deletion_deployer,
 )
-from multi_x_serverless.deployment.client.constants import (
-    multi_x_serverless_version,
-)
+from multi_x_serverless.deployment.client.wrapper import MultiXServerlessWorkflow
 
 
 class CLIFactory(object):

@@ -1,11 +1,11 @@
 from typing import Callable
 
 from .utils import (
+    AWS,
     AWS_DATACENTER_INFO_TABLE_NAME,
     GRID_CO2_TABLE_NAME,
     TRANSMISSION_CO2_TABLE_NAME,
     get_item_from_dynamodb,
-    AWS,
 )
 
 

@@ -1,7 +1,5 @@
 import os
 from distutils.dir_util import copy_tree
-import os
-from distutils.dir_util import copy_tree
 
 
 def create_new_workflow_directory(workflow_name: str) -> None:

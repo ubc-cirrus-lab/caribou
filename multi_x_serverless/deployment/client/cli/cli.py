@@ -1,14 +1,13 @@
+import os
+
 import click
 from botocore.session import Session
 
-import os
-
-from multi_x_serverless.deployment.client.constants import multi_x_serverless_version
-
-from multi_x_serverless.deployment.client.config import Config
-from multi_x_serverless.deployment.client.factory import CLIFactory
-from multi_x_serverless.deployment.client.deploy.deployer import Deployer
 from multi_x_serverless.deployment.client.cli.new_workflow import create_new_workflow_directory
+from multi_x_serverless.deployment.client.config import Config
+from multi_x_serverless.deployment.client.constants import multi_x_serverless_version
+from multi_x_serverless.deployment.client.deploy.deployer import Deployer
+from multi_x_serverless.deployment.client.factory import CLIFactory
 
 
 @click.group()
@@ -27,7 +26,7 @@ def cli(ctx: click.Context, project_dir: str) -> None:
 @cli.command("new-workflow")
 @click.argument("workflow_name", required=True)
 @click.pass_context
-def new_workflow(ctx: click.Context, workflow_name: str) -> None:
+def new_workflow(_: click.Context, workflow_name: str) -> None:
     if os.path.exists(workflow_name):
         raise click.ClickException(f"Workflow {workflow_name} already exists.")
     create_new_workflow_directory(workflow_name)

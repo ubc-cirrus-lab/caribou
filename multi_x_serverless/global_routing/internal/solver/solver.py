@@ -5,7 +5,7 @@ from .chalicelib.carbon import get_execution_carbon_matrix, get_transmission_car
 from .chalicelib.cost import get_cost_matrix, get_egress_cost_matrix
 from .chalicelib.regions import filter_regions, get_regions
 from .chalicelib.runtime import get_latency_matrix, get_runtime_array
-from .chalicelib.utils import get_dag, ENERGY_CONSUMPTION_PER_GB
+from .chalicelib.utils import ENERGY_CONSUMPTION_PER_GB, get_dag
 
 
 def find_viable_deployment_options(  # pylint: disable=too-many-locals

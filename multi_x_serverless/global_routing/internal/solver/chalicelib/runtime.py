@@ -1,4 +1,5 @@
 from typing import Callable
+
 from .utils import LATENCY_TABLE_NAME, get_item_from_dynamodb
 
 

@@ -1,10 +1,10 @@
+from datetime import datetime, timezone
 from typing import Any
-import numpy as np
 
 import boto3
+import numpy as np
 from boto3.dynamodb.conditions import Attr
 from chalice import Chalice
-from datetime import datetime, timezone
 
 app = Chalice(app_name="latency_calculator")
 

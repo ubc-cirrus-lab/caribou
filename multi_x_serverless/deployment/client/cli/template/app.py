@@ -1,5 +1,5 @@
-import json
-import uuid
+from typing import Any
+
 from multi_x_serverless.deployment.client import MultiXServerlessWorkflow
 
 workflow = MultiXServerlessWorkflow("{{ workflow_name }}")
@@ -100,7 +100,7 @@ def sixth_function(event, context):
 
 @workflow.serverless_function(name="Seventh-Function")
 def seventh_function(event, context):
-    responses = workflow.get_predecessor_data()
+    responses: list[dict[str, Any]] = workflow.get_predecessor_data()
 
     for response in responses:
         print(response["hello"])

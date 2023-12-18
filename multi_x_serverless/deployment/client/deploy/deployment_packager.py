@@ -1,19 +1,19 @@
 from __future__ import annotations
 
-from typing import Any
-import sys
-from chalice.compat import pip_import_string
-import subprocess
-from multi_x_serverless.deployment.client.config import Config
-from multi_x_serverless.deployment.client.deploy.models import (
-    DeploymentPackage,
-)
-import os
-import hashlib
 import functools
+import hashlib
+import os
+import shutil
+import subprocess
+import sys
 import tempfile
 import zipfile
-import shutil
+from typing import Any
+
+from chalice.compat import pip_import_string
+
+from multi_x_serverless.deployment.client.config import Config
+from multi_x_serverless.deployment.client.deploy.models import DeploymentPackage
 
 
 class DeploymentPackager(object):

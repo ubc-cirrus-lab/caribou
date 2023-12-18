@@ -1,6 +1,6 @@
 from typing import Callable
 
-from .utils import AWS_DATACENTER_INFO_TABLE_NAME, get_item_from_dynamodb, AWS
+from .utils import AWS, AWS_DATACENTER_INFO_TABLE_NAME, get_item_from_dynamodb
 
 
 def get_cost_for_region_function(region_provider: tuple[str, str]) -> Callable:
