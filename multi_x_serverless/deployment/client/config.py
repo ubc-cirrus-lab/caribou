@@ -52,6 +52,10 @@ class Config(object):
         return self._lookup("environment_variables")
     
     @property
+    def home_regions(self) -> list[str]:
+        return self._lookup("home_regions")
+    
+    @property
     def iam_policy_file(self) -> str:
         return self._lookup("iam_policy_file")
 

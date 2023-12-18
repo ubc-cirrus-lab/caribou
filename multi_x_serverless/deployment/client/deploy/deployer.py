@@ -4,12 +4,9 @@ from multi_x_serverless.deployment.client.config import Config
 from multi_x_serverless.deployment.client.deploy.workflow_builder import (
     WorkflowBuilder,
 )
-from multi_x_serverless.deployment.client.deploy.deployment_planner import (
-    DeploymentPlanner,
-    EmptyPlanner,
-)
 from multi_x_serverless.deployment.client.deploy.models import (
     Workflow,
+    DeploymentPlan,
 )
 from multi_x_serverless.deployment.client.deploy.executor import Executor
 from multi_x_serverless.deployment.client.deploy.deployment_packager import (
@@ -27,14 +24,12 @@ class Deployer(object):
         session: Session,
         workflow_builder: WorkflowBuilder,
         deployment_packager: DeploymentPackager,
-        deployment_planner: DeploymentPlanner,
         executor: Executor,
     ) -> None:
         self._config = config
         self._session = session
         self._workflow_builder = workflow_builder
         self._deployment_packager = deployment_packager
-        self._deployment_planner = deployment_planner
         self._executor = executor
 
     def deploy(self):
@@ -54,7 +49,7 @@ class Deployer(object):
         self._deployment_packager.build(self._config, workflow)
 
         # Chain the commands needed to deploy all the built resources to the serverless platform
-        deployment_plan = self._deployment_planner.plan_deployment(self._config, workflow)
+        deployment_plan = DeploymentPlan(workflow.get_deployment_instructions(self._config))
 
         # Execute the deployment plan
         self._executor.execute(deployment_plan)
@@ -76,13 +71,12 @@ def create_default_deployer(config: Config, session: Session) -> Deployer:
         session,
         WorkflowBuilder(),
         DeploymentPackager(),
-        DeploymentPlanner(),
         Executor(session),
     )
 
 
 def create_deletion_deployer(config: Config, session: Session) -> Deployer:
-    return Deployer(config, session, WorkflowBuilder(), BuildStage([]), EmptyPlanner())
+    return Deployer(config, session, WorkflowBuilder(), DeploymentPackager(), None)
 
 
 class DeploymentError(Exception):

@@ -1,7 +1,10 @@
 from __future__ import annotations
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from typing import Optional, Any
+
+from multi_x_serverless.deployment.client.config import Config
+from enum import Enum
 
 
 @dataclass
@@ -44,6 +47,9 @@ class Resource(object):
     def dependencies(self) -> list[Resource]:
         return []
 
+    def get_deployment_instructions(self, config: Config, endpoint: Optional[Endpoint]) -> list[Instruction]:
+        return []
+
 
 @dataclass
 class Function(Resource):
@@ -58,6 +64,20 @@ class Function(Resource):
     def dependencies(self) -> list[Resource]:
         resources: list[Resource] = [self.role, self.deployment_package]
         return resources
+
+    def get_deployment_instructions(self, config: Config, endpoint: Endpoint) -> list[Instruction]:
+        if endpoint == Endpoint.AWS:
+            return self.get_deployment_instructions_aws(config)
+        elif endpoint == Endpoint.GCP:
+            return self.get_deployment_instructions_gcp(config)
+        else:
+            raise Exception(f"Unknown endpoint {endpoint}")
+
+    def get_deployment_instructions_aws(self, config: Config) -> list[Instruction]:
+        pass
+
+    def get_deployment_instructions_gcp(self, config: Config) -> list[Instruction]:
+        pass
 
 
 class Workflow(Resource):
@@ -75,6 +95,35 @@ class Workflow(Resource):
 
     def add_resource(self, resource: Resource) -> None:
         self._resources.append(resource)
+
+    def get_deployment_instructions(
+        self, config: Config, endpoint: Optional[Endpoint] = None
+    ) -> dict[Endpoint, list[Instruction]]:
+        plans: dict[Endpoint, list[Instruction]] = []
+        for resource in self._resources:
+            for endpoint in Endpoint:
+                if endpoint not in plans:
+                    plans[endpoint] = []
+                result = resource.get_deployment_instructions(config, endpoint)
+                if result:
+                    for instruction in result:
+                        plans[endpoint].append(instruction)
+        return plans
+
+
+class Endpoint(Enum):
+    AWS = "aws"
+    GCP = "gcp"
+
+
+@dataclass
+class Instruction(object):
+    instruction: str
+
+
+@dataclass
+class DeploymentPlan(object):
+    instructions: dict[Endpoint, list[Instruction]] = field(default_factory=dict)
 
 
 @dataclass
