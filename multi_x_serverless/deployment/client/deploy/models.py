@@ -3,8 +3,6 @@ from dataclasses import dataclass, field
 
 from typing import Optional, Any
 
-from chalice.deploy.planner import Variable
-
 from multi_x_serverless.deployment.client.config import Config
 from enum import Enum
 
@@ -13,6 +11,10 @@ from enum import Enum
 class Instance(object):
     name: str
 
+
+@dataclass
+class Variable(object):
+    name: str
 
 @dataclass
 class Instruction(object):
@@ -25,6 +27,14 @@ class RecordResourceVariable(Instruction):
     resource_name: str
     name: str
     variable_name: str
+
+
+@dataclass(frozen=True)
+class RecordResourceValue(Instruction):
+    resource_type: str
+    resource_name: str
+    name: str
+    value: Any
 
 
 @dataclass
@@ -149,9 +159,15 @@ class Function(Resource):
                     ),
                     RecordResourceVariable(
                         resource_type="iam_role",
-                        resource_name=f"{self.role.role_name}_role_arn",
+                        resource_name=iam_role_varname,
                         name="role_arn",
                         variable_name=iam_role_varname,
+                    ),
+                    RecordResourceValue(
+                        resource_type="iam_role",
+                        resource_name=iam_role_varname,
+                        name="role_name",
+                        value=self.role.role_name,
                     ),
                 ]
             )
@@ -162,16 +178,22 @@ class Function(Resource):
                         method_name="update_role",
                         params={
                             "role_name": self.role.role_name,
-                            "trust_policy": Variable("lambda_trust_policy"),
+                            "trust_policy": lambda_trust_policy,
                             "policy": self.role.policy,
                         },
                         output_var=iam_role_varname,
                     ),
                     RecordResourceVariable(
                         resource_type="iam_role",
-                        resource_name=f"{self.role.role_name}_role_arn",
+                        resource_name=iam_role_varname,
                         name="role_arn",
                         variable_name=iam_role_varname,
+                    ),
+                    RecordResourceValue(
+                        resource_type="iam_role",
+                        resource_name=iam_role_varname,
+                        name="role_name",
+                        value=self.role.role_name,
                     ),
                 ]
             )
@@ -186,7 +208,7 @@ class Function(Resource):
                         method_name="create_function",
                         params={
                             "function_name": self.name,
-                            "role_arn": iam_role_varname,
+                            "role_arn": Variable(iam_role_varname),
                             "zip_contents": zip_contents,
                             "runtime": self.runtime,
                             "handler": self.handler,
@@ -201,6 +223,12 @@ class Function(Resource):
                         resource_name=self.name,
                         name="function_arn",
                         variable_name=function_varname,
+                    ),
+                    RecordResourceValue(
+                        resource_type="function",
+                        resource_name=self.name,
+                        name="function_name",
+                        value=self.name,
                     ),
                 ]
             )
@@ -211,7 +239,7 @@ class Function(Resource):
                         method_name="update_function",
                         params={
                             "function_name": self.name,
-                            "role_arn": iam_role_varname,
+                            "role_arn": Variable(iam_role_varname),
                             "zip_contents": zip_contents,
                             "runtime": self.runtime,
                             "handler": self.handler,
@@ -226,6 +254,12 @@ class Function(Resource):
                         resource_name=self.name,
                         name="function_arn",
                         variable_name=function_varname,
+                    ),
+                    RecordResourceValue(
+                        resource_type="function",
+                        resource_name=self.name,
+                        name="function_name",
+                        value=self.name,
                     ),
                 ]
             )
