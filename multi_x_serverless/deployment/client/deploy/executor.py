@@ -11,18 +11,22 @@ from multi_x_serverless.deployment.client.deploy.models import (
     APICall,
     Variable,
 )
-from multi_x_serverless.deployment.client.clients import AWSClient
+from multi_x_serverless.deployment.client.deploy.clients import AWSClient
+from multi_x_serverless.deployment.client.config import Config
 
 
 class Executor(object):
-    def __init__(self, session: Session) -> None:
+    def __init__(self, config: Config) -> None:
         self.resource_values: dict[str, list[Any]] = []
         self.variables: dict[str, Any] = {}
-        self._aws_client = AWSClient(session)
+        self._config = config
+        self._aws_client: AWSClient = None
 
     def execute(self, deployment_plan: DeploymentPlan) -> None:
-        for endpoint in deployment_plan.instructions.keys():
+        for home_region in self._config.home_regions:
+            endpoint, region = home_region.split(":")
             instructions = deployment_plan.instructions[endpoint]
+            self._aws_client = AWSClient(region)
             for instruction in instructions:
                 getattr(self, f"_do_{instruction.__class__.__name__.lower()}_{endpoint}", self._default_handler)(
                     instruction
