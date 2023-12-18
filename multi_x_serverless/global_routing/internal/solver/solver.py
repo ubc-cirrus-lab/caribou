@@ -45,7 +45,6 @@ def find_viable_deployment_options(  # pylint: disable=too-many-locals
     # The initial deployment option is the start hop region
     deployment_options = [({initial_start_hop_region: initial_start_hop_region}, 0.0, 0.0, 0.0)]
 
-
     # print(region_to_index)
 
     # Now we iterate over all functions and compute the viable deployment options for each function
@@ -87,7 +86,6 @@ def find_viable_deployment_options(  # pylint: disable=too-many-locals
                 new_transmission_latency: float = 0.0
 
                 for predecessor in dag.predecessors(function):
-
                     # print('test1:', latency_matrix[region_to_index[deployment_option[0][predecessor]]][region_to_index[region]])
                     # print('test2:', function_data_transfer_size_measurements[function])
                     transmission_latency = (
@@ -129,7 +127,7 @@ def find_viable_deployment_options(  # pylint: disable=too-many-locals
 
                 new_deployment_option[0][function] = region
                 new_deployment_options.append(new_deployment_option)
-        
+
         print(new_deployment_options)
 
         # We only keep the viable deployment options

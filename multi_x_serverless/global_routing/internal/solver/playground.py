@@ -64,7 +64,7 @@ def test_find_viable_deployment_options(mock_get_dag: MagicMock) -> None:
     regions = [region for region in regions if region[0] not in OPT_IN_REGIONS]
     regions = regions[:NUMBER_OF_REGIONS]
     workflow_description["start_hop"] = regions[0][0]
-    
+
     viable_options = find_viable_deployment_options(
         regions, function_runtime_measurements, function_data_transfer_size_measurements, workflow_description
     )

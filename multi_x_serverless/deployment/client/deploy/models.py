@@ -16,6 +16,7 @@ class Instance(object):
 class Variable(object):
     name: str
 
+
 @dataclass
 class Instruction(object):
     instruction: str

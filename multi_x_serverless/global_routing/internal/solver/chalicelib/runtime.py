@@ -4,14 +4,14 @@ from .utils import LATENCY_TABLE_NAME, get_item_from_dynamodb
 
 def get_runtime_for_region_function(region_provider: tuple[str, str]) -> Callable:
     region, provider = region_provider  # pylint: disable=unused-variable
-    def cost(
-        function_spec: dict, function_runtime_measurements: list[float]
-    ) -> float:
+
+    def cost(function_spec: dict, function_runtime_measurements: list[float]) -> float:
         # Currently we assume that the runtime is the average of the measurements not depending on the region
         # TODO (Daniel): This might not be true for all functions
-        return (sum(function_runtime_measurements) / len(function_runtime_measurements))
-        
+        return sum(function_runtime_measurements) / len(function_runtime_measurements)
+
         # return function_runtime_measurements
+
     return cost
 
 
@@ -40,7 +40,7 @@ def get_latency_coefficient_for_region(
     )
 
     if len(latency_coefficient) == 0:
-        return 1000.0 # Assume a high latency if we don't have the data
+        return 1000.0  # Assume a high latency if we don't have the data
     return latency_coefficient[0]["95th"]
 
 

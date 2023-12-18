@@ -5,6 +5,7 @@ from multi_x_serverless.deployment.client.cli.cli import cli
 import click
 import traceback
 
+
 def main() -> int:
     try:
         return cli(obj={})

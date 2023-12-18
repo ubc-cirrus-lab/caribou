@@ -41,7 +41,6 @@ def get_cost_for_region_function(region_provider: tuple[str, str]) -> Callable:
             estimated_duration = (sum(function_runtime_measurements) / len(function_runtime_measurements)) / 1000  # s
             # estimated_duration = function_runtime_measurements / 1000
 
-
             estimated_gb_seconds_per_month = (
                 estimated_memory * estimated_duration * estimated_number_of_requests_per_month
             )

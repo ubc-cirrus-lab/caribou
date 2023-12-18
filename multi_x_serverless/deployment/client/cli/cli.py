@@ -10,6 +10,7 @@ from multi_x_serverless.deployment.client.factory import CLIFactory
 from multi_x_serverless.deployment.client.deploy.deployer import Deployer
 from multi_x_serverless.deployment.client.cli.new_workflow import create_new_workflow_directory
 
+
 @click.group()
 @click.option("--project-dir", "-p", help="The project directory.")
 @click.pass_context
@@ -23,7 +24,7 @@ def cli(ctx: click.Context, project_dir: str) -> None:
     os.chdir(project_dir)
 
 
-@cli.command('new-workflow')
+@cli.command("new-workflow")
 @click.argument("workflow_name", required=True)
 @click.pass_context
 def new_workflow(ctx: click.Context, workflow_name: str) -> None:
@@ -31,7 +32,6 @@ def new_workflow(ctx: click.Context, workflow_name: str) -> None:
         raise click.ClickException(f"Workflow {workflow_name} already exists.")
     create_new_workflow_directory(workflow_name)
     click.echo(f"Created new workflow in ./{workflow_name}")
-    
 
 
 @cli.command()
@@ -43,5 +43,6 @@ def deploy(ctx: click.Context) -> None:
     deployer: Deployer = factory.create_deployer(config=config, session=session)
     deployment_information = deployer.deploy()
     print(deployment_information)
+
 
 __version__ = multi_x_serverless_version

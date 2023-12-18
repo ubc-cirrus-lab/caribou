@@ -14,9 +14,6 @@ import uuid
 
 
 class WorkflowBuilder(object):
-    def __init__(self) -> None:
-        pass
-
     def build_workflow(self, config: Config) -> Workflow:
         resources: list[Function] = []
 

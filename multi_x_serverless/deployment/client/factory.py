@@ -8,7 +8,7 @@ from multi_x_serverless.deployment.client.wrapper import MultiXServerlessWorkflo
 from multi_x_serverless.deployment.client.deploy.deployer import (
     Deployer,
     create_default_deployer,
-    create_deletion_deployer
+    create_deletion_deployer,
 )
 from multi_x_serverless.deployment.client.constants import (
     multi_x_serverless_version,
@@ -44,7 +44,7 @@ class CLIFactory(object):
 
     def create_deployer(self, config, session) -> Deployer:
         create_default_deployer(config, session)
-    
+
     def create_deletion_deployer(self, config, session) -> Deployer:
         create_deletion_deployer(config, session)
 

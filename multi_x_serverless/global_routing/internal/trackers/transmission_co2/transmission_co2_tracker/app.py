@@ -223,7 +223,7 @@ def get_carbon_intensity_geo(location: tuple[float, float], api_key: str) -> flo
 
         REQUEST_CACHE[cache_key] = json_data["carbonIntensity"]
         return json_data["carbonIntensity"]
-    
+
     if r.status_code == 404 and "No recent data for zone" in r.text:
         REQUEST_CACHE[cache_key] = WORLD_AVERAGE_CO2_INTENSITY
         return WORLD_AVERAGE_CO2_INTENSITY

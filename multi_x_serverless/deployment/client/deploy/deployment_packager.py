@@ -39,9 +39,7 @@ class DeploymentPackager(object):
 
     def _add_py_dependencies(self, zip_file: zipfile.ZipFile, deps_dir: str) -> None:
         prefix_len = len(deps_dir) + 1
-        for root, dirnames, files in os.walk(deps_dir):
-            if root == deps_dir and "multi-x-serverless" in dirnames:
-                dirnames.remove("multi-x-serverless")
+        for root, _, files in os.walk(deps_dir):
             for filename in files:
                 full_path = os.path.join(root, filename)
                 zip_path = full_path[prefix_len:]
