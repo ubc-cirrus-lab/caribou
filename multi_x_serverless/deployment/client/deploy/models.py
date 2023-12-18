@@ -3,6 +3,8 @@ from dataclasses import dataclass, field
 
 from typing import Optional, Any
 
+from chalice.deploy.planner import Variable
+
 from multi_x_serverless.deployment.client.config import Config
 from enum import Enum
 
@@ -10,6 +12,19 @@ from enum import Enum
 @dataclass
 class Instance(object):
     name: str
+
+
+@dataclass
+class Instruction(object):
+    instruction: str
+
+
+@dataclass(frozen=True)
+class RecordResourceVariable(Instruction):
+    resource_type: str
+    resource_name: str
+    name: str
+    variable_name: str
 
 
 @dataclass
@@ -51,15 +66,48 @@ class Resource(object):
         return []
 
 
+class RemoteState(object):
+    def __init__(self, endpoint) -> None:
+        self._endpoint = endpoint
+
+    def resource_exists(self, resource: Resource) -> bool:
+        if self._endpoint == Endpoint.AWS:
+            return self.resource_exists_aws(resource)
+        elif self._endpoint == Endpoint.GCP:
+            return self.resource_exists_gcp(resource)
+        else:
+            raise Exception(f"Unknown endpoint {self._endpoint}")
+
+    def resource_exists_aws(self, resource: Resource) -> bool:
+        if resource.resource_type() == "iam_role":
+            return self.aws_iam_role_exists(resource)
+        elif resource.resource_type() == "function":
+            return self.aws_lambda_function_exists(resource)
+        else:
+            raise Exception(f"Unknown resource type {resource.resource_type()}")
+
+    def aws_iam_role_exists(self, resource: Resource) -> bool:
+        pass
+
+    def aws_lambda_function_exists(self, resource: Resource) -> bool:
+        pass
+
+    def resource_exists_gcp(self, resource: Resource) -> bool:
+        pass
+
+
 @dataclass
 class Function(Resource):
+    resource_type: str = "function"
     environment_variables: dict[str, str]
     runtime: str
+    handler: str
     timeout: int
     memory: int
     role: IAMRole
     deployment_package: DeploymentPackage
     region_group: str
+    remote_state: RemoteState = field(default_factory=RemoteState)
 
     def dependencies(self) -> list[Resource]:
         resources: list[Resource] = [self.role, self.deployment_package]
@@ -74,7 +122,113 @@ class Function(Resource):
             raise Exception(f"Unknown endpoint {endpoint}")
 
     def get_deployment_instructions_aws(self, config: Config) -> list[Instruction]:
-        pass
+        api_calls: list[APICall] = []
+        iam_role_varname = f"{self.role.role_name}_role_arn"
+        lambda_trust_policy = {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Sid": "",
+                    "Effect": "Allow",
+                    "Principal": {"Service": "lambda.amazonaws.com"},
+                    "Action": "sts:AssumeRole",
+                }
+            ],
+        }
+        if not self.remote_state.resource_exists(self.role):
+            api_calls.extend(
+                [
+                    APICall(
+                        method_name="create_role",
+                        params={
+                            "role_name": self.role.role_name,
+                            "trust_policy": lambda_trust_policy,
+                            "policy": self.role.policy,
+                        },
+                        output_var=iam_role_varname,
+                    ),
+                    RecordResourceVariable(
+                        resource_type="iam_role",
+                        resource_name=f"{self.role.role_name}_role_arn",
+                        name="role_arn",
+                        variable_name=iam_role_varname,
+                    ),
+                ]
+            )
+        else:
+            api_calls.extend(
+                [
+                    APICall(
+                        method_name="update_role",
+                        params={
+                            "role_name": self.role.role_name,
+                            "trust_policy": Variable("lambda_trust_policy"),
+                            "policy": self.role.policy,
+                        },
+                        output_var=iam_role_varname,
+                    ),
+                    RecordResourceVariable(
+                        resource_type="iam_role",
+                        resource_name=f"{self.role.role_name}_role_arn",
+                        name="role_arn",
+                        variable_name=iam_role_varname,
+                    ),
+                ]
+            )
+
+        with open(self.deployment_package.filename, "rb") as f:
+            zip_contents = f.read()
+        function_varname = "%s_lambda_arn" % self.name
+        if not self.remote_state.resource_exists(self):
+            api_calls.extend(
+                [
+                    APICall(
+                        method_name="create_function",
+                        params={
+                            "function_name": self.name,
+                            "role_arn": iam_role_varname,
+                            "zip_contents": zip_contents,
+                            "runtime": self.runtime,
+                            "handler": self.handler,
+                            "environment_variables": self.environment_variables,
+                            "timeout": self.timeout,
+                            "memory_size": self.memory,
+                        },
+                        output_var=function_varname,
+                    ),
+                    RecordResourceVariable(
+                        resource_type="function",
+                        resource_name=self.name,
+                        name="function_arn",
+                        variable_name=function_varname,
+                    ),
+                ]
+            )
+        else:
+            api_calls.extend(
+                [
+                    APICall(
+                        method_name="update_function",
+                        params={
+                            "function_name": self.name,
+                            "role_arn": iam_role_varname,
+                            "zip_contents": zip_contents,
+                            "runtime": self.runtime,
+                            "handler": self.handler,
+                            "environment_variables": self.environment_variables,
+                            "timeout": self.timeout,
+                            "memory_size": self.memory,
+                        },
+                        output_var=function_varname,
+                    ),
+                    RecordResourceVariable(
+                        resource_type="function",
+                        resource_name=self.name,
+                        name="function_arn",
+                        variable_name=function_varname,
+                    ),
+                ]
+            )
 
     def get_deployment_instructions_gcp(self, config: Config) -> list[Instruction]:
         pass
@@ -116,9 +270,11 @@ class Endpoint(Enum):
     GCP = "gcp"
 
 
-@dataclass
-class Instruction(object):
-    instruction: str
+@dataclass(frozen=True)
+class APICall(Instruction):
+    method_name: str
+    params: dict[str, Any]
+    output_var: Optional[str] = None
 
 
 @dataclass

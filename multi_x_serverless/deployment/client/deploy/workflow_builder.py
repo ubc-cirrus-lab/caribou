@@ -37,6 +37,7 @@ class WorkflowBuilder(object):
                     name=function_deployment_name,
                     environment_variables=config.environment_variables,
                     runtime=config.python_version,
+                    handler=function.handler,
                     timeout=function.timeout,
                     memory=function.memory,
                     role=function_role,

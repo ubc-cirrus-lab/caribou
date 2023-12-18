@@ -16,6 +16,7 @@ class MultiXServerlessFunction:
         self.function = function
         self.name = name
         self.entry_point = entry_point
+        self.handler = function.__name__
         self.timeout = timeout
         self.memory = memory
         self.region_group = region_group

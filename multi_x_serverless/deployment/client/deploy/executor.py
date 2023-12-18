@@ -1,7 +1,6 @@
 from botocore.session import Session
 
-from multi_x_serverless.deployment.client.deploy.deployment_planner import DeploymentPlan
-from multi_x_serverless.deployment.client.deploy.models import Resource
+from multi_x_serverless.deployment.client.deploy.models import Resource, DeploymentPlan
 
 
 class Executor(object):
