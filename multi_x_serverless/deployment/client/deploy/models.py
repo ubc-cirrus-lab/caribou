@@ -5,7 +5,7 @@ from enum import Enum
 from typing import Any, Optional, Sequence
 
 import botocore.exceptions
-
+import json
 from multi_x_serverless.deployment.client.config import Config
 from multi_x_serverless.deployment.client.deploy.clients import AWSClient, Client
 
@@ -208,6 +208,11 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
                 }
             ],
         }
+        with open(self.role.policy, "r", encoding="utf-8") as f:
+            policy = f.read()
+        if policy is None:
+            raise RuntimeError(f"Lambda policy could not be read, check the path ({self.role.policy})")
+        policy = json.dumps(json.loads(policy))
         if not self._remote_states[Endpoint.AWS][region].resource_exists(self.role):
             instructions.extend(
                 [
@@ -217,7 +222,7 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
                         params={
                             "role_name": self.role.name,
                             "trust_policy": lambda_trust_policy,
-                            "policy": self.role.policy,
+                            "policy": policy,
                         },
                         output_var=iam_role_varname,
                     ),
@@ -244,7 +249,7 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
                         params={
                             "role_name": self.role.name,
                             "trust_policy": lambda_trust_policy,
-                            "policy": self.role.policy,
+                            "policy": policy,
                         },
                         output_var=iam_role_varname,
                     ),

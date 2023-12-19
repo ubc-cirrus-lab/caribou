@@ -44,7 +44,13 @@ class Config:
 
     @property
     def environment_variables(self) -> dict[str, Any]:
-        return self._lookup("environment_variables")
+        list_of_env_variables: list[dict] = self._lookup("environment_variables")
+        if list_of_env_variables is None:
+            return {}
+        env_variables: dict[str, Any] = {}
+        for env_variable in list_of_env_variables:
+            env_variables[env_variable["name"]] = env_variable["value"]
+        return env_variables
 
     @property
     def home_regions(self) -> list[str]:
