@@ -4,6 +4,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Optional, Sequence
 
+import botocore.exceptions
+
 from multi_x_serverless.deployment.client.config import Config
 from multi_x_serverless.deployment.client.deploy.clients import AWSClient, Client
 
@@ -20,23 +22,37 @@ class Variable:
 
 @dataclass(frozen=True)
 class Instruction:
-    pass
+    name: str
 
 
 @dataclass(frozen=True)
 class RecordResourceVariable(Instruction):
     resource_type: str
     resource_name: str
-    name: str
     variable_name: str
+
+    def __repr__(self) -> str:
+        return f"RecordResourceVariable({self.name})"
 
 
 @dataclass(frozen=True)
 class RecordResourceValue(Instruction):
     resource_type: str
     resource_name: str
-    name: str
     value: Any
+
+    def __repr__(self) -> str:
+        return f"RecordResourceValue({self.name})"
+
+
+@dataclass(frozen=True)
+class APICall(Instruction):
+    method_name: str
+    params: dict[str, Any]
+    output_var: Optional[str] = None
+
+    def __repr__(self) -> str:
+        return f"APICall({self.name})"
 
 
 @dataclass
@@ -101,11 +117,17 @@ class RemoteState:
         raise RuntimeError(f"Unknown resource type {resource.resource_type}")
 
     def aws_iam_role_exists(self, resource: Resource) -> bool:
-        role = self._client.get_iam_role(resource.name)
+        try:
+            role = self._client.get_iam_role(resource.name)
+        except botocore.exceptions.ClientError:
+            return False
         return role is not None
 
     def aws_lambda_function_exists(self, resource: Resource) -> bool:
-        function = self._client.get_lambda_function(resource.name)
+        try:
+            function = self._client.get_lambda_function(resource.name)
+        except botocore.exceptions.ClientError:
+            return False
         return function is not None
 
     def resource_exists_gcp(self, resource: Resource) -> bool:
@@ -163,9 +185,9 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
         instructions: dict[str, list[Instruction]] = {}
         for home_region in self.home_regions:
             endpoint, region = home_region.split(":")
-            if endpoint == Endpoint.AWS:
+            if endpoint == Endpoint.AWS.value:
                 instruction = self.get_deployment_instructions_aws(region)
-            elif endpoint == Endpoint.GCP:
+            elif endpoint == Endpoint.GCP.value:
                 instruction = self.get_deployment_instructions_gcp(region)
             else:
                 raise RuntimeError(f"Unknown endpoint {endpoint}")
@@ -190,6 +212,7 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
             instructions.extend(
                 [
                     APICall(
+                        name="create_role",
                         method_name="create_role",
                         params={
                             "role_name": self.role.name,
@@ -216,6 +239,7 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
             instructions.extend(
                 [
                     APICall(
+                        name="update_role",
                         method_name="update_role",
                         params={
                             "role_name": self.role.name,
@@ -249,6 +273,7 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
             instructions.extend(
                 [
                     APICall(
+                        name="create_function",
                         method_name="create_function",
                         params={
                             "function_name": self.name,
@@ -280,6 +305,7 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
             instructions.extend(
                 [
                     APICall(
+                        name="update_function",
                         method_name="update_function",
                         params={
                             "function_name": self.name,
@@ -340,22 +366,25 @@ class Workflow(Resource):
                     plans[region].extend(instructions)
         return plans
 
+    def get_deployment_packages(self) -> list[DeploymentPackage]:
+        packages: list[DeploymentPackage] = []
+        for resource in self._resources:
+            if isinstance(resource, Function):
+                packages.append(resource.deployment_package)
+        return packages
+
 
 class Endpoint(Enum):
     AWS = "aws"
     GCP = "gcp"
 
 
-@dataclass(frozen=True)
-class APICall(Instruction):
-    method_name: str
-    params: dict[str, Any]
-    output_var: Optional[str] = None
-
-
 @dataclass
 class DeploymentPlan:
     instructions: dict[str, list[Instruction]] = field(default_factory=dict)
+
+    def __str__(self) -> str:
+        return "\n".join([f"{region}: {instructions}" for region, instructions in self.instructions.items()])
 
 
 class IAMRole(Resource):

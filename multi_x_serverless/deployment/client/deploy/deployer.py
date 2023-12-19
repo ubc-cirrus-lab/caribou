@@ -4,7 +4,7 @@ import botocore.exceptions
 from botocore.session import Session
 
 from multi_x_serverless.deployment.client.config import Config
-from multi_x_serverless.deployment.client.deploy.deployment_packager import DeploymentPackage, DeploymentPackager
+from multi_x_serverless.deployment.client.deploy.deployment_packager import DeploymentPackager
 from multi_x_serverless.deployment.client.deploy.executor import Executor
 from multi_x_serverless.deployment.client.deploy.models import DeploymentPlan, Resource, Workflow
 from multi_x_serverless.deployment.client.deploy.workflow_builder import WorkflowBuilder
@@ -39,9 +39,7 @@ class Deployer:  # pylint: disable=too-few-public-methods
         self._upload_workflow_to_solver(workflow)
 
         # Build the workflow resources, e.g. deployment packages, iam roles, etc.
-        self._deployment_packager.build(self._config, DeploymentPackage())
-
-        return []
+        self._deployment_packager.build(self._config, workflow)
 
         # Chain the commands needed to deploy all the built resources to the serverless platform
         deployment_plan = DeploymentPlan(workflow.get_deployment_instructions())

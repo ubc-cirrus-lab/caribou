@@ -14,7 +14,7 @@ import boto3
 import yaml
 
 from multi_x_serverless.deployment.client.config import Config
-from multi_x_serverless.deployment.client.deploy.models import DeploymentPackage
+from multi_x_serverless.deployment.client.deploy.models import Workflow
 import multi_x_serverless
 
 
@@ -22,9 +22,10 @@ class DeploymentPackager:  # pylint: disable=too-few-public-methods
     def __init__(self, config: Config) -> None:
         self._config = config
 
-    def build(self, config: Config, deployment_package: DeploymentPackage) -> None:
+    def build(self, config: Config, workflow: Workflow) -> None:
         zip_file = self._create_deployment_package(config.project_dir, config.python_version)
-        deployment_package.filename = zip_file
+        for deployment_package in workflow.get_deployment_packages():
+            deployment_package.filename = zip_file
 
     def _create_deployment_package(self, project_dir: str, python_version: str) -> str:
         package_filename = self._get_package_filename(project_dir, python_version)
