@@ -15,7 +15,7 @@ from multi_x_serverless.deployment.client.deploy.deployer import (
 from multi_x_serverless.deployment.client.wrapper import MultiXServerlessWorkflow
 
 
-class CLIFactory(object):
+class CLIFactory:
     def __init__(self, project_dir, environ=None):
         self.project_dir = project_dir
         self.environ = environ or os.environ

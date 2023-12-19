@@ -1,5 +1,5 @@
 import os
-from distutils.dir_util import copy_tree
+import shutil
 
 
 def create_new_workflow_directory(workflow_name: str) -> None:
@@ -13,14 +13,14 @@ def create_new_workflow_directory(workflow_name: str) -> None:
 
     os.mkdir(new_workflow_dir)
 
-    copy_tree(template_dir, new_workflow_dir)
+    shutil.copytree(template_dir, new_workflow_dir)
 
     for root, _, files in os.walk(new_workflow_dir):
         for file in files:
             file_path = os.path.join(root, file)
-            with open(file_path, "r") as f:
+            with open(file_path, "r", encoding="utf-8") as f:
                 content = f.read()
             for key, value in template_kwargs.items():
                 content = content.replace("{{ " + key + " }}", value)
-            with open(file_path, "w") as f:
+            with open(file_path, "w", encoding="utf-8") as f:
                 f.write(content)

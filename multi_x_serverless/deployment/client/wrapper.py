@@ -108,7 +108,7 @@ class MultiXServerlessWorkflow:
 
         # TODO: Post message to messaging services
 
-    def get_predecessor_data(self) -> Any:
+    def get_predecessor_data(self) -> list[dict[str, Any]]:
         """
         Get the data returned by the predecessor functions.
         """

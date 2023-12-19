@@ -13,7 +13,7 @@ from multi_x_serverless.deployment.client.deploy.models import (
 from multi_x_serverless.deployment.client.wrapper import MultiXServerlessFunction
 
 
-class WorkflowBuilder(object):
+class WorkflowBuilder:
     def build_workflow(self, config: Config) -> Workflow:
         resources: list[Function] = []
 
@@ -110,4 +110,4 @@ class WorkflowBuilder(object):
         else:
             filename = os.path.join(config.project_dir, ".multi-x-serverless", "iam_policy.yml")
 
-        return IAMRole(name=role_name, policy_file=filename)
+        return IAMRole(role_name=role_name, policy_file=filename)

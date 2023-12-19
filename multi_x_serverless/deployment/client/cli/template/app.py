@@ -6,7 +6,7 @@ workflow = MultiXServerlessWorkflow("{{ workflow_name }}")
 
 
 @workflow.serverless_function(name="First-Function", entry_point=True, timeout=60, memory=128)
-def first_function(event, context):
+def first_function(event, context):  # pylint: disable=unused-argument
     payload = {
         "hello": "world",
     }
@@ -29,7 +29,7 @@ def first_function(event, context):
 
 
 @workflow.serverless_function(name="Second-Function")
-def second_function(event, context):
+def second_function(event, context):  # pylint: disable=unused-argument
     request = event["hello"]
 
     print(request)
@@ -44,7 +44,7 @@ def second_function(event, context):
 
 
 @workflow.serverless_function(name="Third-Function")
-def third_function(event, context):
+def third_function(event, context):  # pylint: disable=unused-argument
     request = event["hello"]
 
     print(request)
@@ -59,7 +59,7 @@ def third_function(event, context):
 
 
 @workflow.serverless_function(name="Fourth-Function")
-def fourth_function(event, context):
+def fourth_function(event, context):  # pylint: disable=unused-argument
     request = event["hello"]
 
     print(request)
@@ -74,8 +74,8 @@ def fourth_function(event, context):
 
 
 @workflow.serverless_function(name="Fifth-Function")
-def fifth_function(event, context):
-    responses = workflow.get_predecessor_data()
+def fifth_function(event, context):  # pylint: disable=unused-argument
+    responses: list[dict[str, Any]] = workflow.get_predecessor_data()
 
     for response in responses:
         print(response["hello"])
@@ -84,7 +84,7 @@ def fifth_function(event, context):
 
 
 @workflow.serverless_function(name="Sixth-Function")
-def sixth_function(event, context):
+def sixth_function(event, context):  # pylint: disable=unused-argument
     request = event["hello"]
 
     print(request)
@@ -99,7 +99,7 @@ def sixth_function(event, context):
 
 
 @workflow.serverless_function(name="Seventh-Function")
-def seventh_function(event, context):
+def seventh_function(event, context):  # pylint: disable=unused-argument
     responses: list[dict[str, Any]] = workflow.get_predecessor_data()
 
     for response in responses:

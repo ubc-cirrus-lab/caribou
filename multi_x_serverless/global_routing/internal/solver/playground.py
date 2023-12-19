@@ -2,7 +2,6 @@ import random
 from unittest.mock import MagicMock, patch
 
 import networkx as nx
-import numpy as np
 
 from multi_x_serverless.global_routing.internal.solver.chalicelib.regions import get_regions
 from multi_x_serverless.global_routing.internal.solver.chalicelib.utils import DEFAULT_REGION, OPT_IN_REGIONS
@@ -77,4 +76,4 @@ def test_find_viable_deployment_options(mock_get_dag: MagicMock) -> None:
         assert option[3] <= CARBON_CONSTRAINT
 
 
-test_find_viable_deployment_options()
+test_find_viable_deployment_options()  # pylint: disable=no-value-for-parameter

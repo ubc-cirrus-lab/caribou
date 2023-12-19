@@ -1,7 +1,5 @@
 from typing import Any
 
-from botocore.session import Session
-
 from multi_x_serverless.deployment.client.config import Config
 from multi_x_serverless.deployment.client.deploy.clients import AWSClient
 from multi_x_serverless.deployment.client.deploy.models import (
@@ -15,7 +13,7 @@ from multi_x_serverless.deployment.client.deploy.models import (
 )
 
 
-class Executor(object):
+class Executor:
     def __init__(self, config: Config) -> None:
         self.resource_values: dict[str, list[Any]] = []
         self.variables: dict[str, Any] = {}

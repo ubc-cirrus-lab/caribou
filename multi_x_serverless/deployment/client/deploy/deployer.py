@@ -8,7 +8,7 @@ from multi_x_serverless.deployment.client.deploy.models import DeploymentPlan, W
 from multi_x_serverless.deployment.client.deploy.workflow_builder import WorkflowBuilder
 
 
-class Deployer(object):
+class Deployer:  # pylint: disable=too-few-public-methods
     def __init__(
         self,
         config: Config,
@@ -27,7 +27,7 @@ class Deployer(object):
         try:
             self._deploy()
         except botocore.exceptions.ClientError as e:
-            raise DeploymentError(e)
+            raise DeploymentError(e) from e
 
     def _deploy(self):
         # Build the workflow (DAG of the workflow)
@@ -40,7 +40,7 @@ class Deployer(object):
         self._deployment_packager.build(self._config, workflow)
 
         # Chain the commands needed to deploy all the built resources to the serverless platform
-        deployment_plan = DeploymentPlan(workflow.get_deployment_instructions(self._config))
+        deployment_plan = DeploymentPlan(workflow.get_deployment_instructions())
 
         # Execute the deployment plan
         self._executor.execute(deployment_plan)
@@ -61,13 +61,13 @@ def create_default_deployer(config: Config, session: Session) -> Deployer:
         config,
         session,
         WorkflowBuilder(),
-        DeploymentPackager(),
-        Executor(session),
+        DeploymentPackager(config),
+        Executor(config),
     )
 
 
 def create_deletion_deployer(config: Config, session: Session) -> Deployer:
-    return Deployer(config, session, WorkflowBuilder(), DeploymentPackager(), None)
+    return Deployer(config, session, WorkflowBuilder(), DeploymentPackager(config), None)
 
 
 class DeploymentError(Exception):

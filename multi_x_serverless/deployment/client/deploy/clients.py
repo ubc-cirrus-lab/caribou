@@ -3,10 +3,8 @@ from typing import Any
 
 from boto3.session import Session
 
-from multi_x_serverless.deployment.client.config import Config
 
-
-class AWSClient(object):
+class AWSClient:  # pylint: disable=too-few-public-methods
     LAMBDA_CREATE_ATTEMPTS = 30
     DELAY_TIME = 5
 
@@ -59,4 +57,4 @@ class AWSClient(object):
             if state == "Active":
                 return
             time.sleep(self.DELAY_TIME)
-        raise RuntimeError("Lambda function %s did not become active" % function_name)
+        raise RuntimeError(f"Lambda function {function_name} did not become active")

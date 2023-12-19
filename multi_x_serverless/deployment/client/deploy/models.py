@@ -8,18 +8,18 @@ from multi_x_serverless.deployment.client.config import Config
 
 
 @dataclass
-class Instance(object):
+class Instance:
     name: str
 
 
 @dataclass
-class Variable(object):
+class Variable:
     name: str
 
 
 @dataclass
-class Instruction(object):
-    instruction: str
+class Instruction:
+    pass
 
 
 @dataclass(frozen=True)
@@ -59,7 +59,7 @@ class FunctionInstance(Instance):
         }
 
 
-class Resource(object):
+class Resource:
     def __init__(self, name: str, resource_type: str) -> None:
         self._name = name
         self._resource_type = resource_type
@@ -73,29 +73,29 @@ class Resource(object):
     def dependencies(self) -> list[Resource]:
         return []
 
-    def get_deployment_instructions(self, config: Config, endpoint: Optional[Endpoint]) -> list[Instruction]:
+    def get_deployment_instructions(
+        self, config: Config, endpoint: Optional[Endpoint]  # pylint: disable=unused-argument
+    ) -> list[Instruction]:
         return []
 
 
-class RemoteState(object):
+class RemoteState:
     def __init__(self, endpoint) -> None:
         self._endpoint = endpoint
 
     def resource_exists(self, resource: Resource) -> bool:
         if self._endpoint == Endpoint.AWS:
             return self.resource_exists_aws(resource)
-        elif self._endpoint == Endpoint.GCP:
+        if self._endpoint == Endpoint.GCP:
             return self.resource_exists_gcp(resource)
-        else:
-            raise Exception(f"Unknown endpoint {self._endpoint}")
+        raise RuntimeError(f"Unknown endpoint {self._endpoint}")
 
     def resource_exists_aws(self, resource: Resource) -> bool:
         if resource.resource_type() == "iam_role":
             return self.aws_iam_role_exists(resource)
-        elif resource.resource_type() == "function":
+        if resource.resource_type() == "function":
             return self.aws_lambda_function_exists(resource)
-        else:
-            raise Exception(f"Unknown resource type {resource.resource_type()}")
+        raise RuntimeError(f"Unknown resource type {resource.resource_type()}")
 
     def aws_iam_role_exists(self, resource: Resource) -> bool:
         pass
@@ -108,7 +108,7 @@ class RemoteState(object):
 
 
 @dataclass
-class Function(Resource):
+class Function(Resource):  # pylint: disable=too-many-instance-attributes
     resource_type: str = "function"
     environment_variables: dict[str, str]
     runtime: str
@@ -124,17 +124,16 @@ class Function(Resource):
         resources: list[Resource] = [self.role, self.deployment_package]
         return resources
 
-    def get_deployment_instructions(self, config: Config, endpoint: Endpoint) -> list[Instruction]:
+    def get_deployment_instructions(self, _: Config, endpoint: Endpoint) -> list[Instruction]:
         if endpoint == Endpoint.AWS:
-            return self.get_deployment_instructions_aws(config)
-        elif endpoint == Endpoint.GCP:
-            return self.get_deployment_instructions_gcp(config)
-        else:
-            raise Exception(f"Unknown endpoint {endpoint}")
+            return self.get_deployment_instructions_aws()
+        if endpoint == Endpoint.GCP:
+            return self.get_deployment_instructions_gcp()
+        raise RuntimeError(f"Unknown endpoint {endpoint}")
 
-    def get_deployment_instructions_aws(self, config: Config) -> list[Instruction]:
+    def get_deployment_instructions_aws(self) -> list[Instruction]:
         api_calls: list[APICall] = []
-        iam_role_varname = f"{self.role.role_name}_role_arn"
+        iam_role_varname = f"{self.role.name}_role_arn"
         lambda_trust_policy = {
             "Version": "2012-10-17",
             "Statement": [
@@ -152,7 +151,7 @@ class Function(Resource):
                     APICall(
                         method_name="create_role",
                         params={
-                            "role_name": self.role.role_name,
+                            "role_name": self.role.name,
                             "trust_policy": lambda_trust_policy,
                             "policy": self.role.policy,
                         },
@@ -168,7 +167,7 @@ class Function(Resource):
                         resource_type="iam_role",
                         resource_name=iam_role_varname,
                         name="role_name",
-                        value=self.role.role_name,
+                        value=self.role.name,
                     ),
                 ]
             )
@@ -178,7 +177,7 @@ class Function(Resource):
                     APICall(
                         method_name="update_role",
                         params={
-                            "role_name": self.role.role_name,
+                            "role_name": self.role.name,
                             "trust_policy": lambda_trust_policy,
                             "policy": self.role.policy,
                         },
@@ -194,14 +193,14 @@ class Function(Resource):
                         resource_type="iam_role",
                         resource_name=iam_role_varname,
                         name="role_name",
-                        value=self.role.role_name,
+                        value=self.role.name,
                     ),
                 ]
             )
 
         with open(self.deployment_package.filename, "rb") as f:
             zip_contents = f.read()
-        function_varname = "%s_lambda_arn" % self.name
+        function_varname = f"{self.name}_lambda_arn"
         if not self.remote_state.resource_exists(self):
             api_calls.extend(
                 [
@@ -265,7 +264,7 @@ class Function(Resource):
                 ]
             )
 
-    def get_deployment_instructions_gcp(self, config: Config) -> list[Instruction]:
+    def get_deployment_instructions_gcp(self) -> list[Instruction]:
         pass
 
 
@@ -285,9 +284,7 @@ class Workflow(Resource):
     def add_resource(self, resource: Resource) -> None:
         self._resources.append(resource)
 
-    def get_deployment_instructions(
-        self, config: Config, endpoint: Optional[Endpoint] = None
-    ) -> dict[Endpoint, list[Instruction]]:
+    def get_deployment_instructions(self, config: Config, _: Endpoint) -> dict[Endpoint, list[Instruction]]:
         plans: dict[Endpoint, list[Instruction]] = []
         for resource in self._resources:
             for endpoint in Endpoint:
@@ -313,15 +310,14 @@ class APICall(Instruction):
 
 
 @dataclass
-class DeploymentPlan(object):
+class DeploymentPlan:
     instructions: dict[Endpoint, list[Instruction]] = field(default_factory=dict)
 
 
-@dataclass
 class IAMRole(Resource):
-    resource_type: str = "iam_role"
-    role_name: str
-    policy: str
+    def __init__(self, policy: str, role_name: str) -> None:
+        super().__init__(role_name, "iam_role")
+        self.policy = policy
 
     def dependencies(self) -> list[Resource]:
         return [self.policy]

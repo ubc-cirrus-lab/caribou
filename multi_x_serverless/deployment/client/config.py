@@ -8,7 +8,7 @@ from multi_x_serverless.deployment.client.deploy.models import Resource
 from multi_x_serverless.deployment.client.wrapper import MultiXServerlessWorkflow
 
 
-class Config(object):
+class Config:
     def __init__(self, project_config: dict, project_dir: str) -> None:
         self.project_config = project_config
         self.project_dir = project_dir

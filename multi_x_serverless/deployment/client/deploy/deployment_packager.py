@@ -8,7 +8,6 @@ import subprocess
 import sys
 import tempfile
 import zipfile
-from typing import Any
 
 from chalice.compat import pip_import_string
 
@@ -16,7 +15,7 @@ from multi_x_serverless.deployment.client.config import Config
 from multi_x_serverless.deployment.client.deploy.models import DeploymentPackage
 
 
-class DeploymentPackager(object):
+class DeploymentPackager:  # pylint: disable=too-few-public-methods
     def __init__(self, config: Config) -> None:
         self._config = config
 
@@ -60,8 +59,8 @@ class DeploymentPackager(object):
 
     def _get_package_filename(self, project_dir: str, python_version: str) -> str:
         requirements = self._get_requirements_filename(project_dir)
-        hash = self._hash_project_dir(requirements, project_dir)
-        filename = f"{hash}-{python_version}.zip"
+        hashed_project_dir = self._hash_project_dir(requirements, project_dir)
+        filename = f"{hashed_project_dir}-{python_version}.zip"
         deployment_package_filename = os.path.join(project_dir, ".multi-x-serverless", "deployment-packages", filename)
         return deployment_package_filename
 
@@ -74,28 +73,27 @@ class DeploymentPackager(object):
         if os.path.exists(requirements):
             with open(requirements, "rb") as f:
                 contents = f.read()
-        hash = hashlib.sha256(contents)
+        hashed_content = hashlib.sha256(contents)
         for root, _, files in os.walk(project_dir):
             for file in files:
                 with open(os.path.join(root, file), "rb") as f:
                     reader = functools.partial(f.read, 4096)
                     for chunk in iter(reader, b""):
-                        hash.update(chunk)
-        return hash.hexdigest()
+                        hashed_content.update(chunk)
+        return hashed_content.hexdigest()
 
     def _create_deployment_package_dir(self, package_filename: str) -> None:
         os.makedirs(os.path.dirname(package_filename), exist_ok=True)
 
     def _build_dependencies(self, requirements_filename: str, temp_dir: str) -> None:
-        with open(requirements_filename, "r") as file:
+        with open(requirements_filename, "r", encoding="utf-8") as file:
             requirements = file.read().splitlines()
 
         temp_install_dir = tempfile.mkdtemp(dir=temp_dir, prefix="temp_install_")
 
         try:
-            pip = Pip()
             pip_args = ["install", "--target", temp_install_dir] + requirements
-            pip.execute("main", pip_args)
+            pip_execute("main", pip_args)
 
             for item in os.listdir(temp_install_dir):
                 item_path = os.path.join(temp_install_dir, item)
@@ -105,19 +103,20 @@ class DeploymentPackager(object):
             shutil.rmtree(temp_install_dir)
 
 
-class Pip(object):
-    def __init__(self) -> None:
-        self._import_string = pip_import_string()
+def pip_execute(command: str, args: list[str]) -> None:
+    import_string = pip_import_string()
+    main_args = [command] + args
+    env_vars = os.environ.copy()
+    python_exe = sys.executable
+    run_pip = f"import sys; {import_string}; sys.exit(main({main_args}))"
 
-    def execute(self, command: str, args: list[str]) -> None:
-        main_args = [command] + args
-        env_vars = self._osutils.environ()
-        python_exe = sys.executable
-        run_pip = f"import sys; {self._import_string}; sys.exit(main({main_args}))"
-        out, err = subprocess.Popen(
-            [python_exe, "-c", run_pip],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            env=env_vars,
-        ).communicate()
-        return out, err
+    with subprocess.Popen(
+        [python_exe, "-c", run_pip],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env=env_vars,
+    ) as process:
+        out, err = process.communicate()
+        if process.returncode != 0:
+            raise RuntimeError(f"Error installing dependencies: {err.decode('utf-8')}")
+    return out, err
