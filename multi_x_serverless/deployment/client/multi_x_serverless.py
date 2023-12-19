@@ -1,8 +1,8 @@
 import sys
 import traceback
-import click
 
 import botocore.exceptions
+import click
 
 from multi_x_serverless.deployment.client.cli.cli import cli
 

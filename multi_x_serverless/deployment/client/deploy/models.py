@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Optional, Sequence
 
 import botocore.exceptions
-import json
+
 from multi_x_serverless.deployment.client.config import Config
 from multi_x_serverless.deployment.client.deploy.clients import AWSClient, Client
 

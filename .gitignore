@@ -84,6 +84,3 @@ logs
 
 # Plots
 plotting/plots/*.png
-
-# Testing
-test_deploy

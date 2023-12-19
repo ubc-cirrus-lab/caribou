@@ -32,7 +32,8 @@ class MultiXServerlessFunction:  # pylint: disable=too-many-instance-attributes
         for call in function_calls:
             if "," not in call:
                 raise RuntimeError(
-                    f"Could not parse function call ({call}) in function ({self.function}), did you provide the payload?"
+                    f"""Could not parse function call ({call}) in function 
+                    ({self.function}), did you provide the payload?"""
                 )
             function_name = call.strip().split(",")[0]
             successor = next((func for func in workflow.functions if func.function.__name__ == function_name), None)

@@ -2,20 +2,20 @@ from __future__ import annotations
 
 import functools
 import hashlib
+import inspect
 import os
 import shutil
 import subprocess
 import sys
 import tempfile
 import zipfile
-import inspect
 
 import boto3
 import yaml
 
+import multi_x_serverless
 from multi_x_serverless.deployment.client.config import Config
 from multi_x_serverless.deployment.client.deploy.models import Workflow
-import multi_x_serverless
 
 
 class DeploymentPackager:  # pylint: disable=too-few-public-methods
@@ -151,7 +151,7 @@ def pip_execute(command: str, args: list[str]) -> tuple[bytes, bytes]:
     return out, err
 
 
-def pip_import_string():
+def pip_import_string() -> str:
     # This is a copy of the pip_import_string function from chalice
     import pip
 

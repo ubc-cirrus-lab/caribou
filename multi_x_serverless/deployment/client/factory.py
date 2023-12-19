@@ -5,8 +5,8 @@ import sys
 import yaml
 from botocore.session import Session
 
-from multi_x_serverless.deployment.client.config import Config
 from multi_x_serverless.deployment.client import __version__ as MULTI_X_SERVERLESS_VERSION
+from multi_x_serverless.deployment.client.config import Config
 from multi_x_serverless.deployment.client.deploy.deployer import (
     Deployer,
     create_default_deployer,

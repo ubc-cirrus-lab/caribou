@@ -1,6 +1,6 @@
+import json
 import time
 from typing import Any
-import json
 
 from boto3.session import Session
 
@@ -31,10 +31,7 @@ class Client:  # pylint: disable=too-few-public-methods
     def update_role(self, role_name: str, policy: str, trust_policy: dict) -> str:
         raise NotImplementedError()
 
-    def update_function(self, function_name: str, zip_contents: bytes) -> str:
-        raise NotImplementedError()
-
-    def create_function(
+    def update_function(
         self,
         function_name: str,
         role_arn: str,
@@ -140,7 +137,7 @@ class AWSClient(Client):  # pylint: disable=too-few-public-methods
         response = client.create_role(RoleName=role_name, AssumeRolePolicyDocument=json.dumps(trust_policy))
         self.put_role_policy(role_name=role_name, policy_name=role_name, policy_document=policy)
 
-        time.sleep(self.DELAY_TIME * 2) # Wait for role to become active
+        time.sleep(self.DELAY_TIME * 2)  # Wait for role to become active
         print(f"Successfully created role {role_name}")
         return response["Role"]["Arn"]
 
