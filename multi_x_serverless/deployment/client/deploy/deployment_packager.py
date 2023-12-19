@@ -8,11 +8,14 @@ import subprocess
 import sys
 import tempfile
 import zipfile
+import inspect
 
-from chalice.compat import pip_import_string
+import boto3
+import yaml
 
 from multi_x_serverless.deployment.client.config import Config
 from multi_x_serverless.deployment.client.deploy.models import DeploymentPackage
+import multi_x_serverless
 
 
 class DeploymentPackager:  # pylint: disable=too-few-public-methods
@@ -30,11 +33,28 @@ class DeploymentPackager:  # pylint: disable=too-few-public-methods
             return package_filename
         with tempfile.TemporaryDirectory() as temp_dir:
             requirements_filename = self._get_requirements_filename(project_dir)
+            if not os.path.exists(requirements_filename):
+                raise RuntimeError(f"Could not find requirements file: {requirements_filename}")
             self._build_dependencies(requirements_filename, temp_dir)
             with zipfile.ZipFile(package_filename, "w", zipfile.ZIP_DEFLATED) as z:
                 self._add_py_dependencies(z, temp_dir)
                 self._add_application_files(z, project_dir)
+                self._add_mutli_x_serverless_dependency(z, project_dir)
         return package_filename
+
+    def _add_mutli_x_serverless_dependency(self, zip_file: zipfile.ZipFile, project_dir: str) -> None:
+        multi_x_serverless_path = inspect.getfile(multi_x_serverless)
+        if multi_x_serverless_path.endswith(".pyc"):
+            multi_x_serverless_path = multi_x_serverless_path[:-1]
+        multi_x_serverless_path = os.path.join(os.path.dirname(multi_x_serverless_path), "deployment", "client")
+        zip_file.write(
+            os.path.join(multi_x_serverless_path, "__init__.py"),
+            os.path.join("multi_x_serverless", "deployment", "client", "__init__.py"),
+        )
+        zip_file.write(
+            os.path.join(multi_x_serverless_path, "workflow.py"),
+            os.path.join("multi_x_serverless", "deployment", "client", "workflow.py"),
+        )
 
     def _add_py_dependencies(self, zip_file: zipfile.ZipFile, deps_dir: str) -> None:
         prefix_len = len(deps_dir) + 1
@@ -89,11 +109,19 @@ class DeploymentPackager:  # pylint: disable=too-few-public-methods
         with open(requirements_filename, "r", encoding="utf-8") as file:
             requirements = file.read().splitlines()
 
+        # Add version of boto3 if not present in requirements
+        if "boto3" not in requirements:
+            requirements.append(f"boto3=={boto3.__version__}")
+
+        # Add version of pyyaml if not present in requirements
+        if "pyyaml" not in requirements:
+            requirements.append(f"pyyaml=={yaml.__version__}")
+
         temp_install_dir = tempfile.mkdtemp(dir=temp_dir, prefix="temp_install_")
 
         try:
-            pip_args = ["install", "--target", temp_install_dir] + requirements
-            pip_execute("main", pip_args)
+            pip_args = ["--target", temp_install_dir] + requirements
+            pip_execute("install", pip_args)
 
             for item in os.listdir(temp_install_dir):
                 item_path = os.path.join(temp_install_dir, item)
@@ -108,7 +136,7 @@ def pip_execute(command: str, args: list[str]) -> tuple[bytes, bytes]:
     main_args = [command] + args
     env_vars = os.environ.copy()
     python_exe = sys.executable
-    run_pip = f"import sys; {import_string}; sys.exit(main({main_args}))"
+    run_pip = f"import sys; {import_string}; main({main_args})"
 
     with subprocess.Popen(
         [python_exe, "-c", run_pip],
@@ -120,3 +148,21 @@ def pip_execute(command: str, args: list[str]) -> tuple[bytes, bytes]:
         if process.returncode != 0:
             raise RuntimeError(f"Error installing dependencies: {err.decode('utf-8')}")
     return out, err
+
+
+def pip_import_string():
+    # This is a copy of the pip_import_string function from chalice
+    import pip
+
+    pip_major_version = int(pip.__version__.split(".")[0])
+    pip_minor_version = int(pip.__version__.split(".")[1])
+    pip_major_minor = (pip_major_version, pip_minor_version)
+    if (9, 0) <= pip_major_minor < (10, 0):
+        return "from pip import main"
+    elif (10, 0) <= pip_major_minor < (19, 3):
+        return "from pip._internal import main"
+    elif (19, 3) <= pip_major_minor < (20, 0):
+        return "from pip._internal.main import main"
+    elif pip_major_minor >= (20, 0):
+        return "from pip._internal.cli.main import main"
+    raise RuntimeError("Unknown import string for pip version: %s" % str(pip_major_minor))

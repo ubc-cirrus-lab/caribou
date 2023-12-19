@@ -41,6 +41,8 @@ class Deployer:  # pylint: disable=too-few-public-methods
         # Build the workflow resources, e.g. deployment packages, iam roles, etc.
         self._deployment_packager.build(self._config, DeploymentPackage())
 
+        return []
+
         # Chain the commands needed to deploy all the built resources to the serverless platform
         deployment_plan = DeploymentPlan(workflow.get_deployment_instructions())
 
