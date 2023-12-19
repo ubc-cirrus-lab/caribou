@@ -36,7 +36,7 @@ OPT_IN_REGIONS = [
 ]
 
 
-def convert_decimals_to_float(item):
+def convert_decimals_to_float(item: dict) -> dict:
     """
     Converts all decimals in a dictionary to floats.
     """
@@ -46,7 +46,7 @@ def convert_decimals_to_float(item):
     return item
 
 
-def get_item_from_dynamodb(key: dict, table_name: str, limit: int = -1, order: str = "asc") -> dict:
+def get_item_from_dynamodb(key: dict, table_name: str, limit: int = -1, order: str = "asc") -> list[dict]:
     """
     Gets an item from a DynamoDB table
 

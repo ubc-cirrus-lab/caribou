@@ -4,6 +4,7 @@ import json
 import math
 import os
 import time
+from typing import Any, Optional
 
 import boto3
 from chalice import Chalice
@@ -11,7 +12,7 @@ from chalice import Chalice
 app = Chalice(app_name="fpo-io")
 
 
-def handle_request(args=None):
+def handle_request(args: Optional[dict[str, Any]] = None) -> dict[str, Any]:
     start_time = time.perf_counter()  # START TIMER
 
     # Default values
@@ -51,5 +52,5 @@ def handle_request(args=None):
 
 
 @app.lambda_function()
-def lambda_handler(event, context):
+def lambda_handler(event: dict[str, Any]) -> dict[str, Any]:
     return handle_request(event)

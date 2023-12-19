@@ -4,7 +4,22 @@ from typing import Any
 from boto3.session import Session
 
 
-class AWSClient:  # pylint: disable=too-few-public-methods
+class Client:  # pylint: disable=too-few-public-methods
+    def create_function(
+        self,
+        function_name: str,
+        role_arn: str,
+        zip_contents: bytes,
+        runtime: str,
+        handler: str,
+        environment_variables: dict[str, str],
+        timeout: int,
+        memory_size: int,
+    ) -> str:
+        raise NotImplementedError()
+
+
+class AWSClient(Client):  # pylint: disable=too-few-public-methods
     LAMBDA_CREATE_ATTEMPTS = 30
     DELAY_TIME = 5
 

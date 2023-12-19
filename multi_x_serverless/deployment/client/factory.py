@@ -6,27 +6,26 @@ import yaml
 from botocore.session import Session
 
 from multi_x_serverless.deployment.client.config import Config
-from multi_x_serverless.deployment.client.constants import multi_x_serverless_version
+from multi_x_serverless.deployment.client.constants import MULTI_X_SERVERLESS_VERSION
 from multi_x_serverless.deployment.client.deploy.deployer import (
     Deployer,
     create_default_deployer,
     create_deletion_deployer,
 )
-from multi_x_serverless.deployment.client.wrapper import MultiXServerlessWorkflow
+from multi_x_serverless.deployment.client.workflow import MultiXServerlessWorkflow
 
 
 class CLIFactory:
-    def __init__(self, project_dir, environ=None):
+    def __init__(self, project_dir: str):
         self.project_dir = project_dir
-        self.environ = environ or os.environ
 
     def create_config_obj(self) -> Config:
         try:
             project_config = self.load_project_config()
-        except (OSError, IOError):
-            raise RuntimeError("Could not load project config")
-        except ValueError as e:
-            raise RuntimeError("Unable to parse project config: %s" % e)
+        except (OSError, IOError) as exc:
+            raise RuntimeError("Could not load project config") from exc
+        except ValueError as exc:
+            raise RuntimeError(f"Unable to parse project config: {exc}") from exc
         self._validate_config(project_config)
         project_config["workflow_app"] = self.load_workflow_app()
         return Config(project_config, self.project_dir)
@@ -36,24 +35,24 @@ class CLIFactory:
         self._add_user_agent(session)
         return session
 
-    def _add_user_agent(self, session):
-        suffix = "%s/%s" % (session.user_agent_name, session.user_agent_version)
+    def _add_user_agent(self, session: Session) -> None:
+        suffix = f"{session.user_agent_name}/{session.user_agent_version}"
         session.user_agent_name = "multi-x-serverless"
-        session.user_agent_version = multi_x_serverless_version
+        session.user_agent_version = MULTI_X_SERVERLESS_VERSION
         session.user_agent_extra = suffix
 
-    def create_deployer(self, config, session) -> Deployer:
-        create_default_deployer(config, session)
+    def create_deployer(self, config: Config, session: Session) -> Deployer:
+        return create_default_deployer(config, session)
 
-    def create_deletion_deployer(self, config, session) -> Deployer:
-        create_deletion_deployer(config, session)
+    def create_deletion_deployer(self, config: Config, session: Session) -> Deployer:
+        return create_deletion_deployer(config, session)
 
     def load_project_config(self) -> dict:
         config_file = os.path.join(self.project_dir, ".multi-x-serverless", "config.yml")
-        with open(config_file) as f:
+        with open(config_file, encoding="utf-8") as f:
             return yaml.safe_load(f)
 
-    def _validate_config(self, project_config: dict):
+    def _validate_config(self, project_config: dict) -> None:
         if not isinstance(project_config, dict):
             raise RuntimeError("project config must be a dictionary")
 
@@ -68,5 +67,5 @@ class CLIFactory:
             workflow = importlib.import_module("workflow")
             workflow_app = getattr(workflow, "workflow")
         except SyntaxError as e:
-            raise RuntimeError("Unable to import workflow.py file: %s" % e)
+            raise RuntimeError(f"Unable to import workflow.py file: {e}") from e
         return workflow_app

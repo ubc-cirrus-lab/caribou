@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 
 from multi_x_serverless.deployment.client.config import Config
 from multi_x_serverless.deployment.client.deploy.clients import AWSClient
@@ -15,15 +15,14 @@ from multi_x_serverless.deployment.client.deploy.models import (
 
 class Executor:
     def __init__(self, config: Config) -> None:
-        self.resource_values: dict[str, list[Any]] = []
+        self.resource_values: dict[str, list[Any]] = {}
         self.variables: dict[str, Any] = {}
         self._config = config
-        self._aws_client: AWSClient = None
+        self._aws_client: Optional[AWSClient] = None
 
     def execute(self, deployment_plan: DeploymentPlan) -> None:
-        for home_region in self._config.home_regions:
+        for home_region, instructions in deployment_plan.instructions.items():
             endpoint, region = home_region.split(":")
-            instructions = deployment_plan.instructions[endpoint]
             self._aws_client = AWSClient(region)
             for instruction in instructions:
                 getattr(self, f"_do_{instruction.__class__.__name__.lower()}_{endpoint}", self._default_handler)(

@@ -5,7 +5,7 @@ from typing import Any
 import yaml
 
 from multi_x_serverless.deployment.client.deploy.models import Resource
-from multi_x_serverless.deployment.client.wrapper import MultiXServerlessWorkflow
+from multi_x_serverless.deployment.client.workflow import MultiXServerlessWorkflow
 
 
 class Config:
@@ -27,7 +27,7 @@ class Config:
     def workflow_name(self) -> str:
         return self._lookup("workflow_name")
 
-    def _lookup(self, key: str) -> MultiXServerlessWorkflow:
+    def _lookup(self, key: str) -> Any:
         return self.project_config.get(key)
 
     @property
@@ -36,16 +36,12 @@ class Config:
 
         if major == 2:
             return "python2.7"
-        elif (major, minor) <= (3, 6):
+        if (major, minor) <= (3, 6):
             return "python3.6"
-        elif (major, minor) <= (3, 10):
-            return "python%s.%s" % (major, minor)
+        if (major, minor) <= (3, 10):
+            return f"python{major}.{minor}"
 
         return "python3.11"
-
-    @property
-    def project_dir(self) -> str:
-        return self._project_dir
 
     @property
     def environment_variables(self) -> dict[str, Any]:
@@ -59,15 +55,17 @@ class Config:
     def iam_policy_file(self) -> str:
         return self._lookup("iam_policy_file")
 
-    def deployed_resources(self):
+    def deployed_resources(self) -> list[Resource]:
         deployed_resource_file = os.path.join(self.project_dir, ".multi-x-serverless", "deployed_resources.yml")
-        with open(deployed_resource_file) as f:
+        with open(deployed_resource_file, encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
         if data is not None:
             return data["resources"]
 
+        return []
+
     def update_deployed_resources(self, deployed_resources: list[Resource]) -> None:
         deployed_resource_file = os.path.join(self.project_dir, ".multi-x-serverless", "deployed_resources.yml")
-        with open(deployed_resource_file, "w") as f:
+        with open(deployed_resource_file, "w", encoding="utf-8") as f:
             yaml.dump({"resources": deployed_resources}, f)

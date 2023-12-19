@@ -5,7 +5,7 @@ from botocore.session import Session
 
 from multi_x_serverless.deployment.client.cli.new_workflow import create_new_workflow_directory
 from multi_x_serverless.deployment.client.config import Config
-from multi_x_serverless.deployment.client.constants import multi_x_serverless_version
+from multi_x_serverless.deployment.client.constants import MULTI_X_SERVERLESS_VERSION
 from multi_x_serverless.deployment.client.deploy.deployer import Deployer
 from multi_x_serverless.deployment.client.factory import CLIFactory
 
@@ -19,7 +19,7 @@ def cli(ctx: click.Context, project_dir: str) -> None:
     elif not os.path.isabs(project_dir):
         project_dir = os.path.abspath(project_dir)
     ctx.obj["project_dir"] = project_dir
-    ctx.obj["factory"] = CLIFactory(project_dir, environ=os.environ)
+    ctx.obj["factory"] = CLIFactory(project_dir)
     os.chdir(project_dir)
 
 
@@ -44,4 +44,4 @@ def deploy(ctx: click.Context) -> None:
     print(deployment_information)
 
 
-__version__ = multi_x_serverless_version
+__version__ = MULTI_X_SERVERLESS_VERSION

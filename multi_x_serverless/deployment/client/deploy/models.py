@@ -5,6 +5,7 @@ from enum import Enum
 from typing import Any, Optional
 
 from multi_x_serverless.deployment.client.config import Config
+from multi_x_serverless.deployment.client.deploy.clients import AWSClient, Client
 
 
 @dataclass
@@ -17,7 +18,7 @@ class Variable:
     name: str
 
 
-@dataclass
+@dataclass(frozen=True)
 class Instruction:
     pass
 
@@ -40,7 +41,6 @@ class RecordResourceValue(Instruction):
 
 @dataclass
 class FunctionInstance(Instance):
-    resource_name: str
     entry_point: bool
     timeout: int
     memory: int
@@ -60,9 +60,10 @@ class FunctionInstance(Instance):
 
 
 class Resource:
-    def __init__(self, name: str, resource_type: str) -> None:
+    def __init__(self, name: str, resource_type: str, config: Optional[Config] = None) -> None:
         self._name = name
         self._resource_type = resource_type
+        self._config = config
 
     def name(self) -> str:
         return self._name
@@ -73,15 +74,22 @@ class Resource:
     def dependencies(self) -> list[Resource]:
         return []
 
-    def get_deployment_instructions(
-        self, config: Config, endpoint: Optional[Endpoint]  # pylint: disable=unused-argument
-    ) -> list[Instruction]:
-        return []
+    def get_deployment_instructions(self) -> dict[str, list[Instruction]]:
+        return {}
 
 
 class RemoteState:
-    def __init__(self, endpoint) -> None:
+    def __init__(self, endpoint: Endpoint, region: str) -> None:
         self._endpoint = endpoint
+        self._client = self.initialise_client(endpoint, region)
+
+    @staticmethod
+    def initialise_client(endpoint: Endpoint, region: str) -> Client:
+        if endpoint == Endpoint.AWS:
+            return AWSClient(region)
+        if endpoint == Endpoint.GCP:
+            return NotImplementedError()
+        raise RuntimeError(f"Unknown endpoint {endpoint}")
 
     def resource_exists(self, resource: Resource) -> bool:
         if self._endpoint == Endpoint.AWS:
@@ -107,31 +115,61 @@ class RemoteState:
         pass
 
 
-@dataclass
 class Function(Resource):  # pylint: disable=too-many-instance-attributes
-    resource_type: str = "function"
-    environment_variables: dict[str, str]
-    runtime: str
-    handler: str
-    timeout: int
-    memory: int
-    role: IAMRole
-    deployment_package: DeploymentPackage
-    region_group: str
-    remote_state: RemoteState = field(default_factory=RemoteState)
+    def __init__(
+        self,
+        name: str,
+        entry_point: bool,
+        timeout: int,
+        memory: int,
+        region_group: str,
+        role: IAMRole,
+        deployment_package: DeploymentPackage,
+        environment_variables: dict[str, str],
+        handler: str,
+        runtime: str,
+        home_regions: list[str],
+    ) -> None:
+        super().__init__(name, "function")
+        self.deployment_name = deployment_name
+        self.entry_point = entry_point
+        self.timeout = timeout
+        self.memory = memory
+        self.region_group = region_group
+        self._remote_states: dict[Endpoint, dict[str, RemoteState]] = {}
+        self.initialise_remote_states(home_regions)
+        self.role = role
+        self.deployment_package = deployment_package
+        self.environment_variables = environment_variables
+        self.handler = handler
+        self.runtime = runtime
+        self.home_regions = home_regions
+
+    def initialise_remote_states(self, home_regions: list[str]) -> None:
+        for home_region in home_regions:
+            endpoint, region = home_region.split(":")
+            if endpoint not in self._remote_states:
+                self._remote_states[endpoint] = {}
+            self._remote_states[endpoint][region] = RemoteState(endpoint)
 
     def dependencies(self) -> list[Resource]:
         resources: list[Resource] = [self.role, self.deployment_package]
         return resources
 
-    def get_deployment_instructions(self, _: Config, endpoint: Endpoint) -> list[Instruction]:
-        if endpoint == Endpoint.AWS:
-            return self.get_deployment_instructions_aws()
-        if endpoint == Endpoint.GCP:
-            return self.get_deployment_instructions_gcp()
-        raise RuntimeError(f"Unknown endpoint {endpoint}")
+    def get_deployment_instructions(self) -> dict[str, list[Instruction]]:
+        instructions: dict[str, list[Instruction]] = {}
+        for home_region in self.home_regions:
+            endpoint, region = home_region.split(":")
+            if endpoint == Endpoint.AWS:
+                instruction = self.get_deployment_instructions_aws(region)
+            elif endpoint == Endpoint.GCP:
+                instruction = self.get_deployment_instructions_gcp(region)
+            else:
+                raise RuntimeError(f"Unknown endpoint {endpoint}")
+            instructions[home_region] = instruction
+        return instructions
 
-    def get_deployment_instructions_aws(self) -> list[Instruction]:
+    def get_deployment_instructions_aws(self, region: str) -> list[APICall]:
         api_calls: list[APICall] = []
         iam_role_varname = f"{self.role.name}_role_arn"
         lambda_trust_policy = {
@@ -145,7 +183,7 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
                 }
             ],
         }
-        if not self.remote_state.resource_exists(self.role):
+        if not self._remote_states[Endpoint.AWS][region].resource_exists(self.role):
             api_calls.extend(
                 [
                     APICall(
@@ -201,7 +239,7 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
         with open(self.deployment_package.filename, "rb") as f:
             zip_contents = f.read()
         function_varname = f"{self.name}_lambda_arn"
-        if not self.remote_state.resource_exists(self):
+        if not self._remote_states[Endpoint.AWS][region].resource_exists(self):
             api_calls.extend(
                 [
                     APICall(
@@ -263,37 +301,37 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
                     ),
                 ]
             )
+        return api_calls
 
-    def get_deployment_instructions_gcp(self) -> list[Instruction]:
-        pass
+    def get_deployment_instructions_gcp(self, region: str) -> list[Instruction]:  # pylint: disable=unused-argument
+        return []
 
 
 class Workflow(Resource):
     def __init__(
-        self, name: str, resources: list[Function], functions: list[FunctionInstance], edges: list[tuple[str, str]]
+        self,
+        name: str,
+        resources: list[Function],
+        functions: list[FunctionInstance],
+        edges: list[tuple[str, str]],
     ) -> None:
         self._resources = resources
         self._functions = functions
         self._edges = edges
-
         super().__init__(name, "workflow")
 
-    def dependencies(self) -> list[Resource]:
+    def dependencies(self) -> list[Function]:
         return self._resources
 
-    def add_resource(self, resource: Resource) -> None:
-        self._resources.append(resource)
-
-    def get_deployment_instructions(self, config: Config, _: Endpoint) -> dict[Endpoint, list[Instruction]]:
-        plans: dict[Endpoint, list[Instruction]] = []
+    def get_deployment_instructions(self) -> dict[str, list[Instruction]]:
+        plans: dict[str, list[Instruction]] = {}
         for resource in self._resources:
-            for endpoint in Endpoint:
-                if endpoint not in plans:
-                    plans[endpoint] = []
-                result = resource.get_deployment_instructions(config, endpoint)
-                if result:
-                    for instruction in result:
-                        plans[endpoint].append(instruction)
+            result = resource.get_deployment_instructions()
+            if result:
+                for region, instructions in result.items():
+                    if region not in plans:
+                        plans[region] = []
+                    plans[region].extend(instructions)
         return plans
 
 
@@ -311,7 +349,7 @@ class APICall(Instruction):
 
 @dataclass
 class DeploymentPlan:
-    instructions: dict[Endpoint, list[Instruction]] = field(default_factory=dict)
+    instructions: dict[str, list[Instruction]] = field(default_factory=dict)
 
 
 class IAMRole(Resource):
@@ -320,7 +358,7 @@ class IAMRole(Resource):
         self.policy = policy
 
     def dependencies(self) -> list[Resource]:
-        return [self.policy]
+        return []
 
 
 @dataclass

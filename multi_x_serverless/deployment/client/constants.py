@@ -1,1 +1,1 @@
-multi_x_serverless_version = "0.0.1"
+MULTI_X_SERVERLESS_VERSION = "0.0.1"

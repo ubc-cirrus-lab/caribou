@@ -14,9 +14,9 @@ AWS_DATACENTER_INFO_TABLE_NAME = "multi-x-serverless-datacenter-info"
 WORLD_AVERAGE_CO2_INTENSITY = 475.0
 TRANSMISSION_CO2_TABLE_NAME = "multi-x-serverless-transmission-co2"
 
-SEGMENT_CACHE = {}
+SEGMENT_CACHE: dict[str, float] = {}
 
-REQUEST_CACHE = {}
+REQUEST_CACHE: dict[str, float] = {}
 
 LAST_REQUEST = datetime.datetime.now()
 REQUEST_THRESHOLD = 1
@@ -171,7 +171,7 @@ def calculate_transmission_cabron_coefficient_from_source_to_destination(
     return total_weighted_carbon_intensity
 
 
-def calculateDistanceInKMFromLatLong(source: tuple[float, float], dest: tuple[float, float]) -> int:
+def calculateDistanceInKMFromLatLong(source: tuple[float, float], dest: tuple[float, float]) -> float:
     R = 6371.0
 
     lat1 = math.radians(source[0])

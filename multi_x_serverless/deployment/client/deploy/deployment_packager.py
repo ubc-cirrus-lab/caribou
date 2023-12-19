@@ -103,7 +103,7 @@ class DeploymentPackager:  # pylint: disable=too-few-public-methods
             shutil.rmtree(temp_install_dir)
 
 
-def pip_execute(command: str, args: list[str]) -> None:
+def pip_execute(command: str, args: list[str]) -> tuple[bytes, bytes]:
     import_string = pip_import_string()
     main_args = [command] + args
     env_vars = os.environ.copy()

@@ -108,6 +108,7 @@ exclude = '''
   | buck-out
   | build
   | dist
+  | ./multi_x_serverless/deployment/client/cli/template/app.py
 )/
 '''
 

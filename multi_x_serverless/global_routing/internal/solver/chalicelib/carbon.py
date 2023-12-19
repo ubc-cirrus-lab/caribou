@@ -22,7 +22,7 @@ def get_execution_carbon_for_region_function(region_provider: tuple[str, str]) -
     if len(grid_co2_data) > 0:
         grid_co2_data = grid_co2_data[0]
     else:
-        raise Exception(f"Could not find data for region {region} and provider {provider}")
+        raise ValueError(f"Could not find data for region {region} and provider {provider}")
 
     def cost(
         function_spec: dict,
