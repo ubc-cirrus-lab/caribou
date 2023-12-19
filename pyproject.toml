@@ -10,7 +10,7 @@ readme = "README.md"
 repository = "https://github.com/ubc-cirrus-lab/TODO"
 
 [tool.poetry.scripts]
-playground = "multi_x_serverless.playground.main:main"
+multi_x_serverless = "multi_x_serverless.deployment.client.multi_x_serverless:main"
 
 [tool.poetry.dependencies]
 python = "^3.11"

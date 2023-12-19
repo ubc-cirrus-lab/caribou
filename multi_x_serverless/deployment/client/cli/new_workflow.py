@@ -11,7 +11,8 @@ def create_new_workflow_directory(workflow_name: str) -> None:
 
     new_workflow_dir = os.path.join(os.getcwd(), workflow_name)
 
-    os.mkdir(new_workflow_dir)
+    if os.path.exists(new_workflow_dir):
+        raise RuntimeError(f"Workflow directory {new_workflow_dir} already exists")
 
     shutil.copytree(template_dir, new_workflow_dir)
 

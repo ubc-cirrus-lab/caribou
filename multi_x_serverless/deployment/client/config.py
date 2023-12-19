@@ -4,7 +4,6 @@ from typing import Any
 
 import yaml
 
-from multi_x_serverless.deployment.client.deploy.models import Resource
 from multi_x_serverless.deployment.client.workflow import MultiXServerlessWorkflow
 
 
@@ -55,7 +54,7 @@ class Config:
     def iam_policy_file(self) -> str:
         return self._lookup("iam_policy_file")
 
-    def deployed_resources(self) -> list[Resource]:
+    def deployed_resources(self) -> list[Any]:
         deployed_resource_file = os.path.join(self.project_dir, ".multi-x-serverless", "deployed_resources.yml")
         with open(deployed_resource_file, encoding="utf-8") as f:
             data = yaml.safe_load(f)
@@ -65,7 +64,7 @@ class Config:
 
         return []
 
-    def update_deployed_resources(self, deployed_resources: list[Resource]) -> None:
+    def update_deployed_resources(self, deployed_resources: list[Any]) -> None:
         deployed_resource_file = os.path.join(self.project_dir, ".multi-x-serverless", "deployed_resources.yml")
         with open(deployed_resource_file, "w", encoding="utf-8") as f:
             yaml.dump({"resources": deployed_resources}, f)
