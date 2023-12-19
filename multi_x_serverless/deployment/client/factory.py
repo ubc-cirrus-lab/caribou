@@ -4,8 +4,10 @@ import sys
 
 import yaml
 from botocore.session import Session
+from pydantic import ValidationError
 
 from multi_x_serverless.deployment.client import __version__ as MULTI_X_SERVERLESS_VERSION
+from multi_x_serverless.deployment.client.cli.config_schema import ConfigSchema
 from multi_x_serverless.deployment.client.config import Config
 from multi_x_serverless.deployment.client.deploy.deployer import (
     Deployer,
@@ -56,8 +58,10 @@ class CLIFactory:
         if not isinstance(project_config, dict):
             raise RuntimeError("project config must be a dictionary")
 
-        # Check if the config adheres to the schema
-        # TODO: Implement this
+        try:
+            ConfigSchema(**project_config)
+        except ValidationError as exc:
+            raise RuntimeError(f"Invalid project config: {exc}") from exc
 
     def load_workflow_app(self) -> MultiXServerlessWorkflow:
         if self.project_dir not in sys.path:
