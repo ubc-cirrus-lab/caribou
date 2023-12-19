@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Optional
+from typing import Any, Optional, Sequence
 
 from multi_x_serverless.deployment.client.config import Config
 from multi_x_serverless.deployment.client.deploy.clients import AWSClient, Client
@@ -61,17 +61,11 @@ class FunctionInstance(Instance):
 
 class Resource:
     def __init__(self, name: str, resource_type: str, config: Optional[Config] = None) -> None:
-        self._name = name
-        self._resource_type = resource_type
+        self.name = name
+        self.resource_type = resource_type
         self._config = config
 
-    def name(self) -> str:
-        return self._name
-
-    def resource_type(self) -> str:
-        return self._resource_type
-
-    def dependencies(self) -> list[Resource]:
+    def dependencies(self) -> Sequence[Resource]:
         return []
 
     def get_deployment_instructions(self) -> dict[str, list[Instruction]]:
@@ -88,7 +82,7 @@ class RemoteState:
         if endpoint == Endpoint.AWS:
             return AWSClient(region)
         if endpoint == Endpoint.GCP:
-            return NotImplementedError()
+            raise NotImplementedError()
         raise RuntimeError(f"Unknown endpoint {endpoint}")
 
     def resource_exists(self, resource: Resource) -> bool:
@@ -99,20 +93,22 @@ class RemoteState:
         raise RuntimeError(f"Unknown endpoint {self._endpoint}")
 
     def resource_exists_aws(self, resource: Resource) -> bool:
-        if resource.resource_type() == "iam_role":
+        if resource.resource_type == "iam_role":
             return self.aws_iam_role_exists(resource)
-        if resource.resource_type() == "function":
+        if resource.resource_type == "function":
             return self.aws_lambda_function_exists(resource)
-        raise RuntimeError(f"Unknown resource type {resource.resource_type()}")
+        raise RuntimeError(f"Unknown resource type {resource.resource_type}")
 
     def aws_iam_role_exists(self, resource: Resource) -> bool:
-        pass
+        role = self._client.get_iam_role(resource.name)
+        return role is not None
 
     def aws_lambda_function_exists(self, resource: Resource) -> bool:
-        pass
+        function = self._client.get_lambda_function(resource.name)
+        return function is not None
 
     def resource_exists_gcp(self, resource: Resource) -> bool:
-        pass
+        return False
 
 
 class Function(Resource):  # pylint: disable=too-many-instance-attributes
@@ -131,7 +127,6 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
         home_regions: list[str],
     ) -> None:
         super().__init__(name, "function")
-        self.deployment_name = deployment_name
         self.entry_point = entry_point
         self.timeout = timeout
         self.memory = memory
@@ -148,11 +143,12 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
     def initialise_remote_states(self, home_regions: list[str]) -> None:
         for home_region in home_regions:
             endpoint, region = home_region.split(":")
-            if endpoint not in self._remote_states:
-                self._remote_states[endpoint] = {}
-            self._remote_states[endpoint][region] = RemoteState(endpoint)
+            endpoint_type = Endpoint(endpoint)
+            if endpoint_type not in self._remote_states:
+                self._remote_states[endpoint_type] = {}
+            self._remote_states[endpoint_type][region] = RemoteState(endpoint=endpoint_type, region=region)
 
-    def dependencies(self) -> list[Resource]:
+    def dependencies(self) -> Sequence[Resource]:
         resources: list[Resource] = [self.role, self.deployment_package]
         return resources
 
@@ -169,8 +165,8 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
             instructions[home_region] = instruction
         return instructions
 
-    def get_deployment_instructions_aws(self, region: str) -> list[APICall]:
-        api_calls: list[APICall] = []
+    def get_deployment_instructions_aws(self, region: str) -> list[Instruction]:
+        instructions: list[Instruction] = []
         iam_role_varname = f"{self.role.name}_role_arn"
         lambda_trust_policy = {
             "Version": "2012-10-17",
@@ -184,7 +180,7 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
             ],
         }
         if not self._remote_states[Endpoint.AWS][region].resource_exists(self.role):
-            api_calls.extend(
+            instructions.extend(
                 [
                     APICall(
                         method_name="create_role",
@@ -210,7 +206,7 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
                 ]
             )
         else:
-            api_calls.extend(
+            instructions.extend(
                 [
                     APICall(
                         method_name="update_role",
@@ -236,11 +232,14 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
                 ]
             )
 
+        if self.deployment_package.filename is None:
+            raise RuntimeError("Deployment package has not been built")
+
         with open(self.deployment_package.filename, "rb") as f:
             zip_contents = f.read()
         function_varname = f"{self.name}_lambda_arn"
         if not self._remote_states[Endpoint.AWS][region].resource_exists(self):
-            api_calls.extend(
+            instructions.extend(
                 [
                     APICall(
                         method_name="create_function",
@@ -271,7 +270,7 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
                 ]
             )
         else:
-            api_calls.extend(
+            instructions.extend(
                 [
                     APICall(
                         method_name="update_function",
@@ -301,7 +300,7 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
                     ),
                 ]
             )
-        return api_calls
+        return instructions
 
     def get_deployment_instructions_gcp(self, region: str) -> list[Instruction]:  # pylint: disable=unused-argument
         return []
@@ -320,7 +319,7 @@ class Workflow(Resource):
         self._edges = edges
         super().__init__(name, "workflow")
 
-    def dependencies(self) -> list[Function]:
+    def dependencies(self) -> Sequence[Resource]:
         return self._resources
 
     def get_deployment_instructions(self) -> dict[str, list[Instruction]]:
@@ -357,7 +356,7 @@ class IAMRole(Resource):
         super().__init__(role_name, "iam_role")
         self.policy = policy
 
-    def dependencies(self) -> list[Resource]:
+    def dependencies(self) -> Sequence[Resource]:
         return []
 
 

@@ -85,7 +85,7 @@ def get_item_from_dynamodb(key: dict, table_name: str, limit: int = -1, order: s
         items = [convert_decimals_to_float(item) for item in items]
     else:
         items = response["Item"]
-        items = convert_decimals_to_float(items)
+        items = [convert_decimals_to_float(items)]
 
     return items
 

@@ -1,10 +1,7 @@
 import datetime
 import json
-import logging
-import socket
-import time
 from timeit import default_timer as timer
-from typing import Any
+from typing import Any, Optional
 
 import boto3
 import numpy as np
@@ -32,7 +29,7 @@ def invoke_lambda_functions(event: Any) -> None:  # pylint: disable=unused-argum
     # Get all the lambda functions in the current region
     functions = get_lambda_functions_with_name("fpo-io-prod-lambda_handler", current_region)
 
-    experiment_and_payload = [
+    experiment_and_payload: list[tuple[str, dict[str, int], list]] = [
         ("Pure CPU", {"n": 30, "c": 4000, "i": 0, "s": 0}, []),
         ("Pure IO", {"n": 1, "c": 0, "i": 1500, "s": 0}, []),
     ]
@@ -44,7 +41,7 @@ def invoke_lambda_functions(event: Any) -> None:  # pylint: disable=unused-argum
                     execution_times.append(execution_only_duration)
 
         for experiment_name, payload, execution_times in experiment_and_payload:
-            payload = str(payload)
+            payload_str = json.dumps(payload)
             successfull_invocations = len(execution_times)
             timing_result = calculate_stats(execution_times)
 
@@ -55,7 +52,7 @@ def invoke_lambda_functions(event: Any) -> None:  # pylint: disable=unused-argum
                 current_time_abr,
                 current_region,
                 experiment_name,
-                payload,
+                payload_str,
                 successfull_invocations,
                 timing_result["mean"],
                 timing_result["std_dev"],
@@ -72,17 +69,21 @@ def invoke_lambda_functions(event: Any) -> None:  # pylint: disable=unused-argum
 
 
 # Function to calculate statistics
-def calculate_stats(data):
+def calculate_stats(data: list[int]) -> dict[str, float]:
     data = np.array(data)
-    stats = {"mean": np.mean(data), "std_dev": np.std(data), "min": np.min(data), "max": np.max(data)}
+    stats: dict[str, float] = {
+        "mean": np.mean(data).astype(float),
+        "std_dev": np.std(data).astype(float),
+        "min": np.min(data),
+        "max": np.max(data),
+    }
 
-    percentiles = np.percentile(data, [5, 50, 90, 95, 99])
-    stats.update({f"{p}th_percentile": val for p, val in zip([5, 50, 90, 95, 99], percentiles)})
-
+    for percentile in [5, 50, 90, 95, 99]:
+        stats[f"{percentile}th_percentile"] = np.percentile(data, percentile).astype(float)
     return stats
 
 
-def invoke_lambda_function(FunctionArn, function_region, payload=None):
+def invoke_lambda_function(FunctionArn: str, function_region: str, payload: Optional[dict[str, int]] = None) -> int:
     lambda_client = boto3.client("lambda", region_name=function_region)
 
     response = lambda_client.invoke(
@@ -100,7 +101,7 @@ def invoke_lambda_function(FunctionArn, function_region, payload=None):
     return execution_only_duration
 
 
-def get_current_time(abr=True) -> str:
+def get_current_time(abr: bool = True) -> str:
     if abr:
         time = datetime.datetime.utcnow().strftime("%Y-%m-%d %H UCT")
     else:
@@ -108,7 +109,7 @@ def get_current_time(abr=True) -> str:
     return time
 
 
-def write_results(result) -> None:
+def write_results(result: tuple[Any, ...]) -> None:
     dynamodb = boto3.resource("dynamodb", region_name=DEFAULT_REGION)
     target_table = dynamodb.Table(RUNTIME_RESULTS_TABLE_NAME)
 
@@ -158,7 +159,7 @@ def write_results(result) -> None:
     target_table.put_item(Item=item)
 
 
-def get_lambda_functions_with_name(name, region):
+def get_lambda_functions_with_name(name: str, region: str) -> list[tuple[str, str]]:
     lambda_client = boto3.client("lambda", region_name=region)
     functions = lambda_client.list_functions()
     filtered_functions = [

@@ -15,12 +15,18 @@ def get_execution_carbon_for_region_function(region_provider: tuple[str, str]) -
     table = ""
     if provider == AWS:
         table = AWS_DATACENTER_INFO_TABLE_NAME
-    datacenter_data = get_item_from_dynamodb({"region_code": region, "provider": provider}, table)
-    grid_co2_data = get_item_from_dynamodb(
+    datacenter_datas = get_item_from_dynamodb({"region_code": region, "provider": provider}, table)
+
+    if not datacenter_datas:
+        datacenter_data = {}
+    else:
+        datacenter_data = datacenter_datas[0]
+
+    grid_co2_datas = get_item_from_dynamodb(
         {"region_code_provider": region + ":" + provider}, GRID_CO2_TABLE_NAME, limit=1, order="desc"
     )
-    if len(grid_co2_data) > 0:
-        grid_co2_data = grid_co2_data[0]
+    if len(grid_co2_datas) > 0:
+        grid_co2_data = grid_co2_datas[0]
     else:
         raise ValueError(f"Could not find data for region {region} and provider {provider}")
 

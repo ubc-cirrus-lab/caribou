@@ -9,7 +9,12 @@ def get_cost_for_region_function(region_provider: tuple[str, str]) -> Callable:
     table = ""
     if provider == AWS:
         table = AWS_DATACENTER_INFO_TABLE_NAME
-    datacenter_data = get_item_from_dynamodb({"region_code": region, "provider": provider}, table)
+    datacenter_datas = get_item_from_dynamodb({"region_code": region, "provider": provider}, table)
+
+    if not datacenter_datas:
+        datacenter_data = {}
+    else:
+        datacenter_data = datacenter_datas[0]
 
     def cost(
         function_spec: dict, function_runtime_measurements: list[float], datacenter_data: dict = datacenter_data
@@ -102,7 +107,12 @@ def get_egress_cost_for_region_and_destination_region_function(
     table = ""
     if provider == AWS:
         table = AWS_DATACENTER_INFO_TABLE_NAME
-    datacenter_data = get_item_from_dynamodb({"region_code": region, "provider": provider}, table)
+    datacenter_datas = get_item_from_dynamodb({"region_code": region, "provider": provider}, table)
+
+    if not datacenter_datas:
+        datacenter_data = {}
+    else:
+        datacenter_data = datacenter_datas[0]
 
     def cost(
         function_data_transmission_measurements: list[float],
@@ -111,7 +121,10 @@ def get_egress_cost_for_region_and_destination_region_function(
     ) -> float:
         # print(function_data_transmission_measurements)
         transmission_cost_gb = float(datacenter_data["transmission_cost_gb"][destination_region])
-        estimated_data_transmission = function_data_transmission_measurements / 1000  # GB
+        function_data_transmission_average = sum(function_data_transmission_measurements) / len(
+            function_data_transmission_measurements
+        )
+        estimated_data_transmission = function_data_transmission_average / 1000  # GB
         return transmission_cost_gb * estimated_data_transmission
 
     return cost

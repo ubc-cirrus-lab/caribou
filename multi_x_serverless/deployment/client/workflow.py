@@ -98,7 +98,7 @@ class MultiXServerlessWorkflow:
         # Check if all predecessor functions have returned
         # If not, abort this function call, another function will eventually be called
         # TODO: Check if all predecessor functions have returned
-        pass  # pylint: disable=unnecessary-pass
+        return []
 
     def register_function(
         self, function: Callable[..., Any], name: str, entry_point: bool, timeout: int, memory: int, region_group: str

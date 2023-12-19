@@ -18,6 +18,12 @@ class Client:  # pylint: disable=too-few-public-methods
     ) -> str:
         raise NotImplementedError()
 
+    def get_iam_role(self, role_name: str) -> str:
+        raise NotImplementedError()
+
+    def get_lambda_function(self, function_name: str) -> dict[str, Any]:
+        raise NotImplementedError()
+
 
 class AWSClient(Client):  # pylint: disable=too-few-public-methods
     LAMBDA_CREATE_ATTEMPTS = 30
@@ -31,6 +37,16 @@ class AWSClient(Client):  # pylint: disable=too-few-public-methods
         if service_name not in self._client_cache:
             self._client_cache[service_name] = self._session.client(service_name)
         return self._client_cache[service_name]
+
+    def get_iam_role(self, role_name: str) -> str:
+        client = self._client("iam")
+        response = client.get_role(RoleName=role_name)
+        return response["Role"]["Arn"]
+
+    def get_lambda_function(self, function_name: str) -> dict[str, Any]:
+        client = self._client("lambda")
+        response = client.get_function(FunctionName=function_name)
+        return response["Configuration"]
 
     def create_function(
         self,
