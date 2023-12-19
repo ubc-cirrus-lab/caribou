@@ -46,7 +46,7 @@ class WorkflowBuilder:
                     entry_point=function.entry_point,
                 )
             )
-            function_name_to_function[function.name] = function
+            function_name_to_function[function.function.__name__] = function
             if function.entry_point and not entry_point:
                 entry_point = function
             elif function.entry_point and entry_point:
@@ -74,11 +74,12 @@ class WorkflowBuilder:
             timeout=entry_point.timeout,
             memory=entry_point.memory,
             region_group=entry_point.region_group,
+            function_resource_name=entry_point.function.__name__,
         )
         function_instances[predecessor_instance.name] = predecessor_instance
 
         for successor in entry_point.get_successors(config.workflow_app):
-            functions_to_visit.put((successor.name, predecessor_instance.name))
+            functions_to_visit.put((successor.function.__name__, predecessor_instance.name))
 
         while not functions_to_visit.empty():
             function_to_visit, predecessor_instance_name = functions_to_visit.get()
@@ -97,9 +98,10 @@ class WorkflowBuilder:
                     timeout=multi_x_serverless_function.timeout,
                     memory=multi_x_serverless_function.memory,
                     region_group=multi_x_serverless_function.region_group,
+                    function_resource_name=multi_x_serverless_function.function.__name__,
                 )
                 for successor in multi_x_serverless_function.get_successors(config.workflow_app):
-                    functions_to_visit.put(successor.name)
+                    functions_to_visit.put((successor.function.__name__, function_instance_name))
 
             edges.append((predecessor_instance_name, function_instance_name))
 

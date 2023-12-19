@@ -45,6 +45,7 @@ class FunctionInstance(Instance):
     timeout: int
     memory: int
     region_group: str
+    function_resource_name: str
 
     def to_json(self) -> dict:
         """
@@ -139,6 +140,12 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
         self.handler = handler
         self.runtime = runtime
         self.home_regions = home_regions
+
+    def __str__(self) -> str:
+        return f"""Function({self.name}): 
+                   {self.region_group}-{self.home_regions}-{self.entry_point}-{self.timeout}-
+                   {self.memory}-{self.role}-{self.deployment_package}-{self.environment_variables}-
+                   {self.handler}-{self.runtime}"""
 
     def initialise_remote_states(self, home_regions: list[str]) -> None:
         for home_region in home_regions:

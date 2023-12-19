@@ -64,8 +64,10 @@ class CLIFactory:
             sys.path.insert(0, self.project_dir)
 
         try:
-            workflow = importlib.import_module("workflow")
+            workflow = importlib.import_module("app")
             workflow_app = getattr(workflow, "workflow")
         except SyntaxError as e:
-            raise RuntimeError(f"Unable to import workflow.py file: {e}") from e
+            raise RuntimeError(f"Unable to import app.py file: {e}") from e
+        except ModuleNotFoundError as e:
+            raise RuntimeError(f"Unable to import app.py file: {e}") from e
         return workflow_app

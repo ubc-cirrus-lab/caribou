@@ -30,8 +30,12 @@ class MultiXServerlessFunction:  # pylint: disable=too-many-instance-attributes
         function_calls = re.findall(r"invoke_serverless_function\((.*?)\)", source_code)
         successors: list[MultiXServerlessFunction] = []
         for call in function_calls:
-            function_name = call.strip()
-            successor = next((func for func in workflow.functions if func.name == function_name), None)
+            if "," not in call:
+                raise RuntimeError(
+                    f"Could not parse function call ({call}) in function ({self.function}), did you provide the payload?"
+                )
+            function_name = call.strip().split(",")[0]
+            successor = next((func for func in workflow.functions if func.function.__name__ == function_name), None)
             if successor:
                 successors.append(successor)
         return successors
