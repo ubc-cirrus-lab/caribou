@@ -191,6 +191,7 @@ class AWSClient(Client):  # pylint: disable=too-few-public-methods
 
     def create_sns_topic(self, topic_name: str) -> str:
         client = self._client("sns")
-        response = client.create_topic(Name=topic_name)
+        response = client.create_topic(Name=topic_name)  # If topic exists, this will return the existing topic
+        # See: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sns/client/create_topic.html
         print(f"Successfully created SNS topic {topic_name}")
         return response["TopicArn"]

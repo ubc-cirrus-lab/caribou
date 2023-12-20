@@ -21,6 +21,7 @@ class RecordResourceVariable(Instruction):
 class RecordResourceValue(Instruction):
     resource_type: str
     resource_name: str
+    arn: str
     value: Any
 
     def __repr__(self) -> str:

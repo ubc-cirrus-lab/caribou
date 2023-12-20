@@ -64,6 +64,7 @@ class Executor:
             "name": instruction.resource_name,
             "resource_type": instruction.resource_type,
             instruction.name: instruction.value,
+            "arn": instruction.arn,
         }
         self._add_to_deployed_values(payload)
 

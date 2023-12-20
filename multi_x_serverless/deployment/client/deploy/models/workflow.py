@@ -30,31 +30,16 @@ class Workflow(Resource):
         plans: dict[str, list[Instruction]] = {}
         if self._config is None:
             raise ValueError("Config not set, this state should not be reachable")
-        for home_region in self._config.home_regions:
-            endpoint, region = home_region.split(":")
-            if endpoint == Endpoint.AWS.value:
-                if home_region not in plans:
-                    plans[home_region] = []
-                plans[home_region].append(self.get_sns_topic_instruction_for_region(region))
-            elif endpoint == Endpoint.GCP.value:
-                raise NotImplementedError()
 
         for resource in self._resources:
             result = resource.get_deployment_instructions()
             if result:
                 for region, instructions in result.items():
+                    if region not in plans:
+                        plans[region] = []
                     plans[region].extend(instructions)
 
         return plans
-
-    def get_sns_topic_instruction_for_region(self, region: str) -> Instruction:
-        return APICall(
-            name="create_sns_topic",
-            params={
-                "topic_name": f"{self.name}_{region}",
-            },
-            output_var=f"{self.name}_{region}_sns_topic_arn",
-        )
 
     def get_deployment_packages(self) -> list[DeploymentPackage]:
         packages: list[DeploymentPackage] = []

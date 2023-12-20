@@ -79,7 +79,8 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
 
     def get_deployment_instructions_aws(self, region: str) -> list[Instruction]:
         instructions: list[Instruction] = []
-        iam_role_varname = f"{self.role.name}_role_arn"
+        instructions.append(self.get_sns_topic_instruction_for_region(region))
+        iam_role_varname = f"{self.role.name}_role_arn_{region}"
         lambda_trust_policy = {
             "Version": "2012-10-17",
             "Statement": [
@@ -118,6 +119,7 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
                         resource_type="iam_role",
                         resource_name=iam_role_varname,
                         name="role_name",
+                        arn=function_varname,
                         value=self.role.name,
                     ),
                 ]
@@ -144,6 +146,7 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
                         resource_type="iam_role",
                         resource_name=iam_role_varname,
                         name="role_name",
+                        arn=function_varname,
                         value=self.role.name,
                     ),
                 ]
@@ -154,7 +157,7 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
 
         with open(self.deployment_package.filename, "rb") as f:
             zip_contents = f.read()
-        function_varname = f"{self.name}_lambda_arn"
+        function_varname = f"{self.name}_lambda_arn_{region}"
         if not self._remote_states[Endpoint.AWS][region].resource_exists(self):
             instructions.extend(
                 [
@@ -182,6 +185,7 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
                         resource_type="function",
                         resource_name=self.name,
                         name="function_name",
+                        arn=function_varname,
                         value=self.name,
                     ),
                 ]
@@ -209,15 +213,25 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
                         name="function_arn",
                         variable_name=function_varname,
                     ),
-                    RecordResourceValue(
+                    RecordResourceValue(  # TODO: Check for region
                         resource_type="function",
                         resource_name=self.name,
                         name="function_name",
+                        arn=function_varname,
                         value=self.name,
                     ),
                 ]
             )
         return instructions
+
+    def get_sns_topic_instruction_for_region(self, region: str) -> Instruction:
+        return APICall(
+            name="create_sns_topic",
+            params={
+                "topic_name": f"{self.name}_{region}_sns_topic",
+            },
+            output_var=f"{self.name}_{region}_sns_topic",
+        )
 
     def get_deployment_instructions_gcp(self, region: str) -> list[Instruction]:  # pylint: disable=unused-argument
         return []
