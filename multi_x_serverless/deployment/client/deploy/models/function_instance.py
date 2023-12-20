@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 
+from typing import Optional
+
 
 @dataclass
 class FunctionInstance:
@@ -7,7 +9,7 @@ class FunctionInstance:
     entry_point: bool
     timeout: int
     memory: int
-    region_group: str
+    regions_and_providers: Optional[dict]
     function_resource_name: str
 
     def to_json(self) -> dict:
@@ -15,11 +17,13 @@ class FunctionInstance:
         Get the JSON representation of this function.
         """
         return {
-            "name": self.name,
-            "entry_point": self.entry_point,
-            "timeout": self.timeout,
-            "memory": self.memory,
-            "region_group": self.region_group,
+            "instance_name": self.name,
+            "function_name": self.function_resource_name,
+            "resource_request": {
+                "memory": self.memory,
+                "architecture": "x86_64",  # TODO: Make this configurable
+            },
+            "regions_and_providers": self.regions_and_providers,
         }
 
     def __repr__(self) -> str:
@@ -28,6 +32,6 @@ class FunctionInstance:
                 entry_point={self.entry_point},
                 timeout={self.timeout},
                 memory={self.memory},
-                region_group={self.region_group},
+                regions_and_providers={self.regions_and_providers},
                 function_resource_name={self.function_resource_name})
                 """

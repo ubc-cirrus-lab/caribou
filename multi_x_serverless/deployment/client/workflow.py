@@ -16,7 +16,7 @@ class MultiXServerlessFunction:  # pylint: disable=too-many-instance-attributes
     """
 
     def __init__(
-        self, function: Callable[..., Any], name: str, entry_point: bool, timeout: int, memory: int, region_group: str
+        self, function: Callable[..., Any], name: str, entry_point: bool, timeout: int, memory: int, regions_and_providers: dict
     ):
         self.function = function
         self.name = name
@@ -24,7 +24,7 @@ class MultiXServerlessFunction:  # pylint: disable=too-many-instance-attributes
         self.handler = function.__name__
         self.timeout = timeout
         self.memory = memory
-        self.region_group = region_group
+        self.regions_and_providers = regions_and_providers if len(regions_and_providers) > 0 else None
 
     def get_successors(self, workflow: MultiXServerlessWorkflow) -> list[MultiXServerlessFunction]:
         """
@@ -139,7 +139,7 @@ class MultiXServerlessWorkflow:
         return []
 
     def register_function(
-        self, function: Callable[..., Any], name: str, entry_point: bool, timeout: int, memory: int, region_group: str
+        self, function: Callable[..., Any], name: str, entry_point: bool, timeout: int, memory: int, regions_and_providers: dict
     ) -> None:
         """
         Register a function as a serverless function.
@@ -149,7 +149,7 @@ class MultiXServerlessWorkflow:
         At this point we only need to register the function with the wrapper, the actual deployment will be done
         later by the deployment manager.
         """
-        wrapper = MultiXServerlessFunction(function, name, entry_point, timeout, memory, region_group)
+        wrapper = MultiXServerlessFunction(function, name, entry_point, timeout, memory, regions_and_providers)
         self.functions.append(wrapper)
 
     def serverless_function(
@@ -158,7 +158,7 @@ class MultiXServerlessWorkflow:
         entry_point: bool = False,
         timeout: int = -1,
         memory: int = 128,
-        region_group: str = "default",
+        regions_and_providers: dict = {},
     ) -> Callable[..., Any]:
         """
         Decorator to register a function as a Lambda function.
@@ -176,7 +176,7 @@ class MultiXServerlessWorkflow:
                 func.routing_decision = None  # type: ignore
                 # TODO: Get routing decision from platform
 
-            self.register_function(func, handler_name, entry_point, timeout, memory, region_group)
+            self.register_function(func, handler_name, entry_point, timeout, memory, regions_and_providers)
             return func
 
         return _register_handler

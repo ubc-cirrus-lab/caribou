@@ -19,7 +19,6 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
         entry_point: bool,
         timeout: int,
         memory: int,
-        region_group: str,
         role: IAMRole,
         deployment_package: DeploymentPackage,
         environment_variables: dict[str, str],
@@ -31,7 +30,6 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
         self.entry_point = entry_point
         self.timeout = timeout
         self.memory = memory
-        self.region_group = region_group
         self._remote_states: dict[Endpoint, dict[str, RemoteState]] = {}
         self.initialise_remote_states(home_regions)
         self.role = role
@@ -43,7 +41,6 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
 
     def __repr__(self) -> str:
         return f"""Function({self.name}): 
-                    Region group: {self.region_group}
                     Entry point: {self.entry_point}
                     Timeout: {self.timeout}
                     Memory: {self.memory}

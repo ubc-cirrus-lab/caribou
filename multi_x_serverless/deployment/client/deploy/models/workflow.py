@@ -56,3 +56,24 @@ class Workflow(Resource):
             if isinstance(resource, Function):
                 packages.append(resource.deployment_package)
         return packages
+
+    def get_description(self) -> dict:
+        workflow_description = {
+            "instances": [function_instance.to_json() for function_instance in self._functions],
+            "start_hops": self._config.home_regions,
+            "estimated_invocations_per_month": self._config.estimated_invocations_per_month,
+            "constraints": self._config.constraints,
+        }
+        finished_instances = []
+        for instance in workflow_description["instances"]:
+            instance["succeeding_instances"] = []
+            for edge in self._edges:
+                if edge[0] == instance["instance_name"]:
+                    instance["succeeding_instances"].append(edge[1])
+            instance["preceding_instances"] = []
+            for edge in self._edges:
+                if edge[1] == instance["instance_name"]:
+                    instance["preceding_instances"].append(edge[0])
+            finished_instances.append(instance)
+        workflow_description["instances"] = finished_instances
+        return workflow_description

@@ -5,7 +5,18 @@ from multi_x_serverless.deployment.client import MultiXServerlessWorkflow
 workflow = MultiXServerlessWorkflow("{{ workflow_name }}")
 
 
-@workflow.serverless_function(name="First-Function", entry_point=True, timeout=60, memory=128)
+@workflow.serverless_function(
+    name="First-Function",
+    entry_point=True,
+    timeout=60,
+    memory=128,
+    regions_and_providers={
+        "only_regions": ["us-east-1"],
+        "allowed_providers": ["aws"],
+        "forbidden_providers": ["gcp"],
+        "forbidden_regions": ["us-east-2"],
+    },
+)
 def first_function(event: dict[str, Any]) -> dict[str, Any]:
     payload = {
         "hello": "world",

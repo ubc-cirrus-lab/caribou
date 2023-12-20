@@ -57,6 +57,14 @@ class Config:
         return self._lookup("home_regions")
 
     @property
+    def estimated_invocations_per_month(self) -> int:
+        return self._lookup("estimated_invocations_per_month")
+
+    @property
+    def constraints(self) -> dict:
+        return self._lookup("constraints")
+
+    @property
     def iam_policy_file(self) -> str:
         return self._lookup("iam_policy_file")
 

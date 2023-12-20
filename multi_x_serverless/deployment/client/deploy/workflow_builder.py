@@ -41,7 +41,6 @@ class WorkflowBuilder:
                     memory=function.memory,
                     role=function_role,
                     deployment_package=DeploymentPackage(),
-                    region_group=function.region_group,
                     home_regions=config.home_regions,
                     entry_point=function.entry_point,
                 )
@@ -73,7 +72,7 @@ class WorkflowBuilder:
             entry_point=entry_point.entry_point,
             timeout=entry_point.timeout,
             memory=entry_point.memory,
-            region_group=entry_point.region_group,
+            regions_and_providers=entry_point.regions_and_providers,
             function_resource_name=entry_point.function.__name__,
         )
         function_instances[predecessor_instance.name] = predecessor_instance
@@ -98,7 +97,7 @@ class WorkflowBuilder:
                     entry_point=multi_x_serverless_function.entry_point,
                     timeout=multi_x_serverless_function.timeout,
                     memory=multi_x_serverless_function.memory,
-                    region_group=multi_x_serverless_function.region_group,
+                    regions_and_providers=multi_x_serverless_function.regions_and_providers,
                     function_resource_name=multi_x_serverless_function.function.__name__,
                 )
                 for successor_i, successor in enumerate(
