@@ -38,6 +38,8 @@ class Deployer:  # pylint: disable=too-few-public-methods
         # Upload the workflow to the solver
         self._upload_workflow_to_solver(workflow)
 
+        return []
+
         # Build the workflow resources, e.g. deployment packages, iam roles, etc.
         self._deployment_packager.build(self._config, workflow)
 
@@ -58,6 +60,7 @@ class Deployer:  # pylint: disable=too-few-public-methods
 
     def _upload_workflow_to_solver(self, workflow: Workflow) -> None:
         # TODO: Implement based on API defined by Daniel
+        print(workflow)
         pass
 
 

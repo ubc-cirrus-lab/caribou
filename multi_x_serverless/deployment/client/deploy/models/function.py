@@ -41,11 +41,22 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
         self.runtime = runtime
         self.home_regions = home_regions
 
-    def __str__(self) -> str:
+    def __repr__(self) -> str:
         return f"""Function({self.name}): 
-                   {self.region_group}-{self.home_regions}-{self.entry_point}-{self.timeout}-
-                   {self.memory}-{self.role}-{self.deployment_package}-{self.environment_variables}-
-                   {self.handler}-{self.runtime}"""
+                    Region group: {self.region_group}
+                    Entry point: {self.entry_point}
+                    Timeout: {self.timeout}
+                    Memory: {self.memory}
+                    Role: 
+                        {self.role}
+                    Deployment package: {self.deployment_package}
+                    Environment variables: {self.environment_variables}
+                    Handler: {self.handler}
+                    Runtime: {self.runtime}
+                    Home regions: {self.home_regions}
+                """
+
+
 
     def initialise_remote_states(self, home_regions: list[str]) -> None:
         for home_region in home_regions:

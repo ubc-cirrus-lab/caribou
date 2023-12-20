@@ -84,3 +84,6 @@ logs
 
 # Plots
 plotting/plots/*.png
+
+# testing
+testing

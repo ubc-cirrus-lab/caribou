@@ -21,3 +21,13 @@ class FunctionInstance:
             "memory": self.memory,
             "region_group": self.region_group,
         }
+
+    def __repr__(self) -> str:
+        return f"""FunctionInstance(
+                name={self.name},
+                entry_point={self.entry_point},
+                timeout={self.timeout},
+                memory={self.memory},
+                region_group={self.region_group},
+                function_resource_name={self.function_resource_name})
+                """

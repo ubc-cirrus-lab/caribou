@@ -23,6 +23,15 @@ class Workflow(Resource):
         self._edges = edges
         super().__init__(name, "workflow", config=config)
 
+    def __repr__(self) -> str:
+        return f"""Workflow(
+                name={self.name},
+                resources={self._resources},
+                functions={self._functions},
+                edges={self._edges},
+                config={self._config})
+                """
+
     def dependencies(self) -> Sequence[Resource]:
         return self._resources
 

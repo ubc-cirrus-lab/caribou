@@ -69,7 +69,7 @@ class WorkflowBuilder:
 
         # We start with the entry point
         predecessor_instance = FunctionInstance(
-            name=f"{entry_point.name}-{uuid.uuid4()}",
+            name=f"{entry_point.name}:entry_point",
             entry_point=entry_point.entry_point,
             timeout=entry_point.timeout,
             memory=entry_point.memory,
@@ -78,16 +78,17 @@ class WorkflowBuilder:
         )
         function_instances[predecessor_instance.name] = predecessor_instance
 
-        for successor in entry_point.get_successors(config.workflow_app):
-            functions_to_visit.put((successor.function.__name__, predecessor_instance.name))
+        for successor_index, successor in enumerate(entry_point.get_successors(config.workflow_app)):
+            functions_to_visit.put((successor.function.__name__, predecessor_instance.name, successor_index))
 
         while not functions_to_visit.empty():
-            function_to_visit, predecessor_instance_name = functions_to_visit.get()
+            function_to_visit, predecessor_instance_name, successor_index = functions_to_visit.get()
             multi_x_serverless_function: MultiXServerlessFunction = function_name_to_function[function_to_visit]
+            predecessor_instance_name_for_instance = predecessor_instance_name.split(":")[0]
             function_instance_name = (
-                f"{multi_x_serverless_function.name}-{uuid.uuid4()}"
+                f"{multi_x_serverless_function.name}:{predecessor_instance_name_for_instance}_{successor_index}"
                 if not multi_x_serverless_function.is_waiting_for_predecessors()
-                else multi_x_serverless_function.name
+                else f"{multi_x_serverless_function.name}:merge"
             )
             # If the function is waiting for its predecessors, there can only be one instance of the function
             # Otherwise, we create a new instance of the function for every predecessor
@@ -100,8 +101,10 @@ class WorkflowBuilder:
                     region_group=multi_x_serverless_function.region_group,
                     function_resource_name=multi_x_serverless_function.function.__name__,
                 )
-                for successor in multi_x_serverless_function.get_successors(config.workflow_app):
-                    functions_to_visit.put((successor.function.__name__, function_instance_name))
+                for successor_i, successor in enumerate(
+                    multi_x_serverless_function.get_successors(config.workflow_app)
+                ):
+                    functions_to_visit.put((successor.function.__name__, function_instance_name, successor_i))
 
             edges.append((predecessor_instance_name, function_instance_name))
 
