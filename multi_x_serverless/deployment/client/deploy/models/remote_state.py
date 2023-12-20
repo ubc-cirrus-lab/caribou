@@ -1,8 +1,8 @@
 import botocore.exceptions
 
-from multi_x_serverless.deployment.client.deploy.clients import AWSClient, Client
-from multi_x_serverless.deployment.client.deploy.models.enums import Endpoint
+from multi_x_serverless.deployment.client.clients import AWSClient, Client
 from multi_x_serverless.deployment.client.deploy.models.resource import Resource
+from multi_x_serverless.deployment.client.enums import Endpoint
 
 
 class RemoteState:

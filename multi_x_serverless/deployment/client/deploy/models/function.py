@@ -4,17 +4,12 @@ import json
 from typing import Sequence
 
 from multi_x_serverless.deployment.client.deploy.models.deployment_package import DeploymentPackage
-from multi_x_serverless.deployment.client.deploy.models.enums import Endpoint
 from multi_x_serverless.deployment.client.deploy.models.iam_role import IAMRole
-from multi_x_serverless.deployment.client.deploy.models.instructions import (
-    APICall,
-    Instruction,
-    RecordResourceValue,
-    RecordResourceVariable,
-)
+from multi_x_serverless.deployment.client.deploy.models.instructions import APICall, Instruction, RecordResourceVariable
 from multi_x_serverless.deployment.client.deploy.models.remote_state import RemoteState
 from multi_x_serverless.deployment.client.deploy.models.resource import Resource
 from multi_x_serverless.deployment.client.deploy.models.variable import Variable
+from multi_x_serverless.deployment.client.enums import Endpoint
 
 
 class Function(Resource):  # pylint: disable=too-many-instance-attributes
@@ -79,7 +74,18 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
 
     def get_deployment_instructions_aws(self, region: str) -> list[Instruction]:
         instructions: list[Instruction] = []
-        instructions.append(self.get_sns_topic_instruction_for_region(region))
+        sns_topic_arn_varname = f"{self.name}_{region}_sns_topic"
+        instructions.extend(
+            [
+                self.get_sns_topic_instruction_for_region(region, sns_topic_arn_varname),
+                RecordResourceVariable(
+                    resource_type="sns_topic",
+                    resource_name=f"{self.name}_{region}_sns_topic",
+                    name="topic_arn",
+                    variable_name=sns_topic_arn_varname,
+                ),
+            ]
+        )
         iam_role_varname = f"{self.role.name}_role_arn_{region}"
         lambda_trust_policy = {
             "Version": "2012-10-17",
@@ -111,16 +117,9 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
                     ),
                     RecordResourceVariable(
                         resource_type="iam_role",
-                        resource_name=iam_role_varname,
+                        resource_name=f"{self.name}_{region}_iam_role",
                         name="role_arn",
                         variable_name=iam_role_varname,
-                    ),
-                    RecordResourceValue(
-                        resource_type="iam_role",
-                        resource_name=iam_role_varname,
-                        name="role_name",
-                        arn=function_varname,
-                        value=self.role.name,
                     ),
                 ]
             )
@@ -138,16 +137,9 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
                     ),
                     RecordResourceVariable(
                         resource_type="iam_role",
-                        resource_name=iam_role_varname,
+                        resource_name=f"{self.name}_{region}_iam_role",
                         name="role_arn",
                         variable_name=iam_role_varname,
-                    ),
-                    RecordResourceValue(
-                        resource_type="iam_role",
-                        resource_name=iam_role_varname,
-                        name="role_name",
-                        arn=function_varname,
-                        value=self.role.name,
                     ),
                 ]
             )
@@ -177,16 +169,9 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
                     ),
                     RecordResourceVariable(
                         resource_type="function",
-                        resource_name=self.name,
+                        resource_name=f"{self.name}_{region}_function",
                         name="function_arn",
                         variable_name=function_varname,
-                    ),
-                    RecordResourceValue(
-                        resource_type="function",
-                        resource_name=self.name,
-                        name="function_name",
-                        arn=function_varname,
-                        value=self.name,
                     ),
                 ]
             )
@@ -209,28 +194,48 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
                     ),
                     RecordResourceVariable(
                         resource_type="function",
-                        resource_name=self.name,
+                        resource_name=f"{self.name}_{region}_function",
                         name="function_arn",
                         variable_name=function_varname,
                     ),
-                    RecordResourceValue(  # TODO: Check for region
-                        resource_type="function",
-                        resource_name=self.name,
-                        name="function_name",
-                        arn=function_varname,
-                        value=self.name,
-                    ),
                 ]
             )
+        subscription_varname = f"{self.name}_{region}_sns_subscription"
+        instructions.extend(
+            [
+                APICall(
+                    name="subscribe_sns_topic",
+                    params={
+                        "topic_arn": Variable(sns_topic_arn_varname),
+                        "protocol": "lambda",
+                        "endpoint": Variable(function_varname),
+                    },
+                    output_var=subscription_varname,
+                ),
+                RecordResourceVariable(
+                    resource_type="sns_topic",
+                    resource_name=f"{self.name}_{region}_sns_subscription",
+                    name="topic_arn",
+                    variable_name=subscription_varname,
+                ),
+                APICall(
+                    name="add_lambda_permission_for_sns_topic",
+                    params={
+                        "topic_arn": Variable(sns_topic_arn_varname),
+                        "lambda_function_arn": Variable(function_varname),
+                    },
+                ),
+            ]
+        )
         return instructions
 
-    def get_sns_topic_instruction_for_region(self, region: str) -> Instruction:
+    def get_sns_topic_instruction_for_region(self, region: str, output_var: str) -> Instruction:
         return APICall(
             name="create_sns_topic",
             params={
                 "topic_name": f"{self.name}_{region}_sns_topic",
             },
-            output_var=f"{self.name}_{region}_sns_topic",
+            output_var=output_var,
         )
 
     def get_deployment_instructions_gcp(self, region: str) -> list[Instruction]:  # pylint: disable=unused-argument

@@ -5,7 +5,9 @@
             "Action": [
                 "logs:CreateLogGroup",
                 "logs:CreateLogStream",
-                "logs:PutLogEvents"
+                "logs:PutLogEvents",
+                "sns:Publish"
+
             ],
             "Resource": "arn:aws:logs:*:*:*",
             "Effect": "Allow"

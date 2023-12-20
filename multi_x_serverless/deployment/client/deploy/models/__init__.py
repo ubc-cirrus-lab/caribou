@@ -1,8 +1,8 @@
 from .deployment_plan import DeploymentPlan
-from .enums import Endpoint
+from ...enums import Endpoint
 from .function_instance import FunctionInstance
 from .function import Function
-from .instructions import Instruction, APICall, RecordResourceValue, RecordResourceVariable
+from .instructions import Instruction, APICall, RecordResourceVariable
 from .resource import Resource
 from .variable import Variable
 from .workflow import Workflow

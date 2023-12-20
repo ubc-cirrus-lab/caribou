@@ -1,12 +1,11 @@
 from typing import Any, Optional
 
+from multi_x_serverless.deployment.client.clients import AWSClient
 from multi_x_serverless.deployment.client.config import Config
-from multi_x_serverless.deployment.client.deploy.clients import AWSClient
 from multi_x_serverless.deployment.client.deploy.models import (
     APICall,
     DeploymentPlan,
     Instruction,
-    RecordResourceValue,
     RecordResourceVariable,
     Resource,
     Variable,
@@ -50,21 +49,6 @@ class Executor:
             "name": instruction.resource_name,
             "resource_type": instruction.resource_type,
             instruction.name: self.variables[instruction.variable_name],
-        }
-        self._add_to_deployed_values(payload)
-
-    def _do_recordresourcevalue_aws(self, instruction: RecordResourceValue) -> None:
-        self._do_recordresourcevalue(instruction)
-
-    def _do_recordresourcevalue_gcp(self, instruction: RecordResourceValue) -> None:
-        self._do_recordresourcevalue(instruction)
-
-    def _do_recordresourcevalue(self, instruction: RecordResourceValue) -> None:
-        payload = {
-            "name": instruction.resource_name,
-            "resource_type": instruction.resource_type,
-            instruction.name: instruction.value,
-            "arn": instruction.arn,
         }
         self._add_to_deployed_values(payload)
 

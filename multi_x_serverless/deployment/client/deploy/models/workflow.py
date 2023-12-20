@@ -2,11 +2,11 @@ from typing import Sequence
 
 from multi_x_serverless.deployment.client.config import Config
 from multi_x_serverless.deployment.client.deploy.models.deployment_package import DeploymentPackage
-from multi_x_serverless.deployment.client.deploy.models.enums import Endpoint
 from multi_x_serverless.deployment.client.deploy.models.function import Function
 from multi_x_serverless.deployment.client.deploy.models.function_instance import FunctionInstance
 from multi_x_serverless.deployment.client.deploy.models.instructions import APICall, Instruction
 from multi_x_serverless.deployment.client.deploy.models.resource import Resource
+from multi_x_serverless.deployment.client.enums import Endpoint
 
 
 class Workflow(Resource):

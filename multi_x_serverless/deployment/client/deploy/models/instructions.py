@@ -18,17 +18,6 @@ class RecordResourceVariable(Instruction):
 
 
 @dataclass(frozen=True)
-class RecordResourceValue(Instruction):
-    resource_type: str
-    resource_name: str
-    arn: str
-    value: Any
-
-    def __repr__(self) -> str:
-        return f"RecordResourceValue({self.name})"
-
-
-@dataclass(frozen=True)
 class APICall(Instruction):
     params: dict[str, Any]
     output_var: Optional[str] = None

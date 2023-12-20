@@ -195,3 +195,30 @@ class AWSClient(Client):  # pylint: disable=too-few-public-methods
         # See: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sns/client/create_topic.html
         print(f"Successfully created SNS topic {topic_name}")
         return response["TopicArn"]
+
+    def subscribe_sns_topic(self, topic_arn: str, protocol: str, endpoint: str) -> None:
+        client = self._client("sns")
+        response = client.subscribe(
+            TopicArn=topic_arn,
+            Protocol=protocol,
+            Endpoint=endpoint,
+            ReturnSubscriptionArn=True,
+        )
+        print(f"Successfully subscribed function {endpoint} to SNS topic {topic_arn}")
+        return response["SubscriptionArn"]
+
+    def add_lambda_permission_for_sns_topic(self, topic_arn: str, lambda_function_arn: str) -> None:
+        client = self._client("lambda")
+        client.add_permission(
+            FunctionName=lambda_function_arn,
+            StatementId="sns",
+            Action="lambda:InvokeFunction",
+            Principal="sns.amazonaws.com",
+            SourceArn=topic_arn,
+        )
+        print(f"Successfully added lambda permission for SNS topic {topic_arn}")
+
+    def send_message_to_sns(self, topic_arn: str, message: dict[str, Any]) -> None:
+        client = self._client("sns")
+        client.publish(TopicArn=topic_arn, Message=json.dumps(message))
+        print(f"Successfully sent message to SNS topic {topic_arn}")

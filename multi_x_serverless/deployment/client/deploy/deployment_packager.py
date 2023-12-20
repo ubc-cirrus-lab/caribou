@@ -56,6 +56,14 @@ class DeploymentPackager:  # pylint: disable=too-few-public-methods
             os.path.join(multi_x_serverless_path, "workflow.py"),
             os.path.join("multi_x_serverless", "deployment", "client", "workflow.py"),
         )
+        zip_file.write(
+            os.path.join(multi_x_serverless_path, "clients.py"),
+            os.path.join("multi_x_serverless", "deployment", "client", "clients.py"),
+        )
+        zip_file.write(
+            os.path.join(multi_x_serverless_path, "enums.py"),
+            os.path.join("multi_x_serverless", "deployment", "client", "enums.py"),
+        )
 
     def _add_py_dependencies(self, zip_file: zipfile.ZipFile, deps_dir: str) -> None:
         prefix_len = len(deps_dir) + 1

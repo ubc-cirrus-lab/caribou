@@ -3,7 +3,11 @@ from __future__ import annotations
 import inspect
 import json
 import re
+from types import FrameType
 from typing import Any, Callable, Optional
+
+from multi_x_serverless.deployment.client.clients import AWSClient
+from multi_x_serverless.deployment.client.enums import Endpoint
 
 
 class MultiXServerlessFunction:  # pylint: disable=too-many-instance-attributes
@@ -81,20 +85,49 @@ class MultiXServerlessWorkflow:
             raise RuntimeError("Could not get current frame")
         frame = frame.f_back
 
+        if not frame:
+            raise RuntimeError("Could not get previous frame")
+
+        routing_decision = self.get_routing_decision(frame)
+
+        if not payload:
+            payload = {}
+        payload["routing_decision"] = routing_decision
+
+        # TODO: We need to decide on how to handle the routing decision
+        # (how to inform this function about where in the workflow it is)
+        # TODO: Post message to messaging services
+        provider, region, arn = routing_decision["next_endpoint"].split(":")
+        if provider == Endpoint.AWS.value:
+            self.invoke_function_through_sns(payload, region, arn)
+        return "Some response"
+
+    def get_routing_decision(self, frame: FrameType) -> dict[str, Any]:
         routing_decision = None
 
         if not frame:
             raise RuntimeError("Could not get previous frame")
 
-        if frame.f_locals.get("entry_point"):
+        if frame.f_locals.get("entry_point") and not frame.f_locals.get("routing_decision"):
             routing_decision = frame.f_locals.get("routing_decision")
+            frame.f_locals["routing_decision"] = routing_decision
         else:
-            args, _, _, _ = inspect.getargvalues(frame)
-            routing_decision = json.loads(args[0])["routing_decision"]
+            routing_decision = frame.f_locals.get("routing_decision")
+            if not routing_decision:
+                args, _, _, _ = inspect.getargvalues(frame)
+                routing_decision = json.loads(args[0])["routing_decision"]
+        if not routing_decision:
+            raise RuntimeError("Could not get routing decision")
+        if not isinstance(routing_decision, dict):
+            raise RuntimeError("Routing decision is not of type dict")
+        return routing_decision
 
-        print(routing_decision)
-        # TODO: Post message to messaging services
-        return "Some response"
+    def invoke_function_through_sns(self, message: dict[str, Any], region: str, arn: str) -> None:
+        aws_client = AWSClient(region)
+        try:
+            aws_client.send_message_to_sns(arn, message)
+        except Exception as e:
+            raise RuntimeError("Could not invoke function through SNS") from e
 
     def get_predecessor_data(self) -> list[dict[str, Any]]:
         """
