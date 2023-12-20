@@ -188,3 +188,9 @@ class AWSClient(Client):  # pylint: disable=too-few-public-methods
                 return
             time.sleep(self.DELAY_TIME)
         raise RuntimeError(f"Lambda function {function_name} did not become active")
+
+    def create_sns_topic(self, topic_name: str) -> str:
+        client = self._client("sns")
+        response = client.create_topic(Name=topic_name)
+        print(f"Successfully created SNS topic {topic_name}")
+        return response["TopicArn"]

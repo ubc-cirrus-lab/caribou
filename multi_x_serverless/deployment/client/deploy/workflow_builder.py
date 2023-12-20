@@ -106,7 +106,7 @@ class WorkflowBuilder:
             edges.append((predecessor_instance_name, function_instance_name))
 
         functions: list[FunctionInstance] = list(function_instances.values())
-        return Workflow(resources=resources, functions=functions, edges=edges, name=config.workflow_name)
+        return Workflow(resources=resources, functions=functions, edges=edges, name=config.workflow_name, config=config)
 
     def get_function_role(self, config: Config, function_name: str) -> IAMRole:
         role_name = f"{function_name}-role"

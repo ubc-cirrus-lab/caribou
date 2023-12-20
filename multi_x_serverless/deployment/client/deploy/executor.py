@@ -31,7 +31,7 @@ class Executor:
 
     def _do_apicall_aws(self, instruction: APICall) -> None:
         final_kwargs = self._resolve_variables(instruction)
-        method = getattr(self._aws_client, instruction.method_name)
+        method = getattr(self._aws_client, instruction.name)
         response = method(**final_kwargs)
         if instruction.output_var is not None:
             self.variables[instruction.output_var] = response
