@@ -7,7 +7,6 @@
                 "logs:CreateLogStream",
                 "logs:PutLogEvents",
                 "sns:Publish"
-
             ],
             "Resource": "arn:aws:logs:*:*:*",
             "Effect": "Allow"
