@@ -23,7 +23,7 @@ def cli(ctx: click.Context, project_dir: str) -> None:
     os.chdir(project_dir)
 
 
-@cli.command("new-workflow")
+@cli.command("new-workflow", help="Create a new workflow directory from template. The workflow name must be a valid, non-existing directory name in the current directory.")
 @click.argument("workflow_name", required=True)
 @click.pass_context
 def new_workflow(_: click.Context, workflow_name: str) -> None:
@@ -33,7 +33,7 @@ def new_workflow(_: click.Context, workflow_name: str) -> None:
     click.echo(f"Created new workflow in ./{workflow_name}")
 
 
-@cli.command()
+@cli.command("deploy", help="Deploy the workflow.")
 @click.pass_context
 def deploy(ctx: click.Context) -> None:
     factory: CLIFactory = ctx.obj["factory"]
