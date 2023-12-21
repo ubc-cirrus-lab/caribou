@@ -1,0 +1,4 @@
+gtts
+boto3
+profanity
+numpy

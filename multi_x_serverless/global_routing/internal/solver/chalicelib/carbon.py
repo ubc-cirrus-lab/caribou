@@ -36,10 +36,7 @@ def get_execution_carbon_for_region_function(region_provider: tuple[str, str]) -
         grid_co2_data: dict = grid_co2_data,
         datacenter_data: dict = datacenter_data,
     ) -> float:
-        # TODO: This might profit from caching
         if datacenter_data and grid_co2_data:
-            # print(datacenter_data)
-            # print(grid_co2_data)
             runtime_in_hours = (
                 (sum(function_runtime_measurements) / len(function_runtime_measurements)) / 1000 / 60 / 60
             )  # ms -> h

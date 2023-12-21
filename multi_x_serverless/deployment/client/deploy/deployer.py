@@ -33,6 +33,8 @@ class Deployer:  # pylint: disable=too-few-public-methods
             raise DeploymentError(e) from e
 
     def _deploy(self) -> list[Resource]:
+        # This deploys a workflow to the defined home regions
+
         # Build the workflow (DAG of the workflow)
         workflow: Workflow = self._workflow_builder.build_workflow(self._config)
 
@@ -57,11 +59,17 @@ class Deployer:  # pylint: disable=too-few-public-methods
 
         return deployed_resources
 
+    def _deploy(self, regions: list[str]) -> list[Resource]:
+        # TODO (#9): This is the same as above, but with a list of regions to deploy to
+        # This is meant to be used by the deployment manager. Additionally, the source code does
+        # need to be built as we can reuse the same deployment package for all regions.
+        pass
+
     def _upload_workflow_to_solver(self, workflow: Workflow) -> None:
         workflow_description = workflow.get_description()
         workflow_description_json = json.dumps(workflow_description)
         print(workflow_description_json)
-        # TODO: Upload workflow to solver
+        # TODO (#8): Upload workflow to solver
         pass
 
 

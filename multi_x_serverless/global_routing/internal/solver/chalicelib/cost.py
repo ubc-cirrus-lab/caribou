@@ -19,7 +19,6 @@ def get_cost_for_region_function(region_provider: tuple[str, str]) -> Callable:
     def cost(
         function_spec: dict, function_runtime_measurements: list[float], datacenter_data: dict = datacenter_data
     ) -> float:
-        # TODO: This might profit from caching
         if datacenter_data:
             free_invocations = int(datacenter_data["free_invocations"])
             free_compute_gb_s = int(datacenter_data["free_compute_gb_s"])

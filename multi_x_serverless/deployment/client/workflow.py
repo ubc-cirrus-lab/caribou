@@ -76,6 +76,7 @@ class MultiXServerlessWorkflow:
         """
         Invoke a serverless function which is part of this workflow.
         """
+        # TODO (#11): Implement conditional invocation
         # If the function from which this function is called is the entry point obtain current routing decision
         # If not, the routing decision was stored in the message received from the predecessor function
         # Post message to SNS -> return
@@ -94,9 +95,9 @@ class MultiXServerlessWorkflow:
             payload = {}
         payload["routing_decision"] = routing_decision
 
-        # TODO: We need to decide on how to handle the routing decision
+        # TODO (#7): We need to decide on how to handle the routing decision
         # (how to inform this function about where in the workflow it is)
-        # TODO: Post message to messaging services
+        # TODO (#7): Post message to messaging services
         provider, region, arn = routing_decision["next_endpoint"].split(":")
         if provider == Endpoint.AWS.value:
             self.invoke_function_through_sns(payload, region, arn)
@@ -135,7 +136,7 @@ class MultiXServerlessWorkflow:
         """
         # Check if all predecessor functions have returned
         # If not, abort this function call, another function will eventually be called
-        # TODO: Check if all predecessor functions have returned
+        # TODO (#10): Check if all predecessor functions have returned
         return []
 
     def register_function(
@@ -174,7 +175,7 @@ class MultiXServerlessWorkflow:
 
             if entry_point:
                 func.routing_decision = None  # type: ignore
-                # TODO: Get routing decision from platform
+                # TODO (#7): Get routing decision from platform
 
             self.register_function(func, handler_name, entry_point, timeout, memory, regions_and_providers)
             return func

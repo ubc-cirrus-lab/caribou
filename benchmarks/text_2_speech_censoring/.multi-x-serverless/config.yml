@@ -1,0 +1,27 @@
+workflow_name: "text_2_speech_censoring"
+environment_variables:
+  - name: "ENV_VAR_1"
+    value: "value_1"
+iam_policy_file: "iam_policy.json"
+home_regions: ["aws:us-west-2"]  # Regions are defined as "provider:region" (e.g. aws:us-west-2)
+estimated_invocations_per_month: 1000000
+constraints:
+  hard_resource_constraints: # None for none
+    cost:
+      type: "absolute" # Absolute value as 'absolute' (in USD) or Percentage from deployment at home regions as 'percentage' (In fractions such as 1.1)
+      value: COST_CONSTRAINT
+    runtime:
+      type: "absolute"
+      value: RUNTIME_CONSTRAINT
+    carbon:
+      type: "absolute"
+      value: CARBON_CONSTRAINT
+  soft_resource_constraints: # None for none
+    cost: null
+    runtime: null
+    carbon: null
+  regions_and_providers: # Either the user specify only allowed regions (which will override everything else)
+    only_regions: null # Only check other conditions if this is None, else will restrict to ONLY those regions
+    allowed_providers: null
+    forbidden_providers: null
+    forbidden_regions: null

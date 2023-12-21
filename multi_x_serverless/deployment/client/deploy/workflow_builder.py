@@ -66,9 +66,10 @@ class WorkflowBuilder:
         # We use a queue to visit all functions in the DAG in a breadth-first manner
         functions_to_visit: queue.Queue = queue.Queue()
 
+        index_in_dag = 0
         # We start with the entry point
         predecessor_instance = FunctionInstance(
-            name=f"{entry_point.name}:entry_point",
+            name=f"{entry_point.name}:entry_point:{index_in_dag}",
             entry_point=entry_point.entry_point,
             timeout=entry_point.timeout,
             memory=entry_point.memory,
@@ -77,18 +78,20 @@ class WorkflowBuilder:
         )
         function_instances[predecessor_instance.name] = predecessor_instance
 
-        for successor_index, successor in enumerate(entry_point.get_successors(config.workflow_app)):
-            functions_to_visit.put((successor.function.__name__, predecessor_instance.name, successor_index))
+        for successor_of_current_index, successor in enumerate(entry_point.get_successors(config.workflow_app)):
+            functions_to_visit.put((successor.function.__name__, predecessor_instance.name, successor_of_current_index))
 
         while not functions_to_visit.empty():
-            function_to_visit, predecessor_instance_name, successor_index = functions_to_visit.get()
+            function_to_visit, predecessor_instance_name, successor_of_predecessor_index = functions_to_visit.get()
             multi_x_serverless_function: MultiXServerlessFunction = function_name_to_function[function_to_visit]
             predecessor_instance_name_for_instance = predecessor_instance_name.split(":")[0]
+            predecessor_index = predecessor_instance_name.split(":")[-1]
             function_instance_name = (
-                f"{multi_x_serverless_function.name}:{predecessor_instance_name_for_instance}_{successor_index}"
+                f"{multi_x_serverless_function.name}:{predecessor_instance_name_for_instance}_{predecessor_index}_{successor_of_predecessor_index}:{index_in_dag}"
                 if not multi_x_serverless_function.is_waiting_for_predecessors()
                 else f"{multi_x_serverless_function.name}:merge"
             )
+            index_in_dag += 1
             # If the function is waiting for its predecessors, there can only be one instance of the function
             # Otherwise, we create a new instance of the function for every predecessor
             if function_instance_name not in function_instances:

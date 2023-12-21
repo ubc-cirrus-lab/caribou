@@ -51,6 +51,9 @@ pytest-cov = "^4.1.0"
 types-requests = "^2.31.0.10"
 seaborn = "^0.13.0"
 httpie = "^3.2.2"
+gtts = "^2.5.0"
+profanity = "^1.1"
+pydub = "^0.25.1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
