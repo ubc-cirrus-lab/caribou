@@ -17,7 +17,7 @@ class Resource:
 
     def get_deployment_instructions(self) -> dict[str, list[Instruction]]:
         return {}
-    
+
     def __repr__(self) -> str:
         return f"""Resource(
                         name={self.name},

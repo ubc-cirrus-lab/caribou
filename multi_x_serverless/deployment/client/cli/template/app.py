@@ -11,10 +11,10 @@ workflow = MultiXServerlessWorkflow("{{ workflow_name }}")
     timeout=60,
     memory=128,
     regions_and_providers={
-        "only_regions": ["us-east-1"],
+        "only_regions": ["aws:us-east-1"],
         "allowed_providers": ["aws"],
         "forbidden_providers": ["gcp"],
-        "forbidden_regions": ["us-east-2"],
+        "forbidden_regions": ["aws:us-east-2"],
     },
 )
 def first_function(event: dict[str, Any]) -> dict[str, Any]:

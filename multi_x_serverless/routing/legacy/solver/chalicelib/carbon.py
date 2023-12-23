@@ -75,12 +75,9 @@ def get_execution_carbon_matrix(regions: list[tuple[str, str]], number_of_functi
     execution_carbon_matrix: list = []
     for i in range(number_of_functions):
         execution_carbon_matrix.append([])
-        # print('\n\nAll regions:', regions)
         for region_provider in regions:
             execution_carbon_matrix[i].append(get_execution_carbon_for_region_function(region_provider))
-            # break # Solver need to use multiple regions, this break brakes solver.
 
-    # print('execution_carbon_matrix:', execution_carbon_matrix, '\n\n')
     return execution_carbon_matrix
 
 

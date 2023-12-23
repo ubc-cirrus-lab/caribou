@@ -16,7 +16,13 @@ class MultiXServerlessFunction:  # pylint: disable=too-many-instance-attributes
     """
 
     def __init__(
-        self, function: Callable[..., Any], name: str, entry_point: bool, timeout: int, memory: int, regions_and_providers: dict
+        self,
+        function: Callable[..., Any],
+        name: str,
+        entry_point: bool,
+        timeout: int,
+        memory: int,
+        regions_and_providers: dict,
     ):
         self.function = function
         self.name = name
@@ -36,7 +42,7 @@ class MultiXServerlessFunction:  # pylint: disable=too-many-instance-attributes
         for call in function_calls:
             if "," not in call:
                 raise RuntimeError(
-                    f"""Could not parse function call ({call}) in function 
+                    f"""Could not parse function call ({call}) in function
                     ({self.function}), did you provide the payload?"""
                 )
             function_name = call.strip().split(",")[0]
@@ -76,7 +82,7 @@ class MultiXServerlessWorkflow:
         """
         Invoke a serverless function which is part of this workflow.
         """
-        # TODO (#11): Implement conditional invocation
+        # TODO (#11): Implement conditional invocation
         # If the function from which this function is called is the entry point obtain current routing decision
         # If not, the routing decision was stored in the message received from the predecessor function
         # Post message to SNS -> return
@@ -140,7 +146,13 @@ class MultiXServerlessWorkflow:
         return []
 
     def register_function(
-        self, function: Callable[..., Any], name: str, entry_point: bool, timeout: int, memory: int, regions_and_providers: dict
+        self,
+        function: Callable[..., Any],
+        name: str,
+        entry_point: bool,
+        timeout: int,
+        memory: int,
+        regions_and_providers: dict,
     ) -> None:
         """
         Register a function as a serverless function.
@@ -159,7 +171,7 @@ class MultiXServerlessWorkflow:
         entry_point: bool = False,
         timeout: int = -1,
         memory: int = 128,
-        regions_and_providers: dict = {},
+        regions_and_providers: Optional[dict] = None,
     ) -> Callable[..., Any]:
         """
         Decorator to register a function as a Lambda function.
@@ -167,6 +179,8 @@ class MultiXServerlessWorkflow:
         :param name: The name of the Lambda function. Defaults to the name of the function being decorated.
         :param entry_point: Whether this function is the entry point for the workflow.
         """
+        if regions_and_providers is None:
+            regions_and_providers = {}
 
         def _register_handler(func: Callable[..., Any]) -> Callable[..., Any]:
             handler_name = name if name is not None else func.__name__

@@ -13,7 +13,9 @@ def is_waiting_for_predecessors():
 
 class TestMultiXServerlessFunction(unittest.TestCase):
     def test_init(self):
-        function = lambda x: x
+        def function(x):
+            return x
+
         name = "test_function"
         entry_point = True
         timeout = 10
@@ -31,7 +33,9 @@ class TestMultiXServerlessFunction(unittest.TestCase):
         self.assertIsNone(function_obj.regions_and_providers)
 
     def test_get_successors(self):
-        function = lambda x: x
+        def function(x):
+            return x
+
         name = "test_function"
         entry_point = True
         timeout = 10
@@ -45,7 +49,8 @@ class TestMultiXServerlessFunction(unittest.TestCase):
 
         self.assertEqual(function_obj.get_successors(workflow), [])
 
-        function = lambda x: invoke_serverless_function("test_function", x)
+        def function(x):
+            return invoke_serverless_function("test_function", x)
 
         function_obj = MultiXServerlessFunction(function, name, entry_point, timeout, memory, regions_and_providers)
 
@@ -55,7 +60,9 @@ class TestMultiXServerlessFunction(unittest.TestCase):
         self.assertEqual(function_obj.get_successors(workflow), [function_obj])
 
     def test_is_waiting_for_predecessors(self):
-        function = lambda x: x
+        def function(x):
+            return x
+
         name = "test_function"
         entry_point = True
         timeout = 10
@@ -66,7 +73,8 @@ class TestMultiXServerlessFunction(unittest.TestCase):
 
         self.assertFalse(function_obj.is_waiting_for_predecessors())
 
-        function = lambda x: is_waiting_for_predecessors()
+        def function(x):
+            return is_waiting_for_predecessors()
 
         function_obj = MultiXServerlessFunction(function, name, entry_point, timeout, memory, regions_and_providers)
 

@@ -10,6 +10,6 @@ class IAMRole(Resource):
 
     def dependencies(self) -> Sequence[Resource]:
         return []
-    
+
     def __repr__(self) -> str:
         return super().__repr__() + f"""        policy={self.policy})"""

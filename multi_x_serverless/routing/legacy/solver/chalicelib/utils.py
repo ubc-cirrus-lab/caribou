@@ -6,34 +6,12 @@ import networkx as nx
 from boto3.dynamodb.conditions import Key
 
 AWS_DATACENTER_INFO_TABLE_NAME = "multi-x-serverless-datacenter-info"
-DEFAULT_REGION = "us-west-2"
 GRID_CO2_TABLE_NAME = "multi-x-serverless-datacenter-grid-co2"
 TRANSMISSION_CO2_TABLE_NAME = "multi-x-serverless-transmission-co2"
 LATENCY_TABLE_NAME = "multi-x-serverless-network-latencies"
 # From https://www.cloudcarbonfootprint.org/docs/methodology/
 ENERGY_CONSUMPTION_PER_GB = 0.001
 AWS = "aws"
-
-OPT_IN_REGIONS = [
-    "af-south-1",
-    "ap-east-1",
-    "ap-south-2",
-    "ap-southeast-3",
-    "ap-southeast-4",
-    "eu-south-1",
-    "eu-south-2",
-    "eu-central-2",
-    "me-south-1",
-    "me-central-1",
-    "il-central-1",
-    "sa-east-1",  # The following are already included but incur data transfer costs
-    "ap-south-1",
-    "ap-northeast-3",
-    "ap-northeast-2",
-    "ap-southeast-1",
-    "ap-southeast-2",
-    "ap-northeast-1",
-]
 
 
 def convert_decimals_to_float(item: dict) -> dict:

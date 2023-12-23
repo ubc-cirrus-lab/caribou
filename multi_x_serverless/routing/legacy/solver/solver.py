@@ -56,9 +56,6 @@ def find_viable_deployment_options(  # pylint: disable=too-many-locals
         new_deployment_options = []
         # We iterate over all regions and compute the viable deployment options for each region
         for region, _ in regions:
-            # print('region:',region)
-            # print('function_to_spec:',function_to_spec[function])
-            # print('function_runtime_measurements:',function_runtime_measurements[function])
             # Calculate the cost, runtime and carbon of the function in the new region
             cost_of_function_in_region: float = cost_matrix[i][region_to_index[region]](
                 function_to_spec[function], function_runtime_measurements[function]
@@ -66,12 +63,6 @@ def find_viable_deployment_options(  # pylint: disable=too-many-locals
             runtime_of_function_in_region: float = runtime_array[region_to_index[region]](
                 function_to_spec[function], function_runtime_measurements[function]
             )
-            # print('region:', region)
-            # print('i, execution_carbon_matrix:', i, execution_carbon_matrix)
-            # print('execution_carbon_matrix[i]:', len(execution_carbon_matrix[i]), execution_carbon_matrix[i])
-            # print('region_to_index[region]:', region_to_index[region])
-            # print('function_to_spec[function]:', function_to_spec[function])
-            # print('function_runtime_measurements[function]:', function_runtime_measurements[function])
             execution_carbon_of_function_in_region: float = execution_carbon_matrix[i][region_to_index[region]](
                 function_to_spec[function], function_runtime_measurements[function]
             )

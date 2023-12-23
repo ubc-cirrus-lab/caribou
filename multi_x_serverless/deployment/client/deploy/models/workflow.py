@@ -4,9 +4,9 @@ from multi_x_serverless.deployment.client.config import Config
 from multi_x_serverless.deployment.client.deploy.models.deployment_package import DeploymentPackage
 from multi_x_serverless.deployment.client.deploy.models.function import Function
 from multi_x_serverless.deployment.client.deploy.models.function_instance import FunctionInstance
-from multi_x_serverless.deployment.client.deploy.models.instructions import APICall, Instruction
+from multi_x_serverless.deployment.client.deploy.models.instructions import Instruction
 from multi_x_serverless.deployment.client.deploy.models.resource import Resource
-from multi_x_serverless.deployment.client.enums import Endpoint
+from multi_x_serverless.routing.solver.workflow_config import WorkflowConfig
 
 
 class Workflow(Resource):
@@ -57,7 +57,9 @@ class Workflow(Resource):
                 packages.append(resource.deployment_package)
         return packages
 
-    def get_description(self) -> dict:
+    def get_description(self) -> WorkflowConfig:
+        if self._config is None:
+            raise RuntimeError("Error in workflow config creation, given config is None, this should not happen")
         workflow_description = {
             "instances": [function_instance.to_json() for function_instance in self._functions],
             "start_hops": self._config.home_regions,
@@ -65,7 +67,11 @@ class Workflow(Resource):
             "constraints": self._config.constraints,
         }
         finished_instances = []
+        if not isinstance(workflow_description["instances"], list):
+            raise RuntimeError("Error in workflow config creation, this should not happen")
         for instance in workflow_description["instances"]:
+            if not isinstance(instance, dict):
+                raise RuntimeError("Error in workflow config creation, this should not happen")
             instance["succeeding_instances"] = []
             for edge in self._edges:
                 if edge[0] == instance["instance_name"]:
@@ -76,4 +82,6 @@ class Workflow(Resource):
                     instance["preceding_instances"].append(edge[0])
             finished_instances.append(instance)
         workflow_description["instances"] = finished_instances
-        return workflow_description
+
+        workflow_config = WorkflowConfig(workflow_description)
+        return workflow_config
