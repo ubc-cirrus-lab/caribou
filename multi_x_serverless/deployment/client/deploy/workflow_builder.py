@@ -45,7 +45,7 @@ class WorkflowBuilder:
                     entry_point=function.entry_point,
                 )
             )
-            function_name_to_function[function.function.__name__] = function
+            function_name_to_function[function.handler] = function
             if function.entry_point and not entry_point:
                 entry_point = function
             elif function.entry_point and entry_point:
@@ -74,12 +74,12 @@ class WorkflowBuilder:
             timeout=entry_point.timeout,
             memory=entry_point.memory,
             regions_and_providers=entry_point.regions_and_providers,
-            function_resource_name=entry_point.function.__name__,
+            function_resource_name=entry_point.name,
         )
         function_instances[predecessor_instance.name] = predecessor_instance
 
         for successor_of_current_index, successor in enumerate(entry_point.get_successors(config.workflow_app)):
-            functions_to_visit.put((successor.function.__name__, predecessor_instance.name, successor_of_current_index))
+            functions_to_visit.put((successor.handler, predecessor_instance.name, successor_of_current_index))
 
         while not functions_to_visit.empty():
             function_to_visit, predecessor_instance_name, successor_of_predecessor_index = functions_to_visit.get()
@@ -101,12 +101,12 @@ class WorkflowBuilder:
                     timeout=multi_x_serverless_function.timeout,
                     memory=multi_x_serverless_function.memory,
                     regions_and_providers=multi_x_serverless_function.regions_and_providers,
-                    function_resource_name=multi_x_serverless_function.function.__name__,
+                    function_resource_name=multi_x_serverless_function.name,
                 )
                 for successor_i, successor in enumerate(
                     multi_x_serverless_function.get_successors(config.workflow_app)
                 ):
-                    functions_to_visit.put((successor.function.__name__, function_instance_name, successor_i))
+                    functions_to_visit.put((successor.handler, function_instance_name, successor_i))
 
             edges.append((predecessor_instance_name, function_instance_name))
 

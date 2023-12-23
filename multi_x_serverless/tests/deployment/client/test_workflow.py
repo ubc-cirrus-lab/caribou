@@ -7,7 +7,7 @@ def invoke_serverless_function(function_name, payload):
     pass
 
 
-def is_waiting_for_predecessors():
+def get_predecessor_data():
     pass
 
 
@@ -33,7 +33,7 @@ class TestMultiXServerlessFunction(unittest.TestCase):
         self.assertIsNone(function_obj.regions_and_providers)
 
     def test_get_successors(self):
-        def function(x):
+        def test_function(x):
             return x
 
         name = "test_function"
@@ -42,22 +42,24 @@ class TestMultiXServerlessFunction(unittest.TestCase):
         memory = 128
         regions_and_providers = {}
 
-        function_obj = MultiXServerlessFunction(function, name, entry_point, timeout, memory, regions_and_providers)
+        function_obj_1 = MultiXServerlessFunction(
+            test_function, name, entry_point, timeout, memory, regions_and_providers
+        )
 
         workflow = Mock()
-        workflow.functions = [function_obj]
+        workflow.functions = [function_obj_1]
 
-        self.assertEqual(function_obj.get_successors(workflow), [])
+        self.assertEqual(function_obj_1.get_successors(workflow), [])
 
         def function(x):
             return invoke_serverless_function("test_function", x)
 
-        function_obj = MultiXServerlessFunction(function, name, entry_point, timeout, memory, regions_and_providers)
+        function_obj_2 = MultiXServerlessFunction(function, name, entry_point, timeout, memory, regions_and_providers)
 
         workflow = Mock()
-        workflow.functions = [function_obj]
+        workflow.functions = [function_obj_1, function_obj_2]
 
-        self.assertEqual(function_obj.get_successors(workflow), [function_obj])
+        self.assertEqual(function_obj_2.get_successors(workflow), [function_obj_1])
 
     def test_is_waiting_for_predecessors(self):
         def function(x):
@@ -74,7 +76,7 @@ class TestMultiXServerlessFunction(unittest.TestCase):
         self.assertFalse(function_obj.is_waiting_for_predecessors())
 
         def function(x):
-            return is_waiting_for_predecessors()
+            return get_predecessor_data()
 
         function_obj = MultiXServerlessFunction(function, name, entry_point, timeout, memory, regions_and_providers)
 

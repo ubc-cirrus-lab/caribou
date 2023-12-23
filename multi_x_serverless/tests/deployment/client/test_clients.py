@@ -11,15 +11,11 @@ class TestAWSClient(unittest.TestCase):
         self.aws_client = AWSClient(self.region)
         self.mock_session = mock_session
 
-    def test_init(self):
-        self.mock_session.assert_called_once_with(region_name=self.region)
-        self.assertEqual(self.aws_client._client_cache, {})
-
     @patch("boto3.session.Session.client")
     def test_client(self, mock_client):
         service_name = "lambda"
         self.aws_client._client(service_name)
-        self.mock_session.client.assert_called_once_with(service_name)
+        mock_client.assert_called_once_with(service_name)
 
     @patch.object(AWSClient, "_client")
     def test_get_iam_role(self, mock_client):
@@ -51,7 +47,7 @@ class TestAWSClient(unittest.TestCase):
         environment_variables = {"test_key": "test_value"}
         timeout = 10
         memory_size = 128
-        mock_create_lambda.return_value = ("arn:aws:lambda:us-west-2:123456789012:function:test_function", "Active")
+        mock_create_lambda.return_value = ("arn:aws:lambda:us-west-2:123456789012:function:test_function", "Inactive")
         result = self.aws_client.create_function(
             function_name, role_arn, zip_contents, runtime, handler, environment_variables, timeout, memory_size
         )

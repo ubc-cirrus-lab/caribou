@@ -25,8 +25,16 @@ class TestWorkflowBuilder(unittest.TestCase):
     def test_build_workflow_multiple_entry_points(self):
         function1 = Mock(spec=MultiXServerlessFunction)
         function1.entry_point = True
+        function1.name = "function1"
+        function1.handler = "function1"
+        function1.timeout = 10
+        function1.memory = 128
         function2 = Mock(spec=MultiXServerlessFunction)
         function2.entry_point = True
+        function2.name = "function2"
+        function2.handler = "function1"
+        function2.timeout = 10
+        function2.memory = 128
         self.config.workflow_app.functions = [function1, function2]
         with self.assertRaises(RuntimeError):
             self.builder.build_workflow(self.config)
@@ -36,14 +44,14 @@ class TestWorkflowBuilder(unittest.TestCase):
         mock_join.return_value = "/path/to/policy"
         self.config.iam_policy_file = "policy.yml"
         role = self.builder.get_function_role(self.config, "test_function")
-        self.assertEqual(role.role_name, "test_function-role")
+        self.assertEqual(role.name, "test_function-role")
         self.assertEqual(role.policy, "/path/to/policy")
 
     @patch("os.path.join")
     def test_get_function_role_without_policy_file(self, mock_join):
         mock_join.return_value = "/path/to/default_policy"
         role = self.builder.get_function_role(self.config, "test_function")
-        self.assertEqual(role.role_name, "test_function-role")
+        self.assertEqual(role.name, "test_function-role")
         self.assertEqual(role.policy, "/path/to/default_policy")
 
 

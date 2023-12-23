@@ -11,7 +11,7 @@ class TestConfig(unittest.TestCase):
         self.config = Config({"workflow_name": "test_workflow"}, "project_dir")
 
     def test_workflow_app(self):
-        self.config._workflow_app = MultiXServerlessWorkflow()
+        self.config.project_config["workflow_app"] = MultiXServerlessWorkflow("test_workflow")
         self.assertIsInstance(self.config.workflow_app, MultiXServerlessWorkflow)
 
     def test_workflow_name(self):

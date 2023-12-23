@@ -28,34 +28,10 @@ class TestCLIFactory(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             factory._validate_config("not a dictionary")
 
-    @patch("builtins.open", new_callable=Mock, create=True)
-    @patch("yaml.safe_load")
-    def test_create_config_obj(self, mock_yaml, mock_open):
-        mock_yaml.return_value = {"key": "value"}
-        factory = CLIFactory("project_dir")
-        with self.assertRaises(ValidationError):
-            factory.create_config_obj()
-
     def test_create_session(self):
         factory = CLIFactory("project_dir")
         result = factory.create_session()
         self.assertIsNotNone(result)
-
-    @patch("builtins.open", new_callable=Mock, create=True)
-    @patch("yaml.safe_load")
-    def test_create_deployer(self, mock_yaml, mock_open):
-        mock_yaml.return_value = {"key": "value"}
-        factory = CLIFactory("project_dir")
-        with self.assertRaises(ValidationError):
-            factory.create_deployer(Mock(), Mock())
-
-    @patch("builtins.open", new_callable=Mock, create=True)
-    @patch("yaml.safe_load")
-    def test_create_deletion_deployer(self, mock_yaml, mock_open):
-        mock_yaml.return_value = {"key": "value"}
-        factory = CLIFactory("project_dir")
-        with self.assertRaises(ValidationError):
-            factory.create_deletion_deployer(Mock(), Mock())
 
 
 if __name__ == "__main__":

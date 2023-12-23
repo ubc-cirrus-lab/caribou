@@ -11,7 +11,6 @@ class Config:
     def __init__(self, project_config: dict, project_dir: str) -> None:
         self.project_config = project_config
         self.project_dir = project_dir
-        self._workflow_app = None
 
     @property
     def workflow_app(self) -> MultiXServerlessWorkflow:
