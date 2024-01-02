@@ -2,6 +2,7 @@ import numpy as np
 
 from multi_x_serverless.routing.current.workflow_config import WorkflowConfig
 
+
 class Source:
     _data: np.ndarray
 
@@ -10,7 +11,7 @@ class Source:
         self._regions = regions
         self._functions = functions
 
-    def _set_data(self, data: np.ndarray):
+    def _set_data(self, data: np.ndarray) -> None:
         self._data = data
 
     def __str__(self) -> str:

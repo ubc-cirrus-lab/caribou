@@ -2,27 +2,24 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 
-from multi_x_serverless.routing.current.ranker.ranker import Ranker
-from multi_x_serverless.routing.current.workflow_config import WorkflowConfig
-from multi_x_serverless.routing.current.data_sources.source import Source
 from multi_x_serverless.routing.current.data_sources.carbon import CarbonSource
 from multi_x_serverless.routing.current.data_sources.cost import CostSource
 from multi_x_serverless.routing.current.data_sources.runtime import RuntimeSource
+from multi_x_serverless.routing.current.data_sources.source import Source
+from multi_x_serverless.routing.current.ranker.ranker import Ranker
+from multi_x_serverless.routing.current.workflow_config import WorkflowConfig
 
 
 class Solver(ABC):
-    __data_sources: dict[str, Source] = {
-        "carbon": CarbonSource,
-        "cost": CostSource,
-        "runtime": RuntimeSource,
-    }
+    _data_sources: dict[str, Source]
 
     def __init__(self, workflow_config: WorkflowConfig):
         self._workflow_config = workflow_config
         self._ranker = Ranker(workflow_config)
 
     def solve(self, regions: np.ndarray) -> list[tuple[dict, float, float, float]]:
-        filtered_regions = self._instantiate_data_sources(self._filter_regions(regions))
+        filtered_regions = self._filter_regions(regions)
+        self._instantiate_data_sources(filtered_regions)
         return self._solve(filtered_regions)
 
     @abstractmethod
@@ -38,6 +35,9 @@ class Solver(ABC):
     ) -> list[tuple[dict, float, float, float]]:
         return self._ranker.rank(results)
 
-    def _instantiate_data_sources(self, regions: np.ndarray):
-        for name, source in self.__data_sources.items():
-            self.__data_sources[name] = source(self._workflow_config, regions, self._workflow_config.functions)
+    def _instantiate_data_sources(self, regions: np.ndarray) -> None:
+        self.__data_sources = {
+            "carbon": CarbonSource(self._workflow_config, regions, self._workflow_config.functions),
+            "cost": CostSource(self._workflow_config, regions, self._workflow_config.functions),
+            "runtime": RuntimeSource(self._workflow_config, regions, self._workflow_config.functions),
+        }

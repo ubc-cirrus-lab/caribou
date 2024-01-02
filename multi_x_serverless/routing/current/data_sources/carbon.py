@@ -1,7 +1,6 @@
 import numpy as np
 
 from multi_x_serverless.routing.current.data_sources.source import Source
-
 from multi_x_serverless.routing.current.workflow_config import WorkflowConfig
 
 

@@ -1,6 +1,6 @@
-from multi_x_serverless.routing.current.solver.solver import Solver
-
 import numpy as np
+
+from multi_x_serverless.routing.current.solver.solver import Solver
 
 
 class SimpleSolver(Solver):

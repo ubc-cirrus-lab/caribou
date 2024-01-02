@@ -8,5 +8,5 @@ class Ranker:
         self._config = config
 
     def rank(self, results: list[tuple[dict, float, float, float]]) -> list[tuple[dict, float, float, float]]:
-        # TODO (#23): Implement ranker
+        # TODO (#23): Implement ranker
         raise NotImplementedError

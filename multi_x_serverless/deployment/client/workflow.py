@@ -171,7 +171,8 @@ class MultiXServerlessWorkflow:
         name: Optional[str] = None,
         entry_point: bool = False,
         timeout: int = -1,  # TODO (#21): Rework function registration, remove these AWS specific parameters
-        memory: int = 128,  # TODO (#21): Rework function registration, add config object with platform specific parameters
+        memory: int = 128,  # TODO (#21): Rework function registration, add config object with platform
+        # specific parameters
         regions_and_providers: Optional[dict] = None,
     ) -> Callable[..., Any]:
         """
