@@ -4,6 +4,6 @@ import numpy as np
 
 
 class StochasticGradientDescentSolver(Solver):
-    def solve(self, regions: np.ndarray, functions: np.ndarray) -> list[tuple[dict, float, float, float]]:
+    def _solve(self, regions: np.ndarray) -> list[tuple[dict, float, float, float]]:
         # TODO (#14): Implement this function
-        return np.zeros((len(regions), len(functions)))
+        return np.zeros((len(regions), len(self._workflow_config.functions)))

@@ -4,6 +4,6 @@ import numpy as np
 
 
 class SimpleSolver(Solver):
-    def solve(self, regions: np.ndarray, functions: np.ndarray) -> list[tuple[dict, float, float, float]]:
+    def _solve(self, regions: np.ndarray) -> list[tuple[dict, float, float, float]]:
         # TODO (#19): Implement simple solver
         return []
