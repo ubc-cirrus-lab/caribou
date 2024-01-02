@@ -1,6 +1,8 @@
 import json
 from typing import Any
 
+import numpy as np
+
 
 class WorkflowConfig:
     def __init__(self, workflow_config: dict):
@@ -20,3 +22,7 @@ class WorkflowConfig:
 
     def to_json(self) -> str:
         return json.dumps(self._workflow_config)
+
+    @property
+    def functions(self) -> np.ndarray:
+        return np.array(self._lookup("functions"))
