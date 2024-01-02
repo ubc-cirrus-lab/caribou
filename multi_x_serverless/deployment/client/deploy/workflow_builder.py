@@ -34,7 +34,7 @@ class WorkflowBuilder:
             resources.append(
                 Function(
                     name=function_deployment_name,
-                    environment_variables=config.environment_variables,
+                    environment_variables=config.environment_variables, # TODO (#22): Add function specific environment variables
                     runtime=config.python_version,
                     handler=function.handler,
                     timeout=function.timeout,
