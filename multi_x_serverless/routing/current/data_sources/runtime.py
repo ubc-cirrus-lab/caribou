@@ -1,6 +1,6 @@
 import numpy as np
 
-from multi_x_serverless.routing.solver.datasources.source import Source
+from multi_x_serverless.routing.current.data_sources.source import Source
 
 
 class RuntimeSource(Source):
