@@ -77,7 +77,9 @@ class CLIFactory:
                 provider["name"] for provider in project_config["providers"] if provider["name"] in possible_endpoints
             ]
             only_regions = project_config["constraints"]["regions_and_providers"]["only_regions"]
-            if not isinstance(only_regions, list):
+            if not only_regions:
+                only_regions = []
+            if only_regions and not isinstance(only_regions, list):
                 raise RuntimeError("only_regions must be a list")
             for region in only_regions:
                 if not isinstance(region, str):
