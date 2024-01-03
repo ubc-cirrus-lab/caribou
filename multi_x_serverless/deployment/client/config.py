@@ -68,7 +68,7 @@ class Config:
         return self._lookup("iam_policy_file")
 
     @property
-    def providers(self) -> list[str]:
+    def providers(self) -> list[dict]:
         return self._lookup("providers")
 
     def deployed_resources(self) -> list[Any]:

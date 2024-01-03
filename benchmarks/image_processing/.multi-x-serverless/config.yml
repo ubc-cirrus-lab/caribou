@@ -22,6 +22,9 @@ constraints:
     carbon: null
   regions_and_providers: # Either the user specify only allowed regions (which will override everything else)
     only_regions: null # Only check other conditions if this is None, else will restrict to ONLY those regions
-    allowed_providers: null
-    forbidden_providers: null
     forbidden_regions: null
+providers:
+  - name: "aws"
+    config:
+      timeout: 60
+      memory: 128

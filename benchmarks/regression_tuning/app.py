@@ -20,12 +20,12 @@ workflow = MultiXServerlessWorkflow("regression_tuning")
 @workflow.serverless_function(
     name="GetInput",
     entry_point=True,
-    providers=[ # TODO (#21): Rework function registration
+    providers=[
         {
             "name": "aws",
             "configuration": {
-                "timeout": 60,
-                "memory": 128,
+                "timeout": 90,
+                "memory": 256,
             }
         }
     ]
@@ -48,7 +48,7 @@ def get_input(event: dict[str, Any]) -> dict[str, Any]:
     return {"status": 200}
 
 
-@workflow.serverless_function(name="CreateDataset", memory=128, timeout=60)
+@workflow.serverless_function(name="CreateDataset")
 def create_dataset(event: dict[str, Any]) -> dict[str, Any]:
     samplesNum = event["samplesNum"]
 
@@ -87,7 +87,7 @@ def create_artificial_dataset(n_samples):
     return payload
 
 
-@workflow.serverless_function(name="FirstModel", memory=128, timeout=60)
+@workflow.serverless_function(name="FirstModel")
 def first_model(event: dict[str, Any]) -> dict[str, Any]:
     storage_path = event["storage_path"]
 
@@ -150,7 +150,7 @@ def first_model(event: dict[str, Any]) -> dict[str, Any]:
     return {"status": 200}
 
 
-@workflow.serverless_function(name="SecondModel", memory=128, timeout=60)
+@workflow.serverless_function(name="SecondModel")
 def second_model(event: dict[str, Any]) -> dict[str, Any]:
     storage_path = event["storage_path"]
 
@@ -213,7 +213,7 @@ def second_model(event: dict[str, Any]) -> dict[str, Any]:
     return {"status": 200}
 
 
-@workflow.serverless_function(name="MergeFunction", memory=128, timeout=60)
+@workflow.serverless_function(name="MergeFunction")
 def merge_function(event: dict[str, Any]) -> dict[str, Any]:
     results = workflow.get_predecessor_data(event)
 
@@ -240,7 +240,7 @@ def merge_function(event: dict[str, Any]) -> dict[str, Any]:
     return {"status": 200}
 
 
-@workflow.serverless_function(name="JoinRuns", memory=128, timeout=60)
+@workflow.serverless_function(name="JoinRuns")
 def join_runs(event: dict[str, Any]) -> dict[str, Any]:
     model_names = event["model_names"]
     results = event["results"]

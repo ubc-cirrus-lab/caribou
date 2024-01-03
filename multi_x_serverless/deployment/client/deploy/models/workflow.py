@@ -74,6 +74,9 @@ class Workflow(Resource):
             if not isinstance(instance, dict):
                 raise RuntimeError("Error in workflow config creation, this should not happen")
             instance["succeeding_instances"] = []
+            if "providers" not in instance:
+                instance["providers"] = self._config.providers
+            # TODO (#22): Add function specific environment variables, similar to providers
             for edge in self._edges:
                 if edge[0] == instance["instance_name"]:
                     instance["succeeding_instances"].append(edge[1])

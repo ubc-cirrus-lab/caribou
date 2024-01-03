@@ -19,8 +19,15 @@ workflow = MultiXServerlessWorkflow("text_2_speech_censoring")
 @workflow.serverless_function(
     name="GetInput",
     entry_point=True,
-    timeout=60,
-    memory=128,
+    providers=[
+        {
+            "name": "aws",
+            "configuration": {
+                "timeout": 90,
+                "memory": 256,
+            }
+        }
+    ]
 )
 def get_input(event: dict[str, Any]) -> dict[str, Any]:
     request = event["request"]
@@ -42,7 +49,7 @@ def get_input(event: dict[str, Any]) -> dict[str, Any]:
     return {"status": 200}
 
 
-@workflow.serverless_function(name="Text2Speech", memory=128, timeout=60)
+@workflow.serverless_function(name="Text2Speech")
 def text_2_speech(event: dict[str, Any]) -> dict[str, Any]:
     message = event["data"]
 
@@ -67,7 +74,7 @@ def text_2_speech(event: dict[str, Any]) -> dict[str, Any]:
     return {"status": 200}
 
 
-@workflow.serverless_function(name="Profanity", memory=128, timeout=60)
+@workflow.serverless_function(name="Profanity")
 def profanity(event: dict[str, Any]) -> dict[str, Any]:
     message = event["data"]
 
@@ -102,7 +109,7 @@ def extract_indexes(text, char="*") -> list:
     return indexes
 
 
-@workflow.serverless_function(name="Conversion", memory=128, timeout=60)
+@workflow.serverless_function(name="Conversion")
 def conversion(event: dict[str, Any]) -> dict[str, Any]:
     file_name = event["file_name"]
 
@@ -134,7 +141,7 @@ def conversion(event: dict[str, Any]) -> dict[str, Any]:
     return {"status": 200}
 
 
-@workflow.serverless_function(name="Compression", memory=128, timeout=60)
+@workflow.serverless_function(name="Compression")
 def compression(event: dict[str, Any]) -> dict[str, Any]:
     file_name = event["file_name"]
 
@@ -171,7 +178,7 @@ def compression(event: dict[str, Any]) -> dict[str, Any]:
     return {"status": 200}
 
 
-@workflow.serverless_function(name="MergeFunction", memory=128, timeout=60)
+@workflow.serverless_function(name="MergeFunction")
 def merge_function(event: dict[str, Any]) -> dict[str, Any]:
     results = workflow.get_predecessor_data(event)
 
@@ -195,7 +202,7 @@ def merge_function(event: dict[str, Any]) -> dict[str, Any]:
     return {"status": 200}
 
 
-@workflow.serverless_function(name="Censor", memory=128, timeout=60)
+@workflow.serverless_function(name="Censor")
 def censor(event: dict[str, Any]) -> dict[str, Any]:
     file_name = event["file_name"]
     indexes = event["data"]

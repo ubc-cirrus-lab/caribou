@@ -14,8 +14,15 @@ workflow = MultiXServerlessWorkflow("image_processing")
 @workflow.serverless_function(
     name="GetInput",
     entry_point=True,
-    timeout=60,
-    memory=128,
+    providers=[
+        {
+            "name": "aws",
+            "configuration": {
+                "timeout": 90,
+                "memory": 256,
+            }
+        }
+    ]
 )
 def get_input(event: dict[str, Any]) -> dict[str, Any]:
     request = event["request"]
@@ -35,7 +42,7 @@ def get_input(event: dict[str, Any]) -> dict[str, Any]:
     return {"status": 200}
 
 
-@workflow.serverless_function(name="Flip", memory=128, timeout=60)
+@workflow.serverless_function(name="Flip")
 def flip(event: dict[str, Any]) -> dict[str, Any]:
     image_name = event["image_name"]
 
@@ -62,7 +69,7 @@ def flip(event: dict[str, Any]) -> dict[str, Any]:
     return {"status": 200}
 
 
-@workflow.serverless_function(name="Rotate", memory=128, timeout=60)
+@workflow.serverless_function(name="Rotate")
 def rotate(event: dict[str, Any]) -> dict[str, Any]:
     image_name = event["image_name"]
 
@@ -89,7 +96,7 @@ def rotate(event: dict[str, Any]) -> dict[str, Any]:
     return {"status": 200}
 
 
-@workflow.serverless_function(name="Filter", memory=128, timeout=60)
+@workflow.serverless_function(name="Filter")
 def filter_function(event: dict[str, Any]) -> dict[str, Any]:
     image_name = event["image_name"]
 
@@ -116,7 +123,7 @@ def filter_function(event: dict[str, Any]) -> dict[str, Any]:
     return {"status": 200}
 
 
-@workflow.serverless_function(name="Greyscale", memory=128, timeout=60)
+@workflow.serverless_function(name="Greyscale")
 def greyscale(event: dict[str, Any]) -> dict[str, Any]:
     image_name = event["image_name"]
 
@@ -143,7 +150,7 @@ def greyscale(event: dict[str, Any]) -> dict[str, Any]:
     return {"status": 200}
 
 
-@workflow.serverless_function(name="Resize", memory=128, timeout=60)
+@workflow.serverless_function(name="Resize")
 def resize(event: dict[str, Any]) -> dict[str, Any]:
     image_name = event["image_name"]
 

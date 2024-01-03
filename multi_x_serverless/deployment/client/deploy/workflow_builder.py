@@ -12,6 +12,7 @@ from multi_x_serverless.deployment.client.deploy.models import (
     Workflow,
 )
 from multi_x_serverless.deployment.client.workflow import MultiXServerlessFunction
+from multi_x_serverless.deployment.client.cli.config_schema import Provider
 
 
 class WorkflowBuilder:
@@ -31,10 +32,12 @@ class WorkflowBuilder:
         for function in config.workflow_app.functions:
             function_deployment_name = f"{config.workflow_name}-{function.name}"
             function_role = self.get_function_role(config, function_deployment_name)
+            providers = function.providers if function.providers else config.providers
+            self._verify_providers(providers)
             resources.append(
                 Function(
                     name=function_deployment_name,
-                    # TODO (#22): Add function specific environment variables
+                    # TODO (#22): Add function specific environment variables, similar to providers
                     environment_variables=config.environment_variables,
                     runtime=config.python_version,
                     handler=function.handler,
@@ -42,7 +45,7 @@ class WorkflowBuilder:
                     deployment_package=DeploymentPackage(),
                     home_regions=config.home_regions,
                     entry_point=function.entry_point,
-                    providers=function.providers,
+                    providers=providers,
                 )
             )
             function_name_to_function[function.handler] = function
@@ -110,6 +113,10 @@ class WorkflowBuilder:
 
         functions: list[FunctionInstance] = list(function_instances.values())
         return Workflow(resources=resources, functions=functions, edges=edges, name=config.workflow_name, config=config)
+
+    def _verify_providers(self, providers: list[dict]) -> None:
+        for provider in providers:
+            Provider(**provider)
 
     def get_function_role(self, config: Config, function_name: str) -> IAMRole:
         role_name = f"{function_name}-role"
