@@ -10,6 +10,7 @@ class SimpleSolver(Solver):
         runtime = np.zeros(len(regions))
 
         for data_source_name in self._data_sources:
+            # Execution cost is the sum of the execution costs of all functions in the same region for the simple solver
             execution_matrix = self._data_sources[data_source_name].get_execution_matrix()
 
             row_sums = np.sum(execution_matrix, axis=1)
@@ -20,6 +21,17 @@ class SimpleSolver(Solver):
                 cost = row_sums
             elif data_source_name == "runtime":
                 runtime = row_sums
+
+            # Transmission cost is the diagonal of the transmission matrix times the number of functions
+            transmission_matrix = self._data_sources[data_source_name].get_transmission_matrix()
+            transmission_cost = np.diagonal(transmission_matrix) * len(self._workflow_config.functions)
+
+            if data_source_name == "carbon":
+                carbon += transmission_cost
+            elif data_source_name == "cost":
+                cost += transmission_cost
+            elif data_source_name == "runtime":
+                runtime += transmission_cost
 
         deployments: list[tuple[dict[str, str], float, float, float]] = []
 

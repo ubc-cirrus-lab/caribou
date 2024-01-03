@@ -32,7 +32,7 @@ class Solver(ABC):
     def _filter_regions_global(self, regions: np.ndarray) -> np.ndarray:
         # TODO (#21): Implement this function
         return regions
-    
+
     def _filter_regions_function(self, regions: np.ndarray, function: str) -> np.ndarray:
         # TODO (#24): Implement this function
         return regions

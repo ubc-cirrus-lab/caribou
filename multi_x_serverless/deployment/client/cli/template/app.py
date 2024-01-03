@@ -12,15 +12,15 @@ workflow = MultiXServerlessWorkflow("{{ workflow_name }}")
         "only_regions": ["aws:us-east-1"],
         "forbidden_regions": ["aws:us-east-2"],
     },
-    providers=[ # TODO (#21): Rework function registration
-        {
-            "name": "aws",
-            "configuration": {
-                "timeout": 60,
-                "memory": 128,
-            }
-        }
-    ]
+    # providers=[  # TODO (#21): Rework function registration
+    #     {
+    #         "name": "aws",
+    #         "configuration": {
+    #             "timeout": 60,
+    #             "memory": 128,
+    #         },
+    #     }
+    # ],
 )
 def first_function(event: dict[str, Any]) -> dict[str, Any]:
     payload = {
