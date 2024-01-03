@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import Mock
-from multi_x_serverless.deployment.client.workflow import MultiXServerlessFunction
+from typing import Any
+from multi_x_serverless.deployment.client.workflow import MultiXServerlessFunction, MultiXServerlessWorkflow
 
 
 def invoke_serverless_function(function_name, payload):
@@ -75,6 +76,51 @@ class TestMultiXServerlessFunction(unittest.TestCase):
         function_obj = MultiXServerlessFunction(function, name, entry_point, regions_and_providers, providers)
 
         self.assertTrue(function_obj.is_waiting_for_predecessors())
+
+    def test_serverless_function(self):
+        workflow = MultiXServerlessWorkflow(
+            name="test-workflow"
+        )  # Assuming Workflow is the class containing serverless_function
+        workflow.register_function = Mock()
+        workflow.get_routing_decision_from_platform = Mock(return_value={"decision": 1})
+
+        @workflow.serverless_function(name="test_func", entry_point=True)
+        def test_func(payload):
+            return payload * 2
+
+        # Check if the function was registered correctly
+        args, _ = workflow.register_function.call_args
+        registered_func = args[0]
+        self.assertEqual(registered_func.__name__, "test_func")
+        self.assertEqual(args[1:], ("test_func", True, {}, []))
+
+        self.assertEqual(test_func.routing_decision, {})
+
+        self.assertEqual(test_func(2), 4)
+
+        # Check if the routing_decision attribute was set correctly
+        self.assertEqual(test_func.routing_decision, {"decision": 1})
+
+    def test_invoke_serverless_function(self):
+        workflow = MultiXServerlessWorkflow(name="test-workflow")
+        workflow.register_function = Mock()
+
+        @workflow.serverless_function(name="test_func")
+        def test_func(payload: dict[str, Any]) -> dict[str, Any]:
+            return payload * 2
+
+        # Check if the function was registered correctly
+        args, _ = workflow.register_function.call_args
+        registered_func = args[0]
+        self.assertEqual(registered_func.__name__, "test_func")
+        self.assertEqual(args[1:], ("test_func", False, {}, []))
+
+        self.assertEqual(test_func.routing_decision, {})
+
+        self.assertEqual(test_func('{"payload": 2, "routing_decision": {"decision": 1}}'), 4)
+
+        # Check if the routing_decision attribute was set correctly
+        self.assertEqual(test_func.routing_decision, {"decision": 1})
 
 
 if __name__ == "__main__":

@@ -45,12 +45,6 @@ def handle_request(args: Optional[dict[str, Any]] = None) -> dict[str, Any]:
     return {"message": "OK", "duration": execution_time, "inputs": default_values}
 
 
-# @app.route('/') # WEB
-# def index():
-#     args = app.current_request.query_params or None
-#     return handle_request(args)
-
-
 @app.lambda_function()
 def lambda_handler(event: dict[str, Any]) -> dict[str, Any]:
     return handle_request(event)

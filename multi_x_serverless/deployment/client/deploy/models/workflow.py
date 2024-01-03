@@ -63,6 +63,7 @@ class Workflow(Resource):
         workflow_description = {
             "instances": [function_instance.to_json() for function_instance in self._functions],
             "start_hops": self._config.home_regions,
+            # TODO (#27): Implement and incorporate Free Tier considerations into data_sources
             "estimated_invocations_per_month": self._config.estimated_invocations_per_month,
             "constraints": self._config.constraints,
             "providers": self._config.providers,

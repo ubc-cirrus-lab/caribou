@@ -28,7 +28,7 @@ class MultiXServerlessFunction:  # pylint: disable=too-many-instance-attributes
         self.entry_point = entry_point
         self.handler = function.__name__
         self.regions_and_providers = regions_and_providers if len(regions_and_providers) > 0 else None
-        self.providers = providers
+        self.providers = providers if len(providers) > 0 else None
 
     def get_successors(self, workflow: MultiXServerlessWorkflow) -> list[MultiXServerlessFunction]:
         """
@@ -93,6 +93,13 @@ class MultiXServerlessWorkflow:
         frame = inspect.currentframe()
         if not frame:
             raise RuntimeError("Could not get current frame")
+
+        # We need to go back two frames to get the frame of the wrapper function that stores the routing decision
+        frame = frame.f_back
+
+        if not frame:
+            raise RuntimeError("Could not get previous frame")
+
         frame = frame.f_back
 
         if not frame:
@@ -100,34 +107,21 @@ class MultiXServerlessWorkflow:
 
         routing_decision = self.get_routing_decision(frame)
 
-        payload["routing_decision"] = routing_decision
+        payload_wrapper = {"payload": payload}
+        payload_wrapper["routing_decision"] = routing_decision
 
-        # TODO (#7): We need to decide on how to handle the routing decision
-        # (how to inform this function about where in the workflow it is)
-        # TODO (#7): Post message to messaging services
         provider, region, arn = routing_decision["next_endpoint"].split(":")
         if provider == Endpoint.AWS.value:
-            self.invoke_function_through_sns(payload, region, arn)
+            self.invoke_function_through_sns(payload_wrapper, region, arn)
         return "Some response"
 
     def get_routing_decision(self, frame: FrameType) -> dict[str, Any]:
         routing_decision = None
 
-        if not frame:
-            raise RuntimeError("Could not get previous frame")
-
-        if frame.f_locals.get("entry_point") and not frame.f_locals.get("routing_decision"):
-            routing_decision = frame.f_locals.get("routing_decision")
-            frame.f_locals["routing_decision"] = routing_decision
+        if frame.routing_decision is not None:  # type: ignore
+            routing_decision = frame.routing_decision  # type: ignore
         else:
-            routing_decision = frame.f_locals.get("routing_decision")
-            if not routing_decision:
-                args, _, _, _ = inspect.getargvalues(frame)
-                routing_decision = json.loads(args[0])["routing_decision"]
-        if not routing_decision:
             raise RuntimeError("Could not get routing decision")
-        if not isinstance(routing_decision, dict):
-            raise RuntimeError("Routing decision is not of type dict")
         return routing_decision
 
     def invoke_function_through_sns(self, message: dict[str, Any], region: str, arn: str) -> None:
@@ -145,6 +139,13 @@ class MultiXServerlessWorkflow:
         # If not, abort this function call, another function will eventually be called
         # TODO (#10): Check if all predecessor functions have returned
         return []
+
+    def get_routing_decision_from_platform(self) -> dict[str, Any]:
+        """
+        Get the routing decision from the platform.
+        """
+        # TODO (#7): Get routing decision from platform
+        return {}
 
     def register_function(
         self,
@@ -188,13 +189,22 @@ class MultiXServerlessWorkflow:
         def _register_handler(func: Callable[..., Any]) -> Callable[..., Any]:
             handler_name = name if name is not None else func.__name__
 
-            func.entry_point = entry_point  # type: ignore
+            def wrapper(*args, **kwargs):  # type: ignore # pylint: disable=unused-argument
+                # Modify args and kwargs here as needed
+                if entry_point:
+                    wrapper.routing_decision = self.get_routing_decision_from_platform()  # type: ignore
+                    payload = args[0]
+                else:
+                    # Get the routing decision from the message received from the predecessor function
+                    print(args[0])
+                    wrapper.routing_decision = json.loads(args[0])["routing_decision"]  # type: ignore
+                    payload = json.loads(args[0]).get("payload", {})
 
-            if entry_point:
-                func.routing_decision = None  # type: ignore
-                # TODO (#7): Get routing decision from platform
+                # Call the original function with the modified arguments
+                return func(payload)
 
+            wrapper.routing_decision = {}  # type: ignore
             self.register_function(func, handler_name, entry_point, regions_and_providers, providers)
-            return func
+            return wrapper
 
         return _register_handler

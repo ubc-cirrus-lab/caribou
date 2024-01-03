@@ -3,6 +3,7 @@ import queue
 import uuid
 from typing import Optional
 
+from multi_x_serverless.deployment.client.cli.config_schema import Provider
 from multi_x_serverless.deployment.client.config import Config
 from multi_x_serverless.deployment.client.deploy.models import (
     DeploymentPackage,
@@ -12,7 +13,6 @@ from multi_x_serverless.deployment.client.deploy.models import (
     Workflow,
 )
 from multi_x_serverless.deployment.client.workflow import MultiXServerlessFunction
-from multi_x_serverless.deployment.client.cli.config_schema import Provider
 
 
 class WorkflowBuilder:
@@ -74,10 +74,13 @@ class WorkflowBuilder:
         predecessor_instance = FunctionInstance(
             name=f"{entry_point.name}:entry_point:{index_in_dag}",
             entry_point=entry_point.entry_point,
-            regions_and_providers=entry_point.regions_and_providers,
+            regions_and_providers=entry_point.regions_and_providers
+            if entry_point.regions_and_providers
+            else config.regions_and_providers,
             function_resource_name=entry_point.name,
-            providers=entry_point.providers,
+            providers=entry_point.providers if entry_point.providers else config.providers,
         )
+        index_in_dag += 1
         function_instances[predecessor_instance.name] = predecessor_instance
 
         for successor_of_current_index, successor in enumerate(entry_point.get_successors(config.workflow_app)):
@@ -91,7 +94,7 @@ class WorkflowBuilder:
             function_instance_name = (
                 f"{multi_x_serverless_function.name}:{predecessor_instance_name_for_instance}_{predecessor_index}_{successor_of_predecessor_index}:{index_in_dag}"
                 if not multi_x_serverless_function.is_waiting_for_predecessors()
-                else f"{multi_x_serverless_function.name}:merge"
+                else f"{multi_x_serverless_function.name}:merge:{index_in_dag}"
             )
             index_in_dag += 1
             # If the function is waiting for its predecessors, there can only be one instance of the function
@@ -100,14 +103,18 @@ class WorkflowBuilder:
                 function_instances[function_instance_name] = FunctionInstance(
                     name=function_instance_name,
                     entry_point=multi_x_serverless_function.entry_point,
-                    regions_and_providers=multi_x_serverless_function.regions_and_providers,
+                    regions_and_providers=multi_x_serverless_function.regions_and_providers
+                    if multi_x_serverless_function.regions_and_providers
+                    else config.regions_and_providers,
                     function_resource_name=multi_x_serverless_function.name,
-                    providers=multi_x_serverless_function.providers,
+                    providers=multi_x_serverless_function.providers
+                    if multi_x_serverless_function.providers
+                    else config.providers,
                 )
-                for successor_i, successor in enumerate(
+                for successor_of_predecessor_i, successor in enumerate(
                     multi_x_serverless_function.get_successors(config.workflow_app)
                 ):
-                    functions_to_visit.put((successor.handler, function_instance_name, successor_i))
+                    functions_to_visit.put((successor.handler, function_instance_name, successor_of_predecessor_i))
 
             edges.append((predecessor_instance_name, function_instance_name))
 

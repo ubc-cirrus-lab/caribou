@@ -5,6 +5,7 @@ import numpy as np
 
 from multi_x_serverless.routing.current.data_sources.carbon import CarbonSource
 from multi_x_serverless.routing.current.data_sources.cost import CostSource
+from multi_x_serverless.routing.current.data_sources.region import Region
 from multi_x_serverless.routing.current.data_sources.runtime import RuntimeSource
 from multi_x_serverless.routing.current.data_sources.source import Source
 from multi_x_serverless.routing.current.ranker.ranker import Ranker
@@ -19,9 +20,10 @@ class Solver(ABC):
         self._workflow_config = workflow_config
         self._ranker = Ranker(workflow_config)
         self._dag = self.get_dag_representation()
+        self._region_source = Region(workflow_config)
 
-    def solve(self, regions: np.ndarray) -> list[tuple[dict, float, float, float]]:
-        filtered_regions = self._filter_regions_global(regions)
+    def solve(self) -> list[tuple[dict, float, float, float]]:
+        filtered_regions = self._filter_regions_global(self._region_source.get_all_regions())
         self._instantiate_data_sources(filtered_regions)
         return self._solve(filtered_regions)
 

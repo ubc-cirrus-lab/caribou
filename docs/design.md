@@ -30,6 +30,15 @@ $L_f = (N, E)$
 
 where $N$ is the set of nodes and $E$ is the set of edges.
 
+#### Logical Node Naming Scheme
+
+The naming scheme of the nodes is as follows:
+
+- Initial node: `<function_name>:entry_point:0`
+- Intermediate node: `<function_name>:<predecessor_function_name>_<predecessor_index>_<successor_of_predecessor_index>:<index_in_dag>`
+  Where `<predecessor_function_name>` is the name of the predecessor function, `<predecessor_index>` is the index of the predecessor function in the dag, `<successor_of_predecessor_index>` is the index of the successor of the predecessor function (when a function calls multiple times the same function, this index is used to distinguish between the different calls), and `<index_in_dag>` is the index of the node in the dag in a topological order of dataflow.
+- Merge node: `<function_name>:merge:<index_in_dag>`
+
 #### Connection to Physical Representation
 
 The logical representation is connected to the physical representation by the following rules:
@@ -65,15 +74,36 @@ workflow = MultiXServerlessWorkflow("workflow_name")
 
 - At the beginning of each function the user has to register the function with the following annotation:
 
-**TODO (#21): Rework function registration, update documentation here**
-
-**TODO (#21): Add function specific annotations**
-
 ```python
 @workflow.serverless_function(
     name="function_name",
+    entry_point=True,
+    regions_and_providers={
+        "only_regions": ["aws:us-east-1"],
+        "forbidden_regions": ["aws:us-east-2"],
+    },
+    providers=[
+        {
+            "name": "aws",
+            "config": {
+                "timeout": 60,
+                "memory": 128,
+            },
+        }
+    ],
 )
 ```
+
+The meaning of the different parameters is as follows:
+
+- `name`: The name of the function. This is the name that is used directly in the physical representation of the workflow and is also used to identify the function in the logical representation of the workflow (see also the section on [Logical Node Naming Scheme](#logical-node-naming-scheme)).
+- `entry_point`: A boolean flag that indicates whether the function is the entry point of the workflow. There can only be one entry point in a workflow.
+- `regions_and_providers`: A dictionary that contains the regions and providers that the function can be deployed to. This can be used to override the global settings in the `config.yml`. If none or an empty dictionary is provided, the global config takes precedence. The dictionary has two keys:
+  - `only_regions`: A list of regions that the function can be deployed to. If this list is empty, the function can be deployed to any region.
+  - `forbidden_regions`: A list of regions that the function cannot be deployed to. If this list is empty, the function can be deployed to any region.
+- `providers`: A list of providers that the function can be deployed to. This can be used to override the global settings in the `config.yml`. If a list of providers is specified at the function level this takes precedence over the global configurations. If none or an empty list is provided, the global config takes precedence. Each provider is a dictionary with two keys:
+  - `name`: The name of the provider. This is the name that is used directly in the physical representation of the workflow.
+  - `config`: A dictionary that contains the configuration for the specific provider.
 
 - Within a function, a user can register a call to another function with the following annotation:
 

@@ -57,11 +57,18 @@ class Config:
 
     @property
     def estimated_invocations_per_month(self) -> int:
+        # TODO (#27): Implement and incorporate Free Tier considerations into data_sources
         return self._lookup("estimated_invocations_per_month")
 
     @property
     def constraints(self) -> dict:
         return self._lookup("constraints")
+
+    @property
+    def regions_and_providers(self) -> dict:
+        if "regions_and_providers" not in self.constraints:
+            return {}
+        return self.constraints["regions_and_providers"]
 
     @property
     def iam_policy_file(self) -> str:

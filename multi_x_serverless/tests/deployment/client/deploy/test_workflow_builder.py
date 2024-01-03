@@ -17,6 +17,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         self.config.home_regions = []
         self.config.project_dir = "/path/to/project"
         self.config.iam_policy_file = None
+        self.config.providers = []
 
     def test_build_workflow_no_entry_point(self):
         with self.assertRaises(RuntimeError):

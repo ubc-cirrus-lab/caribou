@@ -1,4 +1,5 @@
-from typing import List, Any
+from typing import Any, List
+
 from pydantic import BaseModel, Field, model_validator
 
 
@@ -11,8 +12,8 @@ class Provider(BaseModel):
     name: str = Field(..., title="The name of the provider")
     config: dict[str, Any] = Field(..., title="The configuration of the provider")
 
-    @model_validator(mode='after')
-    def validate_config(cls, values):
+    @model_validator(mode="after")
+    def validate_config(cls: Any, values: Any) -> Any:
         if values.name == "aws":
             config = values.config
             if "memory" not in config or not isinstance(config["memory"], int):
