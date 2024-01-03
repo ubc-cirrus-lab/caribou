@@ -6,7 +6,7 @@ from multi_x_serverless.routing.current.workflow_config import WorkflowConfig
 class Source:
     _data: np.ndarray
 
-    def __init__(self, config: WorkflowConfig, regions: np.ndarray, functions: np.ndarray):
+    def __init__(self, config: WorkflowConfig, regions: np.ndarray, functions: list[dict]):
         self._config = config
         self._regions = regions
         self._functions = functions

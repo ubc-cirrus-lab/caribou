@@ -5,7 +5,7 @@ from multi_x_serverless.routing.current.workflow_config import WorkflowConfig
 
 
 class RuntimeSource(Source):
-    def __init__(self, config: WorkflowConfig, regions: np.ndarray, functions: np.ndarray):
+    def __init__(self, config: WorkflowConfig, regions: np.ndarray, functions: list[dict]):
         data = np.zeros((len(regions), len(functions)))
         self._set_data(data)
 
