@@ -151,7 +151,7 @@ class TestMultiXServerlessFunction(unittest.TestCase):
         # Check if the response from invoke_serverless_function is correct
         self.assertEqual(response, "Some response")
 
-    def test_invoke_serverless_function(self):
+    def test_invoke_serverless_function_json_argument(self):
         workflow = MultiXServerlessWorkflow(name="test-workflow")
         workflow.register_function = Mock()
         workflow.invoke_function_through_sns = Mock()

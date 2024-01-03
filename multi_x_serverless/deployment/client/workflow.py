@@ -187,9 +187,11 @@ class MultiXServerlessWorkflow:
         The three layers of functions are used to create a decorator with arguments.
 
         Outermost function (serverless_function):
-            This is the decorator factory. It takes in arguments for the decorator and returns the actual decorator function.
+            This is the decorator factory. It takes in arguments for the decorator and returns the actual
+            decorator function.
             The arguments passed to this function are used to configure the behavior of the decorator.
-            In this case, name, entry_point, regions_and_providers, and providers are used to configure the Lambda function.
+            In this case, name, entry_point, regions_and_providers, and providers are used to configure
+            the Lambda function.
 
         Middle function (_register_handler):
             This is the actual decorator function. It takes in a single argument, which is the function to be decorated.
@@ -201,9 +203,11 @@ class MultiXServerlessWorkflow:
 
         Innermost function (wrapper):
             This is the wrapper function that modifies the behavior of the original function.
-            It takes the same arguments as the original function and can modify these arguments before calling the original function.
+            It takes the same arguments as the original function and can modify these arguments
+            before calling the original function.
             It can also modify the return value of the original function.
-            In this case, wrapper unwraps the arguments of func and retrieves the routing decision and calls func with the modified unwrapped payload.
+            In this case, wrapper unwraps the arguments of func and retrieves the routing decision
+            and calls func with the modified unwrapped payload.
         """
         if regions_and_providers is None:
             regions_and_providers = {}
