@@ -218,7 +218,7 @@ class AWSClient(Client):  # pylint: disable=too-few-public-methods
         )
         print(f"Successfully added lambda permission for SNS topic {topic_arn}")
 
-    def send_message_to_sns(self, topic_arn: str, message: dict[str, Any]) -> None:
+    def send_message_to_sns(self, topic_arn: str, message: str) -> None:
         client = self._client("sns")
-        client.publish(TopicArn=topic_arn, Message=json.dumps(message))
+        client.publish(TopicArn=topic_arn, Message=message)
         print(f"Successfully sent message to SNS topic {topic_arn}")

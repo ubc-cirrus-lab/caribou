@@ -75,13 +75,11 @@ class MultiXServerlessWorkflow:
         self.functions: list[MultiXServerlessFunction] = []
 
     def invoke_serverless_function(
-        self, function: Callable[..., Any], payload: Optional[dict] = None  # pylint: disable=unused-argument
-    ) -> Any:
+        self, function: Callable[..., Any], payload: Optional[dict | Any] = None  # pylint: disable=unused-argument
+    ) -> None:
         """
         Invoke a serverless function which is part of this workflow.
         """
-        if payload and not isinstance(payload, dict):
-            raise RuntimeError("Payload is not of type dict")
         if not payload:
             payload = {}
         # TODO (#11): Implement conditional invocation
@@ -109,22 +107,24 @@ class MultiXServerlessWorkflow:
 
         payload_wrapper = {"payload": payload}
         payload_wrapper["routing_decision"] = routing_decision
+        json_payload = json.dumps(payload_wrapper)
 
-        provider, region, arn = routing_decision["next_endpoint"].split(":")
+        # TODO (#7): The routing decision has to be retrieved from contextual information
+        # (where in the workflow are we?)
+        # provider, region, arn = routing_decision["next_endpoint"].split(":")
+        provider, region, arn = "aws", "us-west-2", "test"
         if provider == Endpoint.AWS.value:
-            self.invoke_function_through_sns(payload_wrapper, region, arn)
-        return "Some response"
+            self.invoke_function_through_sns(json_payload, region, arn)
 
     def get_routing_decision(self, frame: FrameType) -> dict[str, Any]:
-        routing_decision = None
+        if "wrapper" in frame.f_locals:
+            wrapper = frame.f_locals["wrapper"]
+            if hasattr(wrapper, "routing_decision"):
+                return wrapper.routing_decision
 
-        if frame.routing_decision is not None:  # type: ignore
-            routing_decision = frame.routing_decision  # type: ignore
-        else:
-            raise RuntimeError("Could not get routing decision")
-        return routing_decision
+        raise RuntimeError("Could not get routing decision")
 
-    def invoke_function_through_sns(self, message: dict[str, Any], region: str, arn: str) -> None:
+    def invoke_function_through_sns(self, message: str, region: str, arn: str) -> None:
         aws_client = AWSClient(region)
         try:
             aws_client.send_message_to_sns(arn, message)
@@ -196,9 +196,11 @@ class MultiXServerlessWorkflow:
                     payload = args[0]
                 else:
                     # Get the routing decision from the message received from the predecessor function
-                    print(args[0])
-                    wrapper.routing_decision = json.loads(args[0])["routing_decision"]  # type: ignore
-                    payload = json.loads(args[0]).get("payload", {})
+                    argument = json.loads(args[0])
+                    if "routing_decision" not in argument:
+                        raise RuntimeError("Could not get routing decision from message")
+                    wrapper.routing_decision = argument["routing_decision"]  # type: ignore
+                    payload = argument.get("payload", {})
 
                 # Call the original function with the modified arguments
                 return func(payload)
