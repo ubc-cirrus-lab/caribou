@@ -82,11 +82,16 @@ class MultiXServerlessWorkflow:
         """
         Invoke a serverless function which is part of this workflow.
         """
+        if payload and not isinstance(payload, dict):
+            raise RuntimeError("Payload is not of type dict")
+        if not payload:
+            payload = {}
         # TODO (#11): Implement conditional invocation
         # If the function from which this function is called is the entry point obtain current routing decision
         # If not, the routing decision was stored in the message received from the predecessor function
         # Post message to SNS -> return
         # Do not wait for response
+
         frame = inspect.currentframe()
         if not frame:
             raise RuntimeError("Could not get current frame")
@@ -97,8 +102,6 @@ class MultiXServerlessWorkflow:
 
         routing_decision = self.get_routing_decision(frame)
 
-        if not payload:
-            payload = {}
         payload["routing_decision"] = routing_decision
 
         # TODO (#7): We need to decide on how to handle the routing decision

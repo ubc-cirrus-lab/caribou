@@ -20,8 +20,15 @@ workflow = MultiXServerlessWorkflow("regression_tuning")
 @workflow.serverless_function(
     name="GetInput",
     entry_point=True,
-    timeout=60,
-    memory=128,
+    providers=[ # TODO (#21): Rework function registration
+        {
+            "name": "aws",
+            "configuration": {
+                "timeout": 60,
+                "memory": 128,
+            }
+        }
+    ]
 )
 def get_input(event: dict[str, Any]) -> dict[str, Any]:
     request = event["request"]

@@ -21,7 +21,7 @@ class Solver(ABC):
         self._dag = self.get_dag_representation()
 
     def solve(self, regions: np.ndarray) -> list[tuple[dict, float, float, float]]:
-        filtered_regions = self._filter_regions(regions)
+        filtered_regions = self._filter_regions_global(regions)
         self._instantiate_data_sources(filtered_regions)
         return self._solve(filtered_regions)
 
@@ -29,8 +29,12 @@ class Solver(ABC):
     def _solve(self, regions: np.ndarray) -> list[tuple[dict, float, float, float]]:
         raise NotImplementedError
 
-    def _filter_regions(self, regions: np.ndarray) -> np.ndarray:
+    def _filter_regions_global(self, regions: np.ndarray) -> np.ndarray:
         # TODO (#21): Implement this function
+        return regions
+    
+    def _filter_regions_function(self, regions: np.ndarray, function: str) -> np.ndarray:
+        # TODO (#24): Implement this function
         return regions
 
     def rank_solved_results(
