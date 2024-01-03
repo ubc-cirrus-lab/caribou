@@ -27,6 +27,10 @@ class SimpleSolver(Solver):
             deployment_assignments: dict = {}
             for function in self._workflow_config.functions:
                 deployment_assignments[function] = region
+
+            if self._fail_hard_resource_constraints(self._workflow_config.constraints, cost[i], runtime[i], carbon[i]):
+                continue
+
             deployments.append((deployment_assignments, cost[i], runtime[i], carbon[i]))
 
         return deployments

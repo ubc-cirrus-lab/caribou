@@ -20,6 +20,10 @@ constraints:
     cost: null
     runtime: null
     carbon: null
+  priority_order:
+    - cost
+    - runtime
+    - carbon
   regions_and_providers: # Either the user specify only allowed regions (which will override everything else)
     only_regions: null # Only check other conditions if this is None, else will restrict to ONLY those regions
     allowed_providers: null

@@ -9,6 +9,7 @@ from multi_x_serverless.routing.current.workflow_config import WorkflowConfig
 class TestSimpleSolver(unittest.TestCase):
     def setUp(self):
         self.workflow_config = Mock(spec=WorkflowConfig)
+        self.workflow_config.constraints = None
         self.workflow_config.functions = ["function1", "function2"]
         self.workflow_config.instances = [
             {"instance_name": "node1", "succeeding_instances": [], "preceding_instances": []},

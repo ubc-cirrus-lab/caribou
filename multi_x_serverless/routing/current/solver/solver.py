@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Optional
 
 import numpy as np
 
@@ -54,3 +55,18 @@ class Solver(ABC):
             for succeeding_instance in instance["succeeding_instances"]:
                 dag.add_edge(instance["instance_name"], succeeding_instance)
         return dag
+
+    def _fail_hard_resource_constraints(
+        self, constraints: Optional[dict], cost: float, runtime: float, carbon: float
+    ) -> bool:
+        if constraints is None or "hard_resource_constraints" not in constraints:
+            return False
+        hard_resource_constraints = constraints["hard_resource_constraints"]
+        return (
+            "cost" in hard_resource_constraints
+            and cost > hard_resource_constraints["cost"]["value"]
+            or "runtime" in hard_resource_constraints
+            and runtime > hard_resource_constraints["runtime"]["value"]
+            or "carbon" in hard_resource_constraints
+            and carbon > hard_resource_constraints["carbon"]["value"]
+        )

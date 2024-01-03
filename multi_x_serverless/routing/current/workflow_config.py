@@ -36,3 +36,7 @@ class WorkflowConfig:
     @property
     def instances(self) -> np.ndarray:
         return np.array(self._lookup("instances"))
+
+    @property
+    def constraints(self) -> dict:
+        return self._lookup("constraints")
