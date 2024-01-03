@@ -6,10 +6,9 @@ from typing import Optional
 class FunctionInstance:
     name: str
     entry_point: bool
-    timeout: int
-    memory: int
     regions_and_providers: Optional[dict]
     function_resource_name: str
+    providers: list[dict]
 
     def to_json(self) -> dict:
         """
@@ -18,10 +17,7 @@ class FunctionInstance:
         return {
             "instance_name": self.name,
             "function_name": self.function_resource_name,
-            "resource_request": {
-                "memory": self.memory,
-                "architecture": "x86_64",  # TODO: Make this configurable
-            },
+            "providers": self.providers,
             "regions_and_providers": self.regions_and_providers,
         }
 
@@ -29,8 +25,7 @@ class FunctionInstance:
         return f"""FunctionInstance(
                 name={self.name},
                 entry_point={self.entry_point},
-                timeout={self.timeout},
-                memory={self.memory},
                 regions_and_providers={self.regions_and_providers},
-                function_resource_name={self.function_resource_name})
+                function_resource_name={self.function_resource_name},
+                providers={self.providers})
                 """

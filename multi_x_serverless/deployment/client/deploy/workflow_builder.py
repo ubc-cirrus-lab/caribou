@@ -38,12 +38,11 @@ class WorkflowBuilder:
                     environment_variables=config.environment_variables,
                     runtime=config.python_version,
                     handler=function.handler,
-                    timeout=function.timeout,
-                    memory=function.memory,
                     role=function_role,
                     deployment_package=DeploymentPackage(),
                     home_regions=config.home_regions,
                     entry_point=function.entry_point,
+                    providers=function.providers,
                 )
             )
             function_name_to_function[function.handler] = function
@@ -72,10 +71,9 @@ class WorkflowBuilder:
         predecessor_instance = FunctionInstance(
             name=f"{entry_point.name}:entry_point:{index_in_dag}",
             entry_point=entry_point.entry_point,
-            timeout=entry_point.timeout,
-            memory=entry_point.memory,
             regions_and_providers=entry_point.regions_and_providers,
             function_resource_name=entry_point.name,
+            providers=entry_point.providers,
         )
         function_instances[predecessor_instance.name] = predecessor_instance
 
@@ -99,10 +97,9 @@ class WorkflowBuilder:
                 function_instances[function_instance_name] = FunctionInstance(
                     name=function_instance_name,
                     entry_point=multi_x_serverless_function.entry_point,
-                    timeout=multi_x_serverless_function.timeout,
-                    memory=multi_x_serverless_function.memory,
                     regions_and_providers=multi_x_serverless_function.regions_and_providers,
                     function_resource_name=multi_x_serverless_function.name,
+                    providers=multi_x_serverless_function.providers,
                 )
                 for successor_i, successor in enumerate(
                     multi_x_serverless_function.get_successors(config.workflow_app)

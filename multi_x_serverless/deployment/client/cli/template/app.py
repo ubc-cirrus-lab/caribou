@@ -15,7 +15,7 @@ workflow = MultiXServerlessWorkflow("{{ workflow_name }}")
     # providers=[  # TODO (#21): Rework function registration
     #     {
     #         "name": "aws",
-    #         "configuration": {
+    #         "config": {
     #             "timeout": 60,
     #             "memory": 128,
     #         },

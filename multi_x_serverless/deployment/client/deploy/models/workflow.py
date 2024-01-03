@@ -65,6 +65,7 @@ class Workflow(Resource):
             "start_hops": self._config.home_regions,
             "estimated_invocations_per_month": self._config.estimated_invocations_per_month,
             "constraints": self._config.constraints,
+            "providers": self._config.providers,
         }
         finished_instances = []
         if not isinstance(workflow_description["instances"], list):

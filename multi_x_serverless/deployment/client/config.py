@@ -26,7 +26,7 @@ class Config:
         return self._lookup("workflow_name")
 
     def _lookup(self, key: str) -> Any:
-        return self.project_config.get(key)
+        return self.project_config.get(key, {})
 
     @property
     def python_version(self) -> str:
@@ -66,6 +66,10 @@ class Config:
     @property
     def iam_policy_file(self) -> str:
         return self._lookup("iam_policy_file")
+
+    @property
+    def providers(self) -> list[str]:
+        return self._lookup("providers")
 
     def deployed_resources(self) -> list[Any]:
         deployed_resource_file = os.path.join(self.project_dir, ".multi-x-serverless", "deployed_resources.yml")

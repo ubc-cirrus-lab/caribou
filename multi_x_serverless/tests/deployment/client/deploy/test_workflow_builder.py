@@ -27,14 +27,12 @@ class TestWorkflowBuilder(unittest.TestCase):
         function1.entry_point = True
         function1.name = "function1"
         function1.handler = "function1"
-        function1.timeout = 10
-        function1.memory = 128
+        function1.providers = []
         function2 = Mock(spec=MultiXServerlessFunction)
         function2.entry_point = True
         function2.name = "function2"
         function2.handler = "function1"
-        function2.timeout = 10
-        function2.memory = 128
+        function2.providers = []
         self.config.workflow_app.functions = [function1, function2]
         with self.assertRaises(RuntimeError):
             self.builder.build_workflow(self.config)

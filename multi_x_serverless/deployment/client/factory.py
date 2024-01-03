@@ -14,6 +14,7 @@ from multi_x_serverless.deployment.client.deploy.deployer import (
     create_default_deployer,
     create_deletion_deployer,
 )
+from multi_x_serverless.deployment.client.enums import Endpoint
 from multi_x_serverless.deployment.client.workflow import MultiXServerlessWorkflow
 
 
@@ -62,6 +63,30 @@ class CLIFactory:
             ConfigSchema(**project_config)
         except ValidationError as exc:
             raise RuntimeError(f"Invalid project config: {exc}") from exc
+
+        self.__validate_only_regions_and_providers(project_config)
+
+    def __validate_only_regions_and_providers(self, project_config: dict) -> None:
+        if (
+            "constraints" in project_config
+            and "regions_and_providers" in project_config["constraints"]
+            and "only_regions" in project_config["constraints"]["regions_and_providers"]
+        ):
+            possible_endpoints = [endpoint.value for endpoint in Endpoint]
+            defined_endpoints = [
+                provider["name"] for provider in project_config["providers"] if provider["name"] in possible_endpoints
+            ]
+            only_regions = project_config["constraints"]["regions_and_providers"]["only_regions"]
+            if not isinstance(only_regions, list):
+                raise RuntimeError("only_regions must be a list")
+            for region in only_regions:
+                if not isinstance(region, str):
+                    raise RuntimeError("only_regions must be a list of strings")
+                provider = region.split(":")[0]
+                if provider not in Endpoint.__members__:
+                    raise RuntimeError(f"Provider {provider} is not supported")
+                if provider not in defined_endpoints:
+                    raise RuntimeError(f"Provider {provider} is not defined in providers")
 
     def load_workflow_app(self) -> MultiXServerlessWorkflow:
         if self.project_dir not in sys.path:

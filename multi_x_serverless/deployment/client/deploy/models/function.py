@@ -17,19 +17,16 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
         self,
         name: str,
         entry_point: bool,
-        timeout: int,
-        memory: int,
         role: IAMRole,
         deployment_package: DeploymentPackage,
         environment_variables: dict[str, str],
         handler: str,
         runtime: str,
         home_regions: list[str],
+        providers: list[dict],
     ) -> None:
         super().__init__(name, "function")
         self.entry_point = entry_point
-        self.timeout = timeout
-        self.memory = memory
         self._remote_states: dict[Endpoint, dict[str, RemoteState]] = {}
         self.initialise_remote_states(home_regions)
         self.role = role
@@ -38,12 +35,11 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
         self.handler = handler
         self.runtime = runtime
         self.home_regions = home_regions
+        self.providers = providers
 
     def __repr__(self) -> str:
         return f"""Function({self.name}):
                     Entry point: {self.entry_point}
-                    Timeout: {self.timeout}
-                    Memory: {self.memory}
                     Role:
                         {self.role}
                     Deployment package: {self.deployment_package}
@@ -51,6 +47,7 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
                     Handler: {self.handler}
                     Runtime: {self.runtime}
                     Home regions: {self.home_regions}
+                    Providers: {self.providers}
                 """
 
     def initialise_remote_states(self, home_regions: list[str]) -> None:
@@ -78,7 +75,19 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
             instructions[home_region] = instruction
         return instructions
 
+    def _get_memory_and_timeout(self) -> tuple[int, int]:
+        memory = 128
+        timeout = 3
+        for provider in self.providers:
+            if provider["name"] == Endpoint.AWS.value:
+                if "memory" in provider:
+                    memory = provider["memory"]
+                if "timeout" in provider:
+                    timeout = provider["timeout"]
+        return memory, timeout
+
     def get_deployment_instructions_aws(self, region: str) -> list[Instruction]:
+        memory, timeout = self._get_memory_and_timeout()
         instructions: list[Instruction] = []
         sns_topic_arn_varname = f"{self.name}_{region}_sns_topic"
         instructions.extend(
@@ -168,8 +177,8 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
                             "runtime": self.runtime,
                             "handler": self.handler,
                             "environment_variables": self.environment_variables,
-                            "timeout": self.timeout,
-                            "memory_size": self.memory,
+                            "timeout": timeout,
+                            "memory_size": memory,
                         },
                         output_var=function_varname,
                     ),
@@ -193,8 +202,8 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
                             "runtime": self.runtime,
                             "handler": self.handler,
                             "environment_variables": self.environment_variables,
-                            "timeout": self.timeout,
-                            "memory_size": self.memory,
+                            "timeout": timeout,
+                            "memory_size": memory,
                         },
                         output_var=function_varname,
                     ),

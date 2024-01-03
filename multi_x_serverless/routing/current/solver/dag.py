@@ -24,3 +24,7 @@ class DAG:
     @property
     def nodes(self) -> list[dict]:
         return self._nodes
+
+    @property
+    def number_of_edges(self) -> int:
+        return np.sum(self._adj_matrix)
