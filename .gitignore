@@ -81,3 +81,9 @@ cython_debug/
 
 # Logs
 logs
+
+# Plots
+plotting/plots/*.png
+
+# testing
+testing

@@ -1,0 +1,122 @@
+{
+  $schema: "http://json-schema.org/draft-07/schema#",
+  type: "object",
+  properties:
+    {
+      name: { type: "string" },
+      timeout:
+        {
+          type: "integer",
+          minimum: -1,
+          description: "Timeout in seconds for the entire workflow. If the workflow does not complete within this time, it will be terminated. If set to -1, the workflow will not be terminated.",
+        },
+      home_region:
+        {
+          type: "string",
+          description: "The home region for the workflow. The home region is the region where the workflow is initially deployed. The home region is also the region where the workflow is executed if no other region is viable according to the requirements.",
+        },
+      filtered_regions:
+        {
+          type: "array",
+          items: { type: "string" },
+          description: "The regions that are filtered out for the workflow. The workflow will not be deployed in these regions. The strings are the provider (e.g. AWS) and the region (e.g. us-east-1) separated by a colon.",
+        },
+      constraints:
+        {
+          type: "object",
+          properties:
+            {
+              cost: { type: "number", minimum: 0 },
+              runtime: { type: "number", minimum: 0 },
+              carbon: { type: "number", minimum: 0 },
+            },
+          description: "The constraints for the workflow. The constraints are the maximum values for the objectives. If the workflow cannot be deployed within the constraints, it will not be deployed.",
+        },
+      objectives:
+        {
+          type: "array",
+          items:
+            {
+              type: "object",
+              properties:
+                {
+                  name: { type: "enum", enum: ["cost", "runtime", "carbon"] },
+                  weight: { type: "number", minimum: 0, maximum: 1 },
+                },
+              required: ["name", "weight"],
+            },
+          description: "The objectives for the workflow. Each objective has a name and a weight between 0 and 1.",
+        },
+      start_hop:
+        {
+          type: "string",
+          description: "For now we assume a start hop which is where the client is calling the workflow from. In a future iteration this will msot likely be transformed into a location distribution.",
+        },
+      functions:
+        {
+          type: "array",
+          items:
+            {
+              type: "object",
+              properties:
+                {
+                  name: { type: "string" },
+                  type: { type: "string", enum: ["serverless"] },
+                  resource_request:
+                    {
+                      type: "object",
+                      properties:
+                        {
+                          vCPU: { type: "integer" },
+                          memory: { type: "integer" },
+                          architecture:
+                            { type: "enum", enum: ["x86_64", "arm64"] },
+                        },
+                      required: ["cpu", "memory"],
+                      description: "The resource request for the stage. The resource request will be mapped to the cloud provider's resource request in a best-effort manner.",
+                    },
+                  estimated_invocations_per_month:
+                    {
+                      type: "integer",
+                      minimum: -1,
+                      description: "The estimated number of invocations per month for the stage.",
+                    },
+                  estimated_time:
+                    {
+                      type: "integer",
+                      minimum: -1,
+                      description: "The estimated time in seconds for the stage. If the stage does not complete within this time, it will be terminated. If set to -1, the stage will not be terminated. If set to null, the stage duration is not estimated.",
+                    },
+                  next_functions:
+                    {
+                      type: "array",
+                      items:
+                        {
+                          type: "object",
+                          properties: { name: { type: "string" } },
+                          required: ["name"],
+                        },
+                    },
+                  environment_variables:
+                    {
+                      type: "object",
+                      additionalProperties: { type: "string" },
+                      description: "The environment variables for the stage. The environment variables will be provided to the deployed stage as environment variables. This is for example useful for providing credentials to the stage or for providing the datastorage endpoint to the stage.",
+                    },
+                },
+              required:
+                [
+                  "name",
+                  "type",
+                  "resource_request",
+                  "estimated_time",
+                  "input",
+                  "output",
+                  "source",
+                ],
+            },
+          description: "The stages of the workflow.",
+        },
+    },
+  required: ["name", "timeout", "home_regions", "stages"],
+}

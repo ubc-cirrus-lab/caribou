@@ -1,0 +1,8 @@
+{
+  "version": "2.0",
+  "app_name": "fpo-io",
+  "stages": {
+    "prod": {
+    }
+  }
+}

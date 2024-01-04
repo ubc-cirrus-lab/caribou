@@ -4,27 +4,42 @@ version = "0.1.0"
 description = ""
 license = "Apache-2.0"
 authors = [
-    "Viktor Gsteiger <v.gsteiger@gmail.com>",
+    "Viktor Gsteiger <vgsteiger@student.ethz.ch>",
+    "Daniel Long <pinlong@student.ubc.ca>",
+    "Mohammad Shahrad <mohammad.shahrad@ubc.ca>",
 ]
 readme = "README.md"
-repository = "https://github.com/ubc-cirrus-lab/TODO"
+repository = "https://github.com/ubc-cirrus-lab/multi-x-serverless"
 
 [tool.poetry.scripts]
-playground = "multi_x_serverless.playground.main:main"
+multi_x_serverless = "multi_x_serverless.deployment.client.multi_x_serverless:main"
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "~3.11.0"
 pyyaml = "^6.0.1"
-boto3 = "^1.29.5"
+boto3 = "^1.34.11"
 jsonschema = "^4.20.0"
+googlemaps = "^4.10.0"
+bs4 = "^0.0.1"
+chalice = "^1.30.0"
+google-auth = "^2.25.2"
+google-cloud-storage = "^2.14.0"
+google-cloud-compute = "^1.15.0"
+numpy = "^1.26.2"
+networkx = "^3.2.1"
+levenshtein = "^0.23.0"
+pandas = "^2.1.4"
+tqdm = "^4.66.1"
+click = "^8.1.7"
+pydantic = "^2.5.3"
 
 [tool.poetry.extras]
 # This can be used for a more fine-grained dependency management in the future
 
 [tool.poetry.group.dev.dependencies]
 autopep8 = "^2.0.4"
-pytest = "^7.4.3"
-coverage = "^7.3.2"
+pytest = "^7.4.4"
+coverage = "^7.4.0"
 mypy = "^1.7.0"
 types-pyyaml = "^6.0.12.12"
 types-jsonschema = "^4.20.0.0"
@@ -33,6 +48,14 @@ setuptools = "^69.0.2"
 black = "^23.11.0"
 pylint = "^3.0.2"
 pytest-cov = "^4.1.0"
+types-requests = "^2.31.0"
+seaborn = "^0.13.1"
+httpie = "^3.2.2"
+gtts = "^2.5.0"
+profanity = "^1.1"
+pydub = "^0.25.1"
+scikit-learn = "^1.3.2"
+pillow = "^10.2.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
@@ -62,7 +85,8 @@ follow_imports = "skip"
 ignore_missing_imports = true
 pretty = true
 exclude = [
-    "multi_x_serverless/tests"
+    "multi_x_serverless/tests",
+    "multi_x_serverless/routing/legacy"
     ]
 
 [tool.isort]
@@ -92,6 +116,7 @@ exclude = '''
   | buck-out
   | build
   | dist
+  | ./multi_x_serverless/deployment/client/cli/template/app.py
 )/
 '''
 
@@ -101,6 +126,10 @@ disable = [
       "C0116",  # Missing function or method docstring
       "C0114",  # Missing module docstring
       "C0115",  # Missing class docstring
+      "W0621",  # Redefining name %r from outer scope (line %s) (we need this for our logging)
+      "R0913",  # Too many arguments
+      "R0801",  # Similar lines in %s files (we will have this because of how serverless functions need to be self-contained)
+      "W0511",  # TODO
     ]
 ignore = [
     "tests"

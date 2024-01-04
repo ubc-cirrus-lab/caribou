@@ -1,0 +1,4 @@
+boto3
+scikit-learn
+numpy
+tensorflow
