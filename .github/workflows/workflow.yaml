@@ -59,7 +59,7 @@ jobs:
           poetry run mypy multi_x_serverless
   
   isort:
-    runs-on: ubuntu-latest¨
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v2
