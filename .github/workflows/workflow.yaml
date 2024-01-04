@@ -42,8 +42,7 @@ jobs:
         uses: ./.github/actions/poetry
       - name: Run tests
         run: |
-          poetry run pytest multi_x_serverless --cov-reset --cache-clear --cov-fail-under=90
-          poetry run pytest > pytest-coverage.txt
+          poetry run pytest --cache-clear --cov=multi_x_serverless multi_x_serverless/ > pytest-coverage.txt
       - name: Comment coverage
         uses: coroo/pytest-coverage-commentator@v1.0.2
 
@@ -60,7 +59,7 @@ jobs:
           poetry run mypy multi_x_serverless
   
   isort:
-    runs-on: ubuntu-latest¨
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v2

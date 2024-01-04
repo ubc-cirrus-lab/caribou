@@ -396,7 +396,7 @@ def write_results(results: list[dict], table_name: str) -> None:
     )
 
     # Split the results into chunks of 25 items
-    chunks = [results[i: i + 25] for i in range(0, len(results), 25)]
+    chunks = [results[i : i + 25] for i in range(0, len(results), 25)]
 
     for chunk in chunks:
         client.batch_write_item(RequestItems={table_name: chunk})
