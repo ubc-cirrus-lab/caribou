@@ -80,7 +80,7 @@ def update_transmission_co2() -> None:
                 }
             )
 
-    chunks = [results[i: i + 25] for i in range(0, len(results), 25)]
+    chunks = [results[i : i + 25] for i in range(0, len(results), 25)]
 
     for chunk in chunks:
         client.batch_write_item(RequestItems={TRANSMISSION_CO2_TABLE_NAME: chunk})

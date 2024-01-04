@@ -83,7 +83,7 @@ class DeploymentPackager:  # pylint: disable=too-few-public-methods
                 if full_path == os.path.join(project_dir, "app.py") or full_path.startswith(
                     os.path.join(project_dir, "src")
                 ):
-                    zip_path = full_path[len(project_dir) + 1:]
+                    zip_path = full_path[len(project_dir) + 1 :]
                     zip_file.write(full_path, zip_path)
 
     def _get_package_filename(self, project_dir: str, python_version: str) -> str:
