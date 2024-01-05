@@ -3,12 +3,12 @@ from __future__ import annotations
 import inspect
 import json
 import re
+import uuid
 from types import FrameType
 from typing import Any, Callable, Optional
 
 from multi_x_serverless.deployment.client.clients import AWSClient
 from multi_x_serverless.deployment.client.enums import Endpoint
-import uuid
 
 
 class MultiXServerlessFunction:  # pylint: disable=too-many-instance-attributes
@@ -78,7 +78,7 @@ class MultiXServerlessWorkflow:
         self.functions: dict[str, MultiXServerlessFunction] = {}
         self._successor_index = 0
 
-    def get_function_and_wrapper_frame(current_frame: FrameType) -> tuple[FrameType, FrameType]:
+    def get_function_and_wrapper_frame(self, current_frame: FrameType) -> tuple[FrameType, FrameType]:
         # Get the frame of the function
         function_frame = current_frame.f_back
         if not function_frame:
@@ -278,19 +278,26 @@ class MultiXServerlessWorkflow:
         # If not, abort this function call, another function will eventually be called
         # TODO (#10): Check if all predecessor functions have returned
         # Either we check it backwards or forwards at calling time
-        provider, region, current_instance_name = self.get_current_instance_provider_region_instance_name()
+        (
+            provider,
+            region,
+            current_instance_name,
+            workflow_instance_id,
+        ) = self.get_current_instance_provider_region_instance_name()
         if provider == Endpoint.AWS.value:
-            return self.get_predecessor_data_aws(region, current_instance_name)
+            return self.get_predecessor_data_aws(region, current_instance_name, workflow_instance_id)
         raise RuntimeError("Could not get predecessor data")
 
-    def get_predecessor_data_aws(self, region: str, current_instance_name: str) -> list[dict[str, Any]]:
+    def get_predecessor_data_aws(
+        self, region: str, current_instance_name: str, workflow_instance_id: str
+    ) -> list[dict[str, Any]]:
         aws_client = AWSClient(region)
         try:
-            return aws_client.get_predecessor_data(current_instance_name)
+            return aws_client.get_predecessor_data(current_instance_name, workflow_instance_id)
         except Exception as e:
             raise RuntimeError("Could not get predecessor data") from e
 
-    def get_current_instance_provider_region_instance_name(self) -> tuple[str, str, str]:
+    def get_current_instance_provider_region_instance_name(self) -> tuple[str, str, str, str]:
         this_frame = inspect.currentframe()
         if not this_frame:
             raise RuntimeError("Could not get current frame")
@@ -310,10 +317,16 @@ class MultiXServerlessWorkflow:
                 "Could not get current instance name, is this the entry point? Entry point cannot be merge function"
             )
 
+        if "run_id" not in routing_decision:
+            raise RuntimeError(
+                "Could not get workflow instance id, is this the entry point? Entry point cannot be merge function"
+            )
+
         current_instance_name = routing_decision["current_instance_name"]
+        workflow_instance_id = routing_decision["run_id"]
 
         provider_region = routing_decision["routing_placement"][current_instance_name]["provider_region"].split(":")
-        return provider_region[0], provider_region[1], current_instance_name
+        return provider_region[0], provider_region[1], current_instance_name, workflow_instance_id
 
     def get_routing_decision_from_platform(self) -> dict[str, Any]:
         """

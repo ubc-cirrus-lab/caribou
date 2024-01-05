@@ -100,7 +100,7 @@ class TestMultiXServerlessFunction(unittest.TestCase):
         self.assertEqual(test_func(2), 4)
 
         # Check if the routing_decision attribute was set correctly
-        self.assertEqual(test_func.routing_decision, {"decision": 1})
+        self.assertEqual(test_func.routing_decision["decision"], 1)
 
     def test_invoke_serverless_function(self):
         workflow = MultiXServerlessWorkflow(name="test-workflow")
@@ -159,12 +159,12 @@ class TestMultiXServerlessFunction(unittest.TestCase):
 
         # Call test_func with a payload
         response = test_func(
-            '{"payload": 2, "routing_decision": {"routing_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "test_func_1": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_func", "instances": [{"instance_name": "test_func", "succeeding_instances": ["test_func_1"]}]}}'
+            '{"payload": 2, "routing_decision": {"routing_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "test_func_1::": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_func", "instances": [{"instance_name": "test_func", "succeeding_instances": ["test_func_1::"]}]}}'
         )
 
         # Check if invoke_serverless_function was called with the correct arguments
         workflow.invoke_function_through_sns.assert_called_once_with(
-            '{"payload": 2, "routing_decision": {"routing_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "test_func_1": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_func_1", "instances": [{"instance_name": "test_func", "succeeding_instances": ["test_func_1"]}]}}',
+            '{"payload": 2, "routing_decision": {"routing_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "test_func_1::": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_func_1::", "instances": [{"instance_name": "test_func", "succeeding_instances": ["test_func_1::"]}]}}',
             "region",
             "test_identifier",
         )
@@ -194,12 +194,12 @@ class TestMultiXServerlessFunction(unittest.TestCase):
 
         # Call test_func with a payload
         response = test_func(
-            r'{"payload": "{\"key\": \"value\"}", "routing_decision": {"routing_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "test_func_1": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_func", "instances": [{"instance_name": "test_func", "succeeding_instances": ["test_func_1"]}]}}'
+            r'{"payload": "{\"key\": \"value\"}", "routing_decision": {"routing_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "test_func_1::": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_func", "instances": [{"instance_name": "test_func", "succeeding_instances": ["test_func_1::"]}]}}'
         )
 
         # Check if invoke_serverless_function was called with the correct arguments
         workflow.invoke_function_through_sns.assert_called_once_with(
-            r'{"payload": "{\"key\": \"value\"}", "routing_decision": {"routing_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "test_func_1": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_func_1", "instances": [{"instance_name": "test_func", "succeeding_instances": ["test_func_1"]}]}}',
+            r'{"payload": "{\"key\": \"value\"}", "routing_decision": {"routing_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "test_func_1::": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_func_1::", "instances": [{"instance_name": "test_func", "succeeding_instances": ["test_func_1::"]}]}}',
             "region",
             "test_identifier",
         )

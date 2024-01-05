@@ -68,6 +68,11 @@ class AWSClient(Client):  # pylint: disable=too-few-public-methods
         response = client.get_function(FunctionName=function_name)
         return response["Configuration"]
 
+    def get_predecessor_data(
+        self, function_name: str, workflow_instance_id: str  # pylint: disable=unused-argument
+    ) -> list[dict[str, Any]]:
+        return []
+
     def create_function(
         self,
         function_name: str,
