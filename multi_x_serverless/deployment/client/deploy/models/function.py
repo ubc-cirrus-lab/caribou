@@ -22,7 +22,7 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
         environment_variables: dict[str, str],
         handler: str,
         runtime: str,
-        home_regions: list[str],
+        home_regions: list[tuple[str, str]],
         providers: list[dict],
     ) -> None:
         super().__init__(name, "function")
@@ -50,9 +50,9 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
                     Providers: {self.providers}
                 """
 
-    def initialise_remote_states(self, home_regions: list[str]) -> None:
+    def initialise_remote_states(self, home_regions: list[tuple[str, str]]) -> None:
         for home_region in home_regions:
-            endpoint, region = home_region.split(":")
+            endpoint, region = home_region
             if endpoint not in self._remote_states:
                 self._remote_states[endpoint] = {}
             self._remote_states[endpoint][region] = RemoteState(endpoint=endpoint, region=region)
@@ -64,14 +64,14 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
     def get_deployment_instructions(self) -> dict[str, list[Instruction]]:
         instructions: dict[str, list[Instruction]] = {}
         for home_region in self.home_regions:
-            endpoint, region = home_region.split(":")
+            endpoint, region = home_region
             if endpoint == Endpoint.AWS.value:
                 instruction = self.get_deployment_instructions_aws(region)
             elif endpoint == Endpoint.GCP.value:
                 instruction = self.get_deployment_instructions_gcp(region)
             else:
                 raise RuntimeError(f"Unknown endpoint {endpoint}")
-            instructions[home_region] = instruction
+            instructions[f"{endpoint}_{region}"] = instruction
         return instructions
 
     def _get_memory_and_timeout(self) -> tuple[int, int]:

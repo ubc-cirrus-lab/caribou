@@ -3,7 +3,7 @@ environment_variables:
   - name: "ENV_VAR_1"
     value: "value_1"
 iam_policy_file: "iam_policy.json"
-home_regions: ["aws:us-west-2"]  # Regions are defined as "provider:region" (e.g. aws:us-west-2)
+home_regions: [["aws", us-west-2"]] # Regions are defined as "provider:region" (e.g. aws:us-west-2)
 estimated_invocations_per_month: 1000000
 constraints:
   hard_resource_constraints: # None for none
