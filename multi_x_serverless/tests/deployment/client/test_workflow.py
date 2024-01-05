@@ -159,12 +159,12 @@ class TestMultiXServerlessFunction(unittest.TestCase):
 
         # Call test_func with a payload
         response = test_func(
-            '{"payload": 2, "routing_decision": {"routing_placement": {"test_instance_1": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_instance", "instances": [{"instance_name": "test_instance", "succeeding_instances": ["test_instance_1"]}]}}'
+            '{"payload": 2, "routing_decision": {"routing_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "test_func_1": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_func", "instances": [{"instance_name": "test_func", "succeeding_instances": ["test_func_1"]}]}}'
         )
 
         # Check if invoke_serverless_function was called with the correct arguments
         workflow.invoke_function_through_sns.assert_called_once_with(
-            '{"payload": 2, "routing_decision": {"routing_placement": {"test_instance_1": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_instance_1", "instances": [{"instance_name": "test_instance", "succeeding_instances": ["test_instance_1"]}]}}',
+            '{"payload": 2, "routing_decision": {"routing_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "test_func_1": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_func_1", "instances": [{"instance_name": "test_func", "succeeding_instances": ["test_func_1"]}]}}',
             "region",
             "test_identifier",
         )
@@ -194,12 +194,12 @@ class TestMultiXServerlessFunction(unittest.TestCase):
 
         # Call test_func with a payload
         response = test_func(
-            r'{"payload": "{\"key\": \"value\"}", "routing_decision": {"routing_placement": {"test_instance_1": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_instance", "instances": [{"instance_name": "test_instance", "succeeding_instances": ["test_instance_1"]}]}}'
+            r'{"payload": "{\"key\": \"value\"}", "routing_decision": {"routing_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "test_func_1": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_func", "instances": [{"instance_name": "test_func", "succeeding_instances": ["test_func_1"]}]}}'
         )
 
         # Check if invoke_serverless_function was called with the correct arguments
         workflow.invoke_function_through_sns.assert_called_once_with(
-            r'{"payload": "{\"key\": \"value\"}", "routing_decision": {"routing_placement": {"test_instance_1": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_instance_1", "instances": [{"instance_name": "test_instance", "succeeding_instances": ["test_instance_1"]}]}}',
+            r'{"payload": "{\"key\": \"value\"}", "routing_decision": {"routing_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "test_func_1": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_func_1", "instances": [{"instance_name": "test_func", "succeeding_instances": ["test_func_1"]}]}}',
             "region",
             "test_identifier",
         )
@@ -294,8 +294,7 @@ class TestMultiXServerlessFunction(unittest.TestCase):
         )
         self.assertEqual(next_instance_name, "successor_function:current_instance_0_0")
 
-        # Test with _successor_index = 1
-        workflow._successor_index = 1
+        # The _successor_index should be incremented
         next_instance_name = workflow.get_next_instance_name(
             current_instance_name, routing_decision, successor_function_name
         )

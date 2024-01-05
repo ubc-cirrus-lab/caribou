@@ -127,10 +127,14 @@ class MultiXServerlessWorkflow:
     def get_successor_routing_decision(
         self, successor_instance_name: str, routing_decision: dict[str, Any]
     ) -> tuple[str, str]:
+        print(successor_instance_name)
+        print(routing_decision)
         provider_region = routing_decision["routing_placement"][successor_instance_name]["provider_region"]
         identifier = routing_decision["routing_placement"][successor_instance_name]["identifier"]
         return provider_region, identifier
 
+    # This method is used to get the name of the next successor instance and its routing decision.
+    # It takes the current function, routing decision, wrapper frame, and function frame as parameters.
     def get_successor_instance_name(
         self,
         function: Callable[..., Any],
@@ -138,40 +142,60 @@ class MultiXServerlessWorkflow:
         wrapper_frame: FrameType,
         function_frame: FrameType,
     ) -> tuple[str, dict[str, Any]]:
+        # Get the name of the successor function
         successor_function_name = self.functions[function.original_function.__name__].name  # type: ignore
+
+        # Get the name of the current function
         current_function_name = self.functions[self.get_function__name__from_frame(function_frame)].name
+
+        # Check if the current function is the entry point
         is_entry_point = self.is_entry_point(wrapper_frame)
 
+        # Set the current instance name based on whether it is the entry point or not
         if is_entry_point:
             current_instance_name = f"{current_function_name}:entry_point:0"
         else:
             current_instance_name = routing_decision["current_instance_name"]
 
+        # Get the name of the next instance based on the current instance and successor function name
         next_instance_name = self.get_next_instance_name(
             current_instance_name, routing_decision, successor_function_name
         )
 
+        # Create the successor routing decision by copying the original routing decision
+        # and updating the current instance name to the next instance name
         successor_routing_decision = self.get_successor_routing_decision_dictionary(
             routing_decision, next_instance_name
         )
 
+        # Return the next instance name and the successor routing decision
         return next_instance_name, successor_routing_decision
 
     def get_successor_routing_decision_dictionary(
         self, routing_decision: dict[str, Any], next_instance_name: str
     ) -> dict[str, Any]:
+        # Copy the routing decision
         successor_routing_decision = routing_decision.copy()
+        # Update the current instance name to the next instance name
         successor_routing_decision["current_instance_name"] = next_instance_name
         return successor_routing_decision
 
+    # This method is used to get the name of the next successor instance based on the current instance name,
+    # routing decision, and successor function name.
     def get_next_instance_name(
         self, current_instance_name: str, routing_decision: dict[str, Any], successor_function_name: str
     ) -> str:
+        # Get the routing decision for the current instance
         for instance in routing_decision["instances"]:
             if instance["instance_name"] == current_instance_name:
                 successor_instances = instance["succeeding_instances"]
+                # If there is only one successor instance, return it
                 if len(successor_instances) == 1:
-                    return successor_instances[0]
+                    if successor_instances[0].startswith(successor_function_name):
+                        return successor_instances[0]
+                    raise RuntimeError("Could not find successor instance")
+                # If there are multiple successor instances, return the first one that matches the successor function
+                # name and has the correct index
                 for successor_instance in successor_instances:
                     if successor_instance.startswith(successor_function_name):
                         if successor_instance.split(":")[1] == "merge":
