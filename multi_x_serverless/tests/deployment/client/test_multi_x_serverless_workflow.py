@@ -26,8 +26,8 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
             name="test_func",
             entry_point=True,
             regions_and_providers={
-                "only_regions": ["aws:us-east-1"],
-                "forbidden_regions": ["aws:us-east-2"],
+                "only_regions": [["aws", "us-east-1"]],
+                "forbidden_regions": [["aws", "us-east-2"]],
                 "providers": [
                     {
                         "name": "aws",
@@ -52,8 +52,8 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
                 "test_func",
                 True,
                 {
-                    "only_regions": ["aws:us-east-1"],
-                    "forbidden_regions": ["aws:us-east-2"],
+                    "only_regions": [["aws", "us-east-1"]],
+                    "forbidden_regions": [["aws", "us-east-2"]],
                     "providers": [
                         {
                             "name": "aws",

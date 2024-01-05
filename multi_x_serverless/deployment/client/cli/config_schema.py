@@ -24,8 +24,8 @@ class Provider(BaseModel):
 
 
 class RegionAndProviders(BaseModel):
-    only_regions: Optional[List[str]] = Field(None, title="List of regions to deploy to")
-    forbidden_regions: Optional[List[str]] = Field(None, title="List of regions to not deploy to")
+    only_regions: Optional[List[List[str]]] = Field(None, title="List of regions to deploy to")
+    forbidden_regions: Optional[List[List[str]]] = Field(None, title="List of regions to not deploy to")
     providers: List[Provider] = Field(..., title="List of possible providers with their configurations")
 
 

@@ -86,7 +86,7 @@ class CLIFactory:
             for region in only_regions:
                 if not isinstance(region, str):
                     raise RuntimeError("only_regions must be a list of strings")
-                provider = region.split(":", maxsplit=1)[0]
+                provider = region[0]
                 if provider not in Endpoint.__members__:
                     raise RuntimeError(f"Provider {provider} is not supported")
                 if provider not in defined_endpoints:
