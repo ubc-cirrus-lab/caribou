@@ -78,7 +78,6 @@ class Deployer:
 
         print(workflow_config.to_json())
         # TODO (#8): Upload workflow to solver
-        raise NotImplementedError()
 
 
 def create_default_deployer(config: Config, session: Session) -> Deployer:

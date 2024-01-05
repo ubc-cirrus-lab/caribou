@@ -54,27 +54,27 @@ class DeploymentPackager:
             os.path.join("multi_x_serverless", "deployment", "client", "__init__.py"),
         )
         zip_file.write(
-            os.path.join(multi_x_serverless_path, "workflow.py"),
+            os.path.join(multi_x_serverless_path, "multi_x_serverless_workflow.py"),
             os.path.join("multi_x_serverless", "deployment", "client", "multi_x_serverless_workflow.py"),
         )
         zip_file.write(
-            os.path.join(multi_x_serverless_path, "workflow.py"),
+            os.path.join(multi_x_serverless_path, "multi_x_serverless_function.py"),
             os.path.join("multi_x_serverless", "deployment", "client", "multi_x_serverless_function.py"),
         )
         zip_file.write(
-            os.path.join(multi_x_serverless_path, "clients.py"),
+            os.path.join(multi_x_serverless_path, "factories", "remote_client_factory.py"),
             os.path.join("multi_x_serverless", "deployment", "client", "factories", "remote_client_factory.py"),
         )
         zip_file.write(
-            os.path.join(multi_x_serverless_path, "clients.py"),
+            os.path.join(multi_x_serverless_path, "remote_client", "aws_remote_client.py"),
             os.path.join("multi_x_serverless", "deployment", "client", "remote_client", "aws_remote_client.py"),
         )
         zip_file.write(
-            os.path.join(multi_x_serverless_path, "clients.py"),
+            os.path.join(multi_x_serverless_path, "remote_client", "remote_client.py"),
             os.path.join("multi_x_serverless", "deployment", "client", "remote_client", "remote_client.py"),
         )
         zip_file.write(
-            os.path.join(multi_x_serverless_path, "clients.py"),
+            os.path.join(multi_x_serverless_path, "deploy", "models", "resource.py"),
             os.path.join("multi_x_serverless", "deployment", "client", "deploy", "models", "resource.py"),
         )
         zip_file.write(
