@@ -3,7 +3,7 @@ environment_variables:
   - name: "ENV_VAR_1"
     value: "value_1"
 iam_policy_file: "iam_policy.json"
-home_regions: ["aws:us-west-2"]  # Regions are defined as "provider:region" (e.g. aws:us-west-2)
+home_regions: [["aws", us-west-2"]] # Regions are defined as "provider:region" (e.g. aws:us-west-2)
 estimated_invocations_per_month: 1000000
 constraints:
   hard_resource_constraints: # None for none
@@ -24,11 +24,11 @@ constraints:
     - cost
     - runtime
     - carbon
-  regions_and_providers: # Either the user specify only allowed regions (which will override everything else)
-    only_regions: null # Only check other conditions if this is None, else will restrict to ONLY those regions
-    forbidden_regions: null
-providers:
-  - name: "aws"
-    config:
-      timeout: 60
-      memory: 128
+regions_and_providers: # Either the user specify only allowed regions (which will override everything else)
+  only_regions: null # Only check other conditions if this is None, else will restrict to ONLY those regions
+  forbidden_regions: null
+  providers:
+    - name: "aws"
+      config:
+        timeout: 60
+        memory: 128

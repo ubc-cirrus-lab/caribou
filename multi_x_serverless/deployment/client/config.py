@@ -4,7 +4,7 @@ from typing import Any
 
 import yaml
 
-from multi_x_serverless.deployment.client.workflow import MultiXServerlessWorkflow
+from multi_x_serverless.deployment.client.multi_x_serverless_workflow import MultiXServerlessWorkflow
 
 
 class Config:
@@ -52,7 +52,19 @@ class Config:
         return env_variables
 
     @property
-    def home_regions(self) -> list[str]:
+    def home_regions(self) -> list[tuple[str, str]]:
+        if "home_regions_tuple" in self.project_config:
+            return self.project_config["home_regions_tuple"]
+        home_regions: list[list[str]] = self._lookup("home_regions")
+        if home_regions is None:
+            return []
+        home_regions_tuple = [tuple(home_region[0:2]) for home_region in home_regions]
+        self.project_config["home_regions_tuple"] = home_regions_tuple
+        return home_regions_tuple  # type: ignore
+        # somehow mypy thinks this is a list of tuples with one or more elements
+
+    @property
+    def home_regions_json(self) -> list[list[str]]:
         return self._lookup("home_regions")
 
     @property
@@ -66,17 +78,11 @@ class Config:
 
     @property
     def regions_and_providers(self) -> dict:
-        if "regions_and_providers" not in self.constraints:
-            return {}
-        return self.constraints["regions_and_providers"]
+        return self._lookup("regions_and_providers")
 
     @property
     def iam_policy_file(self) -> str:
         return self._lookup("iam_policy_file")
-
-    @property
-    def providers(self) -> list[dict]:
-        return self._lookup("providers")
 
     def deployed_resources(self) -> list[Any]:
         deployed_resource_file = os.path.join(self.project_dir, ".multi-x-serverless", "deployed_resources.yml")

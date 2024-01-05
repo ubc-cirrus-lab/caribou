@@ -7,7 +7,7 @@ from multi_x_serverless.deployment.client import __version__ as MULTI_X_SERVERLE
 from multi_x_serverless.deployment.client.cli.new_workflow import create_new_workflow_directory
 from multi_x_serverless.deployment.client.config import Config
 from multi_x_serverless.deployment.client.deploy.deployer import Deployer
-from multi_x_serverless.deployment.client.factory import CLIFactory
+from multi_x_serverless.deployment.client.factories.cli_factory import CLIFactory
 
 
 @click.group()
@@ -25,7 +25,7 @@ def cli(ctx: click.Context, project_dir: str) -> None:
 
 @cli.command(
     "new-workflow",
-    help="Create a new workflow directory from template. The workflow name must be a valid, non-existing directory name in the current directory.",
+    help="Create a new workflow directory from template. The workflow name must be a valid, non-existing directory name in the current directory.",  # pylint: disable=line-too-long
 )
 @click.argument("workflow_name", required=True)
 @click.pass_context

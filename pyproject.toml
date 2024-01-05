@@ -130,9 +130,11 @@ disable = [
       "R0913",  # Too many arguments
       "R0801",  # Similar lines in %s files (we will have this because of how serverless functions need to be self-contained)
       "W0511",  # TODO
+      "R0903",  # Too few public methods (we need this for our dataclasses)
     ]
 ignore = [
-    "tests"
+    "tests",
+    "multi_x_serverless/deployment/client/cli/template"
     ]
 
 [tool.pytest.ini_options]

@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import Mock, patch
 from pydantic import ValidationError
 
-from multi_x_serverless.deployment.client.factory import CLIFactory
+from multi_x_serverless.deployment.client.factories.cli_factory import CLIFactory
 
 
 class TestCLIFactory(unittest.TestCase):

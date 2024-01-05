@@ -1,4 +1,3 @@
-import json
 from typing import Optional
 
 import botocore.exceptions
@@ -7,11 +6,13 @@ from botocore.session import Session
 from multi_x_serverless.deployment.client.config import Config
 from multi_x_serverless.deployment.client.deploy.deployment_packager import DeploymentPackager
 from multi_x_serverless.deployment.client.deploy.executor import Executor
-from multi_x_serverless.deployment.client.deploy.models import DeploymentPlan, Resource, Workflow
+from multi_x_serverless.deployment.client.deploy.models.deployment_plan import DeploymentPlan
+from multi_x_serverless.deployment.client.deploy.models.resource import Resource
+from multi_x_serverless.deployment.client.deploy.models.workflow import Workflow
 from multi_x_serverless.deployment.client.deploy.workflow_builder import WorkflowBuilder
 
 
-class Deployer:  # pylint: disable=too-few-public-methods
+class Deployer:
     def __init__(
         self,
         config: Config,
@@ -69,14 +70,14 @@ class Deployer:  # pylint: disable=too-few-public-methods
         # TODO (#9): This is the same as above, but with a list of regions to deploy to
         # This is meant to be used by the deployment manager. Additionally, the source code does
         # need to be built as we can reuse the same deployment package for all regions.
-        return []
+        print(regions)
+        raise NotImplementedError()
 
     def _upload_workflow_to_solver(self, workflow: Workflow) -> None:
         workflow_config = workflow.get_description()
 
         print(workflow_config.to_json())
         # TODO (#8): Upload workflow to solver
-        pass
 
 
 def create_default_deployer(config: Config, session: Session) -> Deployer:

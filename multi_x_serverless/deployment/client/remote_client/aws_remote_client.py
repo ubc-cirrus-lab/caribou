@@ -2,50 +2,14 @@ import json
 import time
 from typing import Any
 
+import botocore.exceptions
 from boto3.session import Session
 
-
-class Client:  # pylint: disable=too-few-public-methods
-    def create_function(
-        self,
-        function_name: str,
-        role_arn: str,
-        zip_contents: bytes,
-        runtime: str,
-        handler: str,
-        environment_variables: dict[str, str],
-        timeout: int,
-        memory_size: int,
-    ) -> str:
-        raise NotImplementedError()
-
-    def get_iam_role(self, role_name: str) -> str:
-        raise NotImplementedError()
-
-    def get_lambda_function(self, function_name: str) -> dict[str, Any]:
-        raise NotImplementedError()
-
-    def create_role(self, role_name: str, policy: str, trust_policy: dict) -> str:
-        raise NotImplementedError()
-
-    def update_role(self, role_name: str, policy: str, trust_policy: dict) -> str:
-        raise NotImplementedError()
-
-    def update_function(
-        self,
-        function_name: str,
-        role_arn: str,
-        zip_contents: bytes,
-        runtime: str,
-        handler: str,
-        environment_variables: dict[str, str],
-        timeout: int,
-        memory_size: int,
-    ) -> str:
-        raise NotImplementedError()
+from multi_x_serverless.deployment.client.deploy.models.resource import Resource
+from multi_x_serverless.deployment.client.remote_client.remote_client import RemoteClient
 
 
-class AWSClient(Client):  # pylint: disable=too-few-public-methods
+class AWSRemoteClient(RemoteClient):
     LAMBDA_CREATE_ATTEMPTS = 30
     DELAY_TIME = 5
 
@@ -67,6 +31,55 @@ class AWSClient(Client):  # pylint: disable=too-few-public-methods
         client = self._client("lambda")
         response = client.get_function(FunctionName=function_name)
         return response["Configuration"]
+
+    def get_predecessor_data(
+        self, current_instance_name: str, workflow_instance_id: str  # pylint: disable=unused-argument
+    ) -> list[dict[str, Any]]:
+        # TODO (#10): Add merge function
+        raise NotImplementedError()
+
+    def resource_exists(self, resource: Resource) -> bool:
+        if resource.resource_type == "iam_role":
+            return self.iam_role_exists(resource)
+        if resource.resource_type == "function":
+            return self.lambda_function_exists(resource)
+        raise RuntimeError(f"Unknown resource type {resource.resource_type}")
+
+    def iam_role_exists(self, resource: Resource) -> bool:
+        try:
+            role = self.get_iam_role(resource.name)
+        except botocore.exceptions.ClientError:
+            return False
+        return role is not None
+
+    def lambda_function_exists(self, resource: Resource) -> bool:
+        try:
+            function = self.get_lambda_function(resource.name)
+        except botocore.exceptions.ClientError:
+            return False
+        return function is not None
+
+    def invoke_function(self, message: str, region: str, identifier: str, merge: bool = False) -> None:
+        if merge:
+            # TODO (#10): Add merge function
+            return
+        try:
+            self.send_message_to_sns(identifier, message)
+        except Exception as e:
+            raise RuntimeError("Could not invoke function through SNS") from e
+
+    def increment_counter(self, function_name: str, workflow_instance_id: str) -> int:
+        client = self._client("dynamodb")
+        counter_id = f"{function_name}:{workflow_instance_id}"
+        # Atomic counter update
+        response = client.update_item(
+            TableName="counters",
+            Key={"id": {"S": counter_id}},
+            UpdateExpression="SET counter_value = counter_value + :val",
+            ExpressionAttributeValues={":val": 1},
+            ReturnValues="UPDATED_NEW",
+        )
+        return int(response["Attributes"]["counter_value"]["N"])
 
     def create_function(
         self,
