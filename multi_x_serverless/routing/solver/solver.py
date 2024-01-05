@@ -42,7 +42,7 @@ class Solver(ABC):
     def _solve(self, regions: np.ndarray) -> list[tuple[dict, float, float, float]]:
         raise NotImplementedError
 
-    def _filter_regions(self, regions: list, regions_and_providers: dict) -> np.ndarray:
+    def _filter_regions(self, regions: np.ndarray, regions_and_providers: dict) -> np.ndarray:
         # Take in a list of regions, then apply filters to remove regions that do not satisfy the constraints
 
         # First filter out regions that are not in the provider list
@@ -51,20 +51,18 @@ class Solver(ABC):
 
         # Then if the user set a allowed_regions, only permit those regions and return
         if "allowed_regions" in regions_and_providers and regions_and_providers["allowed_regions"] is not None:
-            return np.array([region for region in regions if (region[0], region[1]) in regions_and_providers["allowed_regions"]])
+            return np.array([region for region in regions if [region[0], region[1]] in regions_and_providers["allowed_regions"]])
         
         # Finally we filter out regions that the user doesn't want to use
         if "disallowed_regions" in regions_and_providers and regions_and_providers["disallowed_regions"] is not None:
-            regions =  [region for region in regions if (region[0], region[1]) not in regions_and_providers["disallowed_regions"]]
+            regions =  [region for region in regions if [region[0], region[1]] not in regions_and_providers["disallowed_regions"]]
 
         return np.array(regions)
 
     def _filter_regions_global(self, regions: np.ndarray) -> np.ndarray:
-        # TODO (#21): Implement this function
         return self._filter_regions(regions, self._workflow_config['regions_and_providers'])
 
     def _filter_regions_instance(self, regions: np.ndarray, instance_index: str) -> np.ndarray:
-        # TODO (#24): Implement this instance
         return self._filter_regions(regions, self._workflow_config.instances[instance_index]["regions_and_providers"])
 
     def rank_solved_results(

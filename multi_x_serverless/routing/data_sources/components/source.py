@@ -13,6 +13,13 @@ class Source(ABC):
         self._execution_matrix = None
         self._transmission_matrix = None
 
+    @abstractmethod
+    def load_database(self, *args, **kwargs) -> dict:
+        '''
+        This function is responsible for loading the data from the database and converting it into a dictionary.
+        '''
+        raise NotImplementedError
+
     def get_execution_matrix(self) -> np.ndarray:
         return self._execution_matrix
 

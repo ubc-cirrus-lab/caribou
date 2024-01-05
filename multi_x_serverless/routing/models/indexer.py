@@ -13,3 +13,9 @@ class Indexer(ABC):
     @abstractmethod
     def indicies_to_values(self, indices: np.ndarray) -> np.ndarray:
         raise NotImplementedError
+    
+    def value_to_index(self, value: float) -> int:
+        raise self.values_to_indices(np.ndarray([value]))[0]
+
+    def index_to_value(self, indices: int) -> float:
+        raise self.indicies_to_values()

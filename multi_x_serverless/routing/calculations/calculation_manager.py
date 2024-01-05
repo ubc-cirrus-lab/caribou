@@ -21,10 +21,10 @@ class CalculationManager():
             results.append(self._get_calculator(calculator).calculate_execution(instance_index, region_index))
         return results
 
-    def calculate_transmission(self, desired_calculator: str, from_instance_index: int, to_instance_index: int, from_region_index: int, to_region_index: int) -> float:
+    def calculate_transmission(self, desired_calculator: str, from_instance_index: int, to_instance_index: int, from_region_index: int, to_region_index: int) -> list[float]:
         return self._get_calculator(desired_calculator).calculate_transmission(from_instance_index, to_instance_index, from_region_index, to_region_index)
     
-    def calculate_transmission_cost_carbon_runtime(self, from_instance_index: int, to_instance_index: int, from_region_index: int, to_region_index: int) -> float:
+    def calculate_transmission_cost_carbon_runtime(self, from_instance_index: int, to_instance_index: int, from_region_index: int, to_region_index: int) -> list[float]:
         results = []
         calculators = ["Cost", "Carbon", "Runtime"]
         for calculator in calculators:

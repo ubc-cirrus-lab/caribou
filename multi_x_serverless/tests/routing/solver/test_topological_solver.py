@@ -52,7 +52,7 @@ class TestTopologicalSolver(unittest.TestCase):
         self.workflow_config.instances = [
             {"instance_name": "i1", "succeeding_instances": ["i2", "i3", "i5", "i7"], "preceding_instances": [],
              "regions_and_providers": { # This should be the same as start hop
-                 "allowed_regions": [("p1", "r1")],
+                 "allowed_regions": [["p1", "r1"]],
                  "disallowed_regions": None, # "allowed_regions" is not None, so this should be ignored
                  "providers": [{"name": "p1"}]
              }},
@@ -76,13 +76,13 @@ class TestTopologicalSolver(unittest.TestCase):
              }},
             {"instance_name": "i5", "succeeding_instances": [], "preceding_instances": ["i1"], "preceding_instances": [],
              "regions_and_providers": { # This should be the same as start hop (As its leaf node)
-                 "allowed_regions": [("p1", "r1")],
+                 "allowed_regions": [["p1", "r1"]],
                  "disallowed_regions": None, # "allowed_regions" is not None, so this should be ignored
                  "providers": [{"name": "p1"}]
              }},
             {"instance_name": "i6", "succeeding_instances": [], "preceding_instances": ["i4"], "preceding_instances": [],
              "regions_and_providers": { # This should be the same as start hop (As its leaf node)
-                 "allowed_regions": [("p1", "r1")],
+                 "allowed_regions": [["p1", "r1"]],
                  "disallowed_regions": None, # "allowed_regions" is not None, so this should be ignored
                  "providers": [{"name": "p1"}]
              }},
