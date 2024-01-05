@@ -176,8 +176,8 @@ def get_region_to_destination_transmission_cost(  # pylint: disable=too-many-loc
 
         region_to_transmissison_cost = {}
         for entry in results:
-            destination_region = entry["value"].split(" - ")[-1].split(" data transfer to ", maxsplit=2)[1]
-            price_str = entry["value"].split("$", maxsplit=2)[1].split(" ", maxsplit=1)[0]
+            destination_region = entry["value"].split(" - ")[-1].split(" data transfer to ")[1]
+            price_str = entry["value"].split("$")[1].split(" ")[0]
             price = float(price_str)
 
             # The destination region is not always a region code, but sometimes a region name and

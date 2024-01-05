@@ -26,12 +26,12 @@ def run(event: Any) -> None:  # pylint: disable=unused-argument
             average = percentiles["average"]
             item = {
                 "region_from_to_codes": region_from + ":" + region_to,
-                "region_from": region_from.split(":", maxsplit=2)[1],
-                "region_to": region_to.split(":", maxsplit=2)[1],
+                "region_from": region_from.split(":")[1],
+                "region_to": region_to.split(":")[1],
                 "average": average,
                 "timestamp": current_date,
-                "provider_from": region_from.split(":", maxsplit=2)[0],
-                "provider_to": region_to.split(":", maxsplit=2)[0],
+                "provider_from": region_from.split(":")[0],
+                "provider_to": region_to.split(":")[0],
                 "50th": percentiles["50th"],
                 "90th": percentiles["90th"],
                 "95th": percentiles["95th"],
