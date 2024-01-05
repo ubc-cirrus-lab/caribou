@@ -102,9 +102,9 @@ class TestDeploymentPackager(unittest.TestCase):
 
         config = MagicMock()
         packager = DeploymentPackager(config)
-        packager._add_mutli_x_serverless_dependency(mock_zipfile, tmp_dir)
+        packager._add_mutli_x_serverless_dependency(mock_zipfile)
 
-        self.assertEqual(mock_zipfile.write.call_count, 4)
+        self.assertEqual(mock_zipfile.write.call_count, 8)
 
 
 if __name__ == "__main__":

@@ -7,57 +7,8 @@ import uuid
 from types import FrameType
 from typing import Any, Callable, Optional
 
-from multi_x_serverless.deployment.client.clients import AWSClient
-from multi_x_serverless.deployment.client.enums import Endpoint
-
-
-class MultiXServerlessFunction:  # pylint: disable=too-many-instance-attributes
-    """
-    Class that represents a serverless function.
-    """
-
-    def __init__(
-        self,
-        function: Callable[..., Any],
-        name: str,
-        entry_point: bool,
-        regions_and_providers: dict,
-        providers: list[dict],
-    ):
-        self.function = function
-        self.name = name
-        self.entry_point = entry_point
-        self.handler = function.__name__
-        self.regions_and_providers = regions_and_providers if len(regions_and_providers) > 0 else None
-        self.providers = providers if len(providers) > 0 else None
-
-    def get_successors(self, workflow: MultiXServerlessWorkflow) -> list[MultiXServerlessFunction]:
-        """
-        Get the functions that are called by this function.
-        """
-        source_code = inspect.getsource(self.function)
-        function_calls = re.findall(r"invoke_serverless_function\((.*?)\)", source_code)
-        successors: list[MultiXServerlessFunction] = []
-        for call in function_calls:
-            if "," not in call:
-                raise RuntimeError(
-                    f"""Could not parse function call ({call}) in function
-                    ({self.function}), did you provide the payload?"""
-                )
-            function_name = call.strip().split(",")[0].strip('"')
-            successor = next(
-                (func for func in workflow.functions.values() if func.function.__name__ == function_name), None
-            )
-            if successor:
-                successors.append(successor)
-        return successors
-
-    def is_waiting_for_predecessors(self) -> bool:
-        """
-        Check whether this function is waiting for its predecessors to finish.
-        """
-        source_code = inspect.getsource(self.function)
-        return "get_predecessor_data" in source_code
+from multi_x_serverless.deployment.client.factories.remote_client_factory import RemoteClientFactory
+from multi_x_serverless.deployment.client.multi_x_serverless_function import MultiXServerlessFunction
 
 
 class MultiXServerlessWorkflow:
@@ -77,8 +28,11 @@ class MultiXServerlessWorkflow:
         self.name = name
         self.functions: dict[str, MultiXServerlessFunction] = {}
         self._successor_index = 0
+        self._remote_client_factory = RemoteClientFactory()
 
-    def get_function_and_wrapper_frame(self, current_frame: FrameType) -> tuple[FrameType, FrameType]:
+    def get_function_and_wrapper_frame(self, current_frame: Optional[FrameType]) -> tuple[FrameType, FrameType]:
+        if not current_frame:
+            raise RuntimeError("Could not get current frame")
         # Get the frame of the function
         function_frame = current_frame.f_back
         if not function_frame:
@@ -91,48 +45,68 @@ class MultiXServerlessWorkflow:
 
         return function_frame, wrapper_frame
 
+    def get_successors(self, function: MultiXServerlessFunction) -> list[MultiXServerlessFunction]:
+        """
+        Get the functions that are called by this function.
+        """
+        source_code = inspect.getsource(function.function_callable)
+        function_calls = re.findall(r"invoke_serverless_function\((.*?)\)", source_code)
+        successors: list[MultiXServerlessFunction] = []
+        for call in function_calls:
+            if "," not in call:
+                raise RuntimeError(
+                    f"""Could not parse function call ({call}) in function
+                    ({function}), did you provide the payload?"""
+                )
+            function_name = call.strip().split(",", maxsplit=1)[0].strip('"')
+            successor = next(
+                (func for func in self.functions.values() if func.function_callable.__name__ == function_name), None
+            )
+            if successor:
+                successors.append(successor)
+        return successors
+
     def invoke_serverless_function(
-        self, function: Callable[..., Any], payload: Optional[dict | Any] = None  # pylint: disable=unused-argument
+        self, function: Callable[..., Any], payload: Optional[dict | Any] = None, conditional: bool = True
     ) -> None:
         """
         Invoke a serverless function which is part of this workflow.
         """
         if not payload:
             payload = {}
-        # TODO (#11): Implement conditional invocation
+
+        if not conditional:
+            return
         # If the function from which this function is called is the entry point obtain current routing decision
         # If not, the routing decision was stored in the message received from the predecessor function
         # Post message to SNS -> return
         # Do not wait for response
 
-        this_frame = inspect.currentframe()
-        if not this_frame:
-            raise RuntimeError("Could not get current frame")
-
         # We need to go back two frames to get the frame of the wrapper function that stores the routing decision
         # and the payload (see more on this in the explanation of the decorator `serverless_function`)
-        function_frame, wrapper_frame = self.get_function_and_wrapper_frame(this_frame)
+        function_frame, wrapper_frame = self.get_function_and_wrapper_frame(inspect.currentframe())
 
         routing_decision = self.get_routing_decision(wrapper_frame)
 
-        successor_instance_name, successor_routing_decision = self.get_successor_instance_name(
+        successor_instance_name, successor_routing_decision_dictionary = self.get_successor_instance_name(
             function, routing_decision, wrapper_frame, function_frame
         )
 
         # Wrap the payload and add the routing decision
         payload_wrapper = {"payload": payload}
 
-        payload_wrapper["routing_decision"] = successor_routing_decision
+        payload_wrapper["routing_decision"] = successor_routing_decision_dictionary
         json_payload = json.dumps(payload_wrapper)
 
         provider_region, identifier = self.get_successor_routing_decision(successor_instance_name, routing_decision)
         provider, region = provider_region.split(":")
 
-        if successor_instance_name.split(":")[1] == "merge":
-            self.invoke_function_through_sns(json_payload, region, identifier, merge=True)
-
-        if provider == Endpoint.AWS.value:
-            self.invoke_function_through_sns(json_payload, region, identifier)
+        self._remote_client_factory.get_remote_client(provider, region).invoke_function(
+            message=json_payload,
+            region=region,
+            identifier=identifier,
+            merge=successor_instance_name.split(":", maxsplit=2)[1] == "merge",
+        )
 
     def get_successor_routing_decision(
         self, successor_instance_name: str, routing_decision: dict[str, Any]
@@ -206,9 +180,9 @@ class MultiXServerlessWorkflow:
                 # name and has the correct index
                 for successor_instance in successor_instances:
                     if successor_instance.startswith(successor_function_name):
-                        if successor_instance.split(":")[1] == "merge":
+                        if successor_instance.split(":", maxsplit=2)[1] == "merge":
                             return successor_instance
-                        if successor_instance.split(":")[1].split("_")[-1] == str(self._successor_index):
+                        if successor_instance.split(":", maxsplit=2)[1].split("_")[-1] == str(self._successor_index):
                             self._successor_index += 1
                             return successor_instance
                 raise RuntimeError("Could not find successor instance")
@@ -260,42 +234,23 @@ class MultiXServerlessWorkflow:
 
         raise RuntimeError("Could not get entry point")
 
-    def invoke_function_through_sns(self, message: str, region: str, arn: str, merge: bool = False) -> None:
-        aws_client = AWSClient(region)
-        if merge:
-            # TODO (#10): Add merge function
-            return
-        try:
-            aws_client.send_message_to_sns(arn, message)
-        except Exception as e:
-            raise RuntimeError("Could not invoke function through SNS") from e
-
     def get_predecessor_data(self) -> list[dict[str, Any]]:
         """
         Get the data returned by the predecessor functions.
+
+        This method is only invoked if the merge function was
+        called which means all predecessor functions have finished.
         """
-        # Check if all predecessor functions have returned
-        # If not, abort this function call, another function will eventually be called
-        # TODO (#10): Check if all predecessor functions have returned
-        # Either we check it backwards or forwards at calling time
         (
             provider,
             region,
             current_instance_name,
             workflow_instance_id,
         ) = self.get_current_instance_provider_region_instance_name()
-        if provider == Endpoint.AWS.value:
-            return self.get_predecessor_data_aws(region, current_instance_name, workflow_instance_id)
-        raise RuntimeError("Could not get predecessor data")
 
-    def get_predecessor_data_aws(
-        self, region: str, current_instance_name: str, workflow_instance_id: str
-    ) -> list[dict[str, Any]]:
-        aws_client = AWSClient(region)
-        try:
-            return aws_client.get_predecessor_data(current_instance_name, workflow_instance_id)
-        except Exception as e:
-            raise RuntimeError("Could not get predecessor data") from e
+        client = self._remote_client_factory.get_remote_client(provider, region)
+
+        return client.get_predecessor_data(current_instance_name, workflow_instance_id)
 
     def get_current_instance_provider_region_instance_name(self) -> tuple[str, str, str, str]:
         this_frame = inspect.currentframe()

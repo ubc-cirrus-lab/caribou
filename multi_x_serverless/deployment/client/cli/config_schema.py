@@ -13,7 +13,7 @@ class Provider(BaseModel):
     config: dict[str, Any] = Field(..., title="The configuration of the provider")
 
     @model_validator(mode="after")
-    def validate_config(cls: Any, values: Any) -> Any:
+    def validate_config(_: Any, values: Any) -> Any:  # pylint: disable=no-self-argument
         if values.name == "aws":
             config = values.config
             if "memory" not in config or not isinstance(config["memory"], int):

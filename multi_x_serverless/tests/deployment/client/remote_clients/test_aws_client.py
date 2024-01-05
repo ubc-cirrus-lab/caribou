@@ -1,14 +1,14 @@
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
-from multi_x_serverless.deployment.client.clients import AWSClient
+from multi_x_serverless.deployment.client.remote_client.aws_remote_client import AWSRemoteClient
 
 
-class TestAWSClient(unittest.TestCase):
+class TestAWSRemoteClient(unittest.TestCase):
     @patch("boto3.session.Session")
     def setUp(self, mock_session):
         self.region = "us-west-2"
-        self.aws_client = AWSClient(self.region)
+        self.aws_client = AWSRemoteClient(self.region)
         self.mock_session = mock_session
 
     @patch("boto3.session.Session.client")
@@ -17,7 +17,7 @@ class TestAWSClient(unittest.TestCase):
         self.aws_client._client(service_name)
         mock_client.assert_called_once_with(service_name)
 
-    @patch.object(AWSClient, "_client")
+    @patch.object(AWSRemoteClient, "_client")
     def test_get_iam_role(self, mock_client):
         role_name = "test_role"
         mock_client.return_value.get_role.return_value = {"Role": {"Arn": "arn:aws:iam::123456789012:role/test_role"}}
@@ -26,7 +26,7 @@ class TestAWSClient(unittest.TestCase):
         mock_client.return_value.get_role.assert_called_once_with(RoleName=role_name)
         self.assertEqual(result, "arn:aws:iam::123456789012:role/test_role")
 
-    @patch.object(AWSClient, "_client")
+    @patch.object(AWSRemoteClient, "_client")
     def test_get_lambda_function(self, mock_client):
         function_name = "test_function"
         mock_client.return_value.get_function.return_value = {"Configuration": {"FunctionName": "test_function"}}
@@ -35,9 +35,9 @@ class TestAWSClient(unittest.TestCase):
         mock_client.return_value.get_function.assert_called_once_with(FunctionName=function_name)
         self.assertEqual(result, {"FunctionName": "test_function"})
 
-    @patch.object(AWSClient, "_client")
-    @patch.object(AWSClient, "_create_lambda_function")
-    @patch.object(AWSClient, "_wait_for_function_to_become_active")
+    @patch.object(AWSRemoteClient, "_client")
+    @patch.object(AWSRemoteClient, "_create_lambda_function")
+    @patch.object(AWSRemoteClient, "_wait_for_function_to_become_active")
     def test_create_function(self, mock_wait_for_function, mock_create_lambda, mock_client):
         function_name = "test_function"
         role_arn = "arn:aws:iam::123456789012:role/test_role"

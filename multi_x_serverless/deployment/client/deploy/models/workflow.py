@@ -21,7 +21,8 @@ class Workflow(Resource):
         self._resources = resources
         self._functions = functions
         self._edges = edges
-        super().__init__(name, "workflow", config=config)
+        self._config = config
+        super().__init__(name, "workflow")
 
     def __repr__(self) -> str:
         return f"""Workflow(

@@ -27,7 +27,7 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
     ) -> None:
         super().__init__(name, "function")
         self.entry_point = entry_point
-        self._remote_states: dict[Endpoint, dict[str, RemoteState]] = {}
+        self._remote_states: dict[str, dict[str, RemoteState]] = {}
         self.initialise_remote_states(home_regions)
         self.role = role
         self.deployment_package = deployment_package
@@ -53,10 +53,9 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
     def initialise_remote_states(self, home_regions: list[str]) -> None:
         for home_region in home_regions:
             endpoint, region = home_region.split(":")
-            endpoint_type = Endpoint(endpoint)
-            if endpoint_type not in self._remote_states:
-                self._remote_states[endpoint_type] = {}
-            self._remote_states[endpoint_type][region] = RemoteState(endpoint=endpoint_type, region=region)
+            if endpoint not in self._remote_states:
+                self._remote_states[endpoint] = {}
+            self._remote_states[endpoint][region] = RemoteState(endpoint=endpoint, region=region)
 
     def dependencies(self) -> Sequence[Resource]:
         resources: list[Resource] = [self.role, self.deployment_package]
@@ -118,7 +117,7 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
         if policy is None:
             raise RuntimeError(f"Lambda policy could not be read, check the path ({self.role.policy})")
         policy = json.dumps(json.loads(policy))
-        if not self._remote_states[Endpoint.AWS][region].resource_exists(self.role):
+        if not self._remote_states[Endpoint.AWS.value][region].resource_exists(self.role):
             instructions.extend(
                 [
                     APICall(
@@ -165,7 +164,7 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
         with open(self.deployment_package.filename, "rb") as f:
             zip_contents = f.read()
         function_varname = f"{self.name}_lambda_arn_{region}"
-        if not self._remote_states[Endpoint.AWS][region].resource_exists(self):
+        if not self._remote_states[Endpoint.AWS.value][region].resource_exists(self):
             instructions.extend(
                 [
                     APICall(

@@ -15,7 +15,7 @@ from multi_x_serverless.deployment.client.deploy.deployer import (
     create_deletion_deployer,
 )
 from multi_x_serverless.deployment.client.enums import Endpoint
-from multi_x_serverless.deployment.client.workflow import MultiXServerlessWorkflow
+from multi_x_serverless.deployment.client.multi_x_serverless_workflow import MultiXServerlessWorkflow
 
 
 class CLIFactory:
@@ -84,7 +84,7 @@ class CLIFactory:
             for region in only_regions:
                 if not isinstance(region, str):
                     raise RuntimeError("only_regions must be a list of strings")
-                provider = region.split(":")[0]
+                provider = region.split(":", maxsplit=1)[0]
                 if provider not in Endpoint.__members__:
                     raise RuntimeError(f"Provider {provider} is not supported")
                 if provider not in defined_endpoints:

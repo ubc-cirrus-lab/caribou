@@ -1,22 +1,19 @@
 import os
 import queue
-import uuid
 from typing import Optional
 
 from multi_x_serverless.deployment.client.cli.config_schema import Provider
 from multi_x_serverless.deployment.client.config import Config
-from multi_x_serverless.deployment.client.deploy.models import (
-    DeploymentPackage,
-    Function,
-    FunctionInstance,
-    IAMRole,
-    Workflow,
-)
-from multi_x_serverless.deployment.client.workflow import MultiXServerlessFunction
+from multi_x_serverless.deployment.client.deploy.models.deployment_package import DeploymentPackage
+from multi_x_serverless.deployment.client.deploy.models.function import Function
+from multi_x_serverless.deployment.client.deploy.models.function_instance import FunctionInstance
+from multi_x_serverless.deployment.client.deploy.models.iam_role import IAMRole
+from multi_x_serverless.deployment.client.deploy.models.workflow import Workflow
+from multi_x_serverless.deployment.client.multi_x_serverless_workflow import MultiXServerlessFunction
 
 
 class WorkflowBuilder:
-    def build_workflow(self, config: Config) -> Workflow:
+    def build_workflow(self, config: Config) -> Workflow:  # pylint: disable=too-many-locals
         resources: list[Function] = []
 
         # A workflow consists of two parts:
@@ -83,16 +80,16 @@ class WorkflowBuilder:
         index_in_dag += 1
         function_instances[predecessor_instance.name] = predecessor_instance
 
-        for successor_of_current_index, successor in enumerate(entry_point.get_successors(config.workflow_app)):
+        for successor_of_current_index, successor in enumerate(config.workflow_app.get_successors(entry_point)):
             functions_to_visit.put((successor.handler, predecessor_instance.name, successor_of_current_index))
 
         while not functions_to_visit.empty():
             function_to_visit, predecessor_instance_name, successor_of_predecessor_index = functions_to_visit.get()
             multi_x_serverless_function: MultiXServerlessFunction = function_name_to_function[function_to_visit]
-            predecessor_instance_name_for_instance = predecessor_instance_name.split(":")[0]
+            predecessor_instance_name_for_instance = predecessor_instance_name.split(":", maxsplit=1)[0]
             predecessor_index = predecessor_instance_name.split(":")[-1]
             function_instance_name = (
-                f"{multi_x_serverless_function.name}:{predecessor_instance_name_for_instance}_{predecessor_index}_{successor_of_predecessor_index}:{index_in_dag}"
+                f"{multi_x_serverless_function.name}:{predecessor_instance_name_for_instance}_{predecessor_index}_{successor_of_predecessor_index}:{index_in_dag}"  # pylint: disable=line-too-long
                 if not multi_x_serverless_function.is_waiting_for_predecessors()
                 else f"{multi_x_serverless_function.name}:merge:{index_in_dag}"
             )
@@ -112,7 +109,7 @@ class WorkflowBuilder:
                     else config.providers,
                 )
                 for successor_of_predecessor_i, successor in enumerate(
-                    multi_x_serverless_function.get_successors(config.workflow_app)
+                    config.workflow_app.get_successors(multi_x_serverless_function)
                 ):
                     functions_to_visit.put((successor.handler, function_instance_name, successor_of_predecessor_i))
 
