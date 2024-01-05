@@ -69,7 +69,7 @@ class TestDeploymentPackager(unittest.TestCase):
         config = MagicMock()
         packager = DeploymentPackager(config)
         tmp_dir = self.test_dir
-         # Make requirements.txt
+        # Make requirements.txt
         with open(os.path.join(tmp_dir, "requirements.txt"), "w") as f:
             f.write("requests\n")
         packager._build_dependencies(os.path.join(tmp_dir, "requirements.txt"), tmp_dir)

@@ -205,7 +205,7 @@ class MultiXServerlessWorkflow:
         raise RuntimeError("Could not find current instance")
 
     def get_routing_decision(self, frame: FrameType) -> dict[str, Any]:
-        # Get the routing decision from the wrapper function
+        # Get the routing decision from the wrapper function
         if "wrapper" in frame.f_locals:
             wrapper = frame.f_locals["wrapper"]
             if hasattr(wrapper, "routing_decision"):
