@@ -66,17 +66,11 @@ class Config:
 
     @property
     def regions_and_providers(self) -> dict:
-        if "regions_and_providers" not in self.constraints:
-            return {}
-        return self.constraints["regions_and_providers"]
+        return self._lookup("regions_and_providers")
 
     @property
     def iam_policy_file(self) -> str:
         return self._lookup("iam_policy_file")
-
-    @property
-    def providers(self) -> list[dict]:
-        return self._lookup("providers")
 
     def deployed_resources(self) -> list[Any]:
         deployed_resource_file = os.path.join(self.project_dir, ".multi-x-serverless", "deployed_resources.yml")

@@ -11,16 +11,16 @@ workflow = MultiXServerlessWorkflow("{{ workflow_name }}")
     regions_and_providers={
         "only_regions": ["aws:us-east-1"],
         "forbidden_regions": ["aws:us-east-2"],
+        "providers": [
+            {
+                "name": "aws",
+                "config": {
+                    "timeout": 60,
+                    "memory": 128,
+                },
+            }
+        ],
     },
-    providers=[
-        {
-            "name": "aws",
-            "config": {
-                "timeout": 60,
-                "memory": 128,
-            },
-        }
-    ],
 )
 def first_function(event: dict[str, Any]) -> dict[str, Any]:
     payload = {

@@ -17,7 +17,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         self.config.home_regions = []
         self.config.project_dir = "/path/to/project"
         self.config.iam_policy_file = None
-        self.config.providers = []
+        self.config.regions_and_providers = {"providers": []}
 
     def test_build_workflow_no_entry_point(self):
         with self.assertRaises(RuntimeError):
@@ -28,12 +28,12 @@ class TestWorkflowBuilder(unittest.TestCase):
         function1.entry_point = True
         function1.name = "function1"
         function1.handler = "function1"
-        function1.providers = []
+        function1.regions_and_providers = {}
         function2 = Mock(spec=MultiXServerlessFunction)
         function2.entry_point = True
         function2.name = "function2"
         function2.handler = "function1"
-        function2.providers = []
+        function2.regions_and_providers = {"providers": []}
         self.config.workflow_app.functions = {"function1": function1, "function2": function2}
         with self.assertRaises(RuntimeError):
             self.builder.build_workflow(self.config)

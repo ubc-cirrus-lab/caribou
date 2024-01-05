@@ -29,12 +29,19 @@ class WorkflowBuilder:
         for function in config.workflow_app.functions.values():
             function_deployment_name = f"{config.workflow_name}-{function.name}"
             function_role = self.get_function_role(config, function_deployment_name)
-            providers = function.providers if function.providers else config.providers
+            if function.regions_and_providers and "providers" in function.regions_and_providers:
+                providers = (
+                    function.regions_and_providers["providers"]
+                    if function.regions_and_providers["providers"]
+                    else config.regions_and_providers["providers"]
+                )
+            else:
+                providers = config.regions_and_providers["providers"]
             self._verify_providers(providers)
             resources.append(
                 Function(
                     name=function_deployment_name,
-                    # TODO (#22): Add function specific environment variables, similar to providers
+                    # TODO (#22): Add function specific environment variables
                     environment_variables=config.environment_variables,
                     runtime=config.python_version,
                     handler=function.handler,
@@ -75,7 +82,6 @@ class WorkflowBuilder:
             if entry_point.regions_and_providers
             else config.regions_and_providers,
             function_resource_name=entry_point.name,
-            providers=entry_point.providers if entry_point.providers else config.providers,
         )
         index_in_dag += 1
         function_instances[predecessor_instance.name] = predecessor_instance
@@ -104,9 +110,6 @@ class WorkflowBuilder:
                     if multi_x_serverless_function.regions_and_providers
                     else config.regions_and_providers,
                     function_resource_name=multi_x_serverless_function.name,
-                    providers=multi_x_serverless_function.providers
-                    if multi_x_serverless_function.providers
-                    else config.providers,
                 )
                 for successor_of_predecessor_i, successor in enumerate(
                     config.workflow_app.get_successors(multi_x_serverless_function)

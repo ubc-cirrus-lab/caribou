@@ -22,7 +22,23 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
         workflow.register_function = Mock()
         workflow.get_routing_decision_from_platform = Mock(return_value={"decision": 1})
 
-        @workflow.serverless_function(name="test_func", entry_point=True)
+        @workflow.serverless_function(
+            name="test_func",
+            entry_point=True,
+            regions_and_providers={
+                "only_regions": ["aws:us-east-1"],
+                "forbidden_regions": ["aws:us-east-2"],
+                "providers": [
+                    {
+                        "name": "aws",
+                        "config": {
+                            "timeout": 60,
+                            "memory": 128,
+                        },
+                    }
+                ],
+            },
+        )
         def test_func(payload):
             return payload * 2
 
@@ -30,7 +46,26 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
         args, _ = workflow.register_function.call_args
         registered_func = args[0]
         self.assertEqual(registered_func.__name__, "test_func")
-        self.assertEqual(args[1:], ("test_func", True, {}, []))
+        self.assertEqual(
+            args[1:],
+            (
+                "test_func",
+                True,
+                {
+                    "only_regions": ["aws:us-east-1"],
+                    "forbidden_regions": ["aws:us-east-2"],
+                    "providers": [
+                        {
+                            "name": "aws",
+                            "config": {
+                                "timeout": 60,
+                                "memory": 128,
+                            },
+                        }
+                    ],
+                },
+            ),
+        )
 
         self.assertEqual(test_func.routing_decision, {})
 
@@ -51,7 +86,7 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
         args, _ = workflow.register_function.call_args
         registered_func = args[0]
         self.assertEqual(registered_func.__name__, "test_func")
-        self.assertEqual(args[1:], ("test_func", False, {}, []))
+        self.assertEqual(args[1:], ("test_func", False, {}))
 
         self.assertEqual(test_func.routing_decision, {})
 
@@ -95,7 +130,7 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
         registered_func = args[0]
         registered_func.name = "test_func"
         self.assertEqual(registered_func.__name__, "test_func")
-        self.assertEqual(args[1:], ("test_func", False, {}, []))
+        self.assertEqual(args[1:], ("test_func", False, {}))
         workflow.functions["test_func"] = registered_func
 
         # Call test_func with a payload
@@ -125,7 +160,7 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
         regions_and_providers = {}
         providers = []
 
-        function_obj_1 = MultiXServerlessFunction(test_function, name, entry_point, regions_and_providers, providers)
+        function_obj_1 = MultiXServerlessFunction(test_function, name, entry_point, regions_and_providers)
 
         workflow = MultiXServerlessWorkflow(name="test-workflow")
         workflow.functions = [function_obj_1]
@@ -135,7 +170,7 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
         def function(x):
             return invoke_serverless_function("test_function", x)
 
-        function_obj_2 = MultiXServerlessFunction(function, name, entry_point, regions_and_providers, providers)
+        function_obj_2 = MultiXServerlessFunction(function, name, entry_point, regions_and_providers)
 
         workflow.functions = {"test_function": function_obj_1, "test_function_2": function_obj_2}
 
@@ -162,7 +197,7 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
         registered_func = args[0]
         registered_func.name = "test_func"
         self.assertEqual(registered_func.__name__, "test_func")
-        self.assertEqual(args[1:], ("test_func", False, {}, []))
+        self.assertEqual(args[1:], ("test_func", False, {}))
         workflow.functions["test_func"] = registered_func
 
         # Call test_func with a payload

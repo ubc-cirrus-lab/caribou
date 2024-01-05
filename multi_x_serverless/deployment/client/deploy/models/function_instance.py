@@ -8,7 +8,6 @@ class FunctionInstance:
     entry_point: bool
     regions_and_providers: Optional[dict]
     function_resource_name: str
-    providers: list[dict]
 
     def to_json(self) -> dict:
         """
@@ -17,7 +16,6 @@ class FunctionInstance:
         return {
             "instance_name": self.name,
             "function_name": self.function_resource_name,
-            "providers": self.providers,
             "regions_and_providers": self.regions_and_providers,
         }
 
@@ -27,5 +25,4 @@ class FunctionInstance:
                 entry_point={self.entry_point},
                 regions_and_providers={self.regions_and_providers},
                 function_resource_name={self.function_resource_name},
-                providers={self.providers})
                 """
