@@ -11,7 +11,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         self.builder = WorkflowBuilder()
         self.config = Mock(spec=Config)
         self.config.workflow_name = "test_workflow"
-        self.config.workflow_app.functions = []
+        self.config.workflow_app.functions = {}
         self.config.environment_variables = {}
         self.config.python_version = "3.8"
         self.config.home_regions = []
@@ -34,7 +34,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         function2.name = "function2"
         function2.handler = "function1"
         function2.providers = []
-        self.config.workflow_app.functions = [function1, function2]
+        self.config.workflow_app.functions = {"function1": function1, "function2": function2}
         with self.assertRaises(RuntimeError):
             self.builder.build_workflow(self.config)
 

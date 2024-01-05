@@ -110,7 +110,7 @@ class MultiXServerlessWorkflow:
         routing_decision = self.get_routing_decision(wrapper_frame)
 
         successor_instance_name, successor_routing_decision = self.get_successor_instance_name(
-            function, routing_decision, wrapper_frame
+            function, routing_decision, wrapper_frame, function_frame
         )
 
         # Wrap the payload and add the routing decision
@@ -119,18 +119,27 @@ class MultiXServerlessWorkflow:
         payload_wrapper["routing_decision"] = successor_routing_decision
         json_payload = json.dumps(payload_wrapper)
 
-        # TODO (#7): The routing decision has to be retrieved from contextual information
-        # (where in the workflow are we?)
-        # provider, region, arn = routing_decision["next_endpoint"].split(":")
-        provider, region, arn = "aws", "us-west-2", "test"
+        provider_region, identifier = self.get_successor_routing_decision(successor_instance_name, routing_decision)
+        provider, region = provider_region.split(":")
         if provider == Endpoint.AWS.value:
-            self.invoke_function_through_sns(json_payload, region, arn)
+            self.invoke_function_through_sns(json_payload, region, identifier)
+
+    def get_successor_routing_decision(
+        self, successor_instance_name: str, routing_decision: dict[str, Any]
+    ) -> tuple[str, str]:
+        provider_region = routing_decision["routing_placement"][successor_instance_name]["provider_region"]
+        identifier = routing_decision["routing_placement"][successor_instance_name]["identifier"]
+        return provider_region, identifier
 
     def get_successor_instance_name(
-        self, function: Callable[..., Any], routing_decision: dict[str, Any], wrapper_frame: FrameType
+        self,
+        function: Callable[..., Any],
+        routing_decision: dict[str, Any],
+        wrapper_frame: FrameType,
+        function_frame: FrameType,
     ) -> tuple[str, dict[str, Any]]:
-        successor_function_name = self.functions[function.__name__].name
-        current_function_name = self.functions[self.get_function__name__from_frame(wrapper_frame)].name
+        successor_function_name = self.functions[function.original_function.__name__].name  # type: ignore
+        current_function_name = self.functions[self.get_function__name__from_frame(function_frame)].name
         is_entry_point = self.is_entry_point(wrapper_frame)
 
         if is_entry_point:
@@ -142,11 +151,13 @@ class MultiXServerlessWorkflow:
             current_instance_name, routing_decision, successor_function_name
         )
 
-        successor_routing_decision = self.get_successor_routing_decision(routing_decision, is_entry_point)
+        successor_routing_decision = self.get_successor_routing_decision_dictionary(
+            routing_decision, next_instance_name
+        )
 
         return next_instance_name, successor_routing_decision
 
-    def get_successor_routing_decision(
+    def get_successor_routing_decision_dictionary(
         self, routing_decision: dict[str, Any], next_instance_name: str
     ) -> dict[str, Any]:
         successor_routing_decision = routing_decision.copy()
@@ -161,14 +172,15 @@ class MultiXServerlessWorkflow:
                 successor_instances = instance["succeeding_instances"]
                 if len(successor_instances) == 1:
                     return successor_instances[0]
-                else:
-                    for successor_instance in successor_instances:
-                        if successor_instance.startswith(successor_function_name):
-                            if successor_instance.split(":")[1] == "merge":
-                                return successor_instance
-                            if successor_instance.split(":")[1].split("_")[2] == str(self._successor_index):
-                                self._successor_index += 1
-                                return successor_instance
+                for successor_instance in successor_instances:
+                    if successor_instance.startswith(successor_function_name):
+                        if successor_instance.split(":")[1] == "merge":
+                            return successor_instance
+                        if successor_instance.split(":")[1].split("_")[-1] == str(self._successor_index):
+                            self._successor_index += 1
+                            return successor_instance
+                raise RuntimeError("Could not find successor instance")
+        raise RuntimeError("Could not find current instance")
 
     def get_routing_decision(self, frame: FrameType) -> dict[str, Any]:
         if "wrapper" in frame.f_locals:
@@ -179,16 +191,14 @@ class MultiXServerlessWorkflow:
         raise RuntimeError("Could not get routing decision")
 
     def get_function__name__from_frame(self, frame: FrameType) -> str:
-        if "__name__" in frame.f_locals:
-            return frame.f_locals["__name__"]
-
-        raise RuntimeError("Could not get function name")
+        return frame.f_code.co_name
 
     def is_entry_point(self, frame: FrameType) -> bool:
         if "wrapper" in frame.f_locals:
             wrapper = frame.f_locals["wrapper"]
             if hasattr(wrapper, "entry_point"):
                 return wrapper.entry_point
+            return False
 
         raise RuntimeError("Could not get entry point")
 
@@ -302,6 +312,7 @@ class MultiXServerlessWorkflow:
 
             wrapper.routing_decision = {}  # type: ignore
             wrapper.entry_point = entry_point  # type: ignore
+            wrapper.original_function = func  # type: ignore
             self.register_function(func, handler_name, entry_point, regions_and_providers, providers)
             return wrapper
 
