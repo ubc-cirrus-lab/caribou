@@ -127,8 +127,6 @@ class MultiXServerlessWorkflow:
     def get_successor_routing_decision(
         self, successor_instance_name: str, routing_decision: dict[str, Any]
     ) -> tuple[str, str]:
-        print(successor_instance_name)
-        print(routing_decision)
         provider_region = routing_decision["routing_placement"][successor_instance_name]["provider_region"]
         identifier = routing_decision["routing_placement"][successor_instance_name]["identifier"]
         return provider_region, identifier
@@ -207,6 +205,7 @@ class MultiXServerlessWorkflow:
         raise RuntimeError("Could not find current instance")
 
     def get_routing_decision(self, frame: FrameType) -> dict[str, Any]:
+        # Get the routing decision from the wrapper function
         if "wrapper" in frame.f_locals:
             wrapper = frame.f_locals["wrapper"]
             if hasattr(wrapper, "routing_decision"):
@@ -215,9 +214,11 @@ class MultiXServerlessWorkflow:
         raise RuntimeError("Could not get routing decision")
 
     def get_function__name__from_frame(self, frame: FrameType) -> str:
+        # Get the name of the function from the frame
         return frame.f_code.co_name
 
     def is_entry_point(self, frame: FrameType) -> bool:
+        # Check if the function is the entry point
         if "wrapper" in frame.f_locals:
             wrapper = frame.f_locals["wrapper"]
             if hasattr(wrapper, "entry_point"):
