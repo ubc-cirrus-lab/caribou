@@ -71,7 +71,7 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
                 instruction = self.get_deployment_instructions_gcp(region)
             else:
                 raise RuntimeError(f"Unknown endpoint {endpoint}")
-            instructions[f"{endpoint}_{region}"] = instruction
+            instructions[f"{endpoint}:{region}"] = instruction
         return instructions
 
     def _get_memory_and_timeout(self) -> tuple[int, int]:
