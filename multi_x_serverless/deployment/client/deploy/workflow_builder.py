@@ -29,7 +29,7 @@ class WorkflowBuilder:
         entry_point: Optional[MultiXServerlessFunction] = None
 
         # First, we create the functions (the resources that we deploy to the serverless platform)
-        for function in config.workflow_app.functions:
+        for function in config.workflow_app.functions.values():
             function_deployment_name = f"{config.workflow_name}-{function.name}"
             function_role = self.get_function_role(config, function_deployment_name)
             providers = function.providers if function.providers else config.providers
