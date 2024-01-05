@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import Mock, patch
 
-from multi_x_serverless.routing.current.solver.dag import DAG
+from multi_x_serverless.routing.current.models.dag import DAG
 from multi_x_serverless.routing.current.solver.solver import Solver
 from multi_x_serverless.routing.current.workflow_config import WorkflowConfig
 

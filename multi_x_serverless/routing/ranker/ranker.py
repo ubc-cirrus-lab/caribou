@@ -1,6 +1,6 @@
 import numpy as np
 
-from multi_x_serverless.routing.current.workflow_config import WorkflowConfig
+from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
 
 class Ranker:

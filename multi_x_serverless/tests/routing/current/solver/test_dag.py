@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 
-from multi_x_serverless.routing.current.solver.dag import DAG
+from multi_x_serverless.routing.current.models.dag import DAG
 
 
 class TestDAG(unittest.TestCase):

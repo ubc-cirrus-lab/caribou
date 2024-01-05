@@ -1,6 +1,6 @@
 import numpy as np
 
-from multi_x_serverless.routing.current.solver.solver import Solver
+from multi_x_serverless.routing.solver.solver import Solver
 
 
 class StochasticGradientDescentSolver(Solver):
