@@ -8,6 +8,7 @@ from typing import Any, Callable, Optional
 
 from multi_x_serverless.deployment.client.clients import AWSClient
 from multi_x_serverless.deployment.client.enums import Endpoint
+import uuid
 
 
 class MultiXServerlessFunction:  # pylint: disable=too-many-instance-attributes
@@ -77,6 +78,19 @@ class MultiXServerlessWorkflow:
         self.functions: dict[str, MultiXServerlessFunction] = {}
         self._successor_index = 0
 
+    def get_function_and_wrapper_frame(current_frame: FrameType) -> tuple[FrameType, FrameType]:
+        # Get the frame of the function
+        function_frame = current_frame.f_back
+        if not function_frame:
+            raise RuntimeError("Could not get previous frame")
+
+        # Get the frame of the wrapper function
+        wrapper_frame = function_frame.f_back
+        if not wrapper_frame:
+            raise RuntimeError("Could not get previous frame")
+
+        return function_frame, wrapper_frame
+
     def invoke_serverless_function(
         self, function: Callable[..., Any], payload: Optional[dict | Any] = None  # pylint: disable=unused-argument
     ) -> None:
@@ -97,15 +111,7 @@ class MultiXServerlessWorkflow:
 
         # We need to go back two frames to get the frame of the wrapper function that stores the routing decision
         # and the payload (see more on this in the explanation of the decorator `serverless_function`)
-        function_frame = this_frame.f_back
-
-        if not function_frame:
-            raise RuntimeError("Could not get previous frame")
-
-        wrapper_frame = function_frame.f_back
-
-        if not wrapper_frame:
-            raise RuntimeError("Could not get previous frame")
+        function_frame, wrapper_frame = self.get_function_and_wrapper_frame(this_frame)
 
         routing_decision = self.get_routing_decision(wrapper_frame)
 
@@ -121,6 +127,10 @@ class MultiXServerlessWorkflow:
 
         provider_region, identifier = self.get_successor_routing_decision(successor_instance_name, routing_decision)
         provider, region = provider_region.split(":")
+
+        if successor_instance_name.split(":")[1] == "merge":
+            self.invoke_function_through_sns(json_payload, region, identifier, merge=True)
+
         if provider == Endpoint.AWS.value:
             self.invoke_function_through_sns(json_payload, region, identifier)
 
@@ -205,6 +215,29 @@ class MultiXServerlessWorkflow:
         raise RuntimeError("Could not find current instance")
 
     def get_routing_decision(self, frame: FrameType) -> dict[str, Any]:
+        """
+        This is the structure of the routhing decision:
+
+        {
+            "run_id": "test_run_id",
+            "routing_placement": {
+                "test_func": {
+                    "provider_region": "aws:region",
+                    "identifier": "test_identifier"
+                },
+                "test_func_1": {
+                    "provider_region": "aws:region",
+                    "identifier": "test_identifier"
+                }
+            },
+            "current_instance_name": "test_func",
+            "instances": [
+                {
+                    "instance_name": "test_func", "succeeding_instances": ["test_func_1"]
+                }
+            ]
+        }
+        """
         # Get the routing decision from the wrapper function
         if "wrapper" in frame.f_locals:
             wrapper = frame.f_locals["wrapper"]
@@ -227,8 +260,11 @@ class MultiXServerlessWorkflow:
 
         raise RuntimeError("Could not get entry point")
 
-    def invoke_function_through_sns(self, message: str, region: str, arn: str) -> None:
+    def invoke_function_through_sns(self, message: str, region: str, arn: str, merge: bool = False) -> None:
         aws_client = AWSClient(region)
+        if merge:
+            # TODO (#10): Add merge function
+            return
         try:
             aws_client.send_message_to_sns(arn, message)
         except Exception as e:
@@ -241,7 +277,43 @@ class MultiXServerlessWorkflow:
         # Check if all predecessor functions have returned
         # If not, abort this function call, another function will eventually be called
         # TODO (#10): Check if all predecessor functions have returned
-        return []
+        # Either we check it backwards or forwards at calling time
+        provider, region, current_instance_name = self.get_current_instance_provider_region_instance_name()
+        if provider == Endpoint.AWS.value:
+            return self.get_predecessor_data_aws(region, current_instance_name)
+        raise RuntimeError("Could not get predecessor data")
+
+    def get_predecessor_data_aws(self, region: str, current_instance_name: str) -> list[dict[str, Any]]:
+        aws_client = AWSClient(region)
+        try:
+            return aws_client.get_predecessor_data(current_instance_name)
+        except Exception as e:
+            raise RuntimeError("Could not get predecessor data") from e
+
+    def get_current_instance_provider_region_instance_name(self) -> tuple[str, str, str]:
+        this_frame = inspect.currentframe()
+        if not this_frame:
+            raise RuntimeError("Could not get current frame")
+
+        previous_frame = this_frame.f_back
+        if not previous_frame:
+            raise RuntimeError("Could not get previous frame")
+
+        # We need to go back two frames to get the frame of the wrapper function that stores the routing decision
+        # and the payload (see more on this in the explanation of the decorator `serverless_function`)
+        _, wrapper_frame = self.get_function_and_wrapper_frame(this_frame)
+
+        routing_decision = self.get_routing_decision(wrapper_frame)
+
+        if "current_instance_name" not in routing_decision:
+            raise RuntimeError(
+                "Could not get current instance name, is this the entry point? Entry point cannot be merge function"
+            )
+
+        current_instance_name = routing_decision["current_instance_name"]
+
+        provider_region = routing_decision["routing_placement"][current_instance_name]["provider_region"].split(":")
+        return provider_region[0], provider_region[1], current_instance_name
 
     def get_routing_decision_from_platform(self) -> dict[str, Any]:
         """
@@ -323,6 +395,10 @@ class MultiXServerlessWorkflow:
                 # Modify args and kwargs here as needed
                 if entry_point:
                     wrapper.routing_decision = self.get_routing_decision_from_platform()  # type: ignore
+                    # This is the first function to be called, so we need to generate a run id
+                    # This run id will be used to identify the workflow instance
+                    # For example for the merge function, we need to know which workflow instance to merge
+                    wrapper.routing_decision["run_id"] = uuid.uuid4().hex  # type: ignore
                     payload = args[0]
                 else:
                     # Get the routing decision from the message received from the predecessor function
