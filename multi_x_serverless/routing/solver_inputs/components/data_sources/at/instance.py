@@ -1,8 +1,7 @@
-from ..loader import Loader
-
+from ..source import Source
 import numpy as np
 
-class InstanceLoader(Loader):
+class InstanceSource(Source):
     def __init__(self):
         super().__init__()
     
@@ -15,5 +14,5 @@ class InstanceLoader(Loader):
                 "datacenter": datacenter_information.get(instance, 1000)
             }
     
-    def retrieve_data(self, *args, **kwargs) -> dict:
-        return self._data
+    def get_value(self, data_name: str, instance: str) -> float:
+        return self._data[instance][data_name]
