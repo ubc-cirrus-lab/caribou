@@ -7,8 +7,7 @@ from multi_x_serverless.routing.workflow_config import WorkflowConfig
 from multi_x_serverless.routing.models.region import Region
 from multi_x_serverless.routing.models.dag import DAG
 
-from multi_x_serverless.routing.data_sources.data_manager import DataManager
-from multi_x_serverless.routing.calculations.calculation_manager import CalculationManager
+from multi_x_serverless.routing.solver_inputs.input_manager import InputManager
 from multi_x_serverless.routing.ranker.ranker import Ranker
 
 class Solver(ABC):
@@ -19,11 +18,8 @@ class Solver(ABC):
         self._dag = self.get_dag_representation()
         self._region_source = Region(workflow_config)
         
-        # Setup the data manager (Not instantiated yet)
-        self._data_manager = DataManager(workflow_config, self._region_source, self._dag)
-
-        # Setup the calculation manager
-        self._calculation_manager = CalculationManager(self._data_manager)
+        # Setup the input manager (Not instantiated yet)
+        self._input_manager = InputManager(workflow_config, self._region_source, self._dag)
 
         # Setup the ranker for final ranking of solutions
         self._ranker = Ranker(workflow_config)
@@ -71,7 +67,7 @@ class Solver(ABC):
         return self._ranker.rank(results)
 
     def _instantiate_data_manager(self, regions: np.ndarray) -> None:
-        self._data_manager.setup(regions)
+        self._input_manager.setup(regions)
 
     def get_dag_representation(self) -> DAG:
         nodes = [

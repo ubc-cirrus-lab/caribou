@@ -84,11 +84,11 @@ class TopologicalSolver(Solver):
 
                             # Calculate transmission and execution cost/carbon/runtime from previous deployment region to this deployment region
                             # First calculate transmission cost/carbon/runtime from previous deployment region to this deployment region
-                            transmission_cost, transmission_carbon, transmission_runtime = self._calculation_manager.calculate_transmission_cost_carbon_runtime(
+                            transmission_cost, transmission_carbon, transmission_runtime = self._input_manager.get_transmission_cost_carbon_runtime(
                                 previous_instance_index, current_instance_index, from_region_index, to_region_index)
                             
                             # Then calculate execution cost/carbon/runtime for this deployment region
-                            execution_cost, execution_carbon, execution_runtime = self._calculation_manager.calculate_execution_cost_carbon_runtime(
+                            execution_cost, execution_carbon, execution_runtime = self._input_manager.get_execution_cost_carbon_runtime(
                                 current_instance_index, to_region_index)
                             
                             # Merge the deployments information together

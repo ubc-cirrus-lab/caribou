@@ -1,6 +1,6 @@
-from multi_x_serverless.routing.data_sources.components.source import Source
-from multi_x_serverless.routing.workflow_config import WorkflowConfig
+from ..source import Source
 
+from multi_x_serverless.routing.workflow_config import WorkflowConfig
 from multi_x_serverless.routing.models.indexer import Indexer
 
 import numpy as np
