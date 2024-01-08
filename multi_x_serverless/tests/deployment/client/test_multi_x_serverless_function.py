@@ -36,7 +36,6 @@ class TestMultiXServerlessFunction(unittest.TestCase):
         name = "test_function"
         entry_point = True
         regions_and_providers = {}
-        providers = []
 
         function_obj = MultiXServerlessFunction(function, name, entry_point, regions_and_providers)
 
@@ -48,3 +47,20 @@ class TestMultiXServerlessFunction(unittest.TestCase):
         function_obj = MultiXServerlessFunction(function, name, entry_point, regions_and_providers)
 
         self.assertTrue(function_obj.is_waiting_for_predecessors())
+
+    def test_validate_function_name(self):
+        def function(x):
+            return x
+
+        name = "test_function"
+        entry_point = True
+        regions_and_providers = {}
+
+        function_obj = MultiXServerlessFunction(function, name, entry_point, regions_and_providers)
+
+        function_obj.validate_function_name()
+
+        function_obj.name = "test:function"
+
+        with self.assertRaises(ValueError):
+            function_obj.validate_function_name()

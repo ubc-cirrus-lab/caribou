@@ -19,6 +19,14 @@ class MultiXServerlessFunction:
         self.entry_point = entry_point
         self.handler = function_callable.__name__
         self.regions_and_providers = regions_and_providers if len(regions_and_providers) > 0 else None
+        self.validate_function_name()
+
+    def validate_function_name(self) -> None:
+        """
+        Validate the function name.
+        """
+        if ":" in self.name:
+            raise ValueError("Function name cannot contain ':'")
 
     def is_waiting_for_predecessors(self) -> bool:
         """
