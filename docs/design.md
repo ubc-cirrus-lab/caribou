@@ -179,12 +179,11 @@ The condition is a boolean expression that is evaluated at runtime.
 If the condition evaluates to true, the function is called, otherwise it is not called.
 
 - Finally, there is the option of merging multiple predecessor calls at a merge node.
+The responses from the predecessor calls are then passed to the merge node as a list of responses.
 This is done with the following annotation:
 
-**TODO (#10): Implement merge node**
-
 ```python
-responses: list[dict[str, Any]] = workflow.get_predecessor_data()
+responses: list[Any] = workflow.get_predecessor_data()
 ```
 
 ## Merge Node

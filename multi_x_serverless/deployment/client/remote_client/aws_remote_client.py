@@ -85,7 +85,7 @@ class AWSRemoteClient(RemoteClient):
 
     def get_predecessor_data(
         self, current_instance_name: str, workflow_instance_id: str  # pylint: disable=unused-argument
-    ) -> list[dict[str, Any]]:
+    ) -> list[str]:
         client = self._client("dynamodb")
         merge_id = f"{current_instance_name}:{workflow_instance_id}"
         response = client.get_item(

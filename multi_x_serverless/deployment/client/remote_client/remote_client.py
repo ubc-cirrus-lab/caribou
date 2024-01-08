@@ -1,3 +1,4 @@
+import json
 from abc import ABC, abstractmethod
 from typing import Any, Optional
 
@@ -54,7 +55,15 @@ class RemoteClient(ABC):
             if expected_counter == -1:
                 raise RuntimeError("Expected counter must be specified for merge")
 
-            self.upload_message_for_merge(function_name, workflow_instance_id, message)
+            # Unpack message as we should only store the client data and not our added metadata, the added metadata is
+            # still sent to the function using the messaging service upon calling
+            # (so the routing information is still forwarded)
+            message_dictionary = json.loads(message)
+            if "payload" not in message_dictionary:
+                raise RuntimeError("Payload must be specified for merge")
+            payload = message_dictionary["payload"]
+            json_payload = json.dumps(payload)
+            self.upload_message_for_merge(function_name, workflow_instance_id, json_payload)
             counter = self.increment_counter(function_name, workflow_instance_id)
 
             if counter != expected_counter:
@@ -69,7 +78,7 @@ class RemoteClient(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def get_predecessor_data(self, current_instance_name: str, workflow_instance_id: str) -> list[dict[str, Any]]:
+    def get_predecessor_data(self, current_instance_name: str, workflow_instance_id: str) -> list[str]:
         raise NotImplementedError()
 
     @abstractmethod

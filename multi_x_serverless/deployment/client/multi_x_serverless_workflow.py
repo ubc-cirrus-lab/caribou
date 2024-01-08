@@ -263,7 +263,9 @@ class MultiXServerlessWorkflow:
 
         client = self._remote_client_factory.get_remote_client(provider, region)
 
-        return client.get_predecessor_data(current_instance_name, workflow_instance_id)
+        response = client.get_predecessor_data(current_instance_name, workflow_instance_id)
+
+        return [json.loads(message) for message in response]
 
     def get_current_instance_provider_region_instance_name(self) -> tuple[str, str, str, str]:
         this_frame = inspect.currentframe()
