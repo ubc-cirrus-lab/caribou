@@ -94,7 +94,10 @@ class AWSRemoteClient(RemoteClient):
         )
         if "Item" not in response:
             return []
-        return response["Item"]["message"]["SS"]
+        item = response.get("Item")
+        if item is not None and "message" in item:
+            return item["message"]["SS"]
+        return []
 
     def create_function(
         self,
