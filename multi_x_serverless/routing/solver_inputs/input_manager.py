@@ -1,6 +1,14 @@
 # Inner Components
-from .components.input import Input
 
+# Loader
+from .components.loaders.loader_manager import LoaderManager
+
+# Data sources
+from .components.data_sources.data_source_manager import DataSourceManager
+from .components.data_sources.source import Source
+
+# Inputs
+from .components.input import Input
 from .components.carbon_input import CarbonInput
 from .components.cost_input import CostInput
 from .components.runtime_input import RuntimeInput
@@ -18,12 +26,37 @@ class InputManager():
         self._regions_indexer = regions_indexer
         self._instance_indexer = instance_indexer
 
-        # initialize 
+        # initialize components
+        # Loader Manager
+        self._loader_manager = LoaderManager()
+
+        # Data sources
+        self._data_source_manager = DataSourceManager()
+
+        # Finalized inputs
         self._carbon_input = CarbonInput()
         self._cost_input = CostInput()
         self._runtime_input = RuntimeInput()
 
-    def setup(self, regions: np.ndarray) -> None:
+    def setup(self, regions: np.ndarray) -> (bool, str):
+        # Utilize the Loaders to load the data from the database
+
+        # Workflow loaders use the workfload unique ID from the config
+        workflow_ID = self._config.get("workflow_ID", None)
+        if workflow_ID is None:
+            return False, "Workflow ID not found in config"
+        
+        if (not self._loader_manager.setup(regions, workflow_ID)[0]):
+            return False, "Failed one or more loaders has failed to load data"
+        
+        all_loaded_informations = self._loader_manager.retrieve_data()
+
+        # Using those information, we can now setup the data sources
+        self._workflow_instance_input.setup(workflow_instance_information, workflow_instance_from_to_information)
+        self._datacenter_region_input.setup(datacenter_region_information, datacenter_region_from_to_information)
+        self._carbon_region_input.setup(carbon_region_information, carbon_region_from_to_information)
+
+        # Now take the loaded data and send it to the data sources, which will be used in the component input managers
         self._carbon_input.setup(regions, self._config, self._regions_indexer, self._instance_indexer)
         self._cost_input.setup(regions, self._config, self._regions_indexer, self._instance_indexer)
         self._runtime_input.setup(regions, self._config, self._regions_indexer, self._instance_indexer)

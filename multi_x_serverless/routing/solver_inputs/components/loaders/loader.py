@@ -9,16 +9,18 @@ class Loader(ABC):
     @abstractmethod
     def setup(self, *args, **kwargs) -> None:
         # Clear Cache
-        # self._execution_matrix = None
-        # self._transmission_matrix = None
         raise NotImplementedError
 
-    @abstractmethod
-    def retrieve_data(self, *args, **kwargs) -> dict:
+    def retrieve_data(self) -> dict:
         '''
         This function is responsible for retrieving a dictionary representation of the loaded data.
         '''
-        raise NotImplementedError
+
+        # Throw error if data has not been loaded
+        if self._data is None:
+            raise ValueError("Data has not been loaded yet. Please call the setup function first.")
+        
+        return self._data
     
     def __str__(self) -> str:
         return f"Source(name={self.__class__.__name__})"

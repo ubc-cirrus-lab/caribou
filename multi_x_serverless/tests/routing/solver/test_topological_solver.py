@@ -161,6 +161,26 @@ class TestTopologicalSolver(unittest.TestCase):
         print("Final deployment length:", deployment_length)
         # self.assertEqual(deployments, expected_deployments)
 
+        # a = {
+        #         "provider": "aws",
+        #         "region": "us-east-2",
+        #     }
+        # b = {
+        #         "provider": "aws",
+        #         "region": "us-east-2",
+        #     }
+        
+        # print(a)
+        # print(b)
+        # print("identical:", a == b)
+
+                # Save the data into a dictionary for data sources
+        # test_dict = {
+        #     **{'a': 1, 'b': 2},
+        #     **{'c': 3, 'd': [4, 5]},
+        #     **{'e': {'f': 6, 'g': 7}}
+        # }
+        print(test_dict)
 
 if __name__ == "__main__":
     unittest.main()
