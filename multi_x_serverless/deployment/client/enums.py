@@ -1,6 +1,6 @@
 from enum import Enum
 
 
-class Endpoint(Enum):
+class Provider(Enum):
     AWS = "aws"
     GCP = "gcp"

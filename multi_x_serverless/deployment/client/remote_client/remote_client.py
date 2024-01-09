@@ -20,15 +20,7 @@ class RemoteClient(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def get_iam_role(self, role_name: str) -> str:
-        raise NotImplementedError()
-
-    @abstractmethod
     def resource_exists(self, resource: Resource) -> bool:
-        raise NotImplementedError()
-
-    @abstractmethod
-    def get_lambda_function(self, function_name: str) -> dict[str, Any]:
         raise NotImplementedError()
 
     @abstractmethod

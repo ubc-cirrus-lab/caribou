@@ -18,8 +18,8 @@ class Executor:
 
     def execute(self, deployment_plan: DeploymentPlan) -> None:
         for home_region, instructions in deployment_plan.instructions.items():
-            endpoint, region = home_region.split(":")
-            client = self._remote_client_factory.get_remote_client(endpoint, region)
+            provider, region = home_region.split(":")
+            client = self._remote_client_factory.get_remote_client(provider, region)
             for instruction in instructions:
                 getattr(self, f"_do_{instruction.__class__.__name__.lower()}", self._default_handler)(
                     instruction,
