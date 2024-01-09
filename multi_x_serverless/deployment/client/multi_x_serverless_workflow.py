@@ -101,11 +101,24 @@ class MultiXServerlessWorkflow:
         provider_region, identifier = self.get_successor_routing_decision(successor_instance_name, routing_decision)
         provider, region = provider_region.split(":")
 
+        merge = successor_instance_name.split(":", maxsplit=2)[1] == "merge"
+
+        expected_counter = -1
+        function_name = None
+        if merge:
+            for instance in routing_decision["instances"]:
+                if instance["instance_name"] == successor_instance_name:
+                    expected_counter = len(instance["preceding_instances"])
+                    break
+            function_name = successor_instance_name.split(":", maxsplit=1)[0]
+
         self._remote_client_factory.get_remote_client(provider, region).invoke_function(
             message=json_payload,
-            region=region,
             identifier=identifier,
-            merge=successor_instance_name.split(":", maxsplit=2)[1] == "merge",
+            workflow_instance_id=routing_decision["run_id"],
+            merge=merge,
+            function_name=function_name,
+            expected_counter=expected_counter,
         )
 
     def get_successor_routing_decision(
@@ -207,7 +220,7 @@ class MultiXServerlessWorkflow:
             "current_instance_name": "test_func",
             "instances": [
                 {
-                    "instance_name": "test_func", "succeeding_instances": ["test_func_1"]
+                    "instance_name": "test_func", "succeeding_instances": ["test_func_1"], "preceding_instances": []
                 }
             ]
         }
@@ -250,7 +263,9 @@ class MultiXServerlessWorkflow:
 
         client = self._remote_client_factory.get_remote_client(provider, region)
 
-        return client.get_predecessor_data(current_instance_name, workflow_instance_id)
+        response = client.get_predecessor_data(current_instance_name, workflow_instance_id)
+
+        return [json.loads(message) for message in response]
 
     def get_current_instance_provider_region_instance_name(self) -> tuple[str, str, str, str]:
         this_frame = inspect.currentframe()
