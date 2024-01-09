@@ -63,7 +63,77 @@ class TestWorkflowBuilder(unittest.TestCase):
         # Call build_workflow
         with self.assertRaisesRegex(
             RuntimeError,
-            "Merge function function2:merge:2 is called by a successor of itself. This is not allowed. Please check your workflow.",
+            "Cycle detected: function2 is being visited again",
+        ):
+            self.builder.build_workflow(self.config)
+
+    def test_build_workflow_merge_case_multiple_incoming(self):
+        # Create mock functions
+        function1 = Mock(spec=MultiXServerlessFunction)
+        function1.entry_point = True
+        function1.name = "function1"
+        function1.handler = "function1"
+        function1.regions_and_providers = {}
+        function1.is_waiting_for_predecessors = Mock(return_value=False)
+
+        function2 = Mock(spec=MultiXServerlessFunction)
+        function2.entry_point = False
+        function2.name = "function2"
+        function2.handler = "function2"
+        function2.regions_and_providers = {"providers": []}
+        function2.is_waiting_for_predecessors = Mock(return_value=True)  # This is a merge function
+
+        # Mock the workflow app to return the successors of function1
+        # The first two calls are for the dfs, the next two for the actual successors
+        self.config.workflow_app.get_successors = Mock(
+            side_effect=[[function2, function2, function2], [], [function2, function2, function2], [], [], []]
+        )
+
+        # Set the functions in the config
+        self.config.workflow_app.functions = {"function1": function1, "function2": function2}
+
+        # Call build_workflow
+        workflow = self.builder.build_workflow(self.config)
+
+        self.assertEqual(len(workflow._edges), 3)
+
+    def test_cycle_detection(self):
+        # Create mock functions
+        function1 = Mock(spec=MultiXServerlessFunction)
+        function1.name = "function1"
+
+        function2 = Mock(spec=MultiXServerlessFunction)
+        function2.name = "function2"
+
+        # Create a mock config
+        config = Mock(spec=Config)
+        config.workflow_app.get_successors = Mock(side_effect=[[function2], [function1]])
+
+        # This should raise a RuntimeError because there is a cycle
+        with self.assertRaises(RuntimeError) as context:
+            self.builder._cycle_check(function1, config)
+
+        self.assertTrue("Cycle detected: function1 is being visited again" == str(context.exception))
+
+    def test_build_workflow_self_call(self):
+        # Create mock functions
+        function1 = Mock(spec=MultiXServerlessFunction)
+        function1.entry_point = True
+        function1.name = "function1"
+        function1.handler = "function1"
+        function1.regions_and_providers = {}
+        function1.is_waiting_for_predecessors = Mock(return_value=False)
+
+        # Mock the workflow app to return the successors of function1
+        self.config.workflow_app.get_successors = Mock(side_effect=[[function1], [], []])
+
+        # Set the functions in the config
+        self.config.workflow_app.functions = {"function1": function1}
+
+        # Call build_workflow
+        with self.assertRaisesRegex(
+            RuntimeError,
+            "Cycle detected: function1 is being visited again",
         ):
             self.builder.build_workflow(self.config)
 
@@ -85,16 +155,16 @@ class TestWorkflowBuilder(unittest.TestCase):
 
         # Mock the workflow app to return the successors of function1
 
-        self.config.workflow_app.get_successors = Mock(side_effect=[[function2], [], []])
+        self.config.workflow_app.get_successors = Mock(side_effect=[[function2], [], [function2], []])
         # Set the functions in the config
         self.config.workflow_app.functions = {"function1": function1, "function2": function2}
 
         # Call build_workflow
         workflow = self.builder.build_workflow(self.config)
 
-        self.assertEqual(len(workflow.dependencies()), 2)
+        self.assertEqual(len(workflow._edges), 1)
 
-    def test_build_workflow_merge_working(self):
+    def test_build_workflow_cycle_in_function_calls(self):
         # Create mock functions
         function1 = Mock(spec=MultiXServerlessFunction)
         function1.entry_point = True
@@ -121,7 +191,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         # Call build_workflow and assert the specific error message
         with self.assertRaisesRegex(
             RuntimeError,
-            "Function relation function2:function1 exists multiple times in the workflow. This is not allowed. Please check your workflow.",
+            "Cycle detected: function1 is being visited again",
         ):
             self.builder.build_workflow(self.config)
 
