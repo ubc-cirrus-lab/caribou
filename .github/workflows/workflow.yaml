@@ -42,7 +42,7 @@ jobs:
         uses: ./.github/actions/poetry
       - name: Run tests
         run: |
-          poetry run pytest --cache-clear --cov=multi_x_serverless multi_x_serverless/ > pytest-coverage.txt
+          poetry run pytest --cov-reset --cache-clear > pytest-coverage.txt
       - name: Comment coverage
         uses: coroo/pytest-coverage-commentator@v1.0.2
 

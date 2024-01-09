@@ -16,8 +16,18 @@ class TestMultiXServerlessFunction(unittest.TestCase):
         entry_point = True
         providers = [{"name": "aws", "config": {"timeout": 60, "memory": 128}}]
         regions_and_providers = {
-            "only_regions": [["aws", "us-east-1"]],
-            "forbidden_regions": [["aws", "us-east-2"]],
+            "only_regions": [
+                {
+                    "provider": "aws",
+                    "region": "us-east-1",
+                }
+            ],
+            "forbidden_regions": [
+                {
+                    "provider": "aws",
+                    "region": "us-east-2",
+                }
+            ],
             "providers": providers,
         }
 
@@ -36,7 +46,6 @@ class TestMultiXServerlessFunction(unittest.TestCase):
         name = "test_function"
         entry_point = True
         regions_and_providers = {}
-        providers = []
 
         function_obj = MultiXServerlessFunction(function, name, entry_point, regions_and_providers)
 
@@ -48,3 +57,20 @@ class TestMultiXServerlessFunction(unittest.TestCase):
         function_obj = MultiXServerlessFunction(function, name, entry_point, regions_and_providers)
 
         self.assertTrue(function_obj.is_waiting_for_predecessors())
+
+    def test_validate_function_name(self):
+        def function(x):
+            return x
+
+        name = "test_function"
+        entry_point = True
+        regions_and_providers = {}
+
+        function_obj = MultiXServerlessFunction(function, name, entry_point, regions_and_providers)
+
+        function_obj.validate_function_name()
+
+        function_obj.name = "test:function"
+
+        with self.assertRaises(ValueError):
+            function_obj.validate_function_name()

@@ -9,8 +9,18 @@ workflow = MultiXServerlessWorkflow("{{ workflow_name }}")
     name="First-Function",
     entry_point=True,
     regions_and_providers={
-        "only_regions": [["aws", "us-east-1"]],
-        "forbidden_regions": [["aws", "us-east-2"]],
+        "only_regions": [
+            {
+                "provider": "aws",
+                "region": "us-east-1",
+            }
+        ],
+        "forbidden_regions": [
+            {
+                "provider": "aws",
+                "region": "us-east-2",
+            }
+        ],
         "providers": [
             {
                 "name": "aws",
