@@ -115,6 +115,24 @@ class TestWorkflowBuilder(unittest.TestCase):
 
         self.assertTrue("Cycle detected: function1 is being visited again" == str(context.exception))
 
+    def test_cycle_detection_no_cycle(self):
+        # Create mock functions
+        function1 = Mock(spec=MultiXServerlessFunction)
+        function1.name = "function1"
+
+        function2 = Mock(spec=MultiXServerlessFunction)
+        function2.name = "function2"
+
+        function3 = Mock(spec=MultiXServerlessFunction)
+        function3.name = "function3"
+
+        # Create a mock config
+        config = Mock(spec=Config)
+        config.workflow_app.get_successors = Mock(side_effect=[[function2], [function3], []])
+
+        # This should not raise a RuntimeError because there is no cycle
+        self.builder._cycle_check(function1, config)
+
     def test_build_workflow_self_call(self):
         # Create mock functions
         function1 = Mock(spec=MultiXServerlessFunction)
