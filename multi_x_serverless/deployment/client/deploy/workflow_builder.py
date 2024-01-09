@@ -13,7 +13,7 @@ from multi_x_serverless.deployment.client.multi_x_serverless_workflow import Mul
 
 
 class WorkflowBuilder:
-    def build_workflow(self, config: Config) -> Workflow:  # pylint: disable=too-many-locals, too-many-branches
+    def build_workflow(self, config: Config) -> Workflow:  # pylint: disable=too-many-locals
         resources: list[Function] = []
 
         # A workflow consists of two parts:
