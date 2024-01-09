@@ -21,6 +21,12 @@ workflow = MultiXServerlessWorkflow("{{ workflow_name }}")
             }
         ],
     },
+    func_environment_variables=[
+        {
+            "key": "example_key",
+            "value": "example_value"
+        }
+    ]
 )
 def first_function(event: dict[str, Any]) -> dict[str, Any]:
     payload = {

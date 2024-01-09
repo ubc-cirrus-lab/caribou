@@ -296,6 +296,7 @@ class MultiXServerlessWorkflow:
         name: str,
         entry_point: bool,
         regions_and_providers: dict,
+        func_environment_variables: list[dict[str, str]],
     ) -> None:
         """
         Register a function as a serverless function.
@@ -305,7 +306,7 @@ class MultiXServerlessWorkflow:
         At this point we only need to register the function with the wrapper, the actual deployment will be done
         later by the deployment manager.
         """
-        wrapper = MultiXServerlessFunction(function, name, entry_point, regions_and_providers)
+        wrapper = MultiXServerlessFunction(function, name, entry_point, regions_and_providers, func_environment_variables)
         self.functions[function.__name__] = wrapper
 
     # TODO (#22): Add function specific environment variables
@@ -314,6 +315,7 @@ class MultiXServerlessWorkflow:
         name: Optional[str] = None,
         entry_point: bool = False,
         regions_and_providers: Optional[dict] = None,
+        func_environment_variables: Optional[list[dict[str, str]]] = None,
     ) -> Callable[..., Any]:
         """
         Decorator to register a function as a Lambda function.
@@ -351,6 +353,9 @@ class MultiXServerlessWorkflow:
         if regions_and_providers is None:
             regions_and_providers = {}
 
+        if func_environment_variables is None:
+            func_environment_variables = []
+
         def _register_handler(func: Callable[..., Any]) -> Callable[..., Any]:
             handler_name = name if name is not None else func.__name__
 
@@ -377,7 +382,7 @@ class MultiXServerlessWorkflow:
             wrapper.routing_decision = {}  # type: ignore
             wrapper.entry_point = entry_point  # type: ignore
             wrapper.original_function = func  # type: ignore
-            self.register_function(func, handler_name, entry_point, regions_and_providers)
+            self.register_function(func, handler_name, entry_point, regions_and_providers, func_environment_variables)
             return wrapper
 
         return _register_handler

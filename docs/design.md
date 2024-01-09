@@ -82,6 +82,12 @@ workflow = MultiXServerlessWorkflow("workflow_name")
         "only_regions": [["aws", "us-east-1"], ["aws", "us-east-2"], ["aws", "us-west-1"], ["aws", "us-west-2"]],
         "forbidden_regions": None,
     },
+    func_environment_variables=[
+        {
+            "key": "example_key",
+            "value": "example_value"
+        }
+    ]
     providers=[
         {
             "name": "aws",
@@ -101,6 +107,7 @@ The meaning of the different parameters is as follows:
 - `regions_and_providers`: A dictionary that contains the regions and providers that the function can be deployed to. This can be used to override the global settings in the `config.yml`. If none or an empty dictionary is provided, the global config takes precedence. The dictionary has two keys:
   - `only_regions`: A list of regions that the function can be deployed to. If this list is empty, the function can be deployed to any region.
   - `forbidden_regions`: A list of regions that the function cannot be deployed to. If this list is empty, the function can be deployed to any region.
+- `func_environment_variables`: A list of dictionaries that allows users to provide environment variables on the function level.
 - `providers`: A list of providers that the function can be deployed to. This can be used to override the global settings in the `config.yml`. If a list of providers is specified at the function level this takes precedence over the global configurations. If none or an empty list is provided, the global config takes precedence. Each provider is a dictionary with two keys:
   - `name`: The name of the provider. This is the name that is used directly in the physical representation of the workflow.
   - `config`: A dictionary that contains the configuration for the specific provider.

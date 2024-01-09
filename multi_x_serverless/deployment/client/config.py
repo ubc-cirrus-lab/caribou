@@ -42,12 +42,14 @@ class Config:
         return "python3.11"
 
     @property
-    def environment_variables(self) -> dict[str, Any]:
+    def environment_variables(self) -> dict[str, str]:
         list_of_env_variables: list[dict] = self._lookup("environment_variables")
         if list_of_env_variables is None:
             return {}
-        env_variables: dict[str, Any] = {}
+        env_variables: dict[str, str] = {}
         for env_variable in list_of_env_variables:
+            if not isinstance(env_variable["value"], str):
+                raise RuntimeError("Environment variable value need to be a str")
             env_variables[env_variable["name"]] = env_variable["value"]
         return env_variables
 
