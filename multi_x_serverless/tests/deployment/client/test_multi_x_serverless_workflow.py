@@ -26,8 +26,18 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
             name="test_func",
             entry_point=True,
             regions_and_providers={
-                "only_regions": [["aws", "us-east-1"]],
-                "forbidden_regions": [["aws", "us-east-2"]],
+                "only_regions": [
+                    {
+                        "provider": "aws",
+                        "region": "us-east-1",
+                    }
+                ],
+                "forbidden_regions": [
+                    {
+                        "provider": "aws",
+                        "region": "us-east-2",
+                    }
+                ],
                 "providers": [
                     {
                         "name": "aws",
@@ -52,8 +62,18 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
                 "test_func",
                 True,
                 {
-                    "only_regions": [["aws", "us-east-1"]],
-                    "forbidden_regions": [["aws", "us-east-2"]],
+                    "only_regions": [
+                        {
+                            "provider": "aws",
+                            "region": "us-east-1",
+                        }
+                    ],
+                    "forbidden_regions": [
+                        {
+                            "provider": "aws",
+                            "region": "us-east-2",
+                        }
+                    ],
                     "providers": [
                         {
                             "name": "aws",
@@ -74,7 +94,7 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
         # Check if the routing_decision attribute was set correctly
         self.assertEqual(test_func.routing_decision["decision"], 1)
 
-    def test_invoke_serverless_function(self):
+    def test_invoke_serverless_function_simple(self):
         workflow = MultiXServerlessWorkflow(name="test-workflow")
         workflow.register_function = Mock()
 
@@ -104,12 +124,12 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
                 "routing_placement": {
                     "test_instance_1": {"provider_region": "aws:region", "identifier": "test_identifier"}
                 },
-                "current_instance_name": "test_instance_1",
+                "current_instance_name": "test_instance",
                 "instances": [{"instance_name": "test_instance", "succeeding_instances": ["test_instance_1"]}],
             },
         )
 
-    def test_invoke_serverless_function(self):
+    def test_invoke_serverless_function_invoke_second_invocation(self):
         workflow = MultiXServerlessWorkflow(name="test-workflow")
         workflow.register_function = Mock()
         mock_remote_client = Mock()
@@ -135,17 +155,190 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
 
         # Call test_func with a payload
         response = test_func(
-            '{"payload": 2, "routing_decision": {"routing_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "test_func_1::": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_func", "instances": [{"instance_name": "test_func", "succeeding_instances": ["test_func_1::"]}]}}'
+            '{"payload": 2, "routing_decision": {"run_id": "123", "routing_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "test_func_1::": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_func", "instances": [{"instance_name": "test_func", "succeeding_instances": ["test_func_1::"]}]}}'
         )
 
         mock_remote_client_factory.get_remote_client.assert_called_once_with("aws", "region")
 
         # Check if invoke_serverless_function was called with the correct arguments
         mock_remote_client.invoke_function.assert_called_once_with(
-            message='{"payload": 2, "routing_decision": {"routing_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "test_func_1::": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_func_1::", "instances": [{"instance_name": "test_func", "succeeding_instances": ["test_func_1::"]}]}}',
-            region="region",
+            message='{"payload": 2, "routing_decision": {"run_id": "123", "routing_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "test_func_1::": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_func_1::", "instances": [{"instance_name": "test_func", "succeeding_instances": ["test_func_1::"]}]}}',
             identifier="test_identifier",
+            workflow_instance_id="123",
             merge=False,
+            function_name=None,
+            expected_counter=-1,
+        )
+
+        # Check if the response from invoke_serverless_function is correct
+        self.assertEqual(response, "Some response")
+
+    def test_invoke_serverless_function_with_merge_successor(self):
+        workflow = MultiXServerlessWorkflow(name="test-workflow")
+        workflow.register_function = Mock()
+        mock_remote_client = Mock()
+        mock_remote_client.invoke_function = Mock(return_value={"statusCode": 200, "body": "Some response"})
+        mock_remote_client_factory = Mock()
+        mock_remote_client_factory.get_remote_client = Mock(return_value=mock_remote_client)
+        workflow._remote_client_factory = mock_remote_client_factory
+
+        @workflow.serverless_function(name="test_func")
+        def test_func(payload: dict[str, Any]) -> dict[str, Any]:
+            # Call invoke_serverless_function from within test_func
+            workflow.invoke_serverless_function(merge_func, payload)
+
+            return "Some response"
+
+        # Check if the function was registered correctly
+        args, _ = workflow.register_function.call_args
+        registered_func = args[0]
+        registered_func.name = "test_func"
+        self.assertEqual(registered_func.__name__, "test_func")
+        self.assertEqual(args[1:], ("test_func", False, {}))
+        workflow.functions["test_func"] = registered_func
+
+        @workflow.serverless_function(name="merge_func")
+        def merge_func(payload: dict[str, Any]) -> dict[str, Any]:
+            return "Some response"
+
+        # Check if the function was registered correctly
+        args, _ = workflow.register_function.call_args
+        registered_func = args[0]
+        registered_func.name = "merge_func"
+        self.assertEqual(registered_func.__name__, "merge_func")
+        self.assertEqual(args[1:], ("merge_func", False, {}))
+        workflow.functions["merge_func"] = registered_func
+
+        # Call test_func with a payload
+        response = test_func(
+            '{"payload": 2, "routing_decision": {"run_id": "123", "routing_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "merge_func:merge:": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_func", "instances": [{"instance_name": "test_func", "succeeding_instances": ["merge_func:merge:"]}, {"instance_name": "merge_func:merge:", "preceding_instances": ["test_func"]}]}}'
+        )
+
+        mock_remote_client_factory.get_remote_client.assert_called_once_with("aws", "region")
+
+        # Check if invoke_serverless_function was called with the correct arguments
+        mock_remote_client.invoke_function.assert_called_once_with(
+            message='{"payload": 2, "routing_decision": {"run_id": "123", "routing_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "merge_func:merge:": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "merge_func:merge:", "instances": [{"instance_name": "test_func", "succeeding_instances": ["merge_func:merge:"]}, {"instance_name": "merge_func:merge:", "preceding_instances": ["test_func"]}]}}',
+            identifier="test_identifier",
+            workflow_instance_id="123",
+            merge=True,
+            function_name="merge_func",
+            expected_counter=1,
+        )
+
+        # Check if the response from invoke_serverless_function is correct
+        self.assertEqual(response, "Some response")
+
+    def test_invoke_serverless_function_with_multiple_merge_successor(self):
+        workflow = MultiXServerlessWorkflow(name="test-workflow")
+        workflow.register_function = Mock()
+        mock_remote_client = Mock()
+        mock_remote_client.invoke_function = Mock(return_value={"statusCode": 200, "body": "Some response"})
+        mock_remote_client_factory = Mock()
+        mock_remote_client_factory.get_remote_client = Mock(return_value=mock_remote_client)
+        workflow._remote_client_factory = mock_remote_client_factory
+
+        @workflow.serverless_function(name="test_func")
+        def test_func(payload: dict[str, Any]) -> dict[str, Any]:
+            # Call invoke_serverless_function from within test_func
+            workflow.invoke_serverless_function(merge_func, payload)
+
+            return "Some response"
+
+        # Check if the function was registered correctly
+        args, _ = workflow.register_function.call_args
+        registered_func = args[0]
+        registered_func.name = "test_func"
+        self.assertEqual(registered_func.__name__, "test_func")
+        self.assertEqual(args[1:], ("test_func", False, {}))
+        workflow.functions["test_func"] = registered_func
+
+        @workflow.serverless_function(name="test_func2")
+        def test_func2(payload: dict[str, Any]) -> dict[str, Any]:
+            # Call invoke_serverless_function from within test_func
+            workflow.invoke_serverless_function(merge_func, payload)
+
+            return "Some response"
+
+        # Check if the function was registered correctly
+        args, _ = workflow.register_function.call_args
+        registered_func = args[0]
+        registered_func.name = "test_func2"
+        self.assertEqual(registered_func.__name__, "test_func2")
+        self.assertEqual(args[1:], ("test_func2", False, {}))
+        workflow.functions["test_func2"] = registered_func
+
+        @workflow.serverless_function(name="merge_func")
+        def merge_func(payload: dict[str, Any]) -> dict[str, Any]:
+            return "Some response"
+
+        # Check if the function was registered correctly
+        args, _ = workflow.register_function.call_args
+        registered_func = args[0]
+        registered_func.name = "merge_func"
+        self.assertEqual(registered_func.__name__, "merge_func")
+        self.assertEqual(args[1:], ("merge_func", False, {}))
+        workflow.functions["merge_func"] = registered_func
+
+        # Call test_func with a payload
+        response = test_func(
+            '{"payload": 2, "routing_decision": {"run_id": "123", "routing_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "test_func2": {"provider_region": "aws:region", "identifier": "test_identifier"}, "merge_func:merge:": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_func", "instances": [{"instance_name": "test_func", "succeeding_instances": ["merge_func:merge:"]}, {"instance_name": "test_func2", "succeeding_instances": ["merge_func:merge:"]}, {"instance_name": "merge_func:merge:", "preceding_instances": ["test_func", "test_func2"]}]}}'
+        )
+
+        mock_remote_client_factory.get_remote_client.assert_called_once_with("aws", "region")
+
+        # Check if invoke_serverless_function was called with the correct arguments
+        mock_remote_client.invoke_function.assert_called_once_with(
+            message='{"payload": 2, "routing_decision": {"run_id": "123", "routing_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "test_func2": {"provider_region": "aws:region", "identifier": "test_identifier"}, "merge_func:merge:": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "merge_func:merge:", "instances": [{"instance_name": "test_func", "succeeding_instances": ["merge_func:merge:"]}, {"instance_name": "test_func2", "succeeding_instances": ["merge_func:merge:"]}, {"instance_name": "merge_func:merge:", "preceding_instances": ["test_func", "test_func2"]}]}}',
+            identifier="test_identifier",
+            workflow_instance_id="123",
+            merge=True,
+            function_name="merge_func",
+            expected_counter=2,
+        )
+
+        # Check if the response from invoke_serverless_function is correct
+        self.assertEqual(response, "Some response")
+
+    def test_invoke_serverless_function_json_argument(self):
+        workflow = MultiXServerlessWorkflow(name="test-workflow")
+        workflow.register_function = Mock()
+        mock_remote_client = Mock()
+        mock_remote_client.invoke_function = Mock(return_value={"statusCode": 200, "body": "Some response"})
+        mock_remote_client_factory = Mock()
+        mock_remote_client_factory.get_remote_client = Mock(return_value=mock_remote_client)
+        workflow._remote_client_factory = mock_remote_client_factory
+
+        @workflow.serverless_function(name="test_func")
+        def test_func(payload: str) -> dict[str, Any]:
+            # Call invoke_serverless_function from within test_func
+            workflow.invoke_serverless_function(test_func, payload)
+
+            return "Some response"
+
+        # Check if the function was registered correctly
+        args, _ = workflow.register_function.call_args
+        registered_func = args[0]
+        registered_func.name = "test_func"
+        self.assertEqual(registered_func.__name__, "test_func")
+        self.assertEqual(args[1:], ("test_func", False, {}))
+        workflow.functions["test_func"] = registered_func
+
+        # Call test_func with a payload
+        response = test_func(
+            r'{"payload": "{\"key\": \"value\"}", "routing_decision": {"run_id": "123", "routing_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "test_func_1::": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_func", "instances": [{"instance_name": "test_func", "succeeding_instances": ["test_func_1::"]}]}}'
+        )
+
+        mock_remote_client_factory.get_remote_client.assert_called_once_with("aws", "region")
+
+        # Check if invoke_serverless_function was called with the correct arguments
+        mock_remote_client.invoke_function.assert_called_once_with(
+            message=r'{"payload": "{\"key\": \"value\"}", "routing_decision": {"run_id": "123", "routing_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "test_func_1::": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_func_1::", "instances": [{"instance_name": "test_func", "succeeding_instances": ["test_func_1::"]}]}}',
+            identifier="test_identifier",
+            workflow_instance_id="123",
+            merge=False,
+            function_name=None,
+            expected_counter=-1,
         )
 
         # Check if the response from invoke_serverless_function is correct
@@ -175,48 +368,6 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
         workflow.functions = {"test_function": function_obj_1, "test_function_2": function_obj_2}
 
         self.assertEqual(workflow.get_successors(function_obj_2), [function_obj_1])
-
-    def test_invoke_serverless_function_json_argument(self):
-        workflow = MultiXServerlessWorkflow(name="test-workflow")
-        workflow.register_function = Mock()
-        mock_remote_client = Mock()
-        mock_remote_client.invoke_function = Mock(return_value={"statusCode": 200, "body": "Some response"})
-        mock_remote_client_factory = Mock()
-        mock_remote_client_factory.get_remote_client = Mock(return_value=mock_remote_client)
-        workflow._remote_client_factory = mock_remote_client_factory
-
-        @workflow.serverless_function(name="test_func")
-        def test_func(payload: str) -> dict[str, Any]:
-            # Call invoke_serverless_function from within test_func
-            workflow.invoke_serverless_function(test_func, payload)
-
-            return "Some response"
-
-        # Check if the function was registered correctly
-        args, _ = workflow.register_function.call_args
-        registered_func = args[0]
-        registered_func.name = "test_func"
-        self.assertEqual(registered_func.__name__, "test_func")
-        self.assertEqual(args[1:], ("test_func", False, {}))
-        workflow.functions["test_func"] = registered_func
-
-        # Call test_func with a payload
-        response = test_func(
-            r'{"payload": "{\"key\": \"value\"}", "routing_decision": {"routing_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "test_func_1::": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_func", "instances": [{"instance_name": "test_func", "succeeding_instances": ["test_func_1::"]}]}}'
-        )
-
-        mock_remote_client_factory.get_remote_client.assert_called_once_with("aws", "region")
-
-        # Check if invoke_serverless_function was called with the correct arguments
-        mock_remote_client.invoke_function.assert_called_once_with(
-            message=r'{"payload": "{\"key\": \"value\"}", "routing_decision": {"routing_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "test_func_1::": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_func_1::", "instances": [{"instance_name": "test_func", "succeeding_instances": ["test_func_1::"]}]}}',
-            region="region",
-            identifier="test_identifier",
-            merge=False,
-        )
-
-        # Check if the response from invoke_serverless_function is correct
-        self.assertEqual(response, "Some response")
 
     def test_get_routing_decision(self):
         workflow = MultiXServerlessWorkflow(name="test-workflow")
