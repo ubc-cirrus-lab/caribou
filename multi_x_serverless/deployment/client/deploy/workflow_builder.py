@@ -13,7 +13,7 @@ from multi_x_serverless.deployment.client.multi_x_serverless_workflow import Mul
 
 
 class WorkflowBuilder:
-    def build_workflow(self, config: Config) -> Workflow:  # pylint: disable=too-many-locals
+    def build_workflow(self, config: Config) -> Workflow:  # pylint: disable=too-many-locals, too-many-branches
         resources: list[Function] = []
 
         # A workflow consists of two parts:
@@ -89,6 +89,10 @@ class WorkflowBuilder:
         for successor_of_current_index, successor in enumerate(config.workflow_app.get_successors(entry_point)):
             functions_to_visit.put((successor.handler, predecessor_instance.name, successor_of_current_index))
 
+        # The following set is used to check for cycles in the DAG with regards to merge functions
+        merge_functions = set()
+        visited_relations = set()
+
         while not functions_to_visit.empty():
             function_to_visit, predecessor_instance_name, successor_of_predecessor_index = functions_to_visit.get()
             multi_x_serverless_function: MultiXServerlessFunction = function_name_to_function[function_to_visit]
@@ -99,6 +103,25 @@ class WorkflowBuilder:
                 if not multi_x_serverless_function.is_waiting_for_predecessors()
                 else f"{multi_x_serverless_function.name}:merge:{index_in_dag}"
             )
+
+            if "merge" == function_instance_name.split(":", maxsplit=2)[1]:
+                if function_instance_name.split(":", maxsplit=2)[0] in merge_functions:
+                    raise RuntimeError(
+                        f"Merge function {function_instance_name} is called by a successor of itself. "
+                        "This is not allowed. Please check your workflow."
+                    )
+                merge_functions.add(function_instance_name.split(":", maxsplit=1)[0])
+            else:
+                # TODO (#11): Once we introduce conditional functions, this check needs to be adapted
+                # since the condition can be used to break the cycle
+                relation = function_instance_name.rsplit(":", 1)[0].rsplit("_", 2)[0]
+                if relation in visited_relations:
+                    raise RuntimeError(
+                        f"Function relation {relation} exists multiple times in the workflow. "
+                        "This is not allowed. Please check your workflow."
+                    )
+                visited_relations.add(relation)
+
             index_in_dag += 1
             # If the function is waiting for its predecessors, there can only be one instance of the function
             # Otherwise, we create a new instance of the function for every predecessor
