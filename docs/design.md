@@ -125,11 +125,11 @@ The condition is a boolean expression that is evaluated at runtime. If the condi
 
 - Finally, there is the option of merging multiple predecessor calls at a merge node. This is done with the following annotation:
 
-**TODO (#10): Implement merge node**
-
 ```python
 responses: list[dict[str, Any]] = workflow.get_predecessor_data()
 ```
+
+Using this annotation within a function has an important implication with regards to when the entire function is being executed. The entire function is only executed once all predecessor calls have been completed and the data has been merged. This is important to keep in mind when designing the workflow. Any code within the function preceding the annotation is also executed only once all predecessor calls have been completed and the data has been merged.
 
 ##  References
 
