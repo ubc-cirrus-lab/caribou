@@ -8,6 +8,19 @@ We are working with poetry, so you need to install it first.
 pip install poetry
 ```
 
+Alternatively if this doesn't work you will need to install poetry on Linux with:
+
+```bash
+apt install python3-poetry
+```
+
+Or you need to reinstall poetry:
+
+```bash
+curl -sSL https://install.python-poetry.org | python3 -
+poetry self update
+```
+
 Then, install the dependencies:
 
 ```bash

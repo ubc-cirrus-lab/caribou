@@ -25,12 +25,8 @@ class TestConfig(unittest.TestCase):
         self.assertEqual(self.config.environment_variables, {"ENV": "test"})
 
     def test_home_regions(self):
-        self.config.project_config["home_regions"] = [["aws", "us-west-2"]]
-        self.assertEqual(self.config.home_regions, [("aws", "us-west-2")])
-
-    def test_home_regions_json(self):
-        self.config.project_config["home_regions"] = [["aws", "us-west-2"]]
-        self.assertEqual(self.config.home_regions_json, [["aws", "us-west-2"]])
+        self.config.project_config["home_regions"] = [{"provider": "aws", "region": "us-west-2"}]
+        self.assertEqual(self.config.home_regions, [{"provider": "aws", "region": "us-west-2"}])
 
     def test_estimated_invocations_per_month(self):
         self.config.project_config["estimated_invocations_per_month"] = 1000

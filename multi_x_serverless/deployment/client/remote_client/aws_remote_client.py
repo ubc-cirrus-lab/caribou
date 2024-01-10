@@ -32,12 +32,6 @@ class AWSRemoteClient(RemoteClient):
         response = client.get_function(FunctionName=function_name)
         return response["Configuration"]
 
-    def get_predecessor_data(
-        self, current_instance_name: str, workflow_instance_id: str  # pylint: disable=unused-argument
-    ) -> list[dict[str, Any]]:
-        # TODO (#10): Add merge function
-        raise NotImplementedError()
-
     def resource_exists(self, resource: Resource) -> bool:
         if resource.resource_type == "iam_role":
             return self.iam_role_exists(resource)
@@ -59,15 +53,6 @@ class AWSRemoteClient(RemoteClient):
             return False
         return function is not None
 
-    def invoke_function(self, message: str, region: str, identifier: str, merge: bool = False) -> None:
-        if merge:
-            # TODO (#10): Add merge function
-            return
-        try:
-            self.send_message_to_sns(identifier, message)
-        except Exception as e:
-            raise RuntimeError("Could not invoke function through SNS") from e
-
     def increment_counter(self, function_name: str, workflow_instance_id: str) -> int:
         client = self._client("dynamodb")
         counter_id = f"{function_name}:{workflow_instance_id}"
@@ -80,6 +65,39 @@ class AWSRemoteClient(RemoteClient):
             ReturnValues="UPDATED_NEW",
         )
         return int(response["Attributes"]["counter_value"]["N"])
+
+    def upload_message_for_merge(self, function_name: str, workflow_instance_id: str, message: str) -> None:
+        client = self._client("dynamodb")
+        merge_id = f"{function_name}:{workflow_instance_id}"
+        response = client.update_item(
+            TableName="merge_messages",
+            Key={"id": {"S": merge_id}},
+            ExpressionAttributeNames={
+                "#M": "message",
+            },
+            ExpressionAttributeValues={
+                ":m": {"SS": [message]},
+            },
+            UpdateExpression="ADD #M :m",
+        )
+        print(f"Successfully uploaded message {message} for merge")
+        return response
+
+    def get_predecessor_data(
+        self, current_instance_name: str, workflow_instance_id: str  # pylint: disable=unused-argument
+    ) -> list[str]:
+        client = self._client("dynamodb")
+        merge_id = f"{current_instance_name}:{workflow_instance_id}"
+        response = client.get_item(
+            TableName="merge_messages",
+            Key={"id": {"S": merge_id}},
+        )
+        if "Item" not in response:
+            return []
+        item = response.get("Item")
+        if item is not None and "message" in item:
+            return item["message"]["SS"]
+        return []
 
     def create_function(
         self,
@@ -231,7 +249,7 @@ class AWSRemoteClient(RemoteClient):
         )
         print(f"Successfully added lambda permission for SNS topic {topic_arn}")
 
-    def send_message_to_sns(self, topic_arn: str, message: str) -> None:
+    def send_message_to_messaging_service(self, identifier: str, message: str) -> None:
         client = self._client("sns")
-        client.publish(TopicArn=topic_arn, Message=message)
-        print(f"Successfully sent message to SNS topic {topic_arn}")
+        client.publish(TopicArn=identifier, Message=message)
+        print(f"Successfully sent message to SNS topic {identifier}")

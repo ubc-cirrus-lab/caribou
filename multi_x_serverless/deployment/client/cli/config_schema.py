@@ -23,9 +23,14 @@ class Provider(BaseModel):
         return values
 
 
+class ProviderRegion(BaseModel):
+    provider: str = Field(..., title="The name of the provider")
+    region: str = Field(..., title="The name of the region")
+
+
 class RegionAndProviders(BaseModel):
-    only_regions: Optional[List[List[str]]] = Field(None, title="List of regions to deploy to")
-    forbidden_regions: Optional[List[List[str]]] = Field(None, title="List of regions to not deploy to")
+    only_regions: Optional[List[ProviderRegion]] = Field(None, title="List of regions to deploy to")
+    forbidden_regions: Optional[List[ProviderRegion]] = Field(None, title="List of regions to not deploy to")
     providers: List[Provider] = Field(..., title="List of possible providers with their configurations")
 
 
@@ -33,5 +38,5 @@ class ConfigSchema(BaseModel):
     workflow_name: str = Field(..., title="The name of the workflow")
     environment_variables: List[EnvironmentVariable] = Field(..., title="List of environment variables")
     iam_policy_file: str = Field(..., title="The IAM policy file")
-    home_regions: List[List[str]] = Field(..., title="List of home regions")
+    home_regions: List[ProviderRegion] = Field(..., title="List of home regions")
     regions_and_providers: RegionAndProviders = Field(..., title="List of regions and providers")

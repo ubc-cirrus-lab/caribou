@@ -56,19 +56,7 @@ class Config:
         return env_variables
 
     @property
-    def home_regions(self) -> list[tuple[str, str]]:
-        if "home_regions_tuple" in self.project_config:
-            return self.project_config["home_regions_tuple"]
-        home_regions: list[list[str]] = self._lookup("home_regions")
-        if home_regions is None:
-            return []
-        home_regions_tuple = [tuple(home_region[0:2]) for home_region in home_regions]
-        self.project_config["home_regions_tuple"] = home_regions_tuple
-        return home_regions_tuple  # type: ignore
-        # somehow mypy thinks this is a list of tuples with one or more elements
-
-    @property
-    def home_regions_json(self) -> list[list[str]]:
+    def home_regions(self) -> list[dict[str, str]]:
         return self._lookup("home_regions")
 
     @property
