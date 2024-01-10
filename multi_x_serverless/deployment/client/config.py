@@ -50,7 +50,7 @@ class Config:
         for env_variable in list_of_env_variables:
             if not isinstance(env_variable["value"], str):
                 raise RuntimeError("Environment variable value need to be a str")
-            env_variables[env_variable["name"]] = env_variable["value"]
+            env_variables[env_variable["key"]] = env_variable["value"]
         return env_variables
 
     @property

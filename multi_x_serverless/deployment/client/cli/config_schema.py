@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field, model_validator
 
 
 class EnvironmentVariable(BaseModel):
-    name: str = Field(..., title="The name of the environment variable")
+    key: str = Field(..., title="The name of the environment variable")
     value: str = Field(..., title="The value of the environment variable")
 
 

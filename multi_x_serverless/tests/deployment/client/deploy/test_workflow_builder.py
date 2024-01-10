@@ -29,11 +29,13 @@ class TestWorkflowBuilder(unittest.TestCase):
         function1.name = "function1"
         function1.handler = "function1"
         function1.regions_and_providers = {}
+        function1.func_environment_variables = {}
         function2 = Mock(spec=MultiXServerlessFunction)
         function2.entry_point = True
         function2.name = "function2"
         function2.handler = "function1"
         function2.regions_and_providers = {"providers": []}
+        function2.func_environment_variables = {}
         self.config.workflow_app.functions = {"function1": function1, "function2": function2}
         with self.assertRaises(RuntimeError):
             self.builder.build_workflow(self.config)

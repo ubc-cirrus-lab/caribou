@@ -39,12 +39,12 @@ class WorkflowBuilder:
                 providers = config.regions_and_providers["providers"]
             self._verify_providers(providers)
 
-            # TODO (#22): merge list here (create a function) get env var from function.func_environment_variables, merge to config.environment_variables
-            merged_env_vars = self.merge_environment_variables(function.func_environment_variables, config.environment_variables)
+            merged_env_vars = self.merge_environment_variables(
+                function.func_environment_variables, config.environment_variables
+            )
             resources.append(
                 Function(
                     name=function_deployment_name,
-                    # TODO (#22): Add function specific environment variables
                     environment_variables=merged_env_vars,
                     runtime=config.python_version,
                     handler=function.handler,
@@ -137,15 +137,16 @@ class WorkflowBuilder:
             filename = os.path.join(config.project_dir, ".multi-x-serverless", "iam_policy.yml")
 
         return IAMRole(role_name=role_name, policy=filename)
-    
-    def merge_environment_variables(self, function_env_vars: list[dict[str, str]], config_env_vars: dict[str, str]) -> dict[str, str]:
+
+    def merge_environment_variables(
+        self, function_env_vars: list[dict[str, str]] | None, config_env_vars: dict[str, str]
+    ) -> dict[str, str]:
         if not function_env_vars:
             return config_env_vars
-        
-        merged_env_vars: dict[str, str] = config_env_vars
+
+        merged_env_vars: dict[str, str] = dict(config_env_vars)
         # overwrite config env vars with function env vars if duplicate
         for env_var in function_env_vars:
             merged_env_vars[env_var["key"]] = env_var["value"]
-        
+
         return merged_env_vars
-        

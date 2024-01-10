@@ -306,7 +306,9 @@ class MultiXServerlessWorkflow:
         At this point we only need to register the function with the wrapper, the actual deployment will be done
         later by the deployment manager.
         """
-        wrapper = MultiXServerlessFunction(function, name, entry_point, regions_and_providers, func_environment_variables)
+        wrapper = MultiXServerlessFunction(
+            function, name, entry_point, regions_and_providers, func_environment_variables
+        )
         self.functions[function.__name__] = wrapper
 
     # TODO (#22): Add function specific environment variables
@@ -355,6 +357,18 @@ class MultiXServerlessWorkflow:
 
         if func_environment_variables is None:
             func_environment_variables = []
+        else:
+            if not isinstance(func_environment_variables, list):
+                raise RuntimeError("func_environment_variables must be a list of dicts")
+            for env_variable in func_environment_variables:
+                if not isinstance(env_variable, dict):
+                    raise RuntimeError("func_environment_variables must be a list of dicts")
+                if "key" not in env_variable or "value" not in env_variable:
+                    raise RuntimeError("func_environment_variables must be a list of dicts with keys 'key' and 'value'")
+                if not isinstance(env_variable["key"], str):
+                    raise RuntimeError("func_environment_variables must be a list of dicts with 'key' as a string")
+                if not isinstance(env_variable["value"], str):
+                    raise RuntimeError("func_environment_variables must be a list of dicts with 'value' as a string")
 
         def _register_handler(func: Callable[..., Any]) -> Callable[..., Any]:
             handler_name = name if name is not None else func.__name__

@@ -1,6 +1,6 @@
 workflow_name: "{{ workflow_name }}"
 environment_variables:
-  - name: "ENV_VAR_1"
+  - key: "ENV_VAR_1"
     value: "value_1"
 iam_policy_file: "iam_policy.json"
 home_regions: [["aws", us-west-2"]] # Regions are defined as "provider:region" (e.g. aws:us-west-2)
