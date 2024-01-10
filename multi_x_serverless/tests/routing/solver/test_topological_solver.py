@@ -90,7 +90,7 @@ class TestTopologicalSolver(unittest.TestCase):
 
         solver = TopologicalSolver(self.workflow_config)
         solver._region_source = Region(self.workflow_config)
-        solver._region_source._region_indices = {("p1", "r1"): 0, ("p1", "r2"): 1, ("p2", "r3"): 2, ("p3", "r4"): 3}
+        solver._region_source._value_indices = {("p1", "r1"): 0, ("p1", "r2"): 1, ("p2", "r3"): 2, ("p3", "r4"): 3}
         regions = np.array([("p1", "r1"), ("p1", "r2"), ("p2", "r3"), ("p3", "r4")])
         
         data_sources = {"carbon": Mock(), "cost": Mock(), "runtime": Mock()}
@@ -180,7 +180,7 @@ class TestTopologicalSolver(unittest.TestCase):
         #     **{'c': 3, 'd': [4, 5]},
         #     **{'e': {'f': 6, 'g': 7}}
         # }
-        print(test_dict)
+        # print(test_dict)
 
 if __name__ == "__main__":
     unittest.main()

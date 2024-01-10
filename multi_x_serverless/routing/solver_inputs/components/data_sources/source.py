@@ -1,18 +1,19 @@
 from abc import ABC, abstractmethod
 
+# Indexers
+from ....models.indexer import Indexer
+
 class Source(ABC):
     def __init__(self):
         self._data: dict = None
         pass
     
     @abstractmethod
-    def setup(self, *args, **kwargs) -> None:
+    def setup(self, loaded_data: dict, regions_indexer: Indexer, instance_indexer: Indexer) -> bool:
         '''
         This function is responsible for loading the data from multiple data_loaders.
         '''
         # Clear Cache
-        # self._execution_matrix = None
-        # self._transmission_matrix = None
         raise NotImplementedError
 
     @abstractmethod

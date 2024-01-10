@@ -7,7 +7,7 @@ class Loader(ABC):
         self._data: dict = None
     
     @abstractmethod
-    def setup(self, *args, **kwargs) -> None:
+    def setup(self, *args, **kwargs) -> bool:
         # Clear Cache
         raise NotImplementedError
 

@@ -24,30 +24,21 @@ class LoaderManager():
         self._data = None
 
 
-    def setup(self, regions: np.ndarray, workflow_ID: str) -> (bool, [str]):
+    def setup(self, regions: np.ndarray, workflow_ID: str) -> bool:
         # Utilize the Loaders to load the data from the database
 
         # Setup and load data from database
         results = {
-            "_workflow_instance_to_instance_loader": [],
-            "_workflow_instance_loader": [],
-            "_datacenter_region_to_region_loader": [],
-            "_datacenter_region_loader": [],
-            "_carbon_region_to_region_loader": [],
-            "_carbon_region_loader": []
+            "_workflow_instance_to_instance_loader": self._workflow_instance_to_instance_loader.setup(workflow_ID),
+            "_workflow_instance_loader": self._workflow_instance_loader.setup(workflow_ID),
+            
+            "_datacenter_region_to_region_loader": self._datacenter_region_to_region_loader.setup(regions),
+            "_datacenter_region_loader": self._datacenter_region_loader.setup(regions),
+            "_carbon_region_to_region_loader": self._carbon_region_to_region_loader.setup(regions),
+            "_carbon_region_loader": self._carbon_region_loader.setup(regions)
         }
-        
-        results["_workflow_instance_to_instance_loader"].append(self._workflow_instance_to_instance_loader.setup(workflow_ID))
-        results["_workflow_instance_loader"].append(self._workflow_instance_loader.setup(workflow_ID))
-        
-        results["_datacenter_region_to_region_loader"].append(self._datacenter_region_to_region_loader.setup(regions))
-        results["_datacenter_region_loader"].append(self._datacenter_region_loader.setup(regions))
-        results["_carbon_region_to_region_loader"].append(self._carbon_region_to_region_loader.setup(regions))
-        results["_carbon_region_loader"].append(self._carbon_region_loader.setup(regions))
-        
-        all_success = all(result[0] for result_list in results.values() for result in result_list)
-        reasons = [reason for result_list in results.values() for result in result_list if not result[0] for reason in result[1]]
-        
+        all_success = all(result for result_list in results.values() for result in result_list)
+                
         # Save the data into a dictionary for data sources
         self._data = {
             **self._workflow_instance_loader.retrieve_data(),
@@ -58,10 +49,7 @@ class LoaderManager():
             **self._carbon_region_to_region_loader.retrieve_data()
         }
 
-        if all_success:
-            return True, ["Success"]
-        else:
-            return False, reasons
+        return all_success
 
     def retrieve_data(self) -> dict:
         return self._data

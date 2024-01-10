@@ -3,36 +3,41 @@ from typing import Optional
 
 import numpy as np
 
-from multi_x_serverless.routing.workflow_config import WorkflowConfig
-from multi_x_serverless.routing.models.region import Region
-from multi_x_serverless.routing.models.dag import DAG
+from ..workflow_config import WorkflowConfig
+from ..models.region import Region
+from ..models.dag import DAG
 
-from multi_x_serverless.routing.solver_inputs.input_manager import InputManager
-from multi_x_serverless.routing.ranker.ranker import Ranker
+from ..solver_inputs.input_manager import InputManager
+from ..ranker.ranker import Ranker
+from ..formatter.formatter import Formatter
 
 class Solver(ABC):
     def __init__(self, workflow_config: WorkflowConfig):
         self._workflow_config = workflow_config
 
-        # Set up the DAG and region source
+        # Setup the input manager (Not fully instantiated yet)
+        self._input_manager = InputManager(workflow_config)
+
+        # Get all regions allowed for the workflow
+        self.worklow_level_permitted_regions = self._filter_regions_global(self._region_source.get_all_regions())
+
+        # Set up the instance indexer (DAG) and region indexer
         self._dag = self.get_dag_representation()
-        self._region_source = Region(workflow_config)
-        
-        # Setup the input manager (Not instantiated yet)
-        self._input_manager = InputManager(workflow_config, self._region_source, self._dag)
+        self._region_indexer = Region( self.worklow_level_permitted_regions)
 
         # Setup the ranker for final ranking of solutions
         self._ranker = Ranker(workflow_config)
 
-    def solve(self) -> list[tuple[dict, float, float, float]]:
-        filtered_regions = self._filter_regions_global(self._region_source.get_all_regions())
-        self._instantiate_data_manager(filtered_regions)
-        solved_results = self._solve(filtered_regions)
-        ranked_results = self.rank_solved_results(solved_results)
-        
-        # TODO (33): Implement output formatter for solver
+        # Setup the formatter for formatting final output
+        self._formatter = Formatter()
 
-        return ranked_results
+        # Initiate input_manager
+        self._instantiate_input_manager(self.worklow_level_permitted_regions)
+
+    def solve(self) -> list[tuple[dict, float, float, float]]:
+        solved_results = self._solve(self.worklow_level_permitted_regions)
+        ranked_results = self.rank_solved_results(solved_results)
+        return self._formatter.format(ranked_results)
 
     @abstractmethod
     def _solve(self, regions: np.ndarray) -> list[tuple[dict, float, float, float]]:
@@ -66,8 +71,8 @@ class Solver(ABC):
     ) -> list[tuple[dict, float, float, float]]:
         return self._ranker.rank(results)
 
-    def _instantiate_data_manager(self, regions: np.ndarray) -> None:
-        self._input_manager.setup(regions)
+    def _instantiate_input_manager(self, regions: np.ndarray) -> None:
+        self._input_manager.setup(regions, self._region_source, self._dag)
 
     def get_dag_representation(self) -> DAG:
         nodes = [

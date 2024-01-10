@@ -4,7 +4,11 @@ import numpy as np
 
 class Indexer(ABC):
     def __init__(self):
+        self._value_indices = None
         pass
+
+    def get_value_indices(self) -> dict:
+        return self._value_indices
     
     @abstractmethod
     def values_to_indices(self, values: np.ndarray) -> np.ndarray:

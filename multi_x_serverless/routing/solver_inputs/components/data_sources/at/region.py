@@ -1,11 +1,14 @@
 from ..source import Source
 import numpy as np
 
+# Indexers
+from .....models.indexer import Indexer
+
 class RegionSource(Source):
     def __init__(self):
         super().__init__()
     
-    def setup(self, regions: np.ndarray, carbon_information: dict, datacenter_information: dict) -> None:
+    def setup(self, loaded_data: dict, regions_indexer: Indexer, instance_indexer: Indexer) -> None:
         self._data = {}
 
         for region in regions:

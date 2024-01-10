@@ -10,12 +10,13 @@ class DAG(Indexer):
         self._num_nodes: int = len(nodes)
         self._adj_matrix: np.ndarray = np.zeros((self.num_nodes, self.num_nodes), dtype=int)
 
-        self._instance_indices: dict[str, int] = {node["instance_name"]: index for index, node in enumerate(nodes)}
+        # This is the instance_indices
+        self._value_indices: dict[str, int] = {node["instance_name"]: index for index, node in enumerate(nodes)}
 
     def add_edge(self, from_node: str, to_node: str) -> None:
-        if from_node in self._instance_indices and to_node in self._instance_indices:
-            from_index: int = self._instance_indices[from_node]
-            to_index: int = self._instance_indices[to_node]
+        if from_node in self._value_indices and to_node in self._value_indices:
+            from_index: int = self._value_indices[from_node]
+            to_index: int = self._value_indices[to_node]
             self._adj_matrix[from_index, to_index] = 1
 
     def topological_sort(self, index_representation = True) -> list[int]:
@@ -37,7 +38,7 @@ class DAG(Indexer):
             if not index_representation:
                 result.append(instance_name)
             else:
-                result.append(self._instance_indices[instance_name])
+                result.append(self._value_indices[instance_name])
             
             for i in range(self.num_nodes):
                 if self._adj_matrix[node_index, i] == 1:
@@ -92,20 +93,19 @@ class DAG(Indexer):
                 if not index_representation:
                     leaf_nodes.append(instance_name)
                 else:
-                    leaf_nodes.append(self._instance_indices[instance_name])
+                    leaf_nodes.append(self._value_indices[instance_name])
 
         return leaf_nodes
 
     def get_adj_matrix(self) -> np.ndarray:
         return self._adj_matrix
     
-
     def values_to_indices(self, instances: np.ndarray) -> np.ndarray:
-        return np.array([self._instance_indices[instance] for instance in instances])
+        return np.array([self._value_indices[instance] for instance in instances])
     
     def indicies_to_values(self, indices: np.ndarray) -> np.ndarray:
         # Can be optimized
-        reverse_mapping = {index: instance for instance, index in self._instance_indices.items()}
+        reverse_mapping = {index: instance for instance, index in self._value_indices.items()}
         return np.array([reverse_mapping.get(index) for index in indices])
 
     @property
