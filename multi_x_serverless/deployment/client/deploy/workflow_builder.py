@@ -86,6 +86,8 @@ class WorkflowBuilder:
         index_in_dag += 1
         function_instances[predecessor_instance.name] = predecessor_instance
 
+        self._cycle_check(entry_point, config)
+
         for successor_of_current_index, successor in enumerate(config.workflow_app.get_successors(entry_point)):
             functions_to_visit.put((successor.handler, predecessor_instance.name, successor_of_current_index))
 
@@ -99,6 +101,7 @@ class WorkflowBuilder:
                 if not multi_x_serverless_function.is_waiting_for_predecessors()
                 else f"{multi_x_serverless_function.name}:merge:{index_in_dag}"
             )
+
             index_in_dag += 1
             # If the function is waiting for its predecessors, there can only be one instance of the function
             # Otherwise, we create a new instance of the function for every predecessor
@@ -120,6 +123,27 @@ class WorkflowBuilder:
 
         functions: list[FunctionInstance] = list(function_instances.values())
         return Workflow(resources=resources, functions=functions, edges=edges, name=config.workflow_name, config=config)
+
+    def _cycle_check(self, function: MultiXServerlessFunction, config: Config) -> None:
+        visiting: set[MultiXServerlessFunction] = set()
+        visited: set[MultiXServerlessFunction] = set()
+        self._dfs(function, visiting, visited, config)
+
+    def _dfs(
+        self,
+        node: MultiXServerlessFunction,
+        visiting: set[MultiXServerlessFunction],
+        visited: set[MultiXServerlessFunction],
+        config: Config,
+    ) -> None:
+        visiting.add(node)
+        for successor in config.workflow_app.get_successors(node):
+            if successor in visiting:
+                raise RuntimeError(f"Cycle detected: {successor.name} is being visited again")
+            if successor not in visited:
+                self._dfs(successor, visiting, visited, config)
+        visiting.remove(node)
+        visited.add(node)
 
     def _verify_providers(self, providers: list[dict]) -> None:
         for provider in providers:
