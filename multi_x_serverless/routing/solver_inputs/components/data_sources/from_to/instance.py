@@ -1,23 +1,33 @@
+# Source is an abstract class that is used to define the interface for all data sources.
 from ..source import Source
-import numpy as np
 
 # Indexers
 from .....models.indexer import Indexer
+
+import numpy as np
 
 class InstanceToInstanceSource(Source):
     def __init__(self):
         super().__init__()
     
-    def setup(self, loaded_data: dict, regions_indexer: Indexer, instance_indexer: Indexer) -> None:
+    def setup(self, loaded_data: dict, instances: list[str], instance_indexer: Indexer) -> None:
         self._data = {}
 
+        # Known information
         for from_instance in instances:
-            self._data[from_instance] = {}
+            from_instance_index = instance_indexer.value_to_index(from_instance)
             for to_instance in instances:
-                self._data[from_instance][to_instance] = {
-                    "carbon": carbon_from_to_information.get(from_instance, {}).get(to_instance, 1000),
-                    "datacenter": datacenter_from_to_information.get(from_instance, {}).get(to_instance, 1000)
+                to_instance_index = instance_indexer.value_to_index(to_instance)
+
+                if from_instance_index not in self._data:
+                    self._data[from_instance_index] = {}
+
+                self._data[from_instance_index][to_instance_index] = {
+                    "data_transfer_size": loaded_data.get('data_transfer_size', {}).get((from_instance, to_instance), -1),
+                    "transmission_time": loaded_data.get('transmission_time', {}).get((from_instance, to_instance), -1),
                 }
+
+        return True
 
     def get_value(self, data_name: str, from_instance: str, to_instance: str) -> float:
         return self._data[from_instance][to_instance][data_name]

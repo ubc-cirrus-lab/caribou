@@ -1,21 +1,26 @@
+# Source is an abstract class that is used to define the interface for all data sources.
 from ..source import Source
-import numpy as np
 
 # Indexers
 from .....models.indexer import Indexer
+
+import numpy as np
 
 class InstanceSource(Source):
     def __init__(self):
         super().__init__()
     
-    def setup(self, loaded_data: dict, regions_indexer: Indexer, instance_indexer: Indexer) -> None:
+    def setup(self, loaded_data: dict, instances: list[str], instance_indexer: Indexer) -> None:
         self._data = {}
-
+        
+        # Known information
         for instance in instances:
-            self._data[instance] = {
-                "carbon": carbon_information.get(instance, 1000),
-                "datacenter": datacenter_information.get(instance, 1000)
+            instance_index = instance_indexer.value_to_index(instance)
+            self._data[instance_index] = {
+                "execution_time": loaded_data.get('execution_time', {}).get(instance, -1),
             }
+
+        return True
     
     def get_value(self, data_name: str, instance: str) -> float:
         return self._data[instance][data_name]

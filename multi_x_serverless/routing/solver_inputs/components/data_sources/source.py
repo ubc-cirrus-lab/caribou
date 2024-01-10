@@ -9,7 +9,7 @@ class Source(ABC):
         pass
     
     @abstractmethod
-    def setup(self, loaded_data: dict, regions_indexer: Indexer, instance_indexer: Indexer) -> bool:
+    def setup(self, *args, **kwargs) -> bool:
         '''
         This function is responsible for loading the data from multiple data_loaders.
         '''

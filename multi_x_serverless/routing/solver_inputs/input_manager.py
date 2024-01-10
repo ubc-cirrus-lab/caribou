@@ -41,14 +41,16 @@ class InputManager():
         self._runtime_input = RuntimeInput()
     
     def setup(self, regions_indexer: Indexer, instance_indexer: Indexer) -> bool:
-        # Utilize the Loaders to load the data from the database
+        # Regions and instances under consideration
+        regions = regions_indexer.get_value_indices().keys()
+        instances = instance_indexer.get_value_indices().keys()
 
         # Workflow loaders use the workfload unique ID from the config
         workflow_ID = self._config.get("workflow_ID", None)
         if workflow_ID is None:
             return False, "Workflow ID not found in config"
-        
-        regions = regions_indexer.get_value_indices.keys()
+
+        # Utilize the Loaders to load the data from the database
         success = self._loader_manager.setup(regions, workflow_ID)
         if (not success):
             # return False, "Failed one or more loaders has failed to load data", 
@@ -59,7 +61,7 @@ class InputManager():
         all_loaded_informations = self._loader_manager.retrieve_data()
 
         # Using those information, we can now setup the data sources
-        self._data_source_manager.setup(all_loaded_informations, regions_indexer, instance_indexer)
+        self._data_source_manager.setup(all_loaded_informations, regions, instances, regions_indexer, instance_indexer)
 
         # Now take the loaded data and send it to the data sources, which will be used in the component input managers
         instances_indicies = instance_indexer.get_value_indices.values()

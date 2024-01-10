@@ -24,7 +24,7 @@ class LoaderManager():
         self._data = None
 
 
-    def setup(self, regions: np.ndarray, workflow_ID: str) -> bool:
+    def setup(self, regions: list[(str, str)], workflow_ID: str) -> bool:
         # Utilize the Loaders to load the data from the database
 
         # Setup and load data from database
