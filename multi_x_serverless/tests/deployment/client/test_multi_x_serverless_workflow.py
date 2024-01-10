@@ -98,7 +98,7 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
                     }
                 ],
             },
-            func_environment_variables=[
+            environment_variables=[
                 {"key": "example_key", "value": "example_value"},
                 {"key": "example_key_2", "value": "example_value_2"},
                 {"key": "example_key_3", "value": "example_value_3"},
@@ -221,10 +221,10 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
         entry_point = True
         regions_and_providers = {}
         providers = []
-        func_environment_variables = []
+        environment_variables = []
 
         function_obj_1 = MultiXServerlessFunction(
-            test_function, name, entry_point, regions_and_providers, func_environment_variables
+            test_function, name, entry_point, regions_and_providers, environment_variables
         )
 
         workflow = MultiXServerlessWorkflow(name="test-workflow")
@@ -236,7 +236,7 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
             return invoke_serverless_function("test_function", x)
 
         function_obj_2 = MultiXServerlessFunction(
-            function, name, entry_point, regions_and_providers, func_environment_variables
+            function, name, entry_point, regions_and_providers, environment_variables
         )
 
         workflow.functions = {"test_function": function_obj_1, "test_function_2": function_obj_2}

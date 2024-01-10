@@ -14,7 +14,7 @@ class TestWorkflowBuilderFuncEnvVar(unittest.TestCase):
         function1.name = "function1"
         function1.handler = "function1"
         function1.regions_and_providers = {}
-        function1.func_environment_variables = []
+        function1.environment_variables = []
 
         # function 2 (no overlap with global environment variables)
         function2 = Mock(spec=MultiXServerlessFunction)
@@ -22,7 +22,7 @@ class TestWorkflowBuilderFuncEnvVar(unittest.TestCase):
         function2.name = "function2"
         function2.handler = "function1"
         function2.regions_and_providers = {"providers": []}
-        function2.func_environment_variables = [{"key": "ENV_3", "value": "function2_env_3"}]
+        function2.environment_variables = [{"key": "ENV_3", "value": "function2_env_3"}]
 
         # function 3 (overlap with global environment variables)
         function3 = Mock(spec=MultiXServerlessFunction)
@@ -30,7 +30,7 @@ class TestWorkflowBuilderFuncEnvVar(unittest.TestCase):
         function3.name = "function2"
         function3.handler = "function1"
         function3.regions_and_providers = {"providers": []}
-        function3.func_environment_variables = [{"key": "ENV_1", "value": "function3_env_1"}]
+        function3.environment_variables = [{"key": "ENV_1", "value": "function3_env_1"}]
 
         self.builder = WorkflowBuilder()
         self.config = Mock(spec=Config)

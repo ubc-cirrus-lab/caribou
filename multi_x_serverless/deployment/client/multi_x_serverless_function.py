@@ -13,14 +13,14 @@ class MultiXServerlessFunction:
         name: str,
         entry_point: bool,
         regions_and_providers: dict,
-        func_environment_variables: list[dict[str, str]],
+        environment_variables: list[dict[str, str]],
     ):
         self.function_callable = function_callable
         self.name = name
         self.entry_point = entry_point
         self.handler = function_callable.__name__
         self.regions_and_providers = regions_and_providers if len(regions_and_providers) > 0 else None
-        self.func_environment_variables = func_environment_variables if len(func_environment_variables) > 0 else None
+        self.environment_variables = environment_variables if len(environment_variables) > 0 else None
         self.validate_function_name()
 
     def validate_function_name(self) -> None:

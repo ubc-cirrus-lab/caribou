@@ -296,7 +296,7 @@ class MultiXServerlessWorkflow:
         name: str,
         entry_point: bool,
         regions_and_providers: dict,
-        func_environment_variables: list[dict[str, str]],
+        environment_variables: list[dict[str, str]],
     ) -> None:
         """
         Register a function as a serverless function.
@@ -306,18 +306,15 @@ class MultiXServerlessWorkflow:
         At this point we only need to register the function with the wrapper, the actual deployment will be done
         later by the deployment manager.
         """
-        wrapper = MultiXServerlessFunction(
-            function, name, entry_point, regions_and_providers, func_environment_variables
-        )
+        wrapper = MultiXServerlessFunction(function, name, entry_point, regions_and_providers, environment_variables)
         self.functions[function.__name__] = wrapper
 
-    # TODO (#22): Add function specific environment variables
     def serverless_function(
         self,
         name: Optional[str] = None,
         entry_point: bool = False,
         regions_and_providers: Optional[dict] = None,
-        func_environment_variables: Optional[list[dict[str, str]]] = None,
+        environment_variables: Optional[list[dict[str, str]]] = None,
     ) -> Callable[..., Any]:
         """
         Decorator to register a function as a Lambda function.
@@ -355,20 +352,20 @@ class MultiXServerlessWorkflow:
         if regions_and_providers is None:
             regions_and_providers = {}
 
-        if func_environment_variables is None:
-            func_environment_variables = []
+        if environment_variables is None:
+            environment_variables = []
         else:
-            if not isinstance(func_environment_variables, list):
-                raise RuntimeError("func_environment_variables must be a list of dicts")
-            for env_variable in func_environment_variables:
+            if not isinstance(environment_variables, list):
+                raise RuntimeError("environment_variables must be a list of dicts")
+            for env_variable in environment_variables:
                 if not isinstance(env_variable, dict):
-                    raise RuntimeError("func_environment_variables must be a list of dicts")
+                    raise RuntimeError("environment_variables must be a list of dicts")
                 if "key" not in env_variable or "value" not in env_variable:
-                    raise RuntimeError("func_environment_variables must be a list of dicts with keys 'key' and 'value'")
+                    raise RuntimeError("environment_variables must be a list of dicts with keys 'key' and 'value'")
                 if not isinstance(env_variable["key"], str):
-                    raise RuntimeError("func_environment_variables must be a list of dicts with 'key' as a string")
+                    raise RuntimeError("environment_variables must be a list of dicts with 'key' as a string")
                 if not isinstance(env_variable["value"], str):
-                    raise RuntimeError("func_environment_variables must be a list of dicts with 'value' as a string")
+                    raise RuntimeError("environment_variables must be a list of dicts with 'value' as a string")
 
         def _register_handler(func: Callable[..., Any]) -> Callable[..., Any]:
             handler_name = name if name is not None else func.__name__
@@ -396,7 +393,7 @@ class MultiXServerlessWorkflow:
             wrapper.routing_decision = {}  # type: ignore
             wrapper.entry_point = entry_point  # type: ignore
             wrapper.original_function = func  # type: ignore
-            self.register_function(func, handler_name, entry_point, regions_and_providers, func_environment_variables)
+            self.register_function(func, handler_name, entry_point, regions_and_providers, environment_variables)
             return wrapper
 
         return _register_handler

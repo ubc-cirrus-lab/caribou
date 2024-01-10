@@ -40,7 +40,7 @@ class WorkflowBuilder:
             self._verify_providers(providers)
 
             merged_env_vars = self.merge_environment_variables(
-                function.func_environment_variables, config.environment_variables
+                function.environment_variables, config.environment_variables
             )
             resources.append(
                 Function(
@@ -139,7 +139,7 @@ class WorkflowBuilder:
         return IAMRole(role_name=role_name, policy=filename)
 
     def merge_environment_variables(
-        self, function_env_vars: list[dict[str, str]] | None, config_env_vars: dict[str, str]
+        self, function_env_vars: Optional[list[dict[str, str]]], config_env_vars: dict[str, str]
     ) -> dict[str, str]:
         if not function_env_vars:
             return config_env_vars
