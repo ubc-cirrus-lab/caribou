@@ -17,7 +17,9 @@ class Resource:
         return {}
 
     def __repr__(self) -> str:
-        return f"""Resource(
-                        name={self.name},
-                        resource_type={self.resource_type},
-                """
+        return f"Resource(name={self.name}, resource_type={self.resource_type}, "
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Resource):
+            return NotImplemented
+        return self.name == other.name and self.resource_type == other.resource_type

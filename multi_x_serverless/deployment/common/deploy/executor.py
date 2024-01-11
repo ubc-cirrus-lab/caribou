@@ -33,7 +33,10 @@ class Executor:
             raise RuntimeError(
                 f"Unknown method {instruction.name} for client {client.__class__.__name__}, is the client configured correctly?"  # pylint: disable=line-too-long
             ) from e
-        response = method(**final_kwargs)
+        try:
+            response = method(**final_kwargs)
+        except Exception as e:
+            raise RuntimeError(f"Error while executing {instruction.name} on {client.__class__.__name__}") from e
         if instruction.output_var is not None:
             self.variables[instruction.output_var] = response
 

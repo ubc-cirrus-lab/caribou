@@ -68,7 +68,10 @@ class MultiXServerlessWorkflow:
         return successors
 
     def invoke_serverless_function(
-        self, function: Callable[..., Any], payload: Optional[dict | Any] = {}, conditional: bool = True
+        self,
+        function: Callable[..., Any],
+        payload: Optional[dict | Any] = None,
+        conditional: bool = True,  # pylint: disable=unused-argument
     ) -> None:
         """
         Invoke a serverless function which is part of this workflow.

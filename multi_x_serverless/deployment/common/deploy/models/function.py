@@ -36,17 +36,7 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
         self.providers = providers
 
     def __repr__(self) -> str:
-        return f"""Function({self.name}):
-                    Entry point: {self.entry_point}
-                    Role:
-                        {self.role}
-                    Deployment package: {self.deployment_package}
-                    Environment variables: {self.environment_variables}
-                    Handler: {self.handler}
-                    Runtime: {self.runtime}
-                    Deploy regions: {self.deploy_regions}
-                    Providers: {self.providers}
-                """
+        return f"Function({self.name}): Entry point: {self.entry_point}, Role: {self.role}, Deployment package: {self.deployment_package}, Environment variables: {self.environment_variables}, Handler: {self.handler}, Runtime: {self.runtime}, Deploy regions: {self.deploy_regions}, Providers: {self.providers}"  # pylint: disable=line-too-long
 
     def initialise_remote_states(self, deploy_regions: list[dict[str, str]]) -> None:
         for deploy_region in deploy_regions:

@@ -12,6 +12,9 @@ class Config:
         self.project_config = project_config
         self.project_dir = project_dir
 
+    def __repr__(self) -> str:
+        return f"Config(project_config={self.project_config}, project_dir={self.project_dir})"
+
     @property
     def workflow_app(self) -> MultiXServerlessWorkflow:
         workflow = self._lookup("workflow_app")
@@ -89,5 +92,7 @@ class Config:
 
     def update_deployed_resources(self, deployed_resources: list[Any]) -> None:
         deployed_resource_file = os.path.join(self.project_dir, ".multi-x-serverless", "deployed_resources.yml")
+        if not os.path.exists(os.path.dirname(deployed_resource_file)):
+            os.makedirs(os.path.dirname(deployed_resource_file))
         with open(deployed_resource_file, "w", encoding="utf-8") as f:
             yaml.dump({"resources": deployed_resources}, f)

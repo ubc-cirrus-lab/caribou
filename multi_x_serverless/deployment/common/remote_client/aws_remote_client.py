@@ -2,8 +2,8 @@ import json
 import time
 from typing import Any
 
-import botocore.exceptions
 from boto3.session import Session
+from botocore.exceptions import ClientError
 
 from multi_x_serverless.deployment.common.deploy.models.resource import Resource
 from multi_x_serverless.deployment.common.remote_client.remote_client import RemoteClient
@@ -42,14 +42,14 @@ class AWSRemoteClient(RemoteClient):
     def iam_role_exists(self, resource: Resource) -> bool:
         try:
             role = self.get_iam_role(resource.name)
-        except botocore.exceptions.ClientError:
+        except ClientError:
             return False
         return role is not None
 
     def lambda_function_exists(self, resource: Resource) -> bool:
         try:
             function = self.get_lambda_function(resource.name)
-        except botocore.exceptions.ClientError:
+        except ClientError:
             return False
         return function is not None
 
@@ -193,14 +193,14 @@ class AWSRemoteClient(RemoteClient):
             if current_role_policy["PolicyDocument"] != policy:
                 client.delete_role_policy(RoleName=role_name, PolicyName=role_name)
                 self.put_role_policy(role_name=role_name, policy_name=role_name, policy_document=policy)
-        except client.exceptions.NoSuchEntityException:
+        except ClientError:
             self.put_role_policy(role_name=role_name, policy_name=role_name, policy_document=policy)
         try:
             current_trust_policy = client.get_role(RoleName=role_name)["Role"]["AssumeRolePolicyDocument"]
             if current_trust_policy != trust_policy:
                 client.delete_role(RoleName=role_name)
                 client.create_role(RoleName=role_name, AssumeRolePolicyDocument=json.dumps(trust_policy))
-        except client.exceptions.NoSuchEntityException:
+        except ClientError:
             client.create_role(RoleName=role_name, AssumeRolePolicyDocument=json.dumps(trust_policy))
         print(f"Successfully updated role {role_name}")
         return self.get_iam_role(role_name)

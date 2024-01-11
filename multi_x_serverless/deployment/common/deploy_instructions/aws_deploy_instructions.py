@@ -1,4 +1,5 @@
 import json
+import os
 from typing import Any
 
 from multi_x_serverless.deployment.common.deploy.models.iam_role import IAMRole
@@ -6,7 +7,6 @@ from multi_x_serverless.deployment.common.deploy.models.instructions import APIC
 from multi_x_serverless.deployment.common.deploy.models.remote_state import RemoteState
 from multi_x_serverless.deployment.common.deploy.models.variable import Variable
 from multi_x_serverless.deployment.common.deploy_instructions.deploy_instructions import DeployInstructions
-from multi_x_serverless.deployment.common.enums import Provider
 
 
 class AWSDeployInstructions(DeployInstructions):
@@ -48,11 +48,14 @@ class AWSDeployInstructions(DeployInstructions):
                 }
             ],
         }
+        if not os.path.exists(role.policy):
+            raise RuntimeError(f"Lambda policy not found, check the path ({role.policy})")
         with open(role.policy, "r", encoding="utf-8") as f:
             policy = f.read()
-        if policy is None:
-            raise RuntimeError(f"Lambda policy could not be read, check the path ({role.policy})")
-        policy = json.dumps(json.loads(policy))
+        try:
+            policy = json.dumps(json.loads(policy))
+        except json.JSONDecodeError as e:
+            raise RuntimeError(f"Lambda policy could not be parsed, check the policy ({policy})") from e
         if not remote_state.resource_exists(role):
             instructions.extend(
                 [

@@ -12,4 +12,4 @@ class IAMRole(Resource):
         return []
 
     def __repr__(self) -> str:
-        return super().__repr__() + f"""        policy={self.policy})"""
+        return super().__repr__() + f" policy={self.policy})"

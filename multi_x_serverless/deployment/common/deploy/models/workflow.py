@@ -25,13 +25,7 @@ class Workflow(Resource):
         super().__init__(name, "workflow")
 
     def __repr__(self) -> str:
-        return f"""Workflow(
-                name={self.name},
-                resources={self._resources},
-                functions={self._functions},
-                edges={self._edges},
-                config={self._config})
-                """
+        return f"Workflow(name={self.name}, resources={self._resources}, functions={self._functions}, edges={self._edges}, config={self._config})"  # pylint: disable=line-too-long
 
     def dependencies(self) -> Sequence[Resource]:
         return self._resources
@@ -84,6 +78,7 @@ class Workflow(Resource):
                     instance["succeeding_instances"].append(edge[1])
             instance["preceding_instances"] = []
             for edge in self._edges:
+                print(edge[1], instance["instance_name"])
                 if edge[1] == instance["instance_name"]:
                     instance["preceding_instances"].append(edge[0])
             finished_instances.append(instance)

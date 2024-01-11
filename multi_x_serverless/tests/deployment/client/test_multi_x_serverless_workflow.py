@@ -725,11 +725,13 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
         )
         client_mock = Mock()
         client_mock.get_predecessor_data.return_value = ['{"key": "value"}']
-        RemoteClientFactory.get_remote_client = Mock(return_value=client_mock)
+        with patch(
+            "multi_x_serverless.deployment.common.factories.remote_client_factory.RemoteClientFactory.get_remote_client",
+            return_value=client_mock,
+        ):
+            result = self.workflow.get_predecessor_data()
 
-        result = self.workflow.get_predecessor_data()
-
-        self.assertEqual(result, [{"key": "value"}])
+            self.assertEqual(result, [{"key": "value"}])
 
     def test_get_current_instance_provider_region_instance_name(self):
         this_frame = inspect.currentframe()

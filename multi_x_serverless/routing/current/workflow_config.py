@@ -25,7 +25,7 @@ class WorkflowConfig:
         return json.dumps(self._workflow_config)
 
     def resolve_functions(self) -> np.ndarray:
-        functions = [instance["function_name"] for instance in self._lookup("instances")]
+        functions = [instance["function_name"] for instance in self.instances]
         functions = list(set(functions))
         return np.array(functions)
 

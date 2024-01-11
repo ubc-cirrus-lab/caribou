@@ -20,9 +20,4 @@ class FunctionInstance:
         }
 
     def __repr__(self) -> str:
-        return f"""FunctionInstance(
-                name={self.name},
-                entry_point={self.entry_point},
-                regions_and_providers={self.regions_and_providers},
-                function_resource_name={self.function_resource_name},
-                """
+        return f"FunctionInstance(name={self.name}, entry_point={self.entry_point}, regions_and_providers={self.regions_and_providers}, function_resource_name={self.function_resource_name})"  # pylint: disable=line-too-long
