@@ -29,6 +29,7 @@ class MultiXServerlessWorkflow:
         self.functions: dict[str, MultiXServerlessFunction] = {}
         self._successor_index = 0
         self._remote_client_factory = RemoteClientFactory()
+        self._function_names = set()
 
     def get_function_and_wrapper_frame(self, current_frame: Optional[FrameType]) -> tuple[FrameType, FrameType]:
         if not current_frame:
@@ -321,6 +322,11 @@ class MultiXServerlessWorkflow:
         later by the deployment manager.
         """
         wrapper = MultiXServerlessFunction(function, name, entry_point, regions_and_providers)
+        if function.__name__ in self.functions:
+            raise RuntimeError(f"Function with function name {function.__name__} already registered")
+        if name in self._function_names:
+            raise RuntimeError(f"Function with given name {name} already registered")
+        self._function_names.add(name)
         self.functions[function.__name__] = wrapper
 
     # TODO (#22): Add function specific environment variables
