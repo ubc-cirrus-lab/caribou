@@ -3,7 +3,7 @@ from typing import Any, Optional
 import botocore.exceptions
 from botocore.session import Session
 
-from multi_x_serverless.deployment.client.config import Config
+from multi_x_serverless.deployment.common.config import Config
 from multi_x_serverless.deployment.common.deploy.deployment_packager import DeploymentPackager
 from multi_x_serverless.deployment.common.deploy.executor import Executor
 from multi_x_serverless.deployment.common.deploy.models.deployment_plan import DeploymentPlan

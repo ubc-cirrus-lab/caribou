@@ -1,7 +1,6 @@
-import os
 import unittest
 from unittest.mock import Mock, patch
-from multi_x_serverless.deployment.client.config import Config
+from multi_x_serverless.deployment.common.config import Config
 from multi_x_serverless.deployment.client.multi_x_serverless_workflow import MultiXServerlessFunction
 from multi_x_serverless.deployment.common.deploy.workflow_builder import WorkflowBuilder
 

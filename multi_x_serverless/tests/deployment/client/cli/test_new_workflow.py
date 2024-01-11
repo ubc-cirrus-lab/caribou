@@ -26,6 +26,16 @@ class TestCreateNewWorkflowDirectory(unittest.TestCase):
         file_handle = mock_file()
         file_handle.write.assert_any_call("test_workflow")
 
+    @patch("os.path.exists", return_value=True)
+    @patch("os.getcwd", return_value="/current/directory")
+    @patch("os.path.abspath", return_value="/path/to/your_module.py")
+    @patch("os.path.dirname", return_value="/path/to")
+    def test_create_new_workflow_directory_already_exists(self, mock_dirname, mock_abspath, mock_getcwd, mock_exists):
+        workflow_name = "test_workflow"
+        with self.assertRaises(RuntimeError):
+            create_new_workflow_directory(workflow_name)
+        mock_exists.assert_called_once_with("/current/directory/test_workflow")
+
 
 if __name__ == "__main__":
     unittest.main()

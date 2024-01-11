@@ -53,30 +53,26 @@ class MultiXServerlessWorkflow:
         function_calls = re.findall(r"invoke_serverless_function\((.*?)\)", source_code)
         successors: list[MultiXServerlessFunction] = []
         for call in function_calls:
+            function_name = None
             if "," not in call:
-                raise RuntimeError(
-                    f"""Could not parse function call ({call}) in function
-                    ({function}), did you provide the payload?"""
-                )
-            function_name = call.strip().split(",", maxsplit=1)[0].strip('"')
+                function_name = call.strip().strip('"')
+            else:
+                function_name = call.strip().split(",", maxsplit=1)[0].strip('"')
             successor = next(
                 (func for func in self.functions.values() if func.function_callable.__name__ == function_name), None
             )
             if successor:
                 successors.append(successor)
+            else:
+                raise RuntimeError(f"Could not find function with name {function_name}, was the function registered?")
         return successors
 
     def invoke_serverless_function(
-        self, function: Callable[..., Any], payload: Optional[dict | Any] = None, conditional: bool = True
+        self, function: Callable[..., Any], payload: Optional[dict | Any] = {}, conditional: bool = True
     ) -> None:
         """
         Invoke a serverless function which is part of this workflow.
         """
-        if not payload:
-            payload = {}
-
-        if not conditional:
-            return
         # If the function from which this function is called is the entry point obtain current routing decision
         # If not, the routing decision was stored in the message received from the predecessor function
         # Post message to SNS -> return
@@ -93,7 +89,9 @@ class MultiXServerlessWorkflow:
         )
 
         # Wrap the payload and add the routing decision
-        payload_wrapper = {"payload": payload}
+        payload_wrapper = {}
+        if payload:
+            payload_wrapper["payload"] = payload
 
         payload_wrapper["routing_decision"] = successor_routing_decision_dictionary
         json_payload = json.dumps(payload_wrapper)
@@ -398,6 +396,8 @@ class MultiXServerlessWorkflow:
                     # This run id will be used to identify the workflow instance
                     # For example for the merge function, we need to know which workflow instance to merge
                     wrapper.routing_decision["run_id"] = uuid.uuid4().hex  # type: ignore
+                    if len(args) == 0:
+                        return func()
                     payload = args[0]
                 else:
                     # Get the routing decision from the message received from the predecessor function
@@ -405,6 +405,8 @@ class MultiXServerlessWorkflow:
                     if "routing_decision" not in argument:
                         raise RuntimeError("Could not get routing decision from message")
                     wrapper.routing_decision = argument["routing_decision"]  # type: ignore
+                    if "payload" not in argument:
+                        return func()
                     payload = argument.get("payload", {})
 
                 # Call the original function with the modified arguments

@@ -15,7 +15,7 @@ import pip
 import yaml
 
 import multi_x_serverless
-from multi_x_serverless.deployment.client.config import Config
+from multi_x_serverless.deployment.common.config import Config
 from multi_x_serverless.deployment.common.deploy.models.workflow import Workflow
 
 

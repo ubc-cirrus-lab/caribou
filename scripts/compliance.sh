@@ -24,4 +24,4 @@ poetry run mypy multi_x_serverless
 
 # Run pytest
 echo "Running pytest..."
-poetry run pytest multi_x_serverless --cov-reset --cache-clear --cov-fail-under=90
+poetry run pytest --cache-clear --cov=. --cov-report=term-missing --cov-fail-under=90 > pytest-coverage.txt

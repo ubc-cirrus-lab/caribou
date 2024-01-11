@@ -3,8 +3,8 @@ import queue
 from typing import Any, Optional
 
 from multi_x_serverless.deployment.client.cli.config_schema import Provider
-from multi_x_serverless.deployment.client.config import Config
 from multi_x_serverless.deployment.client.multi_x_serverless_workflow import MultiXServerlessFunction
+from multi_x_serverless.deployment.common.config import Config
 from multi_x_serverless.deployment.common.deploy.models.deployment_package import DeploymentPackage
 from multi_x_serverless.deployment.common.deploy.models.function import Function
 from multi_x_serverless.deployment.common.deploy.models.function_instance import FunctionInstance

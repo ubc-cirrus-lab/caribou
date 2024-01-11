@@ -30,7 +30,8 @@ class Config:
 
     @property
     def python_version(self) -> str:
-        major, minor = sys.version_info[0], sys.version_info[1]
+        sys_version = sys.version_info
+        major, minor = sys_version.major, sys_version.minor
 
         if major == 2:
             return "python2.7"
