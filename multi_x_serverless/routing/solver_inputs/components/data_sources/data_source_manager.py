@@ -1,5 +1,3 @@
-from .source import Source
-
 from .at.instance import InstanceSource
 from .at.region import RegionSource
 from .from_to.instance import InstanceToInstanceSource
@@ -18,9 +16,9 @@ class DataSourceManager:
         self._instance_to_instance_source = InstanceToInstanceSource()
         self._region_to_region_source = RegionToRegionSource()
 
-    def setup(self, loaded_data: dict, regions: list[(str, str)], instances: list[str], regions_indexer: Indexer, instance_indexer: Indexer) -> None:
+    def setup(self, loaded_data: dict, instance_configuration: dict, regions: list[(str, str)], instances: list[str], regions_indexer: Indexer, instance_indexer: Indexer) -> None:
         # Propagate loaded data to data sources
-        self._instance_source.setup(loaded_data, regions, regions_indexer)
+        self._instance_source.setup(loaded_data, instance_configuration, regions, regions_indexer)
         self._region_source.setup(loaded_data, regions, regions_indexer)
 
         self._instance_to_instance_source.setup(loaded_data, regions, instances, regions_indexer, instance_indexer)

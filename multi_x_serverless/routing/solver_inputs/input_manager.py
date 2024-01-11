@@ -57,11 +57,12 @@ class InputManager():
             print("Failed one or more loaders has failed to load data")
             return False, 
 
-        # Get the retrieved information
+        # Get the retrieved information (From database or cache)
         all_loaded_informations = self._loader_manager.retrieve_data()
 
         # Using those information, we can now setup the data sources
-        self._data_source_manager.setup(all_loaded_informations, regions, instances, regions_indexer, instance_indexer)
+        instance_configuration = self._config.instances
+        self._data_source_manager.setup(all_loaded_informations, instance_configuration, regions, instances, regions_indexer, instance_indexer)
 
         # Now take the loaded data and send it to the data sources, which will be used in the component input managers
         instances_indicies = instance_indexer.get_value_indices.values()

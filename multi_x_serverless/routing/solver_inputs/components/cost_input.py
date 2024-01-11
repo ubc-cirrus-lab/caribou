@@ -21,7 +21,9 @@ class CostInput(Input):
             compute_cost_information = data_source_manager.get_region_data("compute_cost", region_index) # This is a list
             # free_tier = data_source_manager.get_region_data("free_tier", region_index) # Free tier not yet implemented
             for instance_index in instances_indicies:
-                execution_time = data_source_manager.get_instance_data("execution_time", instance_index) # This is a value in seconds
+                execution_time = data_source_manager.d("execution_time", instance_index) # This is a value in seconds
+
+                # compute_cost_information: dict(str, list[(float, int)]), provider_name: str, execution_time: float
                 self._execution_matrix[region_index][instance_index] = self._cost_calculator.calculate_execution_cost(compute_cost_information, execution_time)
         
         # Setup Transmission matrix

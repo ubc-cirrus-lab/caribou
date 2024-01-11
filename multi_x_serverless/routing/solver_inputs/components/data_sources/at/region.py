@@ -17,6 +17,9 @@ class RegionSource(Source):
         for region in regions:
             region_index = regions_indexer.value_to_index(region)
             self._data[region_index] = {
+                # Region location
+                "provider_name": region[0], # Save the provider name
+
                 # CO2 information
                 "grid_co2e": loaded_data.get('grid_co2e', {}).get(region, -1),
 
