@@ -6,8 +6,8 @@ from botocore.session import Session
 from multi_x_serverless.deployment.client import __version__ as MULTI_X_SERVERLESS_VERSION
 from multi_x_serverless.deployment.client.cli.new_workflow import create_new_workflow_directory
 from multi_x_serverless.deployment.client.config import Config
-from multi_x_serverless.deployment.client.deploy.deployer import Deployer
 from multi_x_serverless.deployment.client.factories.cli_factory import CLIFactory
+from multi_x_serverless.deployment.common.deploy.deployer import Deployer
 
 
 @click.group()
@@ -43,7 +43,7 @@ def deploy(ctx: click.Context) -> None:
     config: Config = factory.create_config_obj()
     session: Session = factory.create_session()
     deployer: Deployer = factory.create_deployer(config=config, session=session)
-    deployment_information = deployer.deploy()
+    deployment_information = deployer.deploy(config.home_regions)
     print(deployment_information)
 
 

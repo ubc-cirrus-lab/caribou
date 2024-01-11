@@ -33,15 +33,14 @@ workflow = MultiXServerlessWorkflow("regression_tuning")
                 "region": "us-east-2",
             }
         ],
-        "providers": [
-            {
-                "name": "aws",
+        "providers": {
+            "aws": {
                 "config": {
                     "timeout": 60,
                     "memory": 128,
                 },
-            }
-        ],
+            },
+        },
     },
 )
 def get_input(event: dict[str, Any]) -> dict[str, Any]:

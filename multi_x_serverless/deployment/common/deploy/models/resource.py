@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Sequence
 
-from multi_x_serverless.deployment.client.deploy.models.instructions import Instruction
+from multi_x_serverless.deployment.common.deploy.models.instructions import Instruction
 
 
 class Resource:

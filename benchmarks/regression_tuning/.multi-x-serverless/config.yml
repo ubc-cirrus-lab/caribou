@@ -24,7 +24,7 @@ constraints:
     only_regions: null # Only check other conditions if this is None, else will restrict to ONLY those regions
     forbidden_regions: null
 providers:
-  - name: "aws"
-    configuration:
-      timeout: 300
-      memory: 1024
+  aws:
+    config:
+      timeout: 60
+      memory: 128

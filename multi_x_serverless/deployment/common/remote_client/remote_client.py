@@ -2,7 +2,7 @@ import json
 from abc import ABC, abstractmethod
 from typing import Optional
 
-from multi_x_serverless.deployment.client.deploy.models.resource import Resource
+from multi_x_serverless.deployment.common.deploy.models.resource import Resource
 
 
 class RemoteClient(ABC):

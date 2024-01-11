@@ -38,15 +38,14 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
                         "region": "us-east-2",
                     }
                 ],
-                "providers": [
-                    {
-                        "name": "aws",
+                "providers": {
+                    "aws": {
                         "config": {
                             "timeout": 60,
                             "memory": 128,
                         },
-                    }
-                ],
+                    },
+                },
             },
         )
         def test_func(payload):
@@ -74,15 +73,14 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
                             "region": "us-east-2",
                         }
                     ],
-                    "providers": [
-                        {
-                            "name": "aws",
+                    "providers": {
+                        "aws": {
                             "config": {
                                 "timeout": 60,
                                 "memory": 128,
                             },
-                        }
-                    ],
+                        },
+                    },
                 },
                 [],
             ),
@@ -108,15 +106,14 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
             regions_and_providers={
                 "only_regions": [["aws", "us-east-1"]],
                 "forbidden_regions": [["aws", "us-east-2"]],
-                "providers": [
-                    {
-                        "name": "aws",
+                "providers": {
+                    "aws": {
                         "config": {
                             "timeout": 60,
                             "memory": 128,
                         },
-                    }
-                ],
+                    },
+                },
             },
             environment_variables=[
                 {"key": "example_key", "value": "example_value"},
@@ -138,15 +135,14 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
                 {
                     "only_regions": [["aws", "us-east-1"]],
                     "forbidden_regions": [["aws", "us-east-2"]],
-                    "providers": [
-                        {
-                            "name": "aws",
+                    "providers": {
+                        "aws": {
                             "config": {
                                 "timeout": 60,
                                 "memory": 128,
                             },
-                        }
-                    ],
+                        },
+                    },
                 },
                 [
                     {"key": "example_key", "value": "example_value"},

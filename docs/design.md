@@ -127,15 +127,14 @@ workflow = MultiXServerlessWorkflow("workflow_name")
           }
         ],
         "forbidden_regions": None,
-        "providers": [
-            {
-                "name": "aws",
+        "providers": {
+            "aws": {
                 "config": {
                     "timeout": 60,
                     "memory": 128,
                 },
-            }
-        ],
+            },
+        },
     },
     environment_variables=[
         {

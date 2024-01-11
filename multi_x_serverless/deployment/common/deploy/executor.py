@@ -1,12 +1,12 @@
 from typing import Any
 
 from multi_x_serverless.deployment.client.config import Config
-from multi_x_serverless.deployment.client.deploy.models.deployment_plan import DeploymentPlan
-from multi_x_serverless.deployment.client.deploy.models.instructions import APICall, Instruction, RecordResourceVariable
-from multi_x_serverless.deployment.client.deploy.models.resource import Resource
-from multi_x_serverless.deployment.client.deploy.models.variable import Variable
-from multi_x_serverless.deployment.client.factories.remote_client_factory import RemoteClientFactory
-from multi_x_serverless.deployment.client.remote_client.remote_client import RemoteClient
+from multi_x_serverless.deployment.common.deploy.models.deployment_plan import DeploymentPlan
+from multi_x_serverless.deployment.common.deploy.models.instructions import APICall, Instruction, RecordResourceVariable
+from multi_x_serverless.deployment.common.deploy.models.resource import Resource
+from multi_x_serverless.deployment.common.deploy.models.variable import Variable
+from multi_x_serverless.deployment.common.factories.remote_client_factory import RemoteClientFactory
+from multi_x_serverless.deployment.common.remote_client.remote_client import RemoteClient
 
 
 class Executor:
@@ -14,12 +14,11 @@ class Executor:
         self.resource_values: dict[str, list[Any]] = {}
         self.variables: dict[str, Any] = {}
         self._config = config
-        self._remote_client_factory = RemoteClientFactory()
 
     def execute(self, deployment_plan: DeploymentPlan) -> None:
         for home_region, instructions in deployment_plan.instructions.items():
             provider, region = home_region.split(":")
-            client = self._remote_client_factory.get_remote_client(provider, region)
+            client = RemoteClientFactory.get_remote_client(provider, region)
             for instruction in instructions:
                 getattr(self, f"_do_{instruction.__class__.__name__.lower()}", self._default_handler)(
                     instruction,

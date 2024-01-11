@@ -32,15 +32,14 @@ workflow = MultiXServerlessWorkflow("text_2_speech_censoring")
                 "region": "us-east-2",
             }
         ],
-        "providers": [
-            {
-                "name": "aws",
+        "providers": {
+            "aws": {
                 "config": {
                     "timeout": 60,
                     "memory": 128,
                 },
-            }
-        ],
+            },
+        },
     },
 )
 def get_input(event: dict[str, Any]) -> dict[str, Any]:

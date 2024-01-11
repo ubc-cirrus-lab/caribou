@@ -9,13 +9,13 @@ from pydantic import ValidationError
 from multi_x_serverless.deployment.client import __version__ as MULTI_X_SERVERLESS_VERSION
 from multi_x_serverless.deployment.client.cli.config_schema import ConfigSchema
 from multi_x_serverless.deployment.client.config import Config
-from multi_x_serverless.deployment.client.deploy.deployer import (
+from multi_x_serverless.deployment.client.multi_x_serverless_workflow import MultiXServerlessWorkflow
+from multi_x_serverless.deployment.common.deploy.deployer import (
     Deployer,
     create_default_deployer,
     create_deletion_deployer,
 )
-from multi_x_serverless.deployment.client.enums import Provider
-from multi_x_serverless.deployment.client.multi_x_serverless_workflow import MultiXServerlessWorkflow
+from multi_x_serverless.deployment.common.enums import Provider
 
 
 class CLIFactory:
@@ -69,14 +69,18 @@ class CLIFactory:
     def __validate_only_regions_and_providers(self, project_config: dict) -> None:
         if "regions_and_providers" not in project_config:
             raise RuntimeError("regions_and_providers must be defined in project config")
+        if not isinstance(project_config["regions_and_providers"], dict):
+            raise RuntimeError("regions_and_providers must be a dictionary")
         if "providers" not in project_config["regions_and_providers"]:
             raise RuntimeError("at least one provider must be defined in regions_and_providers")
+        if not isinstance(project_config["regions_and_providers"]["providers"], dict):
+            raise RuntimeError("providers must be a dictionary")
         if "only_regions" in project_config["regions_and_providers"]:
             possible_providers = [provider.value for provider in Provider]
             defined_providers = [
-                provider["name"]
-                for provider in project_config["regions_and_providers"]["providers"]
-                if provider["name"] in possible_providers
+                provider_name
+                for provider_name in project_config["regions_and_providers"]["providers"].keys()
+                if provider_name in possible_providers
             ]
             only_regions = project_config["regions_and_providers"]["only_regions"]
             if not only_regions:

@@ -1,19 +1,21 @@
 import os
 import queue
-from typing import Optional
+from typing import Any, Optional
 
 from multi_x_serverless.deployment.client.cli.config_schema import Provider
 from multi_x_serverless.deployment.client.config import Config
-from multi_x_serverless.deployment.client.deploy.models.deployment_package import DeploymentPackage
-from multi_x_serverless.deployment.client.deploy.models.function import Function
-from multi_x_serverless.deployment.client.deploy.models.function_instance import FunctionInstance
-from multi_x_serverless.deployment.client.deploy.models.iam_role import IAMRole
-from multi_x_serverless.deployment.client.deploy.models.workflow import Workflow
 from multi_x_serverless.deployment.client.multi_x_serverless_workflow import MultiXServerlessFunction
+from multi_x_serverless.deployment.common.deploy.models.deployment_package import DeploymentPackage
+from multi_x_serverless.deployment.common.deploy.models.function import Function
+from multi_x_serverless.deployment.common.deploy.models.function_instance import FunctionInstance
+from multi_x_serverless.deployment.common.deploy.models.iam_role import IAMRole
+from multi_x_serverless.deployment.common.deploy.models.workflow import Workflow
 
 
 class WorkflowBuilder:
-    def build_workflow(self, config: Config) -> Workflow:  # pylint: disable=too-many-locals
+    def build_workflow(
+        self, config: Config, regions: list[dict[str, str]]
+    ) -> Workflow:  # pylint: disable=too-many-locals
         resources: list[Function] = []
 
         # A workflow consists of two parts:
@@ -50,7 +52,7 @@ class WorkflowBuilder:
                     handler=function.handler,
                     role=function_role,
                     deployment_package=DeploymentPackage(),
-                    home_regions=config.home_regions,
+                    deploy_regions=regions,
                     entry_point=function.entry_point,
                     providers=providers,
                 )
@@ -127,6 +129,11 @@ class WorkflowBuilder:
         functions: list[FunctionInstance] = list(function_instances.values())
         return Workflow(resources=resources, functions=functions, edges=edges, name=config.workflow_name, config=config)
 
+    def re_build_workflow(
+        self, config: Config, regions: list[dict[str, str]], deployment_config: dict[str, Any]
+    ) -> Workflow:
+        raise NotImplementedError
+
     def _cycle_check(self, function: MultiXServerlessFunction, config: Config) -> None:
         visiting: set[MultiXServerlessFunction] = set()
         visited: set[MultiXServerlessFunction] = set()
@@ -148,8 +155,8 @@ class WorkflowBuilder:
         visiting.remove(node)
         visited.add(node)
 
-    def _verify_providers(self, providers: list[dict]) -> None:
-        for provider in providers:
+    def _verify_providers(self, providers: dict[str, Any]) -> None:
+        for provider in providers.values():
             Provider(**provider)
 
     def get_function_role(self, config: Config, function_name: str) -> IAMRole:

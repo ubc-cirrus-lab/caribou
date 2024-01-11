@@ -7,8 +7,8 @@ import uuid
 from types import FrameType
 from typing import Any, Callable, Optional
 
-from multi_x_serverless.deployment.client.factories.remote_client_factory import RemoteClientFactory
 from multi_x_serverless.deployment.client.multi_x_serverless_function import MultiXServerlessFunction
+from multi_x_serverless.deployment.common.factories.remote_client_factory import RemoteClientFactory
 
 
 class MultiXServerlessWorkflow:
@@ -28,8 +28,7 @@ class MultiXServerlessWorkflow:
         self.name = name
         self.functions: dict[str, MultiXServerlessFunction] = {}
         self._successor_index = 0
-        self._remote_client_factory = RemoteClientFactory()
-        self._function_names = set()
+        self._function_names: set[str] = set()
 
     def get_function_and_wrapper_frame(self, current_frame: Optional[FrameType]) -> tuple[FrameType, FrameType]:
         if not current_frame:
@@ -113,7 +112,7 @@ class MultiXServerlessWorkflow:
                     break
             function_name = successor_instance_name.split(":", maxsplit=1)[0]
 
-        self._remote_client_factory.get_remote_client(provider, region).invoke_function(
+        RemoteClientFactory.get_remote_client(provider, region).invoke_function(
             message=json_payload,
             identifier=identifier,
             workflow_instance_id=routing_decision["run_id"],
@@ -262,7 +261,7 @@ class MultiXServerlessWorkflow:
             workflow_instance_id,
         ) = self.get_current_instance_provider_region_instance_name()
 
-        client = self._remote_client_factory.get_remote_client(provider, region)
+        client = RemoteClientFactory.get_remote_client(provider, region)
 
         response = client.get_predecessor_data(current_instance_name, workflow_instance_id)
 

@@ -16,7 +16,7 @@ import yaml
 
 import multi_x_serverless
 from multi_x_serverless.deployment.client.config import Config
-from multi_x_serverless.deployment.client.deploy.models.workflow import Workflow
+from multi_x_serverless.deployment.common.deploy.models.workflow import Workflow
 
 
 class DeploymentPackager:
@@ -27,6 +27,9 @@ class DeploymentPackager:
         zip_file = self._create_deployment_package(config.project_dir, config.python_version)
         for deployment_package in workflow.get_deployment_packages():
             deployment_package.filename = zip_file
+
+    def re_build(self, config: Config, workflow: Workflow) -> None:
+        raise NotImplementedError
 
     def _create_deployment_package(self, project_dir: str, python_version: str) -> str:
         package_filename = self._get_package_filename(project_dir, python_version)
@@ -48,38 +51,54 @@ class DeploymentPackager:
         multi_x_serverless_path = inspect.getfile(multi_x_serverless)
         if multi_x_serverless_path.endswith(".pyc"):
             multi_x_serverless_path = multi_x_serverless_path[:-1]
-        multi_x_serverless_path = os.path.join(os.path.dirname(multi_x_serverless_path), "deployment", "client")
+        multi_x_serverless_path = os.path.join(os.path.dirname(multi_x_serverless_path), "deployment")
         zip_file.write(
-            os.path.join(multi_x_serverless_path, "__init__.py"),
+            os.path.join(multi_x_serverless_path, "client", "__init__.py"),
             os.path.join("multi_x_serverless", "deployment", "client", "__init__.py"),
         )
         zip_file.write(
-            os.path.join(multi_x_serverless_path, "multi_x_serverless_workflow.py"),
+            os.path.join(multi_x_serverless_path, "client", "multi_x_serverless_workflow.py"),
             os.path.join("multi_x_serverless", "deployment", "client", "multi_x_serverless_workflow.py"),
         )
         zip_file.write(
-            os.path.join(multi_x_serverless_path, "multi_x_serverless_function.py"),
+            os.path.join(multi_x_serverless_path, "client", "multi_x_serverless_function.py"),
             os.path.join("multi_x_serverless", "deployment", "client", "multi_x_serverless_function.py"),
         )
         zip_file.write(
-            os.path.join(multi_x_serverless_path, "factories", "remote_client_factory.py"),
-            os.path.join("multi_x_serverless", "deployment", "client", "factories", "remote_client_factory.py"),
+            os.path.join(multi_x_serverless_path, "common", "__init__.py"),
+            os.path.join("multi_x_serverless", "deployment", "client", "__init__.py"),
         )
         zip_file.write(
-            os.path.join(multi_x_serverless_path, "remote_client", "aws_remote_client.py"),
-            os.path.join("multi_x_serverless", "deployment", "client", "remote_client", "aws_remote_client.py"),
+            os.path.join(multi_x_serverless_path, "common", "factories", "__init__.py"),
+            os.path.join("multi_x_serverless", "deployment", "common", "factories", "__init__.py"),
         )
         zip_file.write(
-            os.path.join(multi_x_serverless_path, "remote_client", "remote_client.py"),
-            os.path.join("multi_x_serverless", "deployment", "client", "remote_client", "remote_client.py"),
+            os.path.join(multi_x_serverless_path, "common", "factories", "remote_client_factory.py"),
+            os.path.join("multi_x_serverless", "deployment", "common", "factories", "remote_client_factory.py"),
         )
         zip_file.write(
-            os.path.join(multi_x_serverless_path, "deploy", "models", "resource.py"),
-            os.path.join("multi_x_serverless", "deployment", "client", "deploy", "models", "resource.py"),
+            os.path.join(multi_x_serverless_path, "common", "remote_client", "__init__.py"),
+            os.path.join("multi_x_serverless", "deployment", "common", "remote_client", "__init__.py"),
         )
         zip_file.write(
-            os.path.join(multi_x_serverless_path, "enums.py"),
-            os.path.join("multi_x_serverless", "deployment", "client", "enums.py"),
+            os.path.join(multi_x_serverless_path, "common", "remote_client", "aws_remote_client.py"),
+            os.path.join("multi_x_serverless", "deployment", "common", "remote_client", "aws_remote_client.py"),
+        )
+        zip_file.write(
+            os.path.join(multi_x_serverless_path, "common", "remote_client", "remote_client.py"),
+            os.path.join("multi_x_serverless", "deployment", "common", "remote_client", "remote_client.py"),
+        )
+        zip_file.write(
+            os.path.join(multi_x_serverless_path, "common", "deploy", "models", "__init__.py"),
+            os.path.join("multi_x_serverless", "deployment", "common", "deploy", "models", "__init__.py"),
+        )
+        zip_file.write(
+            os.path.join(multi_x_serverless_path, "common", "deploy", "models", "resource.py"),
+            os.path.join("multi_x_serverless", "deployment", "common", "deploy", "models", "resource.py"),
+        )
+        zip_file.write(
+            os.path.join(multi_x_serverless_path, "common", "enums.py"),
+            os.path.join("multi_x_serverless", "deployment", "common", "enums.py"),
         )
 
     def _add_py_dependencies(self, zip_file: zipfile.ZipFile, deps_dir: str) -> None:

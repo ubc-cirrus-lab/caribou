@@ -21,15 +21,14 @@ workflow = MultiXServerlessWorkflow("{{ workflow_name }}")
                 "region": "us-east-2",
             }
         ],
-        "providers": [
-            {
-                "name": "aws",
+        "providers": {
+            "aws": {
                 "config": {
                     "timeout": 60,
                     "memory": 128,
                 },
-            }
-        ],
+            },
+        },
     },
     environment_variables=[{"key": "example_key", "value": "example_value"}],
 )

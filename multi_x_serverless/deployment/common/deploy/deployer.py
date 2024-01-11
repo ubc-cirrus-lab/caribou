@@ -1,15 +1,15 @@
-from typing import Optional
+from typing import Any, Optional
 
 import botocore.exceptions
 from botocore.session import Session
 
 from multi_x_serverless.deployment.client.config import Config
-from multi_x_serverless.deployment.client.deploy.deployment_packager import DeploymentPackager
-from multi_x_serverless.deployment.client.deploy.executor import Executor
-from multi_x_serverless.deployment.client.deploy.models.deployment_plan import DeploymentPlan
-from multi_x_serverless.deployment.client.deploy.models.resource import Resource
-from multi_x_serverless.deployment.client.deploy.models.workflow import Workflow
-from multi_x_serverless.deployment.client.deploy.workflow_builder import WorkflowBuilder
+from multi_x_serverless.deployment.common.deploy.deployment_packager import DeploymentPackager
+from multi_x_serverless.deployment.common.deploy.executor import Executor
+from multi_x_serverless.deployment.common.deploy.models.deployment_plan import DeploymentPlan
+from multi_x_serverless.deployment.common.deploy.models.resource import Resource
+from multi_x_serverless.deployment.common.deploy.models.workflow import Workflow
+from multi_x_serverless.deployment.common.deploy.workflow_builder import WorkflowBuilder
 
 
 class Deployer:
@@ -27,29 +27,30 @@ class Deployer:
         self._deployment_packager = deployment_packager
         self._executor = executor
 
-    def deploy(self) -> list[Resource]:
+    def deploy(
+        self, regions: list[dict[str, str]], deployment_config: Optional[dict[str, Any]] = None
+    ) -> list[Resource]:
         try:
-            return self._deploy()
+            return self._deploy(regions, deployment_config)
         except botocore.exceptions.ClientError as e:
             raise DeploymentError(e) from e
 
-    def deploy_server_side(self, regions: list[str]) -> list[Resource]:
-        try:
-            return self._deploy_system_side(regions)
-        except botocore.exceptions.ClientError as e:
-            raise DeploymentError(e) from e
+    def _deploy(self, regions: list[dict[str, str]], deployment_config: Optional[dict[str, Any]]) -> list[Resource]:
+        workflow = None
+        if deployment_config is not None:
+            workflow = self._workflow_builder.re_build_workflow(self._config, regions, deployment_config)
 
-    def _deploy(self) -> list[Resource]:
-        # This deploys a workflow to the defined home regions
+            self._deployment_packager.re_build(self._config, workflow)
+        else:
+            # Build the workflow (DAG of the workflow)
+            workflow = self._workflow_builder.build_workflow(self._config, regions)
 
-        # Build the workflow (DAG of the workflow)
-        workflow: Workflow = self._workflow_builder.build_workflow(self._config)
+            # Upload the workflow to the solver
+            self._upload_workflow_to_solver(workflow)
+            self._upload_workflow_to_deployer_server(workflow)
 
-        # Upload the workflow to the solver
-        self._upload_workflow_to_solver(workflow)
-
-        # Build the workflow resources, e.g. deployment packages, iam roles, etc.
-        self._deployment_packager.build(self._config, workflow)
+            # Build the workflow resources, e.g. deployment packages, iam roles, etc.
+            self._deployment_packager.build(self._config, workflow)
 
         # Chain the commands needed to deploy all the built resources to the serverless platform
         deployment_plan = DeploymentPlan(workflow.get_deployment_instructions())
@@ -66,18 +67,17 @@ class Deployer:
 
         return deployed_resources
 
-    def _deploy_system_side(self, regions: list[str]) -> list[Resource]:
-        # TODO (#9): This is the same as above, but with a list of regions to deploy to
-        # This is meant to be used by the deployment manager. Additionally, the source code does
-        # need to be built as we can reuse the same deployment package for all regions.
-        print(regions)
-        raise NotImplementedError()
-
     def _upload_workflow_to_solver(self, workflow: Workflow) -> None:
-        workflow_config = workflow.get_description()
+        workflow_config = workflow.get_instance_description()
 
         print(workflow_config.to_json())
         # TODO (#8): Upload workflow to solver
+
+    def _upload_workflow_to_deployer_server(self, workflow: Workflow) -> None:
+        workflow_config = workflow.get_instance_description()
+
+        print(workflow_config.to_json())
+        # TODO (#9): Upload workflow to deployer server
 
 
 def create_default_deployer(config: Config, session: Session) -> Deployer:

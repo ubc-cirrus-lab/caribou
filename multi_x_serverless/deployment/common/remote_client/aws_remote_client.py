@@ -5,8 +5,8 @@ from typing import Any
 import botocore.exceptions
 from boto3.session import Session
 
-from multi_x_serverless.deployment.client.deploy.models.resource import Resource
-from multi_x_serverless.deployment.client.remote_client.remote_client import RemoteClient
+from multi_x_serverless.deployment.common.deploy.models.resource import Resource
+from multi_x_serverless.deployment.common.remote_client.remote_client import RemoteClient
 
 
 class AWSRemoteClient(RemoteClient):

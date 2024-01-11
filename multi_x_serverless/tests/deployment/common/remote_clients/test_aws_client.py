@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch
 
-from multi_x_serverless.deployment.client.remote_client.aws_remote_client import AWSRemoteClient
+from multi_x_serverless.deployment.common.remote_client.aws_remote_client import AWSRemoteClient
 
 
 class TestAWSRemoteClient(unittest.TestCase):

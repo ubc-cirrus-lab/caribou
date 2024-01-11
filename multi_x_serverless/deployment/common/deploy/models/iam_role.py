@@ -1,6 +1,6 @@
 from typing import Sequence
 
-from multi_x_serverless.deployment.client.deploy.models.resource import Resource
+from multi_x_serverless.deployment.common.deploy.models.resource import Resource
 
 
 class IAMRole(Resource):

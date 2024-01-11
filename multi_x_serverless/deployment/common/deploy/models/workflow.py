@@ -1,11 +1,11 @@
 from typing import Sequence
 
 from multi_x_serverless.deployment.client.config import Config
-from multi_x_serverless.deployment.client.deploy.models.deployment_package import DeploymentPackage
-from multi_x_serverless.deployment.client.deploy.models.function import Function
-from multi_x_serverless.deployment.client.deploy.models.function_instance import FunctionInstance
-from multi_x_serverless.deployment.client.deploy.models.instructions import Instruction
-from multi_x_serverless.deployment.client.deploy.models.resource import Resource
+from multi_x_serverless.deployment.common.deploy.models.deployment_package import DeploymentPackage
+from multi_x_serverless.deployment.common.deploy.models.function import Function
+from multi_x_serverless.deployment.common.deploy.models.function_instance import FunctionInstance
+from multi_x_serverless.deployment.common.deploy.models.instructions import Instruction
+from multi_x_serverless.deployment.common.deploy.models.resource import Resource
 from multi_x_serverless.routing.current.workflow_config import WorkflowConfig
 
 
@@ -58,7 +58,7 @@ class Workflow(Resource):
                 packages.append(resource.deployment_package)
         return packages
 
-    def get_description(self) -> WorkflowConfig:
+    def get_instance_description(self) -> WorkflowConfig:
         if self._config is None:
             raise RuntimeError("Error in workflow config creation, given config is None, this should not happen")
         workflow_description = {

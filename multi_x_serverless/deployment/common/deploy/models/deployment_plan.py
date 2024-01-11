@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 
-from multi_x_serverless.deployment.client.deploy.models.instructions import Instruction
+from multi_x_serverless.deployment.common.deploy.models.instructions import Instruction
 
 
 @dataclass

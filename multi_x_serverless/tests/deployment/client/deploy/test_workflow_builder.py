@@ -17,11 +17,11 @@ class TestWorkflowBuilder(unittest.TestCase):
         self.config.home_regions = []
         self.config.project_dir = "/path/to/project"
         self.config.iam_policy_file = None
-        self.config.regions_and_providers = {"providers": []}
+        self.config.regions_and_providers = {"providers": {}}
 
     def test_build_workflow_no_entry_point(self):
         with self.assertRaises(RuntimeError):
-            self.builder.build_workflow(self.config)
+            self.builder.build_workflow(self.config, [])
 
     def test_build_workflow_multiple_entry_points(self):
         function1 = Mock(spec=MultiXServerlessFunction)
@@ -34,11 +34,11 @@ class TestWorkflowBuilder(unittest.TestCase):
         function2.entry_point = True
         function2.name = "function2"
         function2.handler = "function1"
-        function2.regions_and_providers = {"providers": []}
+        function2.regions_and_providers = {"providers": {}}
         function2.environment_variables = {}
         self.config.workflow_app.functions = {"function1": function1, "function2": function2}
         with self.assertRaisesRegex(RuntimeError, "Multiple entry points defined"):
-            self.builder.build_workflow(self.config)
+            self.builder.build_workflow(self.config, [])
 
     def test_build_workflow_merge_case_self_cycle(self):
         # Create mock functions
@@ -54,7 +54,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         function2.entry_point = False
         function2.name = "function2"
         function2.handler = "function2"
-        function2.regions_and_providers = {"providers": []}
+        function2.regions_and_providers = {"providers": {}}
         function2.environment_variables = []
         function2.is_waiting_for_predecessors = Mock(return_value=True)  # This is a merge function
 
@@ -69,7 +69,7 @@ class TestWorkflowBuilder(unittest.TestCase):
             RuntimeError,
             "Cycle detected: function2 is being visited again",
         ):
-            self.builder.build_workflow(self.config)
+            self.builder.build_workflow(self.config, [])
 
     def test_build_workflow_merge_case_multiple_incoming(self):
         # Create mock functions
@@ -85,7 +85,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         function2.entry_point = False
         function2.name = "function2"
         function2.handler = "function2"
-        function2.regions_and_providers = {"providers": []}
+        function2.regions_and_providers = {"providers": {}}
         function2.environment_variables = []
         function2.is_waiting_for_predecessors = Mock(return_value=True)  # This is a merge function
 
@@ -99,7 +99,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         self.config.workflow_app.functions = {"function1": function1, "function2": function2}
 
         # Call build_workflow
-        workflow = self.builder.build_workflow(self.config)
+        workflow = self.builder.build_workflow(self.config, [])
 
         self.assertEqual(len(workflow._edges), 3)
 
@@ -160,7 +160,7 @@ class TestWorkflowBuilder(unittest.TestCase):
             RuntimeError,
             "Cycle detected: function1 is being visited again",
         ):
-            self.builder.build_workflow(self.config)
+            self.builder.build_workflow(self.config, [])
 
     def test_build_workflow_merge_working(self):
         # Create mock functions
@@ -176,7 +176,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         function2.entry_point = False
         function2.name = "function2"
         function2.handler = "function2"
-        function2.regions_and_providers = {"providers": []}
+        function2.regions_and_providers = {"providers": {}}
         function2.environment_variables = []
         function2.is_waiting_for_predecessors = Mock(return_value=True)  # This is a merge function
 
@@ -187,7 +187,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         self.config.workflow_app.functions = {"function1": function1, "function2": function2}
 
         # Call build_workflow
-        workflow = self.builder.build_workflow(self.config)
+        workflow = self.builder.build_workflow(self.config, [])
 
         self.assertEqual(len(workflow._edges), 1)
 
@@ -205,7 +205,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         function2.entry_point = False
         function2.name = "function2"
         function2.handler = "function2"
-        function2.regions_and_providers = {"providers": []}
+        function2.regions_and_providers = {"providers": {}}
         function2.environment_variables = []
         function2.is_waiting_for_predecessors = Mock(return_value=False)  # This is a merge function
 
@@ -222,7 +222,7 @@ class TestWorkflowBuilder(unittest.TestCase):
             RuntimeError,
             "Cycle detected: function1 is being visited again",
         ):
-            self.builder.build_workflow(self.config)
+            self.builder.build_workflow(self.config, [])
 
     def test_build_workflow_merge_cycle(self):
         # Create mock functions
@@ -238,7 +238,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         function2.entry_point = False
         function2.name = "function2"
         function2.handler = "function2"
-        function2.regions_and_providers = {"providers": []}
+        function2.regions_and_providers = {"providers": {}}
         function2.environment_variables = []
         function2.is_waiting_for_predecessors = Mock(return_value=True)
 
@@ -278,7 +278,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         function2.entry_point = False
         function2.name = "function2"
         function2.handler = "function1"
-        function2.regions_and_providers = {"providers": []}
+        function2.regions_and_providers = {"providers": {}}
         function2.environment_variables = [{"key": "ENV_3", "value": "function2_env_3"}]
 
         # function 3 (overlap with global environment variables)
@@ -286,7 +286,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         function3.entry_point = False
         function3.name = "function2"
         function3.handler = "function1"
-        function3.regions_and_providers = {"providers": []}
+        function3.regions_and_providers = {"providers": {}}
         function3.environment_variables = [{"key": "ENV_1", "value": "function3_env_1"}]
 
         self.builder = WorkflowBuilder()
@@ -301,10 +301,10 @@ class TestWorkflowBuilder(unittest.TestCase):
         self.config.home_regions = []
         self.config.project_dir = "/path/to/project"
         self.config.iam_policy_file = None
-        self.config.regions_and_providers = {"providers": []}
+        self.config.regions_and_providers = {"providers": {}}
         self.config.workflow_app.get_successors.return_value = []
 
-        workflow = self.builder.build_workflow(self.config)
+        workflow = self.builder.build_workflow(self.config, [])
 
         self.assertEqual(len(workflow._resources), 3)
         built_func1 = workflow._resources[0]
