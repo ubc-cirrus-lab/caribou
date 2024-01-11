@@ -198,7 +198,7 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
         with patch(
             "multi_x_serverless.deployment.client.multi_x_serverless_workflow.RemoteClientFactory",
             return_value=mock_remote_client_factory,
-        ):
+        ) as mock_factory_class:
 
             @workflow.serverless_function(name="test_func")
             def test_func(payload: dict[str, Any]) -> dict[str, Any]:
@@ -220,10 +220,10 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
                 '{"payload": 2, "routing_decision": {"run_id": "123", "routing_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "test_func_1::": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_func", "instances": [{"instance_name": "test_func", "succeeding_instances": ["test_func_1::"]}]}}'
             )
 
-            mock_remote_client_factory.get_remote_client.assert_called_once_with("aws", "region")
+            mock_factory_class.get_remote_client.assert_called_once_with("aws", "region")
 
             # Check if invoke_serverless_function was called with the correct arguments
-            mock_remote_client.invoke_function.assert_called_once_with(
+            mock_factory_class.get_remote_client("aws", "region").invoke_function.assert_called_once_with(
                 message='{"payload": 2, "routing_decision": {"run_id": "123", "routing_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "test_func_1::": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_func_1::", "instances": [{"instance_name": "test_func", "succeeding_instances": ["test_func_1::"]}]}}',
                 identifier="test_identifier",
                 workflow_instance_id="123",
@@ -246,7 +246,7 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
         with patch(
             "multi_x_serverless.deployment.client.multi_x_serverless_workflow.RemoteClientFactory",
             return_value=mock_remote_client_factory,
-        ):
+        ) as mock_factory_class:
 
             @workflow.serverless_function(name="test_func")
             def test_func(payload: dict[str, Any]) -> dict[str, Any]:
@@ -280,10 +280,10 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
                 '{"payload": 2, "routing_decision": {"run_id": "123", "routing_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "merge_func:merge:": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_func", "instances": [{"instance_name": "test_func", "succeeding_instances": ["merge_func:merge:"]}, {"instance_name": "merge_func:merge:", "preceding_instances": ["test_func"]}]}}'
             )
 
-            mock_remote_client_factory.get_remote_client.assert_called_once_with("aws", "region")
+            mock_factory_class.get_remote_client.assert_called_once_with("aws", "region")
 
             # Check if invoke_serverless_function was called with the correct arguments
-            mock_remote_client.invoke_function.assert_called_once_with(
+            mock_factory_class.get_remote_client("aws", "region").invoke_function.assert_called_once_with(
                 message='{"payload": 2, "routing_decision": {"run_id": "123", "routing_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "merge_func:merge:": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "merge_func:merge:", "instances": [{"instance_name": "test_func", "succeeding_instances": ["merge_func:merge:"]}, {"instance_name": "merge_func:merge:", "preceding_instances": ["test_func"]}]}}',
                 identifier="test_identifier",
                 workflow_instance_id="123",
@@ -306,7 +306,7 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
         with patch(
             "multi_x_serverless.deployment.client.multi_x_serverless_workflow.RemoteClientFactory",
             return_value=mock_remote_client_factory,
-        ):
+        ) as mock_factory_class:
 
             @workflow.serverless_function(name="test_func")
             def test_func(payload: dict[str, Any]) -> dict[str, Any]:
@@ -355,10 +355,10 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
                 '{"payload": 2, "routing_decision": {"run_id": "123", "routing_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "test_func2": {"provider_region": "aws:region", "identifier": "test_identifier"}, "merge_func:merge:": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_func", "instances": [{"instance_name": "test_func", "succeeding_instances": ["merge_func:merge:"]}, {"instance_name": "test_func2", "succeeding_instances": ["merge_func:merge:"]}, {"instance_name": "merge_func:merge:", "preceding_instances": ["test_func", "test_func2"]}]}}'
             )
 
-            mock_remote_client_factory.get_remote_client.assert_called_once_with("aws", "region")
+            mock_factory_class.get_remote_client.assert_called_once_with("aws", "region")
 
             # Check if invoke_serverless_function was called with the correct arguments
-            mock_remote_client.invoke_function.assert_called_once_with(
+            mock_factory_class.get_remote_client("aws", "region").invoke_function.assert_called_once_with(
                 message='{"payload": 2, "routing_decision": {"run_id": "123", "routing_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "test_func2": {"provider_region": "aws:region", "identifier": "test_identifier"}, "merge_func:merge:": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "merge_func:merge:", "instances": [{"instance_name": "test_func", "succeeding_instances": ["merge_func:merge:"]}, {"instance_name": "test_func2", "succeeding_instances": ["merge_func:merge:"]}, {"instance_name": "merge_func:merge:", "preceding_instances": ["test_func", "test_func2"]}]}}',
                 identifier="test_identifier",
                 workflow_instance_id="123",
@@ -381,7 +381,7 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
         with patch(
             "multi_x_serverless.deployment.client.multi_x_serverless_workflow.RemoteClientFactory",
             return_value=mock_remote_client_factory,
-        ):
+        ) as mock_factory_class:
 
             @workflow.serverless_function(name="test_func")
             def test_func(payload: str) -> dict[str, Any]:
@@ -403,10 +403,10 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
                 r'{"payload": "{\"key\": \"value\"}", "routing_decision": {"run_id": "123", "routing_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "test_func_1::": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_func", "instances": [{"instance_name": "test_func", "succeeding_instances": ["test_func_1::"]}]}}'
             )
 
-            mock_remote_client_factory.get_remote_client.assert_called_once_with("aws", "region")
+            mock_factory_class.get_remote_client.assert_called_once_with("aws", "region")
 
             # Check if invoke_serverless_function was called with the correct arguments
-            mock_remote_client.invoke_function.assert_called_once_with(
+            mock_factory_class.get_remote_client("aws", "region").invoke_function.assert_called_once_with(
                 message=r'{"payload": "{\"key\": \"value\"}", "routing_decision": {"run_id": "123", "routing_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "test_func_1::": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_func_1::", "instances": [{"instance_name": "test_func", "succeeding_instances": ["test_func_1::"]}]}}',
                 identifier="test_identifier",
                 workflow_instance_id="123",
