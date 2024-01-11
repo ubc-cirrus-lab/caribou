@@ -84,6 +84,7 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
                         }
                     ],
                 },
+                [],
             ),
         )
 
@@ -93,6 +94,67 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
 
         # Check if the routing_decision attribute was set correctly
         self.assertEqual(test_func.routing_decision["decision"], 1)
+
+    def test_serverless_function_with_environment_variables(self):
+        workflow = MultiXServerlessWorkflow(
+            name="test-workflow"
+        )  # Assuming Workflow is the class containing serverless_function
+        workflow.register_function = Mock()
+        workflow.get_routing_decision_from_platform = Mock(return_value={"decision": 1})
+
+        @workflow.serverless_function(
+            name="test_func",
+            entry_point=True,
+            regions_and_providers={
+                "only_regions": [["aws", "us-east-1"]],
+                "forbidden_regions": [["aws", "us-east-2"]],
+                "providers": [
+                    {
+                        "name": "aws",
+                        "config": {
+                            "timeout": 60,
+                            "memory": 128,
+                        },
+                    }
+                ],
+            },
+            environment_variables=[
+                {"key": "example_key", "value": "example_value"},
+                {"key": "example_key_2", "value": "example_value_2"},
+                {"key": "example_key_3", "value": "example_value_3"},
+            ],
+        )
+        def test_func(payload):
+            return payload * 2
+
+        args, _ = workflow.register_function.call_args
+
+        # Test with multiple environment variables
+        self.assertEqual(
+            args[1:],
+            (
+                "test_func",
+                True,
+                {
+                    "only_regions": [["aws", "us-east-1"]],
+                    "forbidden_regions": [["aws", "us-east-2"]],
+                    "providers": [
+                        {
+                            "name": "aws",
+                            "config": {
+                                "timeout": 60,
+                                "memory": 128,
+                            },
+                        }
+                    ],
+                },
+                [
+                    {"key": "example_key", "value": "example_value"},
+                    {"key": "example_key_2", "value": "example_value_2"},
+                    {"key": "example_key_3", "value": "example_value_3"},
+                ],
+            ),
+        )
 
     def test_invoke_serverless_function_simple(self):
         workflow = MultiXServerlessWorkflow(name="test-workflow")
@@ -106,7 +168,7 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
         args, _ = workflow.register_function.call_args
         registered_func = args[0]
         self.assertEqual(registered_func.__name__, "test_func")
-        self.assertEqual(args[1:], ("test_func", False, {}))
+        self.assertEqual(args[1:], ("test_func", False, {}, []))
 
         self.assertEqual(test_func.routing_decision, {})
 
@@ -150,7 +212,7 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
         registered_func = args[0]
         registered_func.name = "test_func"
         self.assertEqual(registered_func.__name__, "test_func")
-        self.assertEqual(args[1:], ("test_func", False, {}))
+        self.assertEqual(args[1:], ("test_func", False, {}, []))
         workflow.functions["test_func"] = registered_func
 
         # Call test_func with a payload
@@ -194,7 +256,7 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
         registered_func = args[0]
         registered_func.name = "test_func"
         self.assertEqual(registered_func.__name__, "test_func")
-        self.assertEqual(args[1:], ("test_func", False, {}))
+        self.assertEqual(args[1:], ("test_func", False, {}, []))
         workflow.functions["test_func"] = registered_func
 
         @workflow.serverless_function(name="merge_func")
@@ -206,7 +268,7 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
         registered_func = args[0]
         registered_func.name = "merge_func"
         self.assertEqual(registered_func.__name__, "merge_func")
-        self.assertEqual(args[1:], ("merge_func", False, {}))
+        self.assertEqual(args[1:], ("merge_func", False, {}, []))
         workflow.functions["merge_func"] = registered_func
 
         # Call test_func with a payload
@@ -250,7 +312,7 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
         registered_func = args[0]
         registered_func.name = "test_func"
         self.assertEqual(registered_func.__name__, "test_func")
-        self.assertEqual(args[1:], ("test_func", False, {}))
+        self.assertEqual(args[1:], ("test_func", False, {}, []))
         workflow.functions["test_func"] = registered_func
 
         @workflow.serverless_function(name="test_func2")
@@ -265,7 +327,7 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
         registered_func = args[0]
         registered_func.name = "test_func2"
         self.assertEqual(registered_func.__name__, "test_func2")
-        self.assertEqual(args[1:], ("test_func2", False, {}))
+        self.assertEqual(args[1:], ("test_func2", False, {}, []))
         workflow.functions["test_func2"] = registered_func
 
         @workflow.serverless_function(name="merge_func")
@@ -277,7 +339,7 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
         registered_func = args[0]
         registered_func.name = "merge_func"
         self.assertEqual(registered_func.__name__, "merge_func")
-        self.assertEqual(args[1:], ("merge_func", False, {}))
+        self.assertEqual(args[1:], ("merge_func", False, {}, []))
         workflow.functions["merge_func"] = registered_func
 
         # Call test_func with a payload
@@ -321,7 +383,7 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
         registered_func = args[0]
         registered_func.name = "test_func"
         self.assertEqual(registered_func.__name__, "test_func")
-        self.assertEqual(args[1:], ("test_func", False, {}))
+        self.assertEqual(args[1:], ("test_func", False, {}, []))
         workflow.functions["test_func"] = registered_func
 
         # Call test_func with a payload
@@ -352,8 +414,11 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
         entry_point = True
         regions_and_providers = {}
         providers = []
+        environment_variables = []
 
-        function_obj_1 = MultiXServerlessFunction(test_function, name, entry_point, regions_and_providers)
+        function_obj_1 = MultiXServerlessFunction(
+            test_function, name, entry_point, regions_and_providers, environment_variables
+        )
 
         workflow = MultiXServerlessWorkflow(name="test-workflow")
         workflow.functions = [function_obj_1]
@@ -363,7 +428,9 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
         def function(x):
             return invoke_serverless_function("test_function", x)
 
-        function_obj_2 = MultiXServerlessFunction(function, name, entry_point, regions_and_providers)
+        function_obj_2 = MultiXServerlessFunction(
+            function, name, entry_point, regions_and_providers, environment_variables
+        )
 
         workflow.functions = {"test_function": function_obj_1, "test_function_2": function_obj_2}
 
