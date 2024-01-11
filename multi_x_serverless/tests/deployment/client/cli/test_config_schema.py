@@ -14,8 +14,6 @@ def test_config_conforms_to_schema():
         "deployment/client/cli/template/.multi-x-serverless/config.yml",
     )
 
-    print(config_file)
-
     with open(config_file, "r") as f:
         config_file = f.read()
 

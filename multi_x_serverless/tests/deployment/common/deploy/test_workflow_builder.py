@@ -3,7 +3,7 @@ import unittest
 from unittest.mock import Mock, patch
 from multi_x_serverless.deployment.client.config import Config
 from multi_x_serverless.deployment.client.multi_x_serverless_workflow import MultiXServerlessFunction
-from multi_x_serverless.deployment.client.deploy.workflow_builder import WorkflowBuilder
+from multi_x_serverless.deployment.common.deploy.workflow_builder import WorkflowBuilder
 
 
 class TestWorkflowBuilder(unittest.TestCase):
@@ -247,7 +247,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         self.config.workflow_app.functions = {"function1": function1, "function2": function2}
 
         # Call build_workflow
-        self.assertRaises(RuntimeError, self.builder.build_workflow, self.config)
+        self.assertRaises(RuntimeError, self.builder.build_workflow, self.config, [])
 
     @patch("os.path.join")
     def test_get_function_role_with_policy_file(self, mock_join):

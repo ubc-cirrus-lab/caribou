@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch, MagicMock
 import tempfile
-from multi_x_serverless.deployment.client.deploy.deployment_packager import (
+from multi_x_serverless.deployment.common.deploy.deployment_packager import (
     DeploymentPackager,
     pip_import_string,
 )
@@ -64,7 +64,7 @@ class TestDeploymentPackager(unittest.TestCase):
 
         self.assertEqual(mock_zipfile.write.call_count, 2)
 
-    @patch("multi_x_serverless.deployment.client.deploy.deployment_packager.pip_execute")
+    @patch("multi_x_serverless.deployment.common.deploy.deployment_packager.pip_execute")
     def test__build_dependencies(self, mock_pip_execute):
         config = MagicMock()
         packager = DeploymentPackager(config)
@@ -104,7 +104,7 @@ class TestDeploymentPackager(unittest.TestCase):
         packager = DeploymentPackager(config)
         packager._add_mutli_x_serverless_dependency(mock_zipfile)
 
-        self.assertEqual(mock_zipfile.write.call_count, 8)
+        self.assertEqual(mock_zipfile.write.call_count, 12)
 
 
 if __name__ == "__main__":
