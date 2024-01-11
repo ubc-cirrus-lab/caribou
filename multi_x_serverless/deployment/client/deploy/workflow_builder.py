@@ -38,11 +38,14 @@ class WorkflowBuilder:
             else:
                 providers = config.regions_and_providers["providers"]
             self._verify_providers(providers)
+
+            merged_env_vars = self.merge_environment_variables(
+                function.environment_variables, config.environment_variables
+            )
             resources.append(
                 Function(
                     name=function_deployment_name,
-                    # TODO (#22): Add function specific environment variables
-                    environment_variables=config.environment_variables,
+                    environment_variables=merged_env_vars,
                     runtime=config.python_version,
                     handler=function.handler,
                     role=function_role,
@@ -158,3 +161,16 @@ class WorkflowBuilder:
             filename = os.path.join(config.project_dir, ".multi-x-serverless", "iam_policy.yml")
 
         return IAMRole(role_name=role_name, policy=filename)
+
+    def merge_environment_variables(
+        self, function_env_vars: Optional[list[dict[str, str]]], config_env_vars: dict[str, str]
+    ) -> dict[str, str]:
+        if not function_env_vars:
+            return config_env_vars
+
+        merged_env_vars: dict[str, str] = dict(config_env_vars)
+        # overwrite config env vars with function env vars if duplicate
+        for env_var in function_env_vars:
+            merged_env_vars[env_var["key"]] = env_var["value"]
+
+        return merged_env_vars

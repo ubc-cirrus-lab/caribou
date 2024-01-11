@@ -21,7 +21,7 @@ class TestConfig(unittest.TestCase):
         self.assertTrue(self.config.python_version.startswith("python"))
 
     def test_environment_variables(self):
-        self.config.project_config["environment_variables"] = [{"name": "ENV", "value": "test"}]
+        self.config.project_config["environment_variables"] = [{"key": "ENV", "value": "test"}]
         self.assertEqual(self.config.environment_variables, {"ENV": "test"})
 
     def test_home_regions(self):

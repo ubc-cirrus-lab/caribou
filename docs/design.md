@@ -137,6 +137,12 @@ workflow = MultiXServerlessWorkflow("workflow_name")
             }
         ],
     },
+    environment_variables=[
+        {
+            "key": "example_key",
+            "value": "example_value"
+        }
+    ],
 )
 ```
 
@@ -161,6 +167,7 @@ The dictionary has two keys:
   Each provider is a dictionary with two keys:
     - `name`: The name of the provider.
     - `config`: A dictionary that contains the configuration for the specific provider.
+- `environment_variables`: This parameter represents a list of dictionaries, each designed for setting environment variables specifically for a function. Users must adhere to a structured format within each dictionary. This format requires two entries: "key" and "value". The "key" entry should contain the name of the environment variable, serving as an identifier. The "value" entry holds the corresponding value assigned to that variable.
 
 - Within a function, a user can register a call to another function with the following annotation:
 
