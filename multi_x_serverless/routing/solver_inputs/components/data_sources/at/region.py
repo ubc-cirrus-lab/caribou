@@ -28,8 +28,6 @@ class RegionSource(Source):
                 "memory_kwh_mb": loaded_data.get('memory_kwh_mb', {}).get(region, -1),
                 "free_tier": loaded_data.get('free_tier', {}).get(region, -1),
             }
-
-        return True
     
-    def get_value(self, data_name: str, region: tuple(str, str)) -> float:
-        return self._data[region][data_name]
+    def get_value(self, data_name: str, region_index: int) -> float:
+        return self._data[region_index][data_name]

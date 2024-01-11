@@ -22,7 +22,6 @@ class Input(ABC):
         raise NotImplementedError
     
     def get_execution_value(self, instance_index: int, region_index: int) -> float:
-        return 0.0
         if (self._execution_matrix is not None):
             return self._execution_matrix[region_index][instance_index]
         else:

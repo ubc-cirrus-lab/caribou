@@ -9,7 +9,7 @@ class Source(ABC):
         pass
     
     @abstractmethod
-    def setup(self, *args, **kwargs) -> bool:
+    def setup(self, *args, **kwargs) -> None:
         '''
         This function is responsible for loading the data from multiple data_loaders.
         '''

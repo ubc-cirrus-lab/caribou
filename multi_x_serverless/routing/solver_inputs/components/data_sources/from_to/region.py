@@ -10,7 +10,7 @@ class RegionToRegionSource(Source):
     def __init__(self):
         super().__init__()
     
-    def setup(self, loaded_data: dict, regions: list[(str, str)], regions_indexer: Indexer) -> bool:
+    def setup(self, loaded_data: dict, regions: list[(str, str)], regions_indexer: Indexer) -> None:
         self._data = {}
 
         # Known information
@@ -29,8 +29,6 @@ class RegionToRegionSource(Source):
                     # Datacenter information
                     "data_transfer_price": loaded_data.get('data_transfer_price', {}).get((from_region, to_region), -1),
                 }
-
-        return True
     
-    def get_value(self, data_name: str, from_region: tuple(str, str), to_region: tuple(str, str)) -> float:
-        return self._data[from_region][to_region][data_name]
+    def get_value(self, data_name: str, from_region_index: int, to_region_index: int) -> float:
+        return self._data[from_region_index][to_region_index][data_name]

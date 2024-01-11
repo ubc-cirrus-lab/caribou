@@ -20,7 +20,5 @@ class InstanceSource(Source):
                 "execution_time": loaded_data.get('execution_time', {}).get(instance, -1),
             }
 
-        return True
-    
-    def get_value(self, data_name: str, instance: str) -> float:
-        return self._data[instance][data_name]
+    def get_value(self, data_name: str, instance_index: int) -> float:
+        return self._data[instance_index][data_name]
