@@ -18,21 +18,37 @@ class CostInput(Input):
         # Setup Execution matrix
         self._execution_matrix = np.zeros((len(regions_indicies), len(instances_indicies)))
         for region_index in regions_indicies:
-            compute_cost_information = data_source_manager.get_region_data("compute_cost", region_index) # This is a list
+            provider_name: str = data_source_manager.get_region_data("provider_name", region_index) # This is a string
+            compute_cost_information: list[(float, int)] = data_source_manager.get_region_data("compute_cost", region_index) # This is a list
             # free_tier = data_source_manager.get_region_data("free_tier", region_index) # Free tier not yet implemented
-            for instance_index in instances_indicies:
-                execution_time = data_source_manager.d("execution_time", instance_index) # This is a value in seconds
 
-                # compute_cost_information: dict(str, list[(float, int)]), provider_name: str, execution_time: float
-                self._execution_matrix[region_index][instance_index] = self._cost_calculator.calculate_execution_cost(compute_cost_information, execution_time)
+            for instance_index in instances_indicies:
+                execution_time: float = data_source_manager.get_instance_data("execution_time", instance_index) # This is a value in seconds
+
+                # Compute information aquisition
+                provider_configuration: dict = data_source_manager.get_instance_data("provider_configurations", instance_index)
+                compute_configuration = provider_configuration.get(provider_name, None)
+
+                # Calculate final value
+                self._execution_matrix[region_index][instance_index] = self._cost_calculator.calculate_execution_cost(compute_cost_information, compute_configuration, execution_time)
         
         # Setup Transmission matrix
         # Here it is more complex as we need to first consider region to region transmission
         # Then relate this to instance to instance transmission information
         
+        # Lets first setup the region_to_region information matrix first
+        # Here cost is simply ingress + egress (Where ingress is normally 0 * seems like google is different)
+        self._region_to_region_matrix = np.zeros((len(regions_indicies), len(regions_indicies)))
+        for from_region_index in regions_indicies:
+            for to_region_index in regions_indicies:
+                ingress_cost = data_source_manager.get_region_to_region_data("data_transfer_ingress_cost", from_region_index, to_region_index)
+                egress_cost = data_source_manager.get_region_to_region_data("data_transfer_egress_cost", from_region_index, to_region_index)
 
-        self._instances_indicies = instances_indicies
-        self._regions_indicies = regions_indicies
-    
+                self._region_to_region_matrix[from_region_index][to_region_index] = self._cost_calculator.calculate_transmission_cost_per_gb(ingress_cost, egress_cost)
+
     def get_transmission_value(self, from_instance_index: int, to_instance_index: int, from_region_index: int, to_region_index: int) -> float:
-        return 0.0
+        # We simply use this to get the data transfer size and calculate total cost
+        transmission_size = self._data_source_manager.get_instance_to_instance_data("data_transfer_size", from_instance_index, to_instance_index)
+        transmission_cost_per_gb = self._region_to_region_matrix[from_region_index][to_region_index]
+
+        return self._cost_calculator.calculate_transmission_cost(transmission_cost_per_gb, transmission_size)

@@ -41,7 +41,7 @@ class InstanceSource(Source):
 
                 # Configure memory and vcpu configuration and or translation
                 if provider_name == "aws":
-                    # Vcpu for aws lambda https://docs.aws.amazon.com/lambda/latest/dg/configuration-function-common.html
+                    # Vcpu ratio (assuming linear, intercept at 0 scaling) for aws lambda https://docs.aws.amazon.com/lambda/latest/dg/configuration-function-common.html
                     vcpu = memory / 1769
 
                 instance_provider_information[provider_name] = {
@@ -53,5 +53,5 @@ class InstanceSource(Source):
 
         return provider_configurations
 
-    def get_value(self, data_name: str, instance_index: int) -> float:
+    def get_value(self, data_name: str, instance_index: int):  # Result type might not necessarily be float
         return self._data[instance_index][data_name]

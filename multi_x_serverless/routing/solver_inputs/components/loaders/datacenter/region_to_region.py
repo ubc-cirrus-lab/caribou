@@ -13,7 +13,8 @@ class DataCenterRegionToRegionLoader(Loader):
 
         # template of output data
         self._data = {
-            "data_transfer_price": {}, # "PLACEHOLDER: loaded dictionary (((from_region_provider, from_region_name), (to_region_provider, to_region_name)): cost in USD)",
+            "data_transfer_ingress_cost": {}, # "PLACEHOLDER: loaded dictionary (((from_region_provider, from_region_name), (to_region_provider, to_region_name)): cost in USD)",
+            "data_transfer_egress_cost": {}, # "PLACEHOLDER: loaded dictionary (((from_region_provider, from_region_name), (to_region_provider, to_region_name)): cost in USD)",
         }
 
         return False # Not implemented

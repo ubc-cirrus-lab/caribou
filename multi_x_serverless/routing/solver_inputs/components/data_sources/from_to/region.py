@@ -27,8 +27,9 @@ class RegionToRegionSource(Source):
                     "data_transfer_co2e": loaded_data.get('data_transfer_co2e', {}).get((from_region, to_region), -1),
 
                     # Datacenter information
-                    "data_transfer_price": loaded_data.get('data_transfer_price', {}).get((from_region, to_region), -1),
+                    "data_transfer_ingress_cost": loaded_data.get('data_transfer_ingress_cost', {}).get((from_region, to_region), -1),
+                    "data_transfer_egress_cost": loaded_data.get('data_transfer_egress_cost', {}).get((from_region, to_region), -1),
                 }
     
-    def get_value(self, data_name: str, from_region_index: int, to_region_index: int) -> float:
+    def get_value(self, data_name: str, from_region_index: int, to_region_index: int):  # Result type might not necessarily be float
         return self._data[from_region_index][to_region_index][data_name]

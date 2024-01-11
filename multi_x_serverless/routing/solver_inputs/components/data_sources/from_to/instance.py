@@ -27,5 +27,5 @@ class InstanceToInstanceSource(Source):
                     "transmission_time": loaded_data.get('transmission_time', {}).get((from_instance, to_instance), -1),
                 }
 
-    def get_value(self, data_name: str, from_instance_index: int, to_instance_index: int) -> float:
+    def get_value(self, data_name: str, from_instance_index: int, to_instance_index: int):  # Result type might not necessarily be float
         return self._data[from_instance_index][to_instance_index][data_name]

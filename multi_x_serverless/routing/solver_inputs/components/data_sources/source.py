@@ -17,7 +17,7 @@ class Source(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def get_value(self, *args, **kwargs) -> float:
+    def get_value(self, *args, **kwargs): # Doesnt have to be float
         '''
         This function is responsible for retrieving a single value from a source.
         '''
