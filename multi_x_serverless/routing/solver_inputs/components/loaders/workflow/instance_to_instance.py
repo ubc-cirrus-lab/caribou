@@ -14,7 +14,6 @@ class WorkflowInstanceFromToLoader(Loader):
         # template of output data
         self._data = {
             "data_transfer_size": {}, # "PLACEHOLDER: loaded dictionary ((from_instance_name, to_instance_name): data transfer size in GB)",
-            "transmission_time": {}, # "PLACEHOLDER: loaded dictionary ((from_instance_name, to_instance_name): transmission time in seconds)"
         }
 
         return False # Not implemented

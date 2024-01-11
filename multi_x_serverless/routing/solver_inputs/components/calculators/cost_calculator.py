@@ -9,7 +9,7 @@ class CostCalculator(Calculator):
     def calculate_execution_cost(self, compute_cost_information: list[(float, int)], compute_configuration: (float, float), execution_time: float) -> float:
         # TODO (#32): Implement this function
         memory, vcpu = compute_configuration # Memory in MB
-
+        
         return 0.0
     
     def calculate_transmission_cost(self, ingress_egress_cost: float, data_transfer_size: float) -> float:

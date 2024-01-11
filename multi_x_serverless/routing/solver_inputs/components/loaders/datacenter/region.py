@@ -13,7 +13,7 @@ class DataCenterRegionLoader(Loader):
 
         # template of output data
         self._data = {
-            "compute_cost": {}, # "PLACEHOLDER: loaded dictionary ((region_provider, region_name): *****Compute cost list(this need to be treated differently as providers scale cost base on calls))", list[(float, int)]
+            "compute_costs": {}, # "PLACEHOLDER: loaded dictionary ((region_provider, region_name): *****Compute cost list(this need to be treated differently as providers scale cost base on calls))", list[(float, int)]
             "pue": {}, # "PLACEHOLDER: loaded dictionary ((region_provider, region_name): PUE)",
             "cfe": {}, # "PLACEHOLDER: loaded dictionary ((region_provider, region_name): CFE)",
             "compute_kwh": {}, # "PLACEHOLDER: loaded dictionary ((region_provider, region_name): compute kwh)",

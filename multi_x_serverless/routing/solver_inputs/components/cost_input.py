@@ -13,13 +13,14 @@ class CostInput(Input):
     def setup(self, instances_indicies: list[int], regions_indicies: list[int], data_source_manager: DataSourceManager) -> None:
         super().setup()
 
+        # Save the data source manager
         self._data_source_manager = data_source_manager
 
         # Setup Execution matrix
         self._execution_matrix = np.zeros((len(regions_indicies), len(instances_indicies)))
         for region_index in regions_indicies:
             provider_name: str = data_source_manager.get_region_data("provider_name", region_index) # This is a string
-            compute_cost_information: list[(float, int)] = data_source_manager.get_region_data("compute_cost", region_index) # This is a list
+            compute_cost_information: list[(float, int)] = data_source_manager.get_region_data("compute_costs", region_index) # This is a list
             # free_tier = data_source_manager.get_region_data("free_tier", region_index) # Free tier not yet implemented
 
             for instance_index in instances_indicies:
@@ -37,7 +38,7 @@ class CostInput(Input):
         # Then relate this to instance to instance transmission information
         
         # Lets first setup the region_to_region information matrix first
-        # Here cost is simply ingress + egress (Where ingress is normally 0 * seems like google is different)
+        # Here cost is simply ingress + egress (Where ingress is normally 0 -> but it seems like google is different)
         self._region_to_region_matrix = np.zeros((len(regions_indicies), len(regions_indicies)))
         for from_region_index in regions_indicies:
             for to_region_index in regions_indicies:
