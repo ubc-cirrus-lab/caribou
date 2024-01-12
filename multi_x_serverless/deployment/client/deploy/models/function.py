@@ -9,7 +9,7 @@ from multi_x_serverless.deployment.client.deploy.models.instructions import APIC
 from multi_x_serverless.deployment.client.deploy.models.remote_state import RemoteState
 from multi_x_serverless.deployment.client.deploy.models.resource import Resource
 from multi_x_serverless.deployment.client.deploy.models.variable import Variable
-from multi_x_serverless.deployment.client.enums import Endpoint
+from multi_x_serverless.deployment.client.enums import Provider
 
 
 class Function(Resource):  # pylint: disable=too-many-instance-attributes
@@ -22,12 +22,12 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
         environment_variables: dict[str, str],
         handler: str,
         runtime: str,
-        home_regions: list[str],
+        home_regions: list[dict[str, str]],
         providers: list[dict],
     ) -> None:
         super().__init__(name, "function")
         self.entry_point = entry_point
-        self._remote_states: dict[Endpoint, dict[str, RemoteState]] = {}
+        self._remote_states: dict[str, dict[str, RemoteState]] = {}
         self.initialise_remote_states(home_regions)
         self.role = role
         self.deployment_package = deployment_package
@@ -50,13 +50,12 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
                     Providers: {self.providers}
                 """
 
-    def initialise_remote_states(self, home_regions: list[str]) -> None:
+    def initialise_remote_states(self, home_regions: list[dict[str, str]]) -> None:
         for home_region in home_regions:
-            endpoint, region = home_region.split(":")
-            endpoint_type = Endpoint(endpoint)
-            if endpoint_type not in self._remote_states:
-                self._remote_states[endpoint_type] = {}
-            self._remote_states[endpoint_type][region] = RemoteState(endpoint=endpoint_type, region=region)
+            provider, region = home_region["provider"], home_region["region"]
+            if provider not in self._remote_states:
+                self._remote_states[provider] = {}
+            self._remote_states[provider][region] = RemoteState(provider=provider, region=region)
 
     def dependencies(self) -> Sequence[Resource]:
         resources: list[Resource] = [self.role, self.deployment_package]
@@ -65,21 +64,21 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
     def get_deployment_instructions(self) -> dict[str, list[Instruction]]:
         instructions: dict[str, list[Instruction]] = {}
         for home_region in self.home_regions:
-            endpoint, region = home_region.split(":")
-            if endpoint == Endpoint.AWS.value:
+            provider, region = home_region["provider"], home_region["region"]
+            if provider == Provider.AWS.value:
                 instruction = self.get_deployment_instructions_aws(region)
-            elif endpoint == Endpoint.GCP.value:
+            elif provider == Provider.GCP.value:
                 instruction = self.get_deployment_instructions_gcp(region)
             else:
-                raise RuntimeError(f"Unknown endpoint {endpoint}")
-            instructions[home_region] = instruction
+                raise RuntimeError(f"Unknown provider {provider}")
+            instructions[f"{provider}:{region}"] = instruction
         return instructions
 
     def _get_memory_and_timeout(self) -> tuple[int, int]:
         memory = 128
         timeout = 3
         for provider in self.providers:
-            if provider["name"] == Endpoint.AWS.value:
+            if provider["name"] == Provider.AWS.value:
                 if "memory" in provider:
                     memory = provider["memory"]
                 if "timeout" in provider:
@@ -118,7 +117,7 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
         if policy is None:
             raise RuntimeError(f"Lambda policy could not be read, check the path ({self.role.policy})")
         policy = json.dumps(json.loads(policy))
-        if not self._remote_states[Endpoint.AWS][region].resource_exists(self.role):
+        if not self._remote_states[Provider.AWS.value][region].resource_exists(self.role):
             instructions.extend(
                 [
                     APICall(
@@ -165,7 +164,7 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
         with open(self.deployment_package.filename, "rb") as f:
             zip_contents = f.read()
         function_varname = f"{self.name}_lambda_arn_{region}"
-        if not self._remote_states[Endpoint.AWS][region].resource_exists(self):
+        if not self._remote_states[Provider.AWS.value][region].resource_exists(self):
             instructions.extend(
                 [
                     APICall(
@@ -254,4 +253,4 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
         )
 
     def get_deployment_instructions_gcp(self, region: str) -> list[Instruction]:  # pylint: disable=unused-argument
-        return []
+        raise NotImplementedError()

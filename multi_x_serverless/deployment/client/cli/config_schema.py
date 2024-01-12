@@ -1,10 +1,10 @@
-from typing import Any, List
+from typing import Any, List, Optional
 
 from pydantic import BaseModel, Field, model_validator
 
 
 class EnvironmentVariable(BaseModel):
-    name: str = Field(..., title="The name of the environment variable")
+    key: str = Field(..., title="The name of the environment variable")
     value: str = Field(..., title="The value of the environment variable")
 
 
@@ -13,7 +13,7 @@ class Provider(BaseModel):
     config: dict[str, Any] = Field(..., title="The configuration of the provider")
 
     @model_validator(mode="after")
-    def validate_config(cls: Any, values: Any) -> Any:
+    def validate_config(cls: Any, values: Any) -> Any:  # pylint: disable=no-self-argument, unused-argument
         if values.name == "aws":
             config = values.config
             if "memory" not in config or not isinstance(config["memory"], int):
@@ -23,9 +23,20 @@ class Provider(BaseModel):
         return values
 
 
+class ProviderRegion(BaseModel):
+    provider: str = Field(..., title="The name of the provider")
+    region: str = Field(..., title="The name of the region")
+
+
+class RegionAndProviders(BaseModel):
+    only_regions: Optional[List[ProviderRegion]] = Field(None, title="List of regions to deploy to")
+    forbidden_regions: Optional[List[ProviderRegion]] = Field(None, title="List of regions to not deploy to")
+    providers: List[Provider] = Field(..., title="List of possible providers with their configurations")
+
+
 class ConfigSchema(BaseModel):
     workflow_name: str = Field(..., title="The name of the workflow")
     environment_variables: List[EnvironmentVariable] = Field(..., title="List of environment variables")
     iam_policy_file: str = Field(..., title="The IAM policy file")
-    home_regions: List[str] = Field(..., title="List of home regions")
-    providers: List[Provider] = Field(..., title="List of possible providers with their configurations")
+    home_regions: List[ProviderRegion] = Field(..., title="List of home regions")
+    regions_and_providers: RegionAndProviders = Field(..., title="List of regions and providers")

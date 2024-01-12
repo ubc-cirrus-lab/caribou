@@ -22,11 +22,6 @@ echo "Running mypy..."
 poetry run mypy --version
 poetry run mypy multi_x_serverless
 
-# Run autopep8
-echo "Running autopep8..."
-poetry run autopep8 --version
-poetry run autopep8 --in-place --aggressive --aggressive multi_x_serverless
-
 # Run pytest
 echo "Running pytest..."
 poetry run pytest multi_x_serverless --cov-reset --cache-clear --cov-fail-under=90

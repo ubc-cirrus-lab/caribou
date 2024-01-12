@@ -4,7 +4,7 @@ from typing import Any
 
 import yaml
 
-from multi_x_serverless.deployment.client.workflow import MultiXServerlessWorkflow
+from multi_x_serverless.deployment.client.multi_x_serverless_workflow import MultiXServerlessWorkflow
 
 
 class Config:
@@ -42,17 +42,21 @@ class Config:
         return "python3.11"
 
     @property
-    def environment_variables(self) -> dict[str, Any]:
+    def environment_variables(self) -> dict[str, str]:
         list_of_env_variables: list[dict] = self._lookup("environment_variables")
         if list_of_env_variables is None:
             return {}
-        env_variables: dict[str, Any] = {}
+        env_variables: dict[str, str] = {}
         for env_variable in list_of_env_variables:
-            env_variables[env_variable["name"]] = env_variable["value"]
+            if not isinstance(env_variable["value"], str):
+                raise RuntimeError("Environment variable value need to be a str")
+            if not isinstance(env_variable["key"], str):
+                raise RuntimeError("Environment variable key need to be a str")
+            env_variables[env_variable["key"]] = env_variable["value"]
         return env_variables
 
     @property
-    def home_regions(self) -> list[str]:
+    def home_regions(self) -> list[dict[str, str]]:
         return self._lookup("home_regions")
 
     @property
@@ -66,17 +70,11 @@ class Config:
 
     @property
     def regions_and_providers(self) -> dict:
-        if "regions_and_providers" not in self.constraints:
-            return {}
-        return self.constraints["regions_and_providers"]
+        return self._lookup("regions_and_providers")
 
     @property
     def iam_policy_file(self) -> str:
         return self._lookup("iam_policy_file")
-
-    @property
-    def providers(self) -> list[dict]:
-        return self._lookup("providers")
 
     def deployed_resources(self) -> list[Any]:
         deployed_resource_file = os.path.join(self.project_dir, ".multi-x-serverless", "deployed_resources.yml")

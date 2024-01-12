@@ -19,15 +19,29 @@ workflow = MultiXServerlessWorkflow("text_2_speech_censoring")
 @workflow.serverless_function(
     name="GetInput",
     entry_point=True,
-    providers=[
-        {
-            "name": "aws",
-            "configuration": {
-                "timeout": 90,
-                "memory": 256,
+    regions_and_providers={
+        "only_regions": [
+            {
+                "provider": "aws",
+                "region": "us-east-1",
             }
-        }
-    ]
+        ],
+        "forbidden_regions": [
+            {
+                "provider": "aws",
+                "region": "us-east-2",
+            }
+        ],
+        "providers": [
+            {
+                "name": "aws",
+                "config": {
+                    "timeout": 60,
+                    "memory": 128,
+                },
+            }
+        ],
+    },
 )
 def get_input(event: dict[str, Any]) -> dict[str, Any]:
     request = event["request"]

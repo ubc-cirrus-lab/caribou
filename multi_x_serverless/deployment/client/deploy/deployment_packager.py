@@ -11,14 +11,15 @@ import tempfile
 import zipfile
 
 import boto3
+import pip
 import yaml
 
 import multi_x_serverless
 from multi_x_serverless.deployment.client.config import Config
-from multi_x_serverless.deployment.client.deploy.models import Workflow
+from multi_x_serverless.deployment.client.deploy.models.workflow import Workflow
 
 
-class DeploymentPackager:  # pylint: disable=too-few-public-methods
+class DeploymentPackager:
     def __init__(self, config: Config) -> None:
         self._config = config
 
@@ -40,10 +41,10 @@ class DeploymentPackager:  # pylint: disable=too-few-public-methods
             with zipfile.ZipFile(package_filename, "w", zipfile.ZIP_DEFLATED) as z:
                 self._add_py_dependencies(z, temp_dir)
                 self._add_application_files(z, project_dir)
-                self._add_mutli_x_serverless_dependency(z, project_dir)
+                self._add_mutli_x_serverless_dependency(z)
         return package_filename
 
-    def _add_mutli_x_serverless_dependency(self, zip_file: zipfile.ZipFile, project_dir: str) -> None:
+    def _add_mutli_x_serverless_dependency(self, zip_file: zipfile.ZipFile) -> None:
         multi_x_serverless_path = inspect.getfile(multi_x_serverless)
         if multi_x_serverless_path.endswith(".pyc"):
             multi_x_serverless_path = multi_x_serverless_path[:-1]
@@ -53,12 +54,28 @@ class DeploymentPackager:  # pylint: disable=too-few-public-methods
             os.path.join("multi_x_serverless", "deployment", "client", "__init__.py"),
         )
         zip_file.write(
-            os.path.join(multi_x_serverless_path, "workflow.py"),
-            os.path.join("multi_x_serverless", "deployment", "client", "workflow.py"),
+            os.path.join(multi_x_serverless_path, "multi_x_serverless_workflow.py"),
+            os.path.join("multi_x_serverless", "deployment", "client", "multi_x_serverless_workflow.py"),
         )
         zip_file.write(
-            os.path.join(multi_x_serverless_path, "clients.py"),
-            os.path.join("multi_x_serverless", "deployment", "client", "clients.py"),
+            os.path.join(multi_x_serverless_path, "multi_x_serverless_function.py"),
+            os.path.join("multi_x_serverless", "deployment", "client", "multi_x_serverless_function.py"),
+        )
+        zip_file.write(
+            os.path.join(multi_x_serverless_path, "factories", "remote_client_factory.py"),
+            os.path.join("multi_x_serverless", "deployment", "client", "factories", "remote_client_factory.py"),
+        )
+        zip_file.write(
+            os.path.join(multi_x_serverless_path, "remote_client", "aws_remote_client.py"),
+            os.path.join("multi_x_serverless", "deployment", "client", "remote_client", "aws_remote_client.py"),
+        )
+        zip_file.write(
+            os.path.join(multi_x_serverless_path, "remote_client", "remote_client.py"),
+            os.path.join("multi_x_serverless", "deployment", "client", "remote_client", "remote_client.py"),
+        )
+        zip_file.write(
+            os.path.join(multi_x_serverless_path, "deploy", "models", "resource.py"),
+            os.path.join("multi_x_serverless", "deployment", "client", "deploy", "models", "resource.py"),
         )
         zip_file.write(
             os.path.join(multi_x_serverless_path, "enums.py"),
@@ -83,7 +100,7 @@ class DeploymentPackager:  # pylint: disable=too-few-public-methods
                 if full_path == os.path.join(project_dir, "app.py") or full_path.startswith(
                     os.path.join(project_dir, "src")
                 ):
-                    zip_path = full_path[len(project_dir) + 1:]
+                    zip_path = full_path[len(project_dir) + 1 :]
                     zip_file.write(full_path, zip_path)
 
     def _get_package_filename(self, project_dir: str, python_version: str) -> str:
@@ -161,17 +178,16 @@ def pip_execute(command: str, args: list[str]) -> tuple[bytes, bytes]:
 
 def pip_import_string() -> str:
     # This is a copy of the pip_import_string function from chalice
-    import pip
 
-    pip_major_version = int(pip.__version__.split(".")[0])
-    pip_minor_version = int(pip.__version__.split(".")[1])
+    pip_major_version = int(pip.__version__.split(".", maxsplit=1)[0])
+    pip_minor_version = int(pip.__version__.split(".", maxsplit=2)[1])
     pip_major_minor = (pip_major_version, pip_minor_version)
     if (9, 0) <= pip_major_minor < (10, 0):
         return "from pip import main"
-    elif (10, 0) <= pip_major_minor < (19, 3):
+    if (10, 0) <= pip_major_minor < (19, 3):
         return "from pip._internal import main"
-    elif (19, 3) <= pip_major_minor < (20, 0):
+    if (19, 3) <= pip_major_minor < (20, 0):
         return "from pip._internal.main import main"
-    elif pip_major_minor >= (20, 0):
+    if pip_major_minor >= (20, 0):
         return "from pip._internal.cli.main import main"
-    raise RuntimeError("Unknown import string for pip version: %s" % str(pip_major_minor))
+    raise RuntimeError(f"Unknown import string for pip version: {str(pip_major_minor)}")

@@ -21,7 +21,8 @@ class Workflow(Resource):
         self._resources = resources
         self._functions = functions
         self._edges = edges
-        super().__init__(name, "workflow", config=config)
+        self._config = config
+        super().__init__(name, "workflow")
 
     def __repr__(self) -> str:
         return f"""Workflow(
@@ -66,7 +67,7 @@ class Workflow(Resource):
             # TODO (#27): Implement and incorporate Free Tier considerations into data_sources
             "estimated_invocations_per_month": self._config.estimated_invocations_per_month,
             "constraints": self._config.constraints,
-            "providers": self._config.providers,
+            "regions_and_providers": self._config.regions_and_providers,
         }
         finished_instances = []
         if not isinstance(workflow_description["instances"], list):
@@ -75,8 +76,8 @@ class Workflow(Resource):
             if not isinstance(instance, dict):
                 raise RuntimeError("Error in workflow config creation, this should not happen")
             instance["succeeding_instances"] = []
-            if "providers" not in instance:
-                instance["providers"] = self._config.providers
+            if "regions_and_providers" not in instance:
+                instance["regions_and_providers"] = self._config.regions_and_providers
             # TODO (#22): Add function specific environment variables, similar to providers
             for edge in self._edges:
                 if edge[0] == instance["instance_name"]:

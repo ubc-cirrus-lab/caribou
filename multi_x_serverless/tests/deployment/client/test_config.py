@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import Mock, patch
-from multi_x_serverless.deployment.client.workflow import MultiXServerlessWorkflow
+from multi_x_serverless.deployment.client.multi_x_serverless_workflow import MultiXServerlessWorkflow
 
 
 from multi_x_serverless.deployment.client.config import Config
@@ -21,12 +21,12 @@ class TestConfig(unittest.TestCase):
         self.assertTrue(self.config.python_version.startswith("python"))
 
     def test_environment_variables(self):
-        self.config.project_config["environment_variables"] = [{"name": "ENV", "value": "test"}]
+        self.config.project_config["environment_variables"] = [{"key": "ENV", "value": "test"}]
         self.assertEqual(self.config.environment_variables, {"ENV": "test"})
 
     def test_home_regions(self):
-        self.config.project_config["home_regions"] = ["us-west-2"]
-        self.assertEqual(self.config.home_regions, ["us-west-2"])
+        self.config.project_config["home_regions"] = [{"provider": "aws", "region": "us-west-2"}]
+        self.assertEqual(self.config.home_regions, [{"provider": "aws", "region": "us-west-2"}])
 
     def test_estimated_invocations_per_month(self):
         self.config.project_config["estimated_invocations_per_month"] = 1000

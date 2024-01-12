@@ -1,22 +1,19 @@
 import os
 import queue
-import uuid
 from typing import Optional
 
 from multi_x_serverless.deployment.client.cli.config_schema import Provider
 from multi_x_serverless.deployment.client.config import Config
-from multi_x_serverless.deployment.client.deploy.models import (
-    DeploymentPackage,
-    Function,
-    FunctionInstance,
-    IAMRole,
-    Workflow,
-)
-from multi_x_serverless.deployment.client.workflow import MultiXServerlessFunction
+from multi_x_serverless.deployment.client.deploy.models.deployment_package import DeploymentPackage
+from multi_x_serverless.deployment.client.deploy.models.function import Function
+from multi_x_serverless.deployment.client.deploy.models.function_instance import FunctionInstance
+from multi_x_serverless.deployment.client.deploy.models.iam_role import IAMRole
+from multi_x_serverless.deployment.client.deploy.models.workflow import Workflow
+from multi_x_serverless.deployment.client.multi_x_serverless_workflow import MultiXServerlessFunction
 
 
 class WorkflowBuilder:
-    def build_workflow(self, config: Config) -> Workflow:
+    def build_workflow(self, config: Config) -> Workflow:  # pylint: disable=too-many-locals
         resources: list[Function] = []
 
         # A workflow consists of two parts:
@@ -29,16 +26,26 @@ class WorkflowBuilder:
         entry_point: Optional[MultiXServerlessFunction] = None
 
         # First, we create the functions (the resources that we deploy to the serverless platform)
-        for function in config.workflow_app.functions:
+        for function in config.workflow_app.functions.values():
             function_deployment_name = f"{config.workflow_name}-{function.name}"
             function_role = self.get_function_role(config, function_deployment_name)
-            providers = function.providers if function.providers else config.providers
+            if function.regions_and_providers and "providers" in function.regions_and_providers:
+                providers = (
+                    function.regions_and_providers["providers"]
+                    if function.regions_and_providers["providers"]
+                    else config.regions_and_providers["providers"]
+                )
+            else:
+                providers = config.regions_and_providers["providers"]
             self._verify_providers(providers)
+
+            merged_env_vars = self.merge_environment_variables(
+                function.environment_variables, config.environment_variables
+            )
             resources.append(
                 Function(
                     name=function_deployment_name,
-                    # TODO (#22): Add function specific environment variables, similar to providers
-                    environment_variables=config.environment_variables,
+                    environment_variables=merged_env_vars,
                     runtime=config.python_version,
                     handler=function.handler,
                     role=function_role,
@@ -78,24 +85,26 @@ class WorkflowBuilder:
             if entry_point.regions_and_providers
             else config.regions_and_providers,
             function_resource_name=entry_point.name,
-            providers=entry_point.providers if entry_point.providers else config.providers,
         )
         index_in_dag += 1
         function_instances[predecessor_instance.name] = predecessor_instance
 
-        for successor_of_current_index, successor in enumerate(entry_point.get_successors(config.workflow_app)):
+        self._cycle_check(entry_point, config)
+
+        for successor_of_current_index, successor in enumerate(config.workflow_app.get_successors(entry_point)):
             functions_to_visit.put((successor.handler, predecessor_instance.name, successor_of_current_index))
 
         while not functions_to_visit.empty():
             function_to_visit, predecessor_instance_name, successor_of_predecessor_index = functions_to_visit.get()
             multi_x_serverless_function: MultiXServerlessFunction = function_name_to_function[function_to_visit]
-            predecessor_instance_name_for_instance = predecessor_instance_name.split(":")[0]
+            predecessor_instance_name_for_instance = predecessor_instance_name.split(":", maxsplit=1)[0]
             predecessor_index = predecessor_instance_name.split(":")[-1]
             function_instance_name = (
-                f"{multi_x_serverless_function.name}:{predecessor_instance_name_for_instance}_{predecessor_index}_{successor_of_predecessor_index}:{index_in_dag}"
+                f"{multi_x_serverless_function.name}:{predecessor_instance_name_for_instance}_{predecessor_index}_{successor_of_predecessor_index}:{index_in_dag}"  # pylint: disable=line-too-long
                 if not multi_x_serverless_function.is_waiting_for_predecessors()
                 else f"{multi_x_serverless_function.name}:merge:{index_in_dag}"
             )
+
             index_in_dag += 1
             # If the function is waiting for its predecessors, there can only be one instance of the function
             # Otherwise, we create a new instance of the function for every predecessor
@@ -107,12 +116,9 @@ class WorkflowBuilder:
                     if multi_x_serverless_function.regions_and_providers
                     else config.regions_and_providers,
                     function_resource_name=multi_x_serverless_function.name,
-                    providers=multi_x_serverless_function.providers
-                    if multi_x_serverless_function.providers
-                    else config.providers,
                 )
                 for successor_of_predecessor_i, successor in enumerate(
-                    multi_x_serverless_function.get_successors(config.workflow_app)
+                    config.workflow_app.get_successors(multi_x_serverless_function)
                 ):
                     functions_to_visit.put((successor.handler, function_instance_name, successor_of_predecessor_i))
 
@@ -120,6 +126,27 @@ class WorkflowBuilder:
 
         functions: list[FunctionInstance] = list(function_instances.values())
         return Workflow(resources=resources, functions=functions, edges=edges, name=config.workflow_name, config=config)
+
+    def _cycle_check(self, function: MultiXServerlessFunction, config: Config) -> None:
+        visiting: set[MultiXServerlessFunction] = set()
+        visited: set[MultiXServerlessFunction] = set()
+        self._dfs(function, visiting, visited, config)
+
+    def _dfs(
+        self,
+        node: MultiXServerlessFunction,
+        visiting: set[MultiXServerlessFunction],
+        visited: set[MultiXServerlessFunction],
+        config: Config,
+    ) -> None:
+        visiting.add(node)
+        for successor in config.workflow_app.get_successors(node):
+            if successor in visiting:
+                raise RuntimeError(f"Cycle detected: {successor.name} is being visited again")
+            if successor not in visited:
+                self._dfs(successor, visiting, visited, config)
+        visiting.remove(node)
+        visited.add(node)
 
     def _verify_providers(self, providers: list[dict]) -> None:
         for provider in providers:
@@ -134,3 +161,16 @@ class WorkflowBuilder:
             filename = os.path.join(config.project_dir, ".multi-x-serverless", "iam_policy.yml")
 
         return IAMRole(role_name=role_name, policy=filename)
+
+    def merge_environment_variables(
+        self, function_env_vars: Optional[list[dict[str, str]]], config_env_vars: dict[str, str]
+    ) -> dict[str, str]:
+        if not function_env_vars:
+            return config_env_vars
+
+        merged_env_vars: dict[str, str] = dict(config_env_vars)
+        # overwrite config env vars with function env vars if duplicate
+        for env_var in function_env_vars:
+            merged_env_vars[env_var["key"]] = env_var["value"]
+
+        return merged_env_vars

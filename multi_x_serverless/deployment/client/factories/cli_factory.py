@@ -14,8 +14,8 @@ from multi_x_serverless.deployment.client.deploy.deployer import (
     create_default_deployer,
     create_deletion_deployer,
 )
-from multi_x_serverless.deployment.client.enums import Endpoint
-from multi_x_serverless.deployment.client.workflow import MultiXServerlessWorkflow
+from multi_x_serverless.deployment.client.enums import Provider
+from multi_x_serverless.deployment.client.multi_x_serverless_workflow import MultiXServerlessWorkflow
 
 
 class CLIFactory:
@@ -67,27 +67,29 @@ class CLIFactory:
         self.__validate_only_regions_and_providers(project_config)
 
     def __validate_only_regions_and_providers(self, project_config: dict) -> None:
-        if (
-            "constraints" in project_config
-            and "regions_and_providers" in project_config["constraints"]
-            and "only_regions" in project_config["constraints"]["regions_and_providers"]
-        ):
-            possible_endpoints = [endpoint.value for endpoint in Endpoint]
-            defined_endpoints = [
-                provider["name"] for provider in project_config["providers"] if provider["name"] in possible_endpoints
+        if "regions_and_providers" not in project_config:
+            raise RuntimeError("regions_and_providers must be defined in project config")
+        if "providers" not in project_config["regions_and_providers"]:
+            raise RuntimeError("at least one provider must be defined in regions_and_providers")
+        if "only_regions" in project_config["regions_and_providers"]:
+            possible_providers = [provider.value for provider in Provider]
+            defined_providers = [
+                provider["name"]
+                for provider in project_config["regions_and_providers"]["providers"]
+                if provider["name"] in possible_providers
             ]
-            only_regions = project_config["constraints"]["regions_and_providers"]["only_regions"]
+            only_regions = project_config["regions_and_providers"]["only_regions"]
             if not only_regions:
                 only_regions = []
             if only_regions and not isinstance(only_regions, list):
                 raise RuntimeError("only_regions must be a list")
-            for region in only_regions:
-                if not isinstance(region, str):
+            for provider_region in only_regions:
+                if not isinstance(provider_region, dict):
                     raise RuntimeError("only_regions must be a list of strings")
-                provider = region.split(":")[0]
-                if provider not in Endpoint.__members__:
+                provider = provider_region["provider"]
+                if provider not in Provider.__members__:
                     raise RuntimeError(f"Provider {provider} is not supported")
-                if provider not in defined_endpoints:
+                if provider not in defined_providers:
                     raise RuntimeError(f"Provider {provider} is not defined in providers")
 
     def load_workflow_app(self) -> MultiXServerlessWorkflow:
