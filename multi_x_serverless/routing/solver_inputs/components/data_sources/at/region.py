@@ -1,4 +1,3 @@
-# Source is an abstract class that is used to define the interface for all data sources.
 import numpy as np
 
 # Indexers

@@ -10,7 +10,6 @@ class Source(ABC):
         """
         This function is responsible for loading the data from multiple data_loaders.
         """
-        # Clear Cache
         raise NotImplementedError
 
     @abstractmethod

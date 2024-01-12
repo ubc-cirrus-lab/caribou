@@ -21,11 +21,10 @@ class CostInput(Input):
         # Setup Execution matrix
         self._execution_matrix = np.zeros((len(regions_indicies), len(instances_indicies)))
         for region_index in regions_indicies:
-            provider_name: str = data_source_manager.get_region_data("provider_name", region_index)  # This is a string
+            provider_name: str = data_source_manager.get_region_data("provider_name", region_index)
             compute_cost_information: list[(float, int)] = data_source_manager.get_region_data(
                 "compute_costs", region_index
-            )  # This is a list
-            # free_tier = data_source_manager.get_region_data("free_tier", region_index) # Free tier not yet implemented
+            ) 
 
             for instance_index in instances_indicies:
                 execution_time: float = data_source_manager.get_instance_data(

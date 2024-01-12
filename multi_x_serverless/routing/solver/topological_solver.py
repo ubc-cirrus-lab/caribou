@@ -39,10 +39,11 @@ class TopologicalSolver(Solver):
                 np.array([(region["provider"], region["region"]) for region in permited_regions])
             )
 
-            print()
-            print("current_instance_index:", current_instance_index)
-            print("prerequisites_indices:", prerequisites_indices)
-            print("permited_regions_indices:", permited_regions_indices)
+            # For testing purposes -> will be removed or transfered to logger.
+            # print()
+            # print("current_instance_index:", current_instance_index)
+            # print("prerequisites_indices:", prerequisites_indices)
+            # print("permited_regions_indices:", permited_regions_indices)
 
             # This is the current deployment in this iteration
             # Such that if we move all of previous deployment to any of the current
@@ -51,12 +52,14 @@ class TopologicalSolver(Solver):
             prev_options_length = 0
             previous_deployments = []
             for previous_instance_index in prerequisites_indices:
-                print(
-                    "previous deployment length of instance:",
-                    previous_instance_index,
-                    "-",
-                    len(deployments[previous_instance_index]),
-                )
+
+                # # For testing purposes -> will be removed or transfered to logger.
+                # print(
+                #     "previous deployment length of instance:",
+                #     previous_instance_index,
+                #     "-",
+                #     len(deployments[previous_instance_index]),
+                # )
                 previous_deployment = []
                 for deployment in deployments[previous_instance_index]:
                     previous_deployment.append((deployment, previous_instance_index))
@@ -66,7 +69,7 @@ class TopologicalSolver(Solver):
 
             if (
                 len(previous_deployments) == 0
-            ):  # If there is no previous deployment, add a dummy one  (Basically only for first node)
+            ):  # If there is no previous deployment, this is the start node and thus we initialise the first tuple. May be moved later.
                 previous_deployments.append([(({}, 0, 0, 0), None)])
 
             combined_deployments: list[tuple[dict[str, str], float, float, float]] = []
@@ -133,9 +136,11 @@ class TopologicalSolver(Solver):
 
                         combined_deployments.append((combined_placements, sum_cost, sum_carbon, max_latency))
 
-            print("New combined deployment length:", len(combined_deployments))
+            # # For testing purposes -> will be removed or transfered to logger.
+            # print("New combined deployment length:", len(combined_deployments))
             deployments[current_instance_index] = combined_deployments
             processed_node_indicies.add(current_instance_index)
 
-        print("\n")
+        # # For testing purposes -> will be removed or transfered to logger.
+        # print("\n")
         return deployments[-1]  # Return the result for the virtual end node

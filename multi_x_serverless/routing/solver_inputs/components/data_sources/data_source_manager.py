@@ -8,8 +8,6 @@ from multi_x_serverless.routing.solver_inputs.components.data_sources.from_to.re
 
 class DataSourceManager:
     def __init__(self):
-        super().__init__()
-
         # initialize components
         self._instance_source = InstanceSource()
         self._region_source = RegionSource()

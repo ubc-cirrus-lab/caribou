@@ -1,7 +1,7 @@
-# Loaders
 # Others
 import numpy as np
 
+# Loaders
 from multi_x_serverless.routing.solver_inputs.components.loaders.carbon.region import CarbonRegionLoader
 from multi_x_serverless.routing.solver_inputs.components.loaders.carbon.region_to_region import CarbonRegionFromToLoader
 from multi_x_serverless.routing.solver_inputs.components.loaders.datacenter.region import DataCenterRegionLoader
@@ -12,8 +12,6 @@ from multi_x_serverless.routing.solver_inputs.components.loaders.workflow.instan
 
 class LoaderManager:
     def __init__(self):
-        super().__init__()
-
         # initialize components
         self._datacenter_region_to_region_loader = DataCenterRegionToRegionLoader()
         self._datacenter_region_loader = DataCenterRegionLoader()

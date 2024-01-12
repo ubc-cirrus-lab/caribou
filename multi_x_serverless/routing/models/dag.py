@@ -11,7 +11,6 @@ class DAG(Indexer):
         self._num_nodes: int = len(nodes)
         self._adj_matrix: np.ndarray = np.zeros((self.num_nodes, self.num_nodes), dtype=int)
 
-        # This is the instance_indices
         self._value_indices: dict[str, int] = {node["instance_name"]: index for index, node in enumerate(nodes)}
 
     def add_edge(self, from_node: str, to_node: str) -> None:
@@ -21,9 +20,6 @@ class DAG(Indexer):
             self._adj_matrix[from_index, to_index] = 1
 
     def topological_sort(self, index_representation=True) -> list[int]:
-        """
-        Returns a topological sort of the DAG
-        """
         in_degree = np.sum(self._adj_matrix, axis=0)
         queue = deque()
 

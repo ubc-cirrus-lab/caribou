@@ -15,7 +15,7 @@ class Solver(ABC):
     def __init__(self, workflow_config: WorkflowConfig):
         self._workflow_config = workflow_config
 
-        # Setup the input manager (Not fully instantiated yet)
+        # Setup the input manager (Still require setup to be called)
         self._input_manager = InputManager(workflow_config)
 
         # Get all regions allowed for the workflow
@@ -45,8 +45,6 @@ class Solver(ABC):
 
     def _filter_regions(self, regions: list[dict], regions_and_providers: dict) -> list[dict]:
         # Take in a list of regions, then apply filters to remove regions that do not satisfy the constraints
-        # print(regions)
-        # print(regions_and_providers)
         # First filter out regions that are not in the provider list
         provider_names = [provider["name"] for provider in regions_and_providers["providers"]]
         regions = [region for region in regions if region["provider"] in provider_names]

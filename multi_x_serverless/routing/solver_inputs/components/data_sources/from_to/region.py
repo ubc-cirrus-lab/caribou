@@ -1,10 +1,8 @@
-# Source is an abstract class that is used to define the interface for all data sources.
 import numpy as np
 
 # Indexers
 from multi_x_serverless.routing.models.indexer import Indexer
 from multi_x_serverless.routing.solver_inputs.components.data_sources.source import Source
-
 
 class RegionToRegionSource(Source):
     def __init__(self):

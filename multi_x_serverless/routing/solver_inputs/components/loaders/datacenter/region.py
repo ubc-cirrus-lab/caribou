@@ -10,7 +10,7 @@ class DataCenterRegionLoader(Loader):
     def setup(self, regions: list[(str, str)]) -> bool:
         self._data = {}
 
-        # TODO: Load data from database, convert to proper format and store in self._data
+        # TODO (#35): Load data from database, convert to proper format and store in self._data
 
         # template of output data
         self._data = {
