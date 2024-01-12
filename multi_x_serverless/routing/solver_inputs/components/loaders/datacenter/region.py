@@ -16,8 +16,8 @@ class DataCenterRegionLoader(Loader):
             "compute_costs": {}, # "PLACEHOLDER: loaded dictionary ((region_provider, region_name): *****Compute cost list(this need to be treated differently as providers scale cost base on calls))", list[(float, int)]
             "pue": {}, # "PLACEHOLDER: loaded dictionary ((region_provider, region_name): PUE)",
             "cfe": {}, # "PLACEHOLDER: loaded dictionary ((region_provider, region_name): CFE)",
-            "compute_kwh": {}, # "PLACEHOLDER: loaded dictionary ((region_provider, region_name): compute kwh)",
-            "memory_kwh_mb": {}, # "PLACEHOLDER: loaded dictionary ((region_provider, region_name): memory kwh/MB)",
+            "average_kw_compute": {}, # "PLACEHOLDER: loaded dictionary ((region_provider, region_name): compute kw/compute)",
+            "memory_kw_mb": {}, # "PLACEHOLDER: loaded dictionary ((region_provider, region_name): memory kw/MB)",
             "Free_tier": {}, # "PLACEHOLDER: loaded dictionary ((region_provider, region_name): free tier informations (Implement at the same time as we implement for free tier issue #27))",
         }
 

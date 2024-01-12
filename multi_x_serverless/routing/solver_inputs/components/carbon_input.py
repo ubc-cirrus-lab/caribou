@@ -25,8 +25,8 @@ class CarbonInput(Input):
             grid_co2e: float = data_source_manager.get_region_data("grid_co2e", region_index)
             pue: float = data_source_manager.get_region_data("pue", region_index)
             cfe: float = data_source_manager.get_region_data("cfe", region_index)
-            compute_kwh: float = data_source_manager.get_region_data("compute_kwh", region_index)
-            memory_kwh_mb: float = data_source_manager.get_region_data("memory_kwh_mb", region_index)
+            average_kw_compute: float = data_source_manager.get_region_data("average_kw_compute", region_index)
+            memory_kw_mb: float = data_source_manager.get_region_data("memory_kw_mb", region_index)
 
             for instance_index in instances_indicies:
                 execution_time: float = data_source_manager.get_instance_data("execution_time", instance_index) # This is a value in seconds
@@ -40,7 +40,7 @@ class CarbonInput(Input):
                     # Basically some instances are not available in some regions
                     self._execution_matrix[region_index][instance_index] = self._carbon_calculator.calculate_execution_carbon(
                         compute_configuration, execution_time,
-                        grid_co2e, pue, cfe, compute_kwh, memory_kwh_mb)
+                        grid_co2e, pue, cfe, average_kw_compute, memory_kw_mb)
 
 
         # Setup Transmission matrix -> basically co2e per gb

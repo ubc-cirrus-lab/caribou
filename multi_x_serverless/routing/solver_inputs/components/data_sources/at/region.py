@@ -27,8 +27,8 @@ class RegionSource(Source):
                 "compute_costs": loaded_data.get('compute_costs', {}).get(region, -1),
                 "pue": loaded_data.get('pue', {}).get(region, -1),
                 "cfe": loaded_data.get('cfe', {}).get(region, -1),
-                "compute_kwh": loaded_data.get('compute_kwh', {}).get(region, -1),
-                "memory_kwh_mb": loaded_data.get('memory_kwh_mb', {}).get(region, -1),
+                "average_kw_compute": loaded_data.get('average_kw_compute', {}).get(region, -1),
+                "memory_kw_mb": loaded_data.get('memory_kw_mb', {}).get(region, -1),
                 "free_tier": loaded_data.get('free_tier', {}).get(region, -1),
             }
     
