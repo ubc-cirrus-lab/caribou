@@ -1,9 +1,11 @@
 workflow_name: "{{ workflow_name }}"
 environment_variables:
-  - name: "ENV_VAR_1"
+  - key: "ENV_VAR_1"
     value: "value_1"
 iam_policy_file: "iam_policy.json"
-home_regions: ["aws:us-west-2"]  # Regions are defined as "provider:region" (e.g. aws:us-west-2)
+home_regions:
+  - provider: "aws"
+    region: "us-east-1"
 estimated_invocations_per_month: 1000000
 constraints:
   hard_resource_constraints: # None for none
@@ -24,10 +26,13 @@ constraints:
     - cost
     - runtime
     - carbon
-# TODO (#30): Move regions_and_providers to top level and move providers
 regions_and_providers: # Either the user specify only allowed regions (which will override everything else)
-  allowed_regions: null # Only check other conditions if this is None, else will restrict to ONLY those regions
-  disallowed_regions: null
+  only_regions:
+    - provider: "aws"
+      region: "us-east-1"
+  forbidden_regions:
+    - provider: "aws"
+      region: "us-east-2"
   providers:
     - name: "aws"
       config:
