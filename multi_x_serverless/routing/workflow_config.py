@@ -5,7 +5,7 @@ import numpy as np
 
 
 class WorkflowConfig:
-    def __init__(self, workflow_config: dict):
+    def __init__(self, workflow_config: dict) -> None:
         self._verify(workflow_config)
         self._workflow_config = workflow_config
         self._functions: np.ndarray = self.resolve_functions()

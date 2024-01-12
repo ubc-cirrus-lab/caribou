@@ -4,7 +4,7 @@ from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
 
 class Ranker:
-    def __init__(self, config: WorkflowConfig):
+    def __init__(self, config: WorkflowConfig) -> None:
         self._config = config
         self._priority_order_name_to_index = {
             "cost": 0,

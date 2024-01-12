@@ -2,11 +2,11 @@ import unittest
 from unittest.mock import Mock, patch
 import numpy as np
 
-#from multi_x_serverless.routing.solver.simple_solver import SimpleSolver
+# from multi_x_serverless.routing.solver.simple_solver import SimpleSolver
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
 
-# TODO (#29): Add tests for the SimpleSolver class
+# TODO (#29): Add tests for the SimpleSolver class
 # class TestSimpleSolver(unittest.TestCase):
 #     def setUp(self):
 #         self.workflow_config = Mock(spec=WorkflowConfig)

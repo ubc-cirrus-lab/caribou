@@ -6,7 +6,7 @@ from multi_x_serverless.routing.models.indexer import Indexer
 
 
 class DAG(Indexer):
-    def __init__(self, nodes: list[dict]):
+    def __init__(self, nodes: list[dict]) -> None:
         self._nodes: list[dict] = nodes
         self._num_nodes: int = len(nodes)
         self._adj_matrix: np.ndarray = np.zeros((self.num_nodes, self.num_nodes), dtype=int)
@@ -64,7 +64,7 @@ class DAG(Indexer):
 
         return preceeding
 
-    def get_prerequisites_dict(self) -> dict[str, list[int]]:
+    def get_prerequisites_dict(self) -> dict[int, list[int]]:
         # Initialize an empty prerequisites dictionary
         prerequisites = {}
 
@@ -80,17 +80,14 @@ class DAG(Indexer):
 
         return prerequisites
 
-    def get_leaf_nodes(self, index_representation=True) -> list[str]:
+    def get_leaf_nodes(self) -> list[int]:
         in_degree = np.sum(self._adj_matrix, axis=1)
         leaf_nodes = []
 
         for i in range(self.num_nodes):
             if in_degree[i] == 0:
                 instance_name = self._nodes[i]["instance_name"]
-                if not index_representation:
-                    leaf_nodes.append(instance_name)
-                else:
-                    leaf_nodes.append(self._value_indices[instance_name])
+                leaf_nodes.append(self._value_indices[instance_name])
 
         return leaf_nodes
 

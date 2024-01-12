@@ -5,13 +5,17 @@ import numpy as np
 from multi_x_serverless.routing.solver_inputs.components.loaders.carbon.region import CarbonRegionLoader
 from multi_x_serverless.routing.solver_inputs.components.loaders.carbon.region_to_region import CarbonRegionFromToLoader
 from multi_x_serverless.routing.solver_inputs.components.loaders.datacenter.region import DataCenterRegionLoader
-from multi_x_serverless.routing.solver_inputs.components.loaders.datacenter.region_to_region import DataCenterRegionToRegionLoader
+from multi_x_serverless.routing.solver_inputs.components.loaders.datacenter.region_to_region import (
+    DataCenterRegionToRegionLoader,
+)
 from multi_x_serverless.routing.solver_inputs.components.loaders.workflow.instance import WorkflowInstanceLoader
-from multi_x_serverless.routing.solver_inputs.components.loaders.workflow.instance_to_instance import WorkflowInstanceFromToLoader
+from multi_x_serverless.routing.solver_inputs.components.loaders.workflow.instance_to_instance import (
+    WorkflowInstanceFromToLoader,
+)
 
 
 class LoaderManager:
-    def __init__(self):
+    def __init__(self) -> None:
         # initialize components
         self._datacenter_region_to_region_loader = DataCenterRegionToRegionLoader()
         self._datacenter_region_loader = DataCenterRegionLoader()

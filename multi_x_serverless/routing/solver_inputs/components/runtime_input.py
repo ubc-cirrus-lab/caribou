@@ -6,7 +6,7 @@ from multi_x_serverless.routing.solver_inputs.components.input import Input
 
 
 class RuntimeInput(Input):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self._runtime_calculator = RuntimeCalculator()
 

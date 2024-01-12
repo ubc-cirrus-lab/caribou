@@ -12,7 +12,7 @@ from ..workflow_config import WorkflowConfig
 
 
 class Solver(ABC):
-    def __init__(self, workflow_config: WorkflowConfig):
+    def __init__(self, workflow_config: WorkflowConfig) -> None:
         self._workflow_config = workflow_config
 
         # Setup the input manager (Still require setup to be called)
@@ -62,7 +62,7 @@ class Solver(ABC):
     def _filter_regions_global(self, regions: list[dict]) -> list[dict]:
         return self._filter_regions(regions, self._workflow_config.regions_and_providers)
 
-    def _filter_regions_instance(self, regions: list[dict], instance_index: str) -> list[dict]:
+    def _filter_regions_instance(self, regions: list[dict], instance_index: int) -> list[dict]:
         return self._filter_regions(regions, self._workflow_config.instances[instance_index]["regions_and_providers"])
 
     def rank_solved_results(

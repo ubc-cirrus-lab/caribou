@@ -6,7 +6,7 @@ from multi_x_serverless.routing.solver_inputs.components.data_sources.source imp
 
 
 class InstanceToInstanceSource(Source):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
     def setup(self, loaded_data: dict, instances: list[str], instance_indexer: Indexer) -> None:

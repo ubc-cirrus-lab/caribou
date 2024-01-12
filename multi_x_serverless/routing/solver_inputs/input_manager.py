@@ -2,10 +2,6 @@
 
 # Loader
 from multi_x_serverless.routing.models.indexer import Indexer
-
-# Outside library
-from multi_x_serverless.routing.workflow_config import WorkflowConfig
-
 from multi_x_serverless.routing.solver_inputs.components.carbon_input import CarbonInput
 from multi_x_serverless.routing.solver_inputs.components.cost_input import CostInput
 
@@ -19,9 +15,12 @@ from multi_x_serverless.routing.solver_inputs.components.loaders.loader_manager 
 from multi_x_serverless.routing.solver_inputs.components.loaders.region_viability_loader import RegionViabilityLoader
 from multi_x_serverless.routing.solver_inputs.components.runtime_input import RuntimeInput
 
+# Outside library
+from multi_x_serverless.routing.workflow_config import WorkflowConfig
+
 
 class InputManager:
-    def __init__(self, config: WorkflowConfig):
+    def __init__(self, config: WorkflowConfig) -> None:
         super().__init__()
         self._config = config
 
@@ -77,7 +76,7 @@ class InputManager:
     def get_execution_value(self, desired_calculator: str, instance_index: int, region_index: int) -> float:
         return self._get_input_component_manager(desired_calculator).get_execution_value(instance_index, region_index)
 
-    def get_execution_cost_carbon_runtime(self, instance_index: int, region_index: int) -> float:
+    def get_execution_cost_carbon_runtime(self, instance_index: int, region_index: int) -> list[float]:
         results = []
         calculators = ["Cost", "Carbon", "Runtime"]
         for calculator in calculators:

@@ -24,14 +24,14 @@ class TopologicalSolver(Solver):
             raise Exception("There are no leaf nodes in the DAG")
 
         # Where its in (instance placements, cost, carbon, runtime)
-        deployments: dict(str, list[tuple[dict[str, str], float, float, float]]) = {}
+        deployments: dict[int, list[tuple[dict[str, str], float, float, float]]] = {}
         for current_instance_index in topological_order:
             # Instance flow related information
-            prerequisites_indices = prerequisites_dictionary[current_instance_index]
+            prerequisites_indices: list[int] = prerequisites_dictionary[current_instance_index]
 
             # serverless region related information - per instance level
             # Where start hop and end hop should be already integrated into restrictions
-            permited_regions = self._filter_regions_instance(regions, current_instance_index)
+            permited_regions: list[dict[(str, str)]] = self._filter_regions_instance(regions, current_instance_index)
             if len(permited_regions) == 0:  # Should never happen in a valid DAG
                 raise Exception("There are no permited regions for this instance")
 
@@ -50,9 +50,8 @@ class TopologicalSolver(Solver):
             # permitted regions, what are the deployments.
             # Get the previous deployments
             prev_options_length = 0
-            previous_deployments = []
+            previous_deployments: list = []
             for previous_instance_index in prerequisites_indices:
-
                 # # For testing purposes -> will be removed or transfered to logger.
                 # print(
                 #     "previous deployment length of instance:",
@@ -76,7 +75,7 @@ class TopologicalSolver(Solver):
             if current_instance_index == -1:  # If this is the virtual end node
                 for combination in itertools.product(*previous_deployments):
                     # For each combination of deployments, merge them together
-                    combined_placements = {}
+                    combined_placements: dict = {}
                     sum_cost = sum_carbon = max_latency = 0
                     for (
                         original_deployment_placement,

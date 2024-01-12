@@ -4,8 +4,9 @@ import numpy as np
 from multi_x_serverless.routing.models.indexer import Indexer
 from multi_x_serverless.routing.solver_inputs.components.data_sources.source import Source
 
+
 class RegionSource(Source):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
     def setup(self, loaded_data: dict, regions: list[(str, str)], regions_indexer: Indexer) -> None:

@@ -4,7 +4,7 @@ from multi_x_serverless.routing.solver_inputs.components.loaders.loader import L
 
 
 class CarbonRegionLoader(Loader):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
     def setup(self, regions: list[(str, str)]) -> bool:

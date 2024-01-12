@@ -4,9 +4,8 @@ import numpy as np
 
 
 class Indexer(ABC):
-    def __init__(self):
+    def __init__(self) -> None:
         self._value_indices = None
-        pass
 
     def get_value_indices(self) -> dict:
         return self._value_indices

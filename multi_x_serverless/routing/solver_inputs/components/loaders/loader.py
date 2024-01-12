@@ -4,7 +4,7 @@ import numpy as np
 
 
 class Loader(ABC):
-    def __init__(self):
+    def __init__(self) -> None:
         self._data: dict = None
 
     @abstractmethod

@@ -2,7 +2,7 @@ import numpy as np
 
 
 class Formatter:
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
     def format(self, results: list[tuple[dict, float, float, float]]) -> list[dict]:

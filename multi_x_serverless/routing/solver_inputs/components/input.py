@@ -4,7 +4,7 @@ import numpy as np
 
 
 class Input(ABC):
-    def __init__(self):
+    def __init__(self) -> None:
         self._cache: dict(str, float) = {}
 
         self._data_source_manager = None

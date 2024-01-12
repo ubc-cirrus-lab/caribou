@@ -1,9 +1,9 @@
 from abc import ABC, abstractmethod
 
+
 class Source(ABC):
-    def __init__(self):
+    def __init__(self) -> None:
         self._data: dict = None
-        pass
 
     @abstractmethod
     def setup(self, *args, **kwargs) -> None:

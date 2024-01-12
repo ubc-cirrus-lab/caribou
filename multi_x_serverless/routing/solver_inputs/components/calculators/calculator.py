@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 
 class Calculator(ABC):
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
     def __str__(self) -> str:

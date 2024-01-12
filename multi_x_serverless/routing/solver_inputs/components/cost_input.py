@@ -6,7 +6,7 @@ from multi_x_serverless.routing.solver_inputs.components.input import Input
 
 
 class CostInput(Input):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self._cost_calculator = CostCalculator()
 
@@ -24,7 +24,7 @@ class CostInput(Input):
             provider_name: str = data_source_manager.get_region_data("provider_name", region_index)
             compute_cost_information: list[(float, int)] = data_source_manager.get_region_data(
                 "compute_costs", region_index
-            ) 
+            )
 
             for instance_index in instances_indicies:
                 execution_time: float = data_source_manager.get_instance_data(
