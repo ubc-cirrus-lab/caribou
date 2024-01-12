@@ -1,8 +1,8 @@
 import numpy as np
 
-from .calculators.carbon_calculator import CarbonCalculator
-from .data_sources.data_source_manager import DataSourceManager
-from .input import Input
+from multi_x_serverless.routing.solver_inputs.components.calculators.carbon_calculator import CarbonCalculator
+from multi_x_serverless.routing.solver_inputs.components.data_sources.data_source_manager import DataSourceManager
+from multi_x_serverless.routing.solver_inputs.components.input import Input
 
 
 class CarbonInput(Input):

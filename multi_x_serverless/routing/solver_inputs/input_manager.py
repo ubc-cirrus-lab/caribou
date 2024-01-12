@@ -6,18 +6,18 @@ from multi_x_serverless.routing.models.indexer import Indexer
 # Outside library
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
-from .components.carbon_input import CarbonInput
-from .components.cost_input import CostInput
+from multi_x_serverless.routing.solver_inputs.components.carbon_input import CarbonInput
+from multi_x_serverless.routing.solver_inputs.components.cost_input import CostInput
 
 # Data sources
-from .components.data_sources.data_source_manager import DataSourceManager
-from .components.data_sources.source import Source
+from multi_x_serverless.routing.solver_inputs.components.data_sources.data_source_manager import DataSourceManager
+from multi_x_serverless.routing.solver_inputs.components.data_sources.source import Source
 
 # Inputs
-from .components.input import Input
-from .components.loaders.loader_manager import LoaderManager
-from .components.loaders.region_viability_loader import RegionViabilityLoader
-from .components.runtime_input import RuntimeInput
+from multi_x_serverless.routing.solver_inputs.components.input import Input
+from multi_x_serverless.routing.solver_inputs.components.loaders.loader_manager import LoaderManager
+from multi_x_serverless.routing.solver_inputs.components.loaders.region_viability_loader import RegionViabilityLoader
+from multi_x_serverless.routing.solver_inputs.components.runtime_input import RuntimeInput
 
 
 class InputManager:

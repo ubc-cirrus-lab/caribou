@@ -1,7 +1,6 @@
 import numpy as np
 
-from .calculator import Calculator
-
+from multi_x_serverless.routing.solver_inputs.components.calculators.calculator import Calculator
 
 class CarbonCalculator(Calculator):
     def __init__(self):

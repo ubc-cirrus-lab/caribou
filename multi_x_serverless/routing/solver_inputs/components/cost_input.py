@@ -1,8 +1,8 @@
 import numpy as np
 
-from .calculators.cost_calculator import CostCalculator
-from .data_sources.data_source_manager import DataSourceManager
-from .input import Input
+from multi_x_serverless.routing.solver_inputs.components.calculators.cost_calculator import CostCalculator
+from multi_x_serverless.routing.solver_inputs.components.data_sources.data_source_manager import DataSourceManager
+from multi_x_serverless.routing.solver_inputs.components.input import Input
 
 
 class CostInput(Input):

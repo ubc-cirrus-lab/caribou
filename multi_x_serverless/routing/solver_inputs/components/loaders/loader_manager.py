@@ -2,12 +2,12 @@
 # Others
 import numpy as np
 
-from .carbon.region import CarbonRegionLoader
-from .carbon.region_to_region import CarbonRegionFromToLoader
-from .datacenter.region import DataCenterRegionLoader
-from .datacenter.region_to_region import DataCenterRegionToRegionLoader
-from .workflow.instance import WorkflowInstanceLoader
-from .workflow.instance_to_instance import WorkflowInstanceFromToLoader
+from multi_x_serverless.routing.solver_inputs.components.loaders.carbon.region import CarbonRegionLoader
+from multi_x_serverless.routing.solver_inputs.components.loaders.carbon.region_to_region import CarbonRegionFromToLoader
+from multi_x_serverless.routing.solver_inputs.components.loaders.datacenter.region import DataCenterRegionLoader
+from multi_x_serverless.routing.solver_inputs.components.loaders.datacenter.region_to_region import DataCenterRegionToRegionLoader
+from multi_x_serverless.routing.solver_inputs.components.loaders.workflow.instance import WorkflowInstanceLoader
+from multi_x_serverless.routing.solver_inputs.components.loaders.workflow.instance_to_instance import WorkflowInstanceFromToLoader
 
 
 class LoaderManager:

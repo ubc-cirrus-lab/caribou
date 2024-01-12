@@ -1,6 +1,6 @@
 import numpy as np
 
-from ..loader import Loader
+from multi_x_serverless.routing.solver_inputs.components.loaders.loader import Loader
 
 
 class CarbonRegionLoader(Loader):

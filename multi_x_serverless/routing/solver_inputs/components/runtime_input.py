@@ -1,8 +1,8 @@
 import numpy as np
 
-from .calculators.runtime_calculator import RuntimeCalculator
-from .data_sources.data_source_manager import DataSourceManager
-from .input import Input
+from multi_x_serverless.routing.solver_inputs.components.calculators.runtime_calculator import RuntimeCalculator
+from multi_x_serverless.routing.solver_inputs.components.data_sources.data_source_manager import DataSourceManager
+from multi_x_serverless.routing.solver_inputs.components.input import Input
 
 
 class RuntimeInput(Input):

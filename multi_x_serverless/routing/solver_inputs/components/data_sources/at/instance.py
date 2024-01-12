@@ -1,7 +1,7 @@
 # Source is an abstract class that is used to define the interface for all data sources.
 # Indexers
-from .....models.indexer import Indexer
-from ..source import Source
+from multi_x_serverless.routing.models.indexer import Indexer
+from multi_x_serverless.routing.solver_inputs.components.data_sources.source import Source
 
 
 class InstanceSource(Source):

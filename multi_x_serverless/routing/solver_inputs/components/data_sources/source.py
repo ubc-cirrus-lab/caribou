@@ -1,9 +1,5 @@
 from abc import ABC, abstractmethod
 
-# Indexers
-from ....models.indexer import Indexer
-
-
 class Source(ABC):
     def __init__(self):
         self._data: dict = None
