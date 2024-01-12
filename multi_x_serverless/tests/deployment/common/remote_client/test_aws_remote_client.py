@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import patch
 
 from multi_x_serverless.deployment.common.remote_client.aws_remote_client import AWSRemoteClient
+from multi_x_serverless.deployment.common.deploy.models.resource import Resource
 
 import json
 
@@ -170,6 +171,220 @@ class TestAWSRemoteClient(unittest.TestCase):
         mock_client.return_value.get_role.assert_called_with(RoleName=role_name)
 
         self.assertEqual(result, "test_role_arn")
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_create_lambda_function(self, mock_client):
+        kwargs = {
+            "FunctionName": "test_function",
+            "Runtime": "python3.8",
+            "Role": "test_role",
+            "Handler": "test_handler",
+        }
+        mock_client.return_value.create_function.return_value = {"FunctionArn": "test_function_arn", "State": "Active"}
+
+        result = self.aws_client._create_lambda_function(kwargs)
+
+        mock_client.assert_called_with("lambda")
+        mock_client.return_value.create_function.assert_called_once_with(**kwargs)
+        self.assertEqual(result, ("test_function_arn", "Active"))
+
+    @patch.object(AWSRemoteClient, "_client")
+    @patch("time.sleep", return_value=None)  # To speed up the test
+    def test_wait_for_function_to_become_active(self, mock_sleep, mock_client):
+        function_name = "test_function"
+        mock_client.return_value.get_function.side_effect = [
+            {"Configuration": {"State": "Pending"}},  # First call: function is pending
+            {"Configuration": {"State": "Active"}},  # Second call: function is active
+        ]
+
+        self.aws_client._wait_for_function_to_become_active(function_name)
+
+        mock_client.assert_called_with("lambda")
+        mock_client.return_value.get_function.assert_has_calls(
+            [call(FunctionName=function_name), call(FunctionName=function_name)]
+        )
+        mock_sleep.assert_called_once_with(self.aws_client.DELAY_TIME)
+
+    @patch.object(AWSRemoteClient, "_client")
+    @patch("time.sleep", return_value=None)  # To speed up the test
+    def test_wait_for_function_to_become_active_timeout(self, mock_sleep, mock_client):
+        function_name = "test_function"
+        mock_client.return_value.get_function.return_value = {
+            "Configuration": {"State": "Pending"}
+        }  # Function remains pending
+
+        with self.assertRaises(RuntimeError):
+            self.aws_client._wait_for_function_to_become_active(function_name)
+
+        mock_client.assert_called_with("lambda")
+        self.assertEqual(mock_client.return_value.get_function.call_count, self.aws_client.LAMBDA_CREATE_ATTEMPTS)
+        self.assertEqual(mock_sleep.call_count, self.aws_client.LAMBDA_CREATE_ATTEMPTS)
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_subscribe_sns_topic(self, mock_client):
+        topic_arn = "test_topic_arn"
+        protocol = "https"
+        endpoint = "test_endpoint"
+        mock_client.return_value.subscribe.return_value = {"SubscriptionArn": "test_subscription_arn"}
+
+        result = self.aws_client.subscribe_sns_topic(topic_arn, protocol, endpoint)
+
+        mock_client.assert_called_with("sns")
+        mock_client.return_value.subscribe.assert_called_once_with(
+            TopicArn=topic_arn,
+            Protocol=protocol,
+            Endpoint=endpoint,
+            ReturnSubscriptionArn=True,
+        )
+        self.assertEqual(result, "test_subscription_arn")
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_add_lambda_permission_for_sns_topic(self, mock_client):
+        topic_arn = "test_topic_arn"
+        lambda_function_arn = "test_lambda_function_arn"
+
+        self.aws_client.add_lambda_permission_for_sns_topic(topic_arn, lambda_function_arn)
+
+        mock_client.assert_called_with("lambda")
+        mock_client.return_value.add_permission.assert_called_once_with(
+            FunctionName=lambda_function_arn,
+            StatementId="sns",
+            Action="lambda:InvokeFunction",
+            Principal="sns.amazonaws.com",
+            SourceArn=topic_arn,
+        )
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_send_message_to_messaging_service(self, mock_client):
+        identifier = "test_identifier"
+        message = "test_message"
+
+        self.aws_client.send_message_to_messaging_service(identifier, message)
+
+        mock_client.assert_called_with("sns")
+        mock_client.return_value.publish.assert_called_once_with(TopicArn=identifier, Message=message)
+
+    @patch.object(AWSRemoteClient, "iam_role_exists")
+    @patch.object(AWSRemoteClient, "lambda_function_exists")
+    def test_resource_exists(self, mock_lambda_function_exists, mock_iam_role_exists):
+        resource_iam = Resource(name="test_role", resource_type="iam_role")
+        resource_lambda = Resource(name="test_function", resource_type="function")
+
+        self.aws_client.resource_exists(resource_iam)
+        mock_iam_role_exists.assert_called_once_with(resource_iam)
+
+        self.aws_client.resource_exists(resource_lambda)
+        mock_lambda_function_exists.assert_called_once_with(resource_lambda)
+
+        with self.assertRaises(RuntimeError):
+            self.aws_client.resource_exists(Resource(name="test_unknown", resource_type="unknown"))
+
+    @patch.object(AWSRemoteClient, "get_iam_role")
+    def test_iam_role_exists(self, mock_get_iam_role):
+        resource = Resource(name="test_role", resource_type="iam_role")
+        mock_get_iam_role.return_value = None
+
+        self.assertFalse(self.aws_client.iam_role_exists(resource))
+
+        mock_get_iam_role.return_value = "test_role"
+        self.assertTrue(self.aws_client.iam_role_exists(resource))
+
+        mock_get_iam_role.side_effect = ClientError({}, "get_iam_role")
+        self.assertFalse(self.aws_client.iam_role_exists(resource))
+
+    @patch.object(AWSRemoteClient, "get_lambda_function")
+    def test_lambda_function_exists(self, mock_get_lambda_function):
+        resource = Resource(name="test_function", resource_type="function")
+        mock_get_lambda_function.return_value = None
+
+        self.assertFalse(self.aws_client.lambda_function_exists(resource))
+
+        mock_get_lambda_function.return_value = "test_function"
+        self.assertTrue(self.aws_client.lambda_function_exists(resource))
+
+        mock_get_lambda_function.side_effect = ClientError({}, "get_lambda_function")
+        self.assertFalse(self.aws_client.lambda_function_exists(resource))
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_increment_counter(self, mock_client):
+        function_name = "test_function"
+        workflow_instance_id = "test_workflow_instance_id"
+        mock_client.return_value.update_item.return_value = {"Attributes": {"counter_value": {"N": "1"}}}
+
+        result = self.aws_client.increment_counter(function_name, workflow_instance_id)
+
+        mock_client.assert_called_with("dynamodb")
+        mock_client.return_value.update_item.assert_called_once_with(
+            TableName="counters",
+            Key={"id": {"S": f"{function_name}:{workflow_instance_id}"}},
+            UpdateExpression="SET counter_value = counter_value + :val",
+            ExpressionAttributeValues={":val": 1},
+            ReturnValues="UPDATED_NEW",
+        )
+        self.assertEqual(result, 1)
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_upload_message_for_merge(self, mock_client):
+        function_name = "test_function"
+        workflow_instance_id = "test_workflow_instance_id"
+        message = "test_message"
+
+        self.aws_client.upload_message_for_merge(function_name, workflow_instance_id, message)
+
+        mock_client.assert_called_with("dynamodb")
+        mock_client.return_value.update_item.assert_called_once_with(
+            TableName="merge_messages",
+            Key={"id": {"S": f"{function_name}:{workflow_instance_id}"}},
+            ExpressionAttributeNames={"#M": "message"},
+            ExpressionAttributeValues={":m": {"SS": [message]}},
+            UpdateExpression="ADD #M :m",
+        )
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_get_predecessor_data(self, mock_client):
+        current_instance_name = "test_current_instance_name"
+        workflow_instance_id = "test_workflow_instance_id"
+        mock_client.return_value.get_item.return_value = {"Item": {"message": {"SS": ["test_message"]}}}
+
+        result = self.aws_client.get_predecessor_data(current_instance_name, workflow_instance_id)
+
+        mock_client.assert_called_with("dynamodb")
+        mock_client.return_value.get_item.assert_called_once_with(
+            TableName="merge_messages",
+            Key={"id": {"S": f"{current_instance_name}:{workflow_instance_id}"}},
+        )
+        self.assertEqual(result, ["test_message"])
+
+        mock_client.return_value.get_item.return_value = {}
+        result = self.aws_client.get_predecessor_data(current_instance_name, workflow_instance_id)
+        self.assertEqual(result, [])
+
+        mock_client.return_value.get_item.return_value = {"Item": {}}
+        result = self.aws_client.get_predecessor_data(current_instance_name, workflow_instance_id)
+        self.assertEqual(result, [])
+
+    @patch.object(AWSRemoteClient, "_client")
+    @patch("time.sleep", return_value=None)
+    def test_wait_for_role_to_become_active(self, mock_sleep, mock_client):
+        role_name = "test_role"
+        mock_client.return_value.get_role.return_value = {"Role": {"State": "Inactive"}}
+
+        with self.assertRaises(RuntimeError):
+            self.aws_client._wait_for_role_to_become_active(role_name)
+
+        mock_client.assert_called_with("iam")
+        mock_client.return_value.get_role.assert_called_with(RoleName=role_name)
+        self.assertEqual(mock_client.return_value.get_role.call_count, self.aws_client.LAMBDA_CREATE_ATTEMPTS)
+        mock_sleep.assert_called_with(self.aws_client.DELAY_TIME)
+
+        mock_client.return_value.get_role.return_value = {"Role": {"State": "Active"}}
+
+        try:
+            self.aws_client._wait_for_role_to_become_active(role_name)
+        except RuntimeError:
+            self.fail("_wait_for_role_to_become_active raised RuntimeError unexpectedly!")
+
+        mock_client.return_value.get_role.assert_called_with(RoleName=role_name)
 
 
 if __name__ == "__main__":
