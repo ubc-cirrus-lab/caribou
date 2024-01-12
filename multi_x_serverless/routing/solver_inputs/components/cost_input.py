@@ -50,19 +50,10 @@ class CostInput(Input):
                 self._region_to_region_matrix[from_region_index][to_region_index] = self._cost_calculator.calculate_transmission_cost_per_gb(ingress_cost, egress_cost)
 
     def get_transmission_value(self, from_instance_index: int, to_instance_index: int, from_region_index: int, to_region_index: int) -> float:
-        # TODO: Handle special cases of from and to nothing (Basically start at 0, end at 0)
-        if from_instance_index is None:
-            from_instance_index = to_instance_index
-
-        if to_instance_index is None:
-            to_instance_index = from_instance_index
-
+        # Handle special cases of from and to nothing (Basically start at 0, end at 0)
         if from_region_index is None:
-            from_region_index = to_region_index
+            return 0 # So nothing was moved, no co2e
 
-        if to_region_index is None:
-            to_region_index = from_region_index
-        
         # We simply use this to get the data transfer size and calculate total cost
         transmission_size = self._data_source_manager.get_instance_to_instance_data("data_transfer_size", from_instance_index, to_instance_index)
         transmission_cost_per_gb = self._region_to_region_matrix[from_region_index][to_region_index]

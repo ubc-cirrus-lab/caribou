@@ -6,6 +6,10 @@ class RuntimeCalculator(Calculator):
     def __init__(self):
         super().__init__()
     
+    def calculate_execution_time(self, execution_times: list[(float, int)], compute_configuration: (float, float)) -> float:
+        # TODO: Need to consider performance conversion between both within regions and across providers
+        None
+
     def calculate_transmission_latency(self, transmission_times: list[(float, float)], current_transmission_size: float) -> float:
         # Both in units of gb
         if (not transmission_times or len(transmission_times) == 0): # No information
@@ -20,5 +24,4 @@ class RuntimeCalculator(Calculator):
             else:
                 return transmission_time[1]
             
-        
         return worse_case_latency

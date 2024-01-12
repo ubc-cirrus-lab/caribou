@@ -34,10 +34,4 @@ class RegionToRegionSource(Source):
                 }
     
     def get_value(self, data_name: str, from_region_index: int, to_region_index: int):  # Result type might not necessarily be float
-        if from_region_index is None:
-            from_region_index = to_region_index
-
-        if to_region_index is None:
-            to_region_index = from_region_index
-
         return self._data[from_region_index][to_region_index][data_name]
