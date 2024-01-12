@@ -71,4 +71,4 @@ For the architecture, see the current [draw.io](https://app.diagrams.net/#G1rql5
 
 ##  License
 
-TODO: We are inspired by the chalice project so we will probably use the same license.
+Apache License 2.0

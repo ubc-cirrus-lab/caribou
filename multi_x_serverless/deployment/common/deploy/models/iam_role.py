@@ -7,6 +7,7 @@ from multi_x_serverless.deployment.common.deploy.models.resource import Resource
 
 class IAMRole(Resource):
     def __init__(self, policy_file: str, role_name: str) -> None:
+        # TODO (#9): For the server side deployer and in general, add a per provider dictionary around the policy file
         super().__init__(role_name, "iam_role")
         print(policy_file)
         if os.path.exists(policy_file):

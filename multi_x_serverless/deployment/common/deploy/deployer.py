@@ -75,7 +75,8 @@ class Deployer:
         # Update the config with the deployed resources
         deployed_resources = self._executor.get_deployed_resources()
 
-        # TODO: Add unique id to workflow
+        # TODO (#9): Add unique id to workflow and communicate this unique ID 
+        # to both the deployer server, the update checker and the client
         self._upload_workflow_to_deployer_server(workflow)
         self._upload_deployed_resources_to_deployer_server(deployed_resources)
 

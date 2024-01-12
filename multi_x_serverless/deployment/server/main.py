@@ -8,7 +8,6 @@ from multi_x_serverless.deployment.common.factories.deployer_factory import Depl
 
 def main() -> int:
     try:
-        # TODO: Implement this
         run_deployer(deployment_config={}, regions=[], workflow_description={})
         return 0
     except Exception:  # pylint: disable=broad-except
