@@ -7,7 +7,7 @@ class WorkflowInstanceFromToLoader(Loader):
     def __init__(self):
         super().__init__()
 
-    def setup(self, workflow_ID: str) -> bool:  # Returns if successful and reason if not
+    def setup(self, workflow_id: str) -> bool:  # Returns if successful and reason if not
         self._data = {}
 
         # TODO: Load data from database, convert to proper format and store in self._data

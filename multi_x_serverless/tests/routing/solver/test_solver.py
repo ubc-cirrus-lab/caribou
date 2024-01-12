@@ -1,9 +1,9 @@
 import unittest
 from unittest.mock import Mock, patch
 
-from multi_x_serverless.routing.current.models.dag import DAG
-from multi_x_serverless.routing.current.solver.solver import Solver
-from multi_x_serverless.routing.current.workflow_config import WorkflowConfig
+from multi_x_serverless.routing.models.dag import DAG
+from multi_x_serverless.routing.solver.solver import Solver
+from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
 
 class SolverSubclass(Solver):
@@ -18,6 +18,30 @@ class TestSolver(unittest.TestCase):
             {"instance_name": "node1", "succeeding_instances": ["node2"], "preceding_instances": []},
             {"instance_name": "node2", "succeeding_instances": [], "preceding_instances": ["node1"]},
         ]
+        self.workflow_config.regions_and_providers = {
+            "only_regions": [
+                {
+                    "provider": "aws",
+                    "region": "us-east-1",
+                }
+            ],
+            "forbidden_regions": [
+                {
+                    "provider": "aws",
+                    "region": "us-east-2",
+                }
+            ],
+            "providers": [
+                {
+                    "name": "aws",
+                    "config": {
+                        "timeout": 60,
+                        "memory": 128,
+                    },
+                }
+            ],
+        }
+        self.workflow_config.workflow_id = "workflow_id"
         self.solver = SolverSubclass(self.workflow_config)
 
     @patch.object(DAG, "add_edge")

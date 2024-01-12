@@ -1,7 +1,7 @@
 import unittest
-from unittest.mock import Mock, patch
-from multi_x_serverless.routing.current.workflow_config import WorkflowConfig
-from multi_x_serverless.routing.current.ranker.ranker import Ranker
+from unittest.mock import Mock
+from multi_x_serverless.routing.workflow_config import WorkflowConfig
+from multi_x_serverless.routing.ranker.ranker import Ranker
 
 
 class TestRanker(unittest.TestCase):

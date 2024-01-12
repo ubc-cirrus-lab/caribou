@@ -47,7 +47,7 @@ class InputManager:
         instances = instance_indexer.get_value_indices().keys()
 
         # Workflow loaders use the workfload unique ID from the config
-        workflow_ID = self._config.workflow_ID
+        workflow_ID = self._config.workflow_id
         if workflow_ID is None:
             return False, "Workflow ID not found in config"
 

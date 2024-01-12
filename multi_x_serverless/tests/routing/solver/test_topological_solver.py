@@ -44,7 +44,7 @@ class TestTopologicalSolver(unittest.TestCase):
     #     self.assertEqual(deployments, expected_deployments)
 
     def test_solve_complex(self):
-        self.workflow_config.workflow_ID = "1dsabshl1nkb2e1nws"
+        self.workflow_config.workflow_id = "1dsabshl1nkb2e1nws"
         self.workflow_config.functions = ["f1", "f2", "f3", "f4", "f5", "f6"]
         self.workflow_config.regions_and_providers = {
             "allowed_regions": None,

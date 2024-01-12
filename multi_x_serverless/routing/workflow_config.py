@@ -18,6 +18,10 @@ class WorkflowConfig:
     def workflow_name(self) -> str:
         return self._lookup("workflow_name")
 
+    @property
+    def workflow_id(self) -> str:
+        return self._lookup("workflow_id")
+
     def _lookup(self, key: str) -> Any:
         return self._workflow_config.get(key)
 

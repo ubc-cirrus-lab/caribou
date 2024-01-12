@@ -24,13 +24,13 @@ class LoaderManager:
 
         self._data = None
 
-    def setup(self, regions: list[(str, str)], workflow_ID: str) -> bool:
+    def setup(self, regions: list[(str, str)], workflow_id: str) -> bool:
         # Utilize the Loaders to load the data from the database
 
         # Setup and load data from database
         results = {
-            "_workflow_instance_to_instance_loader": self._workflow_instance_to_instance_loader.setup(workflow_ID),
-            "_workflow_instance_loader": self._workflow_instance_loader.setup(workflow_ID),
+            "_workflow_instance_to_instance_loader": self._workflow_instance_to_instance_loader.setup(workflow_id),
+            "_workflow_instance_loader": self._workflow_instance_loader.setup(workflow_id),
             "_datacenter_region_to_region_loader": self._datacenter_region_to_region_loader.setup(regions),
             "_datacenter_region_loader": self._datacenter_region_loader.setup(regions),
             "_carbon_region_to_region_loader": self._carbon_region_to_region_loader.setup(regions),
