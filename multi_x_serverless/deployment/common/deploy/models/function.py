@@ -35,6 +35,17 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
         self.deploy_regions = deploy_regions
         self.providers = providers
 
+    def to_json(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "entry_point": self.entry_point,
+            "role": self.role.to_json(),
+            "environment_variables": self.environment_variables,
+            "handler": self.handler,
+            "runtime": self.runtime,
+            "providers": self.providers,
+        }
+
     def __repr__(self) -> str:
         return f"Function({self.name}): Entry point: {self.entry_point}, Role: {self.role}, Deployment package: {self.deployment_package}, Environment variables: {self.environment_variables}, Handler: {self.handler}, Runtime: {self.runtime}, Deploy regions: {self.deploy_regions}, Providers: {self.providers}"  # pylint: disable=line-too-long
 

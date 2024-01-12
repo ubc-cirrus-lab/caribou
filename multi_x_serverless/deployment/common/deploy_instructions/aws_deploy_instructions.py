@@ -1,5 +1,3 @@
-import json
-import os
 from typing import Any
 
 from multi_x_serverless.deployment.common.deploy.models.iam_role import IAMRole
@@ -48,14 +46,6 @@ class AWSDeployInstructions(DeployInstructions):
                 }
             ],
         }
-        if not os.path.exists(role.policy):
-            raise RuntimeError(f"Lambda policy not found, check the path ({role.policy})")
-        with open(role.policy, "r", encoding="utf-8") as f:
-            policy = f.read()
-        try:
-            policy = json.dumps(json.loads(policy))
-        except json.JSONDecodeError as e:
-            raise RuntimeError(f"Lambda policy could not be parsed, check the policy ({policy})") from e
         if not remote_state.resource_exists(role):
             instructions.extend(
                 [
@@ -64,7 +54,7 @@ class AWSDeployInstructions(DeployInstructions):
                         params={
                             "role_name": role.name,
                             "trust_policy": lambda_trust_policy,
-                            "policy": policy,
+                            "policy": role.policy,
                         },
                         output_var=iam_role_varname,
                     ),
@@ -84,7 +74,7 @@ class AWSDeployInstructions(DeployInstructions):
                         params={
                             "role_name": role.name,
                             "trust_policy": lambda_trust_policy,
-                            "policy": policy,
+                            "policy": role.policy,
                         },
                         output_var=iam_role_varname,
                     ),

@@ -117,31 +117,6 @@ class TestConfig(unittest.TestCase):
             },
         )
 
-    @patch("os.path.join")
-    @patch("builtins.open")
-    @patch("yaml.safe_load")
-    def test_deployed_resources(self, mock_yaml, mock_open, mock_os):
-        mock_yaml.return_value = {"resources": ["resource1", "resource2"]}
-        resources = self.config.deployed_resources()
-        self.assertEqual(resources, ["resource1", "resource2"])
-
-    @patch("os.path.join")
-    @patch("builtins.open")
-    @patch("yaml.dump")
-    def test_update_deployed_resources(self, mock_yaml, mock_open, mock_os):
-        self.config.update_deployed_resources(["resource1", "resource2"])
-        mock_yaml.assert_called_once_with(
-            {"resources": ["resource1", "resource2"]}, mock_open.return_value.__enter__.return_value
-        )
-
-    @patch("os.path.join")
-    @patch("builtins.open")
-    @patch("yaml.safe_load")
-    def test_deployed_resources_none(self, mock_yaml, mock_open, mock_os):
-        mock_yaml.return_value = None
-        resources = self.config.deployed_resources()
-        self.assertEqual(resources, [])
-
     @patch.object(Config, "_lookup", return_value=None)
     def test_workflow_app_lookup_failure(self, mock_lookup):
         instance = Config({"workflow_name": "test_workflow"}, "project_dir")

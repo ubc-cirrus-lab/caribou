@@ -4,9 +4,14 @@ from multi_x_serverless.deployment.common.config import Config
 from multi_x_serverless.deployment.client.multi_x_serverless_workflow import MultiXServerlessFunction
 from multi_x_serverless.deployment.common.deploy.workflow_builder import WorkflowBuilder
 
+import tempfile
+import os
+import shutil
+
 
 class TestWorkflowBuilder(unittest.TestCase):
     def setUp(self):
+        self.project_dir = tempfile.mkdtemp()
         self.builder = WorkflowBuilder()
         self.config = Mock(spec=Config)
         self.config.workflow_name = "test_workflow"
@@ -14,9 +19,23 @@ class TestWorkflowBuilder(unittest.TestCase):
         self.config.environment_variables = {}
         self.config.python_version = "3.8"
         self.config.home_regions = []
-        self.config.project_dir = "/path/to/project"
-        self.config.iam_policy_file = None
+        self.config.project_dir = self.project_dir
         self.config.regions_and_providers = {"providers": {}}
+
+        self.policy_file = os.path.join(self.project_dir, "policy.json")
+
+        os.mkdir(os.path.join(self.project_dir, ".multi-x-serverless"))
+
+        with open(self.policy_file, "w") as f:
+            f.write('{ "Version": "2012-10-17" }')
+
+        with open(os.path.join(self.project_dir, ".multi-x-serverless", "policy.json"), "w") as f:
+            f.write('{ "workflow_name": "test_workflow" }')
+
+        self.config.iam_policy_file = "policy.json"
+
+    def tearDown(self):
+        shutil.rmtree(self.project_dir)
 
     def test_build_workflow_no_entry_point(self):
         with self.assertRaises(RuntimeError):
@@ -250,18 +269,18 @@ class TestWorkflowBuilder(unittest.TestCase):
 
     @patch("os.path.join")
     def test_get_function_role_with_policy_file(self, mock_join):
-        mock_join.return_value = "/path/to/policy"
+        mock_join.return_value = self.policy_file
         self.config.iam_policy_file = "policy.yml"
         role = self.builder.get_function_role(self.config, "test_function")
         self.assertEqual(role.name, "test_function-role")
-        self.assertEqual(role.policy, "/path/to/policy")
+        self.assertEqual(role.policy, '{"Version": "2012-10-17"}')
 
     @patch("os.path.join")
     def test_get_function_role_without_policy_file(self, mock_join):
-        mock_join.return_value = "/path/to/default_policy"
+        mock_join.return_value = self.policy_file
         role = self.builder.get_function_role(self.config, "test_function")
         self.assertEqual(role.name, "test_function-role")
-        self.assertEqual(role.policy, "/path/to/default_policy")
+        self.assertEqual(role.policy, '{"Version": "2012-10-17"}')
 
     def test_build_func_environment_variables(self):
         # function 1 (empty function level environment variables)
@@ -289,21 +308,21 @@ class TestWorkflowBuilder(unittest.TestCase):
         function3.environment_variables = [{"key": "ENV_1", "value": "function3_env_1"}]
 
         self.builder = WorkflowBuilder()
-        self.config = Mock(spec=Config)
-        self.config.workflow_name = "test_workflow"
-        self.config.workflow_app.functions = {"function1": function1, "function2": function2, "function3": function3}
-        self.config.environment_variables = {
+        config = Mock(spec=Config)
+        config.workflow_name = "test_workflow"
+        config.workflow_app.functions = {"function1": function1, "function2": function2, "function3": function3}
+        config.environment_variables = {
             "ENV_1": "global_env_1",
             "ENV_2": "global_env_2",
         }
-        self.config.python_version = "3.8"
-        self.config.home_regions = []
-        self.config.project_dir = "/path/to/project"
-        self.config.iam_policy_file = None
-        self.config.regions_and_providers = {"providers": {}}
-        self.config.workflow_app.get_successors.return_value = []
+        config.python_version = "3.8"
+        config.home_regions = []
+        config.project_dir = self.project_dir
+        config.regions_and_providers = {"providers": {}}
+        config.workflow_app.get_successors.return_value = []
+        config.iam_policy_file = "policy.json"
 
-        workflow = self.builder.build_workflow(self.config, [])
+        workflow = self.builder.build_workflow(config, [])
 
         self.assertEqual(len(workflow._resources), 3)
         built_func1 = workflow._resources[0]

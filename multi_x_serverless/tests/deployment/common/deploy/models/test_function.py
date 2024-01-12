@@ -10,7 +10,7 @@ from multi_x_serverless.deployment.common.factories.deploy_instruction_factory i
 
 class TestFunction(unittest.TestCase):
     def setUp(self):
-        self.role = IAMRole("some_policy", "role_name")
+        self.role = IAMRole('{"test_policy": "test"}', "test_role")
         self.deployment_package = DeploymentPackage("package_name")
         self.function = Function(
             "function_name",

@@ -52,6 +52,14 @@ class Workflow(Resource):
                 packages.append(resource.deployment_package)
         return packages
 
+    def get_function_description(self) -> list[dict]:
+        if self._config is None:
+            raise RuntimeError("Error in workflow config creation, given config is None, this should not happen")
+        function_descriptions = []
+        for function in self._resources:
+            function_descriptions.append(function.to_json())
+        return function_descriptions
+
     def get_instance_description(self) -> WorkflowConfig:
         if self._config is None:
             raise RuntimeError("Error in workflow config creation, given config is None, this should not happen")

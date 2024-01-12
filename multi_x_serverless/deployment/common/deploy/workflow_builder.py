@@ -130,9 +130,26 @@ class WorkflowBuilder:
         return Workflow(resources=resources, functions=functions, edges=edges, name=config.workflow_name, config=config)
 
     def re_build_workflow(
-        self, config: Config, regions: list[dict[str, str]], deployment_config: dict[str, Any]
+        self, config: Config, regions: list[dict[str, str]], workflow_description: dict[str, Any]
     ) -> Workflow:
-        raise NotImplementedError
+        resources: list[Function] = []
+
+        for function in workflow_description["functions"]:
+            resources.append(
+                Function(
+                    name=function["name"],
+                    environment_variables=function["environment_variables"],
+                    runtime=function["runtime"],
+                    handler=function["handler"],
+                    role=IAMRole(function["role"]["policy_file"], function["role"]["role_name"]),
+                    deployment_package=DeploymentPackage(),
+                    deploy_regions=regions,
+                    entry_point=function["entry_point"],
+                    providers=function["providers"],
+                )
+            )
+
+        return Workflow(resources=resources, functions=[], edges=[], name=config.workflow_name, config=config)
 
     def _cycle_check(self, function: MultiXServerlessFunction, config: Config) -> None:
         visiting: set[MultiXServerlessFunction] = set()
@@ -169,7 +186,7 @@ class WorkflowBuilder:
         else:
             filename = os.path.join(config.project_dir, ".multi-x-serverless", "iam_policy.yml")
 
-        return IAMRole(role_name=role_name, policy=filename)
+        return IAMRole(role_name=role_name, policy_file=filename)
 
     def merge_environment_variables(
         self, function_env_vars: Optional[list[dict[str, str]]], config_env_vars: dict[str, str]
