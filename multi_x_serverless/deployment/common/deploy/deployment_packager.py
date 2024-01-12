@@ -24,6 +24,8 @@ class DeploymentPackager:
         self._config = config
 
     def build(self, config: Config, workflow: Workflow) -> None:
+        if config.project_dir is None:
+            raise RuntimeError("project_dir must be defined")
         zip_file = self._create_deployment_package(config.project_dir, config.python_version)
         for deployment_package in workflow.get_deployment_packages():
             deployment_package.filename = zip_file

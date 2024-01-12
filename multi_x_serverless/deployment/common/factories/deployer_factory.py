@@ -1,9 +1,9 @@
 import importlib
 import os
 import sys
+from typing import Optional
 
 import yaml
-from botocore.session import Session
 from pydantic import ValidationError
 
 from multi_x_serverless.deployment.client import __version__ as MULTI_X_SERVERLESS_VERSION
@@ -18,8 +18,8 @@ from multi_x_serverless.deployment.common.deploy.deployer import (
 from multi_x_serverless.deployment.common.enums import Provider
 
 
-class CLIFactory:
-    def __init__(self, project_dir: str):
+class DeployerFactory:
+    def __init__(self, project_dir: Optional[str]) -> None:
         self.project_dir = project_dir
 
     def create_config_obj(self) -> Config:
@@ -33,24 +33,19 @@ class CLIFactory:
         project_config["workflow_app"] = self.load_workflow_app()
         return Config(project_config, self.project_dir)
 
-    def create_session(self) -> Session:
-        session = Session()
-        self._add_user_agent(session)
-        return session
+    def create_config_obj_from_dict(self, deployment_config: dict) -> Config:
+        self._validate_config(deployment_config)
+        return Config(deployment_config, self.project_dir)
 
-    def _add_user_agent(self, session: Session) -> None:
-        suffix = f"{session.user_agent_name}/{session.user_agent_version}"
-        session.user_agent_name = "multi-x-serverless"
-        session.user_agent_version = MULTI_X_SERVERLESS_VERSION
-        session.user_agent_extra = suffix
+    def create_deployer(self, config: Config) -> Deployer:
+        return create_default_deployer(config)
 
-    def create_deployer(self, config: Config, session: Session) -> Deployer:
-        return create_default_deployer(config, session)
-
-    def create_deletion_deployer(self, config: Config, session: Session) -> Deployer:
-        return create_deletion_deployer(config, session)
+    def create_deletion_deployer(self, config: Config) -> Deployer:
+        return create_deletion_deployer(config)
 
     def load_project_config(self) -> dict:
+        if self.project_dir is None:
+            raise RuntimeError("project_dir must be defined")
         config_file = os.path.join(self.project_dir, ".multi-x-serverless", "config.yml")
         with open(config_file, encoding="utf-8") as f:
             return yaml.safe_load(f)
@@ -97,6 +92,8 @@ class CLIFactory:
                     raise RuntimeError(f"Provider {provider} is not defined in providers")
 
     def load_workflow_app(self) -> MultiXServerlessWorkflow:
+        if self.project_dir is None:
+            raise RuntimeError("project_dir must be defined")
         if self.project_dir not in sys.path:
             sys.path.insert(0, self.project_dir)
 

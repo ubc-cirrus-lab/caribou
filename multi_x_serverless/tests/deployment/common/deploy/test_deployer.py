@@ -18,34 +18,12 @@ class TestDeployer(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.test_dir)
 
-    def test_deploy_with_deployment_config(self):
-        config = Config({}, self.test_dir)
-        session = Mock()
-        workflow_builder = Mock()
-        deployment_packager = Mock()
-        executor = Mock()
-        deployer = Deployer(config, session, workflow_builder, deployment_packager, executor)
-
-        regions = [{"region": "us-west-1"}]
-        deployment_config = {"key": "value"}
-        workflow = Workflow("test_workflow", [], [], [], config)
-        workflow_builder.re_build_workflow.return_value = workflow
-        executor.get_deployed_resources.return_value = [Resource("test_resource", "test_resource")]
-
-        result = deployer.deploy(regions, deployment_config)
-
-        workflow_builder.re_build_workflow.assert_called_once_with(config, regions, deployment_config)
-        deployment_packager.re_build.assert_called_once_with(config, workflow)
-        executor.execute.assert_called_once()
-        self.assertEqual(result, [Resource("test_resource", "test_resource")])
-
     def test_deploy_without_deployment_config(self):
         config = Config({}, self.test_dir)
-        session = Mock()
         workflow_builder = Mock()
         deployment_packager = Mock()
         executor = Mock()
-        deployer = Deployer(config, session, workflow_builder, deployment_packager, executor)
+        deployer = Deployer(config, workflow_builder, deployment_packager, executor)
 
         regions = [{"region": "us-west-1"}]
         workflow = Workflow("test_workflow", [], [], [], config)
@@ -61,11 +39,10 @@ class TestDeployer(unittest.TestCase):
 
     def test_deploy_with_client_error(self):
         config = Config({}, self.test_dir)
-        session = Mock()
         workflow_builder = Mock()
         deployment_packager = Mock()
         executor = Mock()
-        deployer = Deployer(config, session, workflow_builder, deployment_packager, executor)
+        deployer = Deployer(config, workflow_builder, deployment_packager, executor)
 
         regions = [{"region": "us-west-1"}]
         workflow_builder.build_workflow.side_effect = ClientError({"Error": {}}, "operation")
@@ -75,10 +52,9 @@ class TestDeployer(unittest.TestCase):
 
     def test_deploy_without_executor(self):
         config = Config({}, self.test_dir)
-        session = Mock()
         workflow_builder = Mock()
         deployment_packager = Mock()
-        deployer = Deployer(config, session, workflow_builder, deployment_packager, None)
+        deployer = Deployer(config, workflow_builder, deployment_packager, None)
 
         regions = [{"region": "us-west-1"}]
         workflow = Workflow("test_workflow", [], [], [], config)

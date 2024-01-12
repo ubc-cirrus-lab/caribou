@@ -160,6 +160,8 @@ class WorkflowBuilder:
             Provider(**provider)
 
     def get_function_role(self, config: Config, function_name: str) -> IAMRole:
+        if config.project_dir is None:
+            raise RuntimeError("project_dir must be defined")
         role_name = f"{function_name}-role"
 
         if config.iam_policy_file:

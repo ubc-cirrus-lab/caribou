@@ -1,6 +1,6 @@
 import os
 import sys
-from typing import Any
+from typing import Any, Optional
 
 import yaml
 
@@ -8,7 +8,7 @@ from multi_x_serverless.deployment.client.multi_x_serverless_workflow import Mul
 
 
 class Config:
-    def __init__(self, project_config: dict, project_dir: str) -> None:
+    def __init__(self, project_config: dict, project_dir: Optional[str]) -> None:
         self.project_config = project_config
         self.project_dir = project_dir
 
@@ -81,6 +81,8 @@ class Config:
         return self._lookup("iam_policy_file")
 
     def deployed_resources(self) -> list[Any]:
+        if self.project_dir is None:
+            raise RuntimeError("project_dir must be defined")
         deployed_resource_file = os.path.join(self.project_dir, ".multi-x-serverless", "deployed_resources.yml")
         with open(deployed_resource_file, encoding="utf-8") as f:
             data = yaml.safe_load(f)
@@ -91,6 +93,8 @@ class Config:
         return []
 
     def update_deployed_resources(self, deployed_resources: list[Any]) -> None:
+        if self.project_dir is None:
+            raise RuntimeError("project_dir must be defined")
         deployed_resource_file = os.path.join(self.project_dir, ".multi-x-serverless", "deployed_resources.yml")
         if not os.path.exists(os.path.dirname(deployed_resource_file)):
             os.makedirs(os.path.dirname(deployed_resource_file))
