@@ -103,8 +103,9 @@ class TestTopologicalSolver(unittest.TestCase):
                  "providers": [{"name": "p1"}]
              }},
         ]
-
+        
         solver = TopologicalSolver(self.workflow_config)
+        
         # solver._region_source = Region(self.workflow_config)
         # solver._region_source._value_indices = {("p1", "r1"): 0, ("p1", "r2"): 1, ("p2", "r3"): 2, ("p3", "r4"): 3}
         regions = [
@@ -189,8 +190,10 @@ class TestTopologicalSolver(unittest.TestCase):
 
         # solver._data_sources = data_sources
         deployments = solver._solve(regions)
+        
         deployment_length = len(deployments)
         print("Final deployment length:", deployment_length)
+        print(deployments[0])
         # self.assertEqual(deployments, expected_deployments)
 
         # a = {

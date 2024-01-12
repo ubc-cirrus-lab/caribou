@@ -24,7 +24,7 @@ class RegionSource(Source):
                 "grid_co2e": loaded_data.get('grid_co2e', {}).get(region, -1),
 
                 # Datacenter information
-                "compute_costs": loaded_data.get('compute_costs', {}).get(region, -1),
+                "compute_costs": loaded_data.get('compute_costs', {}).get(region, []),
                 "pue": loaded_data.get('pue', {}).get(region, -1),
                 "cfe": loaded_data.get('cfe', {}).get(region, -1),
                 "average_kw_compute": loaded_data.get('average_kw_compute', {}).get(region, -1),

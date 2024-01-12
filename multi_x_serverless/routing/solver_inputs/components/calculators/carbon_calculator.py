@@ -7,8 +7,9 @@ class CarbonCalculator(Calculator):
         super().__init__()
     
     def calculate_execution_carbon(self, compute_configuration: (float, float), execution_time: float, grid_co2e: float, pue: float, cfe: float, average_kw_compute: float, memory_kw_mb: float) -> float:
-        memory, vcpu = compute_configuration # Memory in MB
-
+        memory = compute_configuration['memory']
+        vcpu = compute_configuration['vcpu']
+        
         # Average power from compute
         # Compute Watt-Hours = Average Watts * vCPU Hours
         runtime_in_hours = execution_time / 3600 # Seconds to hours
@@ -22,6 +23,6 @@ class CarbonCalculator(Calculator):
 
         return operational_emission
 
-    def calculate_transmission_carbon(self, ingress_egress_cost: float, data_transfer_size: float) -> float:
+    def calculate_transmission_carbon(self, transmission_co2e_per_gb: float, data_transfer_size: float) -> float:
         # Both in units of gb
-        return ingress_egress_cost * data_transfer_size
+        return transmission_co2e_per_gb * data_transfer_size

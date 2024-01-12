@@ -17,11 +17,10 @@ class TopologicalSolver(Solver):
             for leaf_node in leaf_nodes:
                 if (-1 not in prerequisites_dictionary):
                     prerequisites_dictionary[-1] = []
-                print(leaf_node)
                 prerequisites_dictionary[-1].append(leaf_node)
         else:
             raise Exception("There are no leaf nodes in the DAG")
-
+        
         # Where its in (instance placements, cost, carbon, runtime)
         deployments: dict(str, list[tuple[dict[str, str], float, float, float]]) = {}
         for current_instance_index in topological_order:
@@ -98,7 +97,7 @@ class TopologicalSolver(Solver):
                             max_latency = max(max_latency, (original_runtime + transmission_runtime + execution_runtime))
 
                             combined_placements[current_instance_index] = to_region_index
-
+                        
                         combined_deployments.append((combined_placements, sum_cost, sum_carbon, max_latency))
 
             print("New combined deployment length:", len(combined_deployments))
