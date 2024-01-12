@@ -19,11 +19,11 @@ class Solver(ABC):
         self._input_manager = InputManager(workflow_config)
 
         # Get all regions allowed for the workflow
-        self.worklow_level_permitted_regions = self._filter_regions_global(self._region_source.get_all_regions())
+        self.worklow_level_permitted_regions = self._filter_regions_global(self._input_manager.get_all_regions())
 
         # Set up the instance indexer (DAG) and region indexer
         self._dag = self.get_dag_representation()
-        self._region_indexer = Region( self.worklow_level_permitted_regions)
+        self._region_indexer = Region(self.worklow_level_permitted_regions)
 
         # Setup the ranker for final ranking of solutions
         self._ranker = Ranker(workflow_config)
@@ -32,7 +32,7 @@ class Solver(ABC):
         self._formatter = Formatter()
 
         # Initiate input_manager
-        self._instantiate_input_manager(self.worklow_level_permitted_regions)
+        self._instantiate_input_manager()
 
     def solve(self) -> list[tuple[dict, float, float, float]]:
         solved_results = self._solve(self.worklow_level_permitted_regions)
@@ -40,30 +40,31 @@ class Solver(ABC):
         return self._formatter.format(ranked_results)
 
     @abstractmethod
-    def _solve(self, regions: np.ndarray) -> list[tuple[dict, float, float, float]]:
+    def _solve(self, regions: list[dict]) -> list[tuple[dict, float, float, float]]:
         raise NotImplementedError
 
-    def _filter_regions(self, regions: np.ndarray, regions_and_providers: dict) -> np.ndarray:
+    def _filter_regions(self, regions: list[dict], regions_and_providers: dict) -> list[dict]:
         # Take in a list of regions, then apply filters to remove regions that do not satisfy the constraints
-
+        # print(regions)
+        # print(regions_and_providers)
         # First filter out regions that are not in the provider list
         provider_names = [provider['name'] for provider in regions_and_providers['providers']]
-        regions = [region for region in regions if region[0] in provider_names]
+        regions = [region for region in regions if region['provider'] in provider_names]
 
         # Then if the user set a allowed_regions, only permit those regions and return
         if "allowed_regions" in regions_and_providers and regions_and_providers["allowed_regions"] is not None:
-            return np.array([region for region in regions if [region[0], region[1]] in regions_and_providers["allowed_regions"]])
+            return [region for region in regions if region in regions_and_providers["allowed_regions"]]
         
         # Finally we filter out regions that the user doesn't want to use
         if "disallowed_regions" in regions_and_providers and regions_and_providers["disallowed_regions"] is not None:
-            regions =  [region for region in regions if [region[0], region[1]] not in regions_and_providers["disallowed_regions"]]
+            regions =  [region for region in regions if region not in regions_and_providers["disallowed_regions"]]
 
-        return np.array(regions)
+        return regions
 
-    def _filter_regions_global(self, regions: np.ndarray) -> np.ndarray:
-        return self._filter_regions(regions, self._workflow_config['regions_and_providers'])
+    def _filter_regions_global(self, regions: list[dict]) -> list[dict]:
+        return self._filter_regions(regions, self._workflow_config.regions_and_providers)
 
-    def _filter_regions_instance(self, regions: np.ndarray, instance_index: str) -> np.ndarray:
+    def _filter_regions_instance(self, regions: list[dict], instance_index: str) -> list[dict]:
         return self._filter_regions(regions, self._workflow_config.instances[instance_index]["regions_and_providers"])
 
     def rank_solved_results(
@@ -71,8 +72,8 @@ class Solver(ABC):
     ) -> list[tuple[dict, float, float, float]]:
         return self._ranker.rank(results)
 
-    def _instantiate_input_manager(self, regions: np.ndarray) -> None:
-        self._input_manager.setup(regions, self._region_source, self._dag)
+    def _instantiate_input_manager(self) -> None:
+        self._input_manager.setup(self._region_indexer, self._dag)
 
     def get_dag_representation(self) -> DAG:
         nodes = [

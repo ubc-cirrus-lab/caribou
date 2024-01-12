@@ -17,6 +17,23 @@ class RegionViabilityLoader(Loader):
                 "provider": "aws",
                 "region": "us-east-1",
                 # Can probably add some field here about architecture, supported languages, versions, etc
+            },
+            # Placeholder data
+            {
+                'provider': 'p1',
+                'region': 'r1'
+            },
+            {
+                'provider': 'p1',
+                'region': 'r2'
+            },            
+            {
+                'provider': 'p2',
+                'region': 'r3'
+            },            
+            {
+                'provider': 'p3',
+                'region': 'r4'
             }
         ]
         

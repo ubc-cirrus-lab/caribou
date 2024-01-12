@@ -31,7 +31,9 @@ class CostInput(Input):
                 compute_configuration = provider_configuration.get(provider_name, None)
 
                 # Calculate final value
-                self._execution_matrix[region_index][instance_index] = self._cost_calculator.calculate_execution_cost(compute_cost_information, compute_configuration, execution_time)
+                if (compute_configuration is not None):
+                    # Basically some instances are not available in some regions -> so we just ignore them
+                    self._execution_matrix[region_index][instance_index] = self._cost_calculator.calculate_execution_cost(compute_cost_information, compute_configuration, execution_time)
         
         # Setup Transmission matrix
         # Here it is more complex as we need to first consider region to region transmission

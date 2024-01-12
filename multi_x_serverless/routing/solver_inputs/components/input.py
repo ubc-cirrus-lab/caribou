@@ -4,7 +4,9 @@ import numpy as np
 
 class Input(ABC):
     def __init__(self):
-        self._cache: dict(str, float) = {}
+        self._cache: dict(str, float) = {} 
+
+        self._data_source_manager = None
 
         self._execution_matrix: np.ndarray = None
         self._transmission_matrix: np.ndarray = None

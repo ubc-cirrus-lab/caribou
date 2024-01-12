@@ -22,6 +22,8 @@ class RuntimeInput(Input):
             for instance_index in instances_indicies:
                 execution_time: float = data_source_manager.get_instance_data("execution_time", instance_index)
 
+                # TODO: Need to consider region differences 
+
                 # Calculate final value
                 self._execution_matrix[region_index][instance_index] = execution_time
     

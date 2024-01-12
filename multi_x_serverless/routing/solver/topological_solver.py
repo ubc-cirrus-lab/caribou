@@ -4,7 +4,7 @@ import itertools
 from multi_x_serverless.routing.solver.solver import Solver
 
 class TopologicalSolver(Solver):
-    def _solve(self, regions: np.ndarray) -> list[tuple[dict, float, float, float]]:
+    def _solve(self, regions: list[dict]) -> list[tuple[dict, float, float, float]]:
         # Get the topological representation of a DAG
         topological_order = self._dag.topological_sort()
         prerequisites_dictionary = self._dag.get_prerequisites_dict()
@@ -34,7 +34,7 @@ class TopologicalSolver(Solver):
             if len(permited_regions) == 0: # Should never happen in a valid DAG
                 raise Exception("There are no permited regions for this instance")
             
-            permited_regions_indices = self._region_source.values_to_indices(permited_regions)
+            permited_regions_indices = self._region_indexer.values_to_indices(np.array([(region['provider'], region['region']) for region in permited_regions]))
 
             print()
             print("current_instance_index:", current_instance_index)

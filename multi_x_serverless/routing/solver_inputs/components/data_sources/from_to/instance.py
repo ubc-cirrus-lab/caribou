@@ -27,4 +27,11 @@ class InstanceToInstanceSource(Source):
                 }
 
     def get_value(self, data_name: str, from_instance_index: int, to_instance_index: int):  # Result type might not necessarily be float
+        # TODO: Handle special cases of from and to nothing (Basically start at 0, end at 0)
+        if from_instance_index is None:
+            from_instance_index = to_instance_index
+
+        if to_instance_index is None:
+            to_instance_index = from_instance_index
+
         return self._data[from_instance_index][to_instance_index][data_name]

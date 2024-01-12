@@ -4,7 +4,7 @@ from multi_x_serverless.routing.solver.solver import Solver
 
 
 class SimpleSolver(Solver):
-    def _solve(self, regions: np.ndarray) -> list[tuple[dict, float, float, float]]:
+    def _solve(self, regions: list[dict]) -> list[tuple[dict, float, float, float]]:
         carbon = np.zeros(len(regions))
         cost = np.zeros(len(regions))
         runtime = np.zeros(len(regions))

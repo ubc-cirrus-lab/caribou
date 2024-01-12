@@ -17,19 +17,18 @@ class InstanceSource(Source):
         # Known information
         for instance in instances:
             instance_index = instance_indexer.value_to_index(instance)
-
+            
             # Group data
             self._data[instance_index] = {
                 "execution_time": loaded_data.get('execution_time', {}).get(instance, -1),
-                "resource_configuration": instance_configuration.get(instance, -1),
 
                 # Need to consider different configurations of different providers
                 "provider_configurations": provider_configurations[instance],
             }
 
-    def _parse_provider_configuration(self, instance_configuration: dict) -> dict(str, dict(str, dict(float, float))):
+    def _parse_provider_configuration(self, instance_configuration: dict) -> dict:
         provider_configurations = {}
-        for instance_information in instance_configuration['instances']:
+        for instance_information in instance_configuration:
             instance_name = instance_information['instance_name']
 
             # Instance specific provider configuration

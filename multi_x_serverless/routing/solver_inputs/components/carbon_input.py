@@ -36,15 +36,17 @@ class CarbonInput(Input):
                 compute_configuration = provider_configuration.get(provider_name, None)
 
                 # Calculate final value
-                self._execution_matrix[region_index][instance_index] = self._carbon_calculator.calculate_execution_carbon(
-                    compute_configuration, execution_time,
-                    grid_co2e, pue, cfe, compute_kwh, memory_kwh_mb)
+                if (compute_configuration is not None):
+                    # Basically some instances are not available in some regions
+                    self._execution_matrix[region_index][instance_index] = self._carbon_calculator.calculate_execution_carbon(
+                        compute_configuration, execution_time,
+                        grid_co2e, pue, cfe, compute_kwh, memory_kwh_mb)
 
 
         # Setup Transmission matrix -> basically co2e per gb
         self._transmission_matrix = np.zeros((len(regions_indicies), len(regions_indicies)))
-        for from_region_index in region_index:
-            for to_region_index in region_index:
+        for from_region_index in regions_indicies:
+            for to_region_index in regions_indicies:
                 data_transfer_co2e = data_source_manager.get_region_to_region_data("data_transfer_co2e", from_region_index, to_region_index)
 
                 self._transmission_matrix[from_region_index][to_region_index] = data_transfer_co2e

@@ -37,7 +37,9 @@ class LoaderManager():
             "_carbon_region_to_region_loader": self._carbon_region_to_region_loader.setup(regions),
             "_carbon_region_loader": self._carbon_region_loader.setup(regions)
         }
-        all_success = all(result for result_list in results.values() for result in result_list)
+        
+        all_success = all(results[key] for key in results)
+
                 
         # Save the data into a dictionary for data sources
         self._data = {

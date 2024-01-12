@@ -18,8 +18,8 @@ class Indexer(ABC):
     def indicies_to_values(self, indices: np.ndarray) -> np.ndarray:
         raise NotImplementedError
     
-    def value_to_index(self, value: float) -> int:
-        raise self.values_to_indices(np.ndarray([value]))[0]
+    def value_to_index(self, value) -> int:
+        return self.values_to_indices(np.array([value]))[0]
 
-    def index_to_value(self, index: int) -> float:
-        raise self.indicies_to_values(np.ndarray([index]))[0]
+    def index_to_value(self, index: int):
+        return self.indicies_to_values(np.array([index]))[0]
