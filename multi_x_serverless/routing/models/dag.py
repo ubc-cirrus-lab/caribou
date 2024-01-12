@@ -1,7 +1,8 @@
-from multi_x_serverless.routing.models.indexer import Indexer
-
 from collections import deque
+
 import numpy as np
+
+from multi_x_serverless.routing.models.indexer import Indexer
 
 
 class DAG(Indexer):
@@ -19,10 +20,10 @@ class DAG(Indexer):
             to_index: int = self._value_indices[to_node]
             self._adj_matrix[from_index, to_index] = 1
 
-    def topological_sort(self, index_representation = True) -> list[int]:
-        '''
+    def topological_sort(self, index_representation=True) -> list[int]:
+        """
         Returns a topological sort of the DAG
-        '''
+        """
         in_degree = np.sum(self._adj_matrix, axis=0)
         queue = deque()
 
@@ -39,7 +40,7 @@ class DAG(Indexer):
                 result.append(instance_name)
             else:
                 result.append(self._value_indices[instance_name])
-            
+
             for i in range(self.num_nodes):
                 if self._adj_matrix[node_index, i] == 1:
                     in_degree[i] -= 1
@@ -83,7 +84,7 @@ class DAG(Indexer):
 
         return prerequisites
 
-    def get_leaf_nodes(self, index_representation = True) -> list[str]:
+    def get_leaf_nodes(self, index_representation=True) -> list[str]:
         in_degree = np.sum(self._adj_matrix, axis=1)
         leaf_nodes = []
 
@@ -99,10 +100,10 @@ class DAG(Indexer):
 
     def get_adj_matrix(self) -> np.ndarray:
         return self._adj_matrix
-    
+
     def values_to_indices(self, instances: np.ndarray) -> np.ndarray:
         return np.array([self._value_indices[instance] for instance in instances])
-    
+
     def indicies_to_values(self, indices: np.ndarray) -> np.ndarray:
         # Can be optimized
         reverse_mapping = {index: instance for instance, index in self._value_indices.items()}

@@ -3,6 +3,7 @@ import numpy as np
 
 from multi_x_serverless.routing.current.models.dag import DAG
 
+
 # TODO
 class TestDAG(unittest.TestCase):
     def setUp(self):

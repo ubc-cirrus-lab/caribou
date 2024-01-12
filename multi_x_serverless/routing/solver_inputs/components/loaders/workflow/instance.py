@@ -1,11 +1,12 @@
+import numpy as np
+
 from ..loader import Loader
 
-import numpy as np
 
 class WorkflowInstanceLoader(Loader):
     def __init__(self):
         super().__init__()
-    
+
     def setup(self, workflow_ID: str) -> bool:
         self._data = {}
 
@@ -13,7 +14,7 @@ class WorkflowInstanceLoader(Loader):
 
         # template of output data
         self._data = {
-            "execution_time": {}, # "PLACEHOLDER: loaded dictionary (instance_name: execution time value in seconds)",
+            "execution_time": {},  # "PLACEHOLDER: loaded dictionary (instance_name: execution time value in seconds)",
         }
 
-        return False # Not implemented
+        return False  # Not implemented

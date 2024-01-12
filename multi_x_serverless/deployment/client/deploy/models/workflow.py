@@ -6,7 +6,7 @@ from multi_x_serverless.deployment.client.deploy.models.function import Function
 from multi_x_serverless.deployment.client.deploy.models.function_instance import FunctionInstance
 from multi_x_serverless.deployment.client.deploy.models.instructions import Instruction
 from multi_x_serverless.deployment.client.deploy.models.resource import Resource
-from multi_x_serverless.routing.current.workflow_config import WorkflowConfig
+from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
 
 class Workflow(Resource):

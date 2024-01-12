@@ -3,13 +3,13 @@ from typing import Optional
 
 import numpy as np
 
-from ..workflow_config import WorkflowConfig
-from ..models.region import Region
-from ..models.dag import DAG
-
-from ..solver_inputs.input_manager import InputManager
-from ..ranker.ranker import Ranker
 from ..formatter.formatter import Formatter
+from ..models.dag import DAG
+from ..models.region import Region
+from ..ranker.ranker import Ranker
+from ..solver_inputs.input_manager import InputManager
+from ..workflow_config import WorkflowConfig
+
 
 class Solver(ABC):
     def __init__(self, workflow_config: WorkflowConfig):
@@ -48,16 +48,16 @@ class Solver(ABC):
         # print(regions)
         # print(regions_and_providers)
         # First filter out regions that are not in the provider list
-        provider_names = [provider['name'] for provider in regions_and_providers['providers']]
-        regions = [region for region in regions if region['provider'] in provider_names]
+        provider_names = [provider["name"] for provider in regions_and_providers["providers"]]
+        regions = [region for region in regions if region["provider"] in provider_names]
 
         # Then if the user set a allowed_regions, only permit those regions and return
         if "allowed_regions" in regions_and_providers and regions_and_providers["allowed_regions"] is not None:
             return [region for region in regions if region in regions_and_providers["allowed_regions"]]
-        
+
         # Finally we filter out regions that the user doesn't want to use
         if "disallowed_regions" in regions_and_providers and regions_and_providers["disallowed_regions"] is not None:
-            regions =  [region for region in regions if region not in regions_and_providers["disallowed_regions"]]
+            regions = [region for region in regions if region not in regions_and_providers["disallowed_regions"]]
 
         return regions
 

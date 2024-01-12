@@ -6,6 +6,7 @@ from multi_x_serverless.routing.solver.topological_solver import TopologicalSolv
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
 from multi_x_serverless.routing.models.region import Region
 
+
 class TestTopologicalSolver(unittest.TestCase):
     def setUp(self):
         self.workflow_config = Mock(spec=WorkflowConfig)
@@ -51,81 +52,81 @@ class TestTopologicalSolver(unittest.TestCase):
             "providers": [{"name": "p1"}, {"name": "p2"}, {"name": "p3"}],
         }
         self.workflow_config.instances = [
-            {"instance_name": "i1", "succeeding_instances": ["i2", "i3", "i5", "i7"], "preceding_instances": [],
-             "regions_and_providers": { # This should be the same as start hop
-                 "allowed_regions": [
-                    {
-                        'provider': 'p1',
-                        'region': 'r1'
-                    }
-                 ],
-                 "disallowed_regions": None, # "allowed_regions" is not None, so this should be ignored
-                 "providers": [{"name": "p1"}]
-             }},
-            {"instance_name": "i2", "succeeding_instances": ["i4"], "preceding_instances": ["i1"],
-             "regions_and_providers": { # No restrictions, all providers
-                "allowed_regions": None,
-                "disallowed_regions": None,
-                "providers": [{"name": "p1"}, {"name": "p2"}, {"name": "p3"}],
-             }},
-            {"instance_name": "i3", "succeeding_instances": ["i4"], "preceding_instances": ["i1"],
-             "regions_and_providers": { # No restrictions, SOME providers
-                "allowed_regions": None,
-                "disallowed_regions": None,
-                "providers": [{"name": "p2"}, {"name": "p3"}],
-             }},
-            {"instance_name": "i4", "succeeding_instances": ["i6"], "preceding_instances": ["i2", "i3"],
-             "regions_and_providers": { # No restrictions, all providers
-                "allowed_regions": None,
-                "disallowed_regions": None,
-                "providers": [{"name": "p1"}, {"name": "p2"}, {"name": "p3"}],
-             }},
-            {"instance_name": "i5", "succeeding_instances": [], "preceding_instances": ["i1"], "preceding_instances": [],
-             "regions_and_providers": { # This should be the same as start hop (As its leaf node)
-                 "allowed_regions": [
-                    {
-                        'provider': 'p1',
-                        'region': 'r1'
-                    }
-                 ],
-                 "disallowed_regions": None, # "allowed_regions" is not None, so this should be ignored
-                 "providers": [{"name": "p1"}]
-             }},
-            {"instance_name": "i6", "succeeding_instances": [], "preceding_instances": ["i4"], "preceding_instances": [],
-             "regions_and_providers": { # This should be the same as start hop (As its leaf node)
-                 "allowed_regions": [
-                    {
-                        'provider': 'p1',
-                        'region': 'r1'
-                    }
-                 ],
-                 "disallowed_regions": None, # "allowed_regions" is not None, so this should be ignored
-                 "providers": [{"name": "p1"}]
-             }},
+            {
+                "instance_name": "i1",
+                "succeeding_instances": ["i2", "i3", "i5", "i7"],
+                "preceding_instances": [],
+                "regions_and_providers": {  # This should be the same as start hop
+                    "allowed_regions": [{"provider": "p1", "region": "r1"}],
+                    "disallowed_regions": None,  # "allowed_regions" is not None, so this should be ignored
+                    "providers": [{"name": "p1"}],
+                },
+            },
+            {
+                "instance_name": "i2",
+                "succeeding_instances": ["i4"],
+                "preceding_instances": ["i1"],
+                "regions_and_providers": {  # No restrictions, all providers
+                    "allowed_regions": None,
+                    "disallowed_regions": None,
+                    "providers": [{"name": "p1"}, {"name": "p2"}, {"name": "p3"}],
+                },
+            },
+            {
+                "instance_name": "i3",
+                "succeeding_instances": ["i4"],
+                "preceding_instances": ["i1"],
+                "regions_and_providers": {  # No restrictions, SOME providers
+                    "allowed_regions": None,
+                    "disallowed_regions": None,
+                    "providers": [{"name": "p2"}, {"name": "p3"}],
+                },
+            },
+            {
+                "instance_name": "i4",
+                "succeeding_instances": ["i6"],
+                "preceding_instances": ["i2", "i3"],
+                "regions_and_providers": {  # No restrictions, all providers
+                    "allowed_regions": None,
+                    "disallowed_regions": None,
+                    "providers": [{"name": "p1"}, {"name": "p2"}, {"name": "p3"}],
+                },
+            },
+            {
+                "instance_name": "i5",
+                "succeeding_instances": [],
+                "preceding_instances": ["i1"],
+                "preceding_instances": [],
+                "regions_and_providers": {  # This should be the same as start hop (As its leaf node)
+                    "allowed_regions": [{"provider": "p1", "region": "r1"}],
+                    "disallowed_regions": None,  # "allowed_regions" is not None, so this should be ignored
+                    "providers": [{"name": "p1"}],
+                },
+            },
+            {
+                "instance_name": "i6",
+                "succeeding_instances": [],
+                "preceding_instances": ["i4"],
+                "preceding_instances": [],
+                "regions_and_providers": {  # This should be the same as start hop (As its leaf node)
+                    "allowed_regions": [{"provider": "p1", "region": "r1"}],
+                    "disallowed_regions": None,  # "allowed_regions" is not None, so this should be ignored
+                    "providers": [{"name": "p1"}],
+                },
+            },
         ]
-        
+
         solver = TopologicalSolver(self.workflow_config)
-        
+
         # solver._region_source = Region(self.workflow_config)
         # solver._region_source._value_indices = {("p1", "r1"): 0, ("p1", "r2"): 1, ("p2", "r3"): 2, ("p3", "r4"): 3}
         regions = [
-            {
-                'provider': 'p1',
-                'region': 'r1'
-            },
-            {
-                'provider': 'p1',
-                'region': 'r2'
-            },            
-            {
-                'provider': 'p2',
-                'region': 'r3'
-            },            
-            {
-                'provider': 'p3',
-                'region': 'r4'
-            }]
-        
+            {"provider": "p1", "region": "r1"},
+            {"provider": "p1", "region": "r2"},
+            {"provider": "p2", "region": "r3"},
+            {"provider": "p3", "region": "r4"},
+        ]
+
         # data_sources = {"carbon": Mock(), "cost": Mock(), "runtime": Mock()}
         # matrices = {
         #     "cost": (
@@ -190,7 +191,7 @@ class TestTopologicalSolver(unittest.TestCase):
 
         # solver._data_sources = data_sources
         deployments = solver._solve(regions)
-        
+
         deployment_length = len(deployments)
         print("Final deployment length:", deployment_length)
         print(deployments[0])
@@ -204,18 +205,19 @@ class TestTopologicalSolver(unittest.TestCase):
         #         "provider": "aws",
         #         "region": "us-east-2",
         #     }
-        
+
         # print(a)
         # print(b)
         # print("identical:", a == b)
 
-                # Save the data into a dictionary for data sources
+        # Save the data into a dictionary for data sources
         # test_dict = {
         #     **{'a': 1, 'b': 2},
         #     **{'c': 3, 'd': [4, 5]},
         #     **{'e': {'f': 6, 'g': 7}}
         # }
         # print(test_dict)
+
 
 if __name__ == "__main__":
     unittest.main()

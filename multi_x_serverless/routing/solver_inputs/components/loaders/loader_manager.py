@@ -1,15 +1,16 @@
 # Loaders
-from .datacenter.region_to_region import DataCenterRegionToRegionLoader
-from .datacenter.region import DataCenterRegionLoader
-from .carbon.region_to_region import CarbonRegionFromToLoader
-from .carbon.region import CarbonRegionLoader
-from .workflow.instance_to_instance import WorkflowInstanceFromToLoader
-from .workflow.instance import WorkflowInstanceLoader
-
 # Others
 import numpy as np
 
-class LoaderManager():
+from .carbon.region import CarbonRegionLoader
+from .carbon.region_to_region import CarbonRegionFromToLoader
+from .datacenter.region import DataCenterRegionLoader
+from .datacenter.region_to_region import DataCenterRegionToRegionLoader
+from .workflow.instance import WorkflowInstanceLoader
+from .workflow.instance_to_instance import WorkflowInstanceFromToLoader
+
+
+class LoaderManager:
     def __init__(self):
         super().__init__()
 
@@ -23,7 +24,6 @@ class LoaderManager():
 
         self._data = None
 
-
     def setup(self, regions: list[(str, str)], workflow_ID: str) -> bool:
         # Utilize the Loaders to load the data from the database
 
@@ -31,16 +31,14 @@ class LoaderManager():
         results = {
             "_workflow_instance_to_instance_loader": self._workflow_instance_to_instance_loader.setup(workflow_ID),
             "_workflow_instance_loader": self._workflow_instance_loader.setup(workflow_ID),
-            
             "_datacenter_region_to_region_loader": self._datacenter_region_to_region_loader.setup(regions),
             "_datacenter_region_loader": self._datacenter_region_loader.setup(regions),
             "_carbon_region_to_region_loader": self._carbon_region_to_region_loader.setup(regions),
-            "_carbon_region_loader": self._carbon_region_loader.setup(regions)
+            "_carbon_region_loader": self._carbon_region_loader.setup(regions),
         }
-        
+
         all_success = all(results[key] for key in results)
 
-                
         # Save the data into a dictionary for data sources
         self._data = {
             **self._workflow_instance_loader.retrieve_data(),
@@ -48,7 +46,7 @@ class LoaderManager():
             **self._datacenter_region_loader.retrieve_data(),
             **self._datacenter_region_to_region_loader.retrieve_data(),
             **self._carbon_region_loader.retrieve_data(),
-            **self._carbon_region_to_region_loader.retrieve_data()
+            **self._carbon_region_to_region_loader.retrieve_data(),
         }
 
         return all_success
