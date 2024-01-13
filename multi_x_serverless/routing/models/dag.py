@@ -19,9 +19,9 @@ class DAG(Indexer):
             to_index: int = self._value_indices[to_node]
             self._adj_matrix[from_index, to_index] = 1
 
-    def topological_sort(self, index_representation=True) -> list[int]:
+    def topological_sort(self) -> list[int]:
         in_degree = np.sum(self._adj_matrix, axis=0)
-        queue = deque()
+        queue: deque[int] = deque()
 
         for i, node in enumerate(self._nodes):
             if in_degree[i] == 0:
@@ -32,10 +32,7 @@ class DAG(Indexer):
             node_index = queue.popleft()
 
             instance_name = self._nodes[node_index]["instance_name"]
-            if not index_representation:
-                result.append(instance_name)
-            else:
-                result.append(self._value_indices[instance_name])
+            result.append(self._value_indices[instance_name])
 
             for i in range(self.num_nodes):
                 if self._adj_matrix[node_index, i] == 1:
@@ -49,9 +46,9 @@ class DAG(Indexer):
 
         return result
 
-    def get_preceeding_dict(self) -> dict[str, list[int]]:
+    def get_preceeding_dict(self) -> dict[int, list[int]]:
         # Initialize an empty prerequisites dictionary
-        preceeding = {}
+        preceeding: dict[int, list[int]] = {}
 
         # Iterate through each row in the adjacency matrix to find prerequisites for each node
         for i, row in enumerate(self._adj_matrix):
@@ -66,7 +63,7 @@ class DAG(Indexer):
 
     def get_prerequisites_dict(self) -> dict[int, list[int]]:
         # Initialize an empty prerequisites dictionary
-        prerequisites = {}
+        prerequisites: dict[int, list[int]] = {}
 
         # Iterate through each row in the adjacency matrix to find prerequisites for each node
         for i, row in enumerate(self._adj_matrix):

@@ -1,19 +1,22 @@
+import typing
 from abc import ABC, abstractmethod
 
 
 class Source(ABC):
+    _data: dict
+
     def __init__(self) -> None:
-        self._data: dict = None
+        pass
 
     @abstractmethod
-    def setup(self, *args, **kwargs) -> None:
+    def setup(self, *args: typing.Any, **kwargs: typing.Any) -> None:
         """
         This function is responsible for loading the data from multiple data_loaders.
         """
         raise NotImplementedError
 
     @abstractmethod
-    def get_value(self, *args, **kwargs):  # Doesnt have to be float
+    def get_value(self, *args: typing.Any, **kwargs: typing.Any) -> typing.Any:  # Doesnt have to be float
         """
         This function is responsible for retrieving a single value from a source.
         """

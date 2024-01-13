@@ -13,32 +13,32 @@ class CostInput(Input):
     def setup(
         self, instances_indicies: list[int], regions_indicies: list[int], data_source_manager: DataSourceManager
     ) -> None:
-        super().setup()
+        self._cache = {}
 
         # Save the data source manager
         self._data_source_manager = data_source_manager
 
         # Setup Execution matrix
-        self._execution_matrix = np.zeros((len(regions_indicies), len(instances_indicies)))
+        self._execution_matrix = np.zeros((len(regions_indicies), len(instances_indicies)), dtype=float)
         for region_index in regions_indicies:
             provider_name: str = data_source_manager.get_region_data("provider_name", region_index)
-            compute_cost_information: list[(float, int)] = data_source_manager.get_region_data(
-                "compute_costs", region_index
+            compute_cost_information: list[tuple[float, int]] = list(
+                data_source_manager.get_region_data("compute_costs", region_index)
             )
 
             for instance_index in instances_indicies:
-                execution_time: float = data_source_manager.get_instance_data(
-                    "execution_time", instance_index
+                execution_time: float = float(
+                    data_source_manager.get_instance_data("execution_time", instance_index)
                 )  # This is a value in seconds
 
                 # Compute information aquisition
-                provider_configuration: dict = data_source_manager.get_instance_data(
-                    "provider_configurations", instance_index
+                provider_configuration: dict[str, dict[str, float]] = dict(
+                    data_source_manager.get_instance_data("provider_configurations", instance_index)
                 )
-                compute_configuration = provider_configuration.get(provider_name, None)
+                compute_configuration: dict[str, float] = provider_configuration.get(provider_name, {})
 
                 # Calculate final value
-                if compute_configuration is not None:
+                if compute_configuration:
                     # Basically some instances are not available in some regions -> so we just ignore them
                     self._execution_matrix[region_index][
                         instance_index
@@ -52,14 +52,18 @@ class CostInput(Input):
 
         # Lets first setup the region_to_region information matrix first
         # Here cost is simply ingress + egress (Where ingress is normally 0 -> but it seems like google is different)
-        self._region_to_region_matrix = np.zeros((len(regions_indicies), len(regions_indicies)))
+        self._region_to_region_matrix = np.zeros((len(regions_indicies), len(regions_indicies)), dtype=float)
         for from_region_index in regions_indicies:
             for to_region_index in regions_indicies:
-                ingress_cost = data_source_manager.get_region_to_region_data(
-                    "data_transfer_ingress_cost", from_region_index, to_region_index
+                ingress_cost = float(
+                    data_source_manager.get_region_to_region_data(
+                        "data_transfer_ingress_cost", from_region_index, to_region_index
+                    )
                 )
-                egress_cost = data_source_manager.get_region_to_region_data(
-                    "data_transfer_egress_cost", from_region_index, to_region_index
+                egress_cost = float(
+                    data_source_manager.get_region_to_region_data(
+                        "data_transfer_egress_cost", from_region_index, to_region_index
+                    )
                 )
 
                 self._region_to_region_matrix[from_region_index][

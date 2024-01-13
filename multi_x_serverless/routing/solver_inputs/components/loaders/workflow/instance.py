@@ -4,9 +4,6 @@ from multi_x_serverless.routing.solver_inputs.components.loaders.loader import L
 
 
 class WorkflowInstanceLoader(Loader):
-    def __init__(self) -> None:
-        super().__init__()
-
     def setup(self, workflow_id: str) -> bool:
         self._data = {}
 

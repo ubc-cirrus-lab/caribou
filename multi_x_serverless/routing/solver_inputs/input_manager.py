@@ -42,8 +42,8 @@ class InputManager:
 
     def setup(self, regions_indexer: Indexer, instance_indexer: Indexer) -> bool:
         # Regions and instances under consideration
-        regions = regions_indexer.get_value_indices().keys()
-        instances = instance_indexer.get_value_indices().keys()
+        regions: list[tuple[str, str]] = list(regions_indexer.get_value_indices().keys())
+        instances: list[str] = list(instance_indexer.get_value_indices().keys())
 
         # Workflow loaders use the workfload unique ID from the config
         workflow_id = self._config.workflow_id
@@ -66,12 +66,14 @@ class InputManager:
         )
 
         # Now take the loaded data and send it to the data sources, which will be used in the component input managers
-        instances_indicies = instance_indexer.get_value_indices().values()
-        regions_indicies = regions_indexer.get_value_indices().values()
+        instances_indicies: list[int] = list(instance_indexer.get_value_indices().values())
+        regions_indicies: list[int] = list(regions_indexer.get_value_indices().values())
 
         self._carbon_input.setup(instances_indicies, regions_indicies, self._data_source_manager)
         self._cost_input.setup(instances_indicies, regions_indicies, self._data_source_manager)
         self._runtime_input.setup(instances_indicies, regions_indicies, self._data_source_manager)
+
+        return True  # At this point we have successfully setup the input manager
 
     def get_execution_value(self, desired_calculator: str, instance_index: int, region_index: int) -> float:
         return self._get_input_component_manager(desired_calculator).get_execution_value(instance_index, region_index)
@@ -92,7 +94,7 @@ class InputManager:
         to_instance_index: int,
         from_region_index: int,
         to_region_index: int,
-    ) -> list[float]:
+    ) -> float:
         return self._get_input_component_manager(desired_calculator).get_transmission_value(
             from_instance_index, to_instance_index, from_region_index, to_region_index
         )
@@ -111,7 +113,7 @@ class InputManager:
         return results
 
     def get_all_regions(self) -> list[dict]:
-        return self._region_viability_loader.retrieve_data()
+        return self._region_viability_loader.retrieve_data()["viable_regions"]
 
     def _get_input_component_manager(self, desired_calculator: str) -> Input:
         return {

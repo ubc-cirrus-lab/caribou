@@ -1,3 +1,5 @@
+import typing
+
 import numpy as np
 
 # Indexers
@@ -9,7 +11,7 @@ class RegionSource(Source):
     def __init__(self) -> None:
         super().__init__()
 
-    def setup(self, loaded_data: dict, regions: list[(str, str)], regions_indexer: Indexer) -> None:
+    def setup(self, loaded_data: dict, regions: list[tuple[str, str]], regions_indexer: Indexer) -> None:
         self._data = {}
 
         # Known information
@@ -29,5 +31,5 @@ class RegionSource(Source):
                 "free_tier": loaded_data.get("free_tier", {}).get(region, -1),
             }
 
-    def get_value(self, data_name: str, region_index: int):  # Result type might not necessarily be float
+    def get_value(self, data_name: str, region_index: int) -> typing.Any:  # Result type might not necessarily be float
         return self._data[region_index][data_name]

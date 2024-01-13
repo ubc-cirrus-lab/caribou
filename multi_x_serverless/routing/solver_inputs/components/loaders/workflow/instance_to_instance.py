@@ -4,9 +4,6 @@ from multi_x_serverless.routing.solver_inputs.components.loaders.loader import L
 
 
 class WorkflowInstanceFromToLoader(Loader):
-    def __init__(self) -> None:
-        super().__init__()
-
     def setup(self, workflow_id: str) -> bool:  # Returns if successful and reason if not
         self._data = {}
 
@@ -17,4 +14,4 @@ class WorkflowInstanceFromToLoader(Loader):
             "data_transfer_size": {},  # "PLACEHOLDER: loaded dictionary ((from_instance_name, to_instance_name): data transfer size in GB)",
         }
 
-        return False  # Not implemented
+        return False  #  Not implemented

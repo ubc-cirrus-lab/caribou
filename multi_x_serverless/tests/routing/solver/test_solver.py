@@ -15,22 +15,46 @@ class TestSolver(unittest.TestCase):
     def setUp(self):
         self.workflow_config = Mock(spec=WorkflowConfig)
         self.workflow_config.instances = [
-            {"instance_name": "node1", "succeeding_instances": ["node2"], "preceding_instances": []},
-            {"instance_name": "node2", "succeeding_instances": [], "preceding_instances": ["node1"]},
+            {
+                "instance_name": "node1",
+                "succeeding_instances": ["node2"],
+                "preceding_instances": [],
+                "regions_and_providers": {
+                    "allowed_regions": None,
+                    "disallowed_regions": None,
+                    "providers": [
+                        {
+                            "name": "aws",
+                            "config": {
+                                "timeout": 60,
+                                "memory": 128,
+                            },
+                        }
+                    ],
+                },
+            },
+            {
+                "instance_name": "node2",
+                "succeeding_instances": [],
+                "preceding_instances": ["node1"],
+                "regions_and_providers": {
+                    "allowed_regions": None,
+                    "disallowed_regions": None,
+                    "providers": [
+                        {
+                            "name": "aws",
+                            "config": {
+                                "timeout": 60,
+                                "memory": 128,
+                            },
+                        }
+                    ],
+                },
+            },
         ]
         self.workflow_config.regions_and_providers = {
-            "only_regions": [
-                {
-                    "provider": "aws",
-                    "region": "us-east-1",
-                }
-            ],
-            "forbidden_regions": [
-                {
-                    "provider": "aws",
-                    "region": "us-east-2",
-                }
-            ],
+            "allowed_regions": None,
+            "disallowed_regions": None,
             "providers": [
                 {
                     "name": "aws",

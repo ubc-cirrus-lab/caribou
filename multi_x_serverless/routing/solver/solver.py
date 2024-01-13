@@ -34,7 +34,7 @@ class Solver(ABC):
         # Initiate input_manager
         self._instantiate_input_manager()
 
-    def solve(self) -> list[tuple[dict, float, float, float]]:
+    def solve(self) -> list[dict]:
         solved_results = self._solve(self.worklow_level_permitted_regions)
         ranked_results = self.rank_solved_results(solved_results)
         return self._formatter.format(ranked_results)

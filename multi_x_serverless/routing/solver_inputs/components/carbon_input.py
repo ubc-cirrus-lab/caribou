@@ -13,13 +13,13 @@ class CarbonInput(Input):
     def setup(
         self, instances_indicies: list[int], regions_indicies: list[int], data_source_manager: DataSourceManager
     ) -> None:
-        super().setup()
+        self._cache = {}
 
         # Save the data source manager
         self._data_source_manager = data_source_manager
 
         # Setup Execution matrix
-        self._execution_matrix = np.zeros((len(regions_indicies), len(instances_indicies)))
+        self._execution_matrix = np.zeros((len(regions_indicies), len(instances_indicies)), dtype=float)
         for region_index in regions_indicies:
             provider_name: str = data_source_manager.get_region_data("provider_name", region_index)  # This is a string
 
@@ -36,13 +36,13 @@ class CarbonInput(Input):
                 )  # This is a value in seconds
 
                 # Compute information aquisition
-                provider_configuration: dict = data_source_manager.get_instance_data(
-                    "provider_configurations", instance_index
+                provider_configuration: dict[str, dict[str, float]] = dict(
+                    data_source_manager.get_instance_data("provider_configurations", instance_index)
                 )
-                compute_configuration = provider_configuration.get(provider_name, None)
+                compute_configuration: dict[str, float] = provider_configuration.get(provider_name, {})
 
                 # Calculate final value
-                if compute_configuration is not None:
+                if compute_configuration:
                     # Basically some instances are not available in some regions
                     self._execution_matrix[region_index][
                         instance_index
@@ -51,7 +51,7 @@ class CarbonInput(Input):
                     )
 
         # Setup Transmission matrix -> basically co2e per gb
-        self._transmission_matrix = np.zeros((len(regions_indicies), len(regions_indicies)))
+        self._transmission_matrix = np.zeros((len(regions_indicies), len(regions_indicies)), dtype=float)
         for from_region_index in regions_indicies:
             for to_region_index in regions_indicies:
                 data_transfer_co2e = data_source_manager.get_region_to_region_data(
@@ -67,8 +67,11 @@ class CarbonInput(Input):
             return 0  # So nothing was moved, no cost
 
         # We simply use this to get the data transfer size and calculate co2e movement
-        transmission_size = self._data_source_manager.get_instance_to_instance_data(
-            "data_transfer_size", from_instance_index, to_instance_index
+        transmission_size: float = float(
+            self._data_source_manager.get_instance_to_instance_data(
+                "data_transfer_size", from_instance_index, to_instance_index
+            )
         )
-        transmission_co2e_per_gb = self._transmission_matrix[from_region_index][to_region_index]
+        transmission_co2e_per_gb: float = float(self._transmission_matrix[from_region_index][to_region_index])
+
         return self._carbon_calculator.calculate_transmission_carbon(transmission_co2e_per_gb, transmission_size)

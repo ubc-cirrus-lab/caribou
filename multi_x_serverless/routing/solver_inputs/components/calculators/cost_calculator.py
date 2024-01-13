@@ -8,10 +8,14 @@ class CostCalculator(Calculator):
         super().__init__()
 
     def calculate_execution_cost(
-        self, compute_cost_information: list[(float, int)], compute_configuration: (float, float), execution_time: float
+        self,
+        compute_cost_information: list[tuple[float, int]],
+        compute_configuration: dict[str, float],
+        execution_time: float,
     ) -> float:
         # TODO (#32): Implement this function
-        memory, vcpu = compute_configuration  # Memory in MB
+        memory: float = float(compute_configuration["memory"])
+        vcpu: float = float(compute_configuration["vcpu"])
 
         # print("\n\nNew stuff:", compute_cost_information, compute_configuration, execution_time)
 

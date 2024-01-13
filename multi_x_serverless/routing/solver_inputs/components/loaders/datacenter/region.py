@@ -4,10 +4,7 @@ from multi_x_serverless.routing.solver_inputs.components.loaders.loader import L
 
 
 class DataCenterRegionLoader(Loader):
-    def __init__(self) -> None:
-        super().__init__()
-
-    def setup(self, regions: list[(str, str)]) -> bool:
+    def setup(self, regions: list[tuple[str, str]]) -> bool:
         self._data = {}
 
         # TODO (#35): Load data from database, convert to proper format and store in self._data

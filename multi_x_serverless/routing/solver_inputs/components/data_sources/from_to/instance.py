@@ -1,3 +1,5 @@
+import typing
+
 import numpy as np
 
 # Indexers
@@ -29,5 +31,5 @@ class InstanceToInstanceSource(Source):
 
     def get_value(
         self, data_name: str, from_instance_index: int, to_instance_index: int
-    ):  # Result type might not necessarily be float
+    ) -> typing.Any:  # Result type might not necessarily be float
         return self._data[from_instance_index][to_instance_index][data_name]

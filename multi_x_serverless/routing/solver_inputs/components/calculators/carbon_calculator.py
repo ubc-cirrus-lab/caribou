@@ -9,7 +9,7 @@ class CarbonCalculator(Calculator):
 
     def calculate_execution_carbon(
         self,
-        compute_configuration: (float, float),
+        compute_configuration: dict[str, float],
         execution_time: float,
         grid_co2e: float,
         pue: float,
@@ -17,8 +17,8 @@ class CarbonCalculator(Calculator):
         average_kw_compute: float,
         memory_kw_mb: float,
     ) -> float:
-        memory = compute_configuration["memory"]
-        vcpu = compute_configuration["vcpu"]
+        memory: float = float(compute_configuration["memory"])
+        vcpu: float = float(compute_configuration["vcpu"])
 
         # Average power from compute
         # Compute Watt-Hours = Average Watts * vCPU Hours

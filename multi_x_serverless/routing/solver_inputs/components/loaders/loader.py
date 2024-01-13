@@ -1,14 +1,14 @@
+import typing
 from abc import ABC, abstractmethod
 
 import numpy as np
 
 
 class Loader(ABC):
-    def __init__(self) -> None:
-        self._data: dict = None
+    _data: dict
 
     @abstractmethod
-    def setup(self, *args, **kwargs) -> bool:
+    def setup(self, *args: typing.Any, **kwargs: typing.Any) -> bool:
         # Clear Cache
         raise NotImplementedError
 

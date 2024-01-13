@@ -13,12 +13,12 @@ class RuntimeInput(Input):
     def setup(
         self, instances_indicies: list[int], regions_indicies: list[int], data_source_manager: DataSourceManager
     ) -> None:
-        super().setup()
+        self._cache = {}
 
         self._data_source_manager = data_source_manager
 
         # Setup Execution matrix
-        self._execution_matrix = np.zeros((len(regions_indicies), len(instances_indicies)))
+        self._execution_matrix = np.zeros((len(regions_indicies), len(instances_indicies)), dtype=float)
         for region_index in regions_indicies:
             for instance_index in instances_indicies:
                 execution_time: float = data_source_manager.get_instance_data("execution_time", instance_index)

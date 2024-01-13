@@ -1,3 +1,5 @@
+import typing
+
 import numpy as np
 
 # Indexers
@@ -9,7 +11,7 @@ class RegionToRegionSource(Source):
     def __init__(self) -> None:
         super().__init__()
 
-    def setup(self, loaded_data: dict, regions: list[(str, str)], regions_indexer: Indexer) -> None:
+    def setup(self, loaded_data: dict, regions: list[tuple[str, str]], regions_indexer: Indexer) -> None:
         self._data = {}
 
         # Known information
@@ -36,5 +38,5 @@ class RegionToRegionSource(Source):
 
     def get_value(
         self, data_name: str, from_region_index: int, to_region_index: int
-    ):  # Result type might not necessarily be float
+    ) -> typing.Any:  # Result type might not necessarily be float
         return self._data[from_region_index][to_region_index][data_name]

@@ -24,9 +24,7 @@ class LoaderManager:
         self._workflow_instance_to_instance_loader = WorkflowInstanceFromToLoader()
         self._workflow_instance_loader = WorkflowInstanceLoader()
 
-        self._data = None
-
-    def setup(self, regions: list[(str, str)], workflow_id: str) -> bool:
+    def setup(self, regions: list[tuple[str, str]], workflow_id: str) -> bool:
         # Utilize the Loaders to load the data from the database
 
         # Setup and load data from database

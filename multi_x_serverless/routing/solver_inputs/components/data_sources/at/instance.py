@@ -1,3 +1,5 @@
+import typing
+
 import numpy as np
 
 # Indexers
@@ -10,7 +12,7 @@ class InstanceSource(Source):
         super().__init__()
 
     def setup(
-        self, loaded_data: dict, instance_configuration: dict, instances: list[str], instance_indexer: Indexer
+        self, loaded_data: dict, instance_configuration: list[dict], instances: list[str], instance_indexer: Indexer
     ) -> None:
         self._data = {}
 
@@ -28,7 +30,7 @@ class InstanceSource(Source):
                 "provider_configurations": provider_configurations[instance],
             }
 
-    def _parse_provider_configuration(self, instance_configuration: dict) -> dict:
+    def _parse_provider_configuration(self, instance_configuration: list[dict]) -> dict:
         provider_configurations = {}
         for instance_information in instance_configuration:
             instance_name = instance_information["instance_name"]
@@ -54,5 +56,7 @@ class InstanceSource(Source):
 
         return provider_configurations
 
-    def get_value(self, data_name: str, instance_index: int):  # Result type might not necessarily be float
+    def get_value(
+        self, data_name: str, instance_index: int
+    ) -> typing.Any:  # Result type might not necessarily be float
         return self._data[instance_index][data_name]

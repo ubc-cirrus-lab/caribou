@@ -45,7 +45,14 @@ class TestTopologicalSolver(unittest.TestCase):
 
     def test_solve_complex(self):
         self.workflow_config.workflow_id = "1dsabshl1nkb2e1nws"
-        self.workflow_config.functions = ["f1", "f2", "f3", "f4", "f5", "f6"]
+        self.workflow_config.functions = [
+            {"f1": ["i1"]},
+            {"f2": ["i2"]},
+            {"f3": ["i3"]},
+            {"f4": ["i4"]},
+            {"f5": ["i5"]},
+            {"f6": ["i6"]},
+        ]
         self.workflow_config.regions_and_providers = {
             "allowed_regions": None,
             "disallowed_regions": None,
@@ -54,7 +61,7 @@ class TestTopologicalSolver(unittest.TestCase):
         self.workflow_config.instances = [
             {
                 "instance_name": "i1",
-                "succeeding_instances": ["i2", "i3", "i5", "i7"],
+                "succeeding_instances": ["i2", "i3", "i5"],
                 "preceding_instances": [],
                 "regions_and_providers": {  # This should be the same as start hop
                     "allowed_regions": [{"provider": "p1", "region": "r1"}],
