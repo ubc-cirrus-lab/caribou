@@ -11,7 +11,7 @@ class DeployInstructionFactory:
         except ValueError as e:
             raise RuntimeError(f"Unknown provider {provider}") from e
         if provider_enum == Provider.AWS:
-            return AWSDeployInstructions(region)
+            return AWSDeployInstructions(region, provider_enum)
         if provider_enum == Provider.GCP:
             raise NotImplementedError
         raise RuntimeError(f"Provider not implemented: {provider}")

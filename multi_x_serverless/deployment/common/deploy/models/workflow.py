@@ -86,7 +86,6 @@ class Workflow(Resource):
                     instance["succeeding_instances"].append(edge[1])
             instance["preceding_instances"] = []
             for edge in self._edges:
-                print(edge[1], instance["instance_name"])
                 if edge[1] == instance["instance_name"]:
                     instance["preceding_instances"].append(edge[0])
             finished_instances.append(instance)

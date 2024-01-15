@@ -3,6 +3,7 @@ from unittest.mock import Mock, patch
 from multi_x_serverless.deployment.common.config import Config
 from multi_x_serverless.deployment.client.multi_x_serverless_workflow import MultiXServerlessFunction
 from multi_x_serverless.deployment.common.deploy.workflow_builder import WorkflowBuilder
+from multi_x_serverless.deployment.common.enums import Provider
 
 import tempfile
 import os
@@ -27,7 +28,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         os.mkdir(os.path.join(self.project_dir, ".multi-x-serverless"))
 
         with open(self.policy_file, "w") as f:
-            f.write('{ "Version": "2012-10-17" }')
+            f.write('{"aws": {"Version": "2012-10-17"}}')
 
         with open(os.path.join(self.project_dir, ".multi-x-serverless", "policy.json"), "w") as f:
             f.write('{ "workflow_name": "test_workflow" }')
@@ -273,14 +274,14 @@ class TestWorkflowBuilder(unittest.TestCase):
         self.config.iam_policy_file = "policy.yml"
         role = self.builder.get_function_role(self.config, "test_function")
         self.assertEqual(role.name, "test_function-role")
-        self.assertEqual(role.policy, '{"Version": "2012-10-17"}')
+        self.assertEqual(role.get_policy(Provider.AWS), '{"Version": "2012-10-17"}')
 
     @patch("os.path.join")
     def test_get_function_role_without_policy_file(self, mock_join):
         mock_join.return_value = self.policy_file
         role = self.builder.get_function_role(self.config, "test_function")
         self.assertEqual(role.name, "test_function-role")
-        self.assertEqual(role.policy, '{"Version": "2012-10-17"}')
+        self.assertEqual(role.get_policy(Provider.AWS), '{"Version": "2012-10-17"}')
 
     def test_build_func_environment_variables(self):
         # function 1 (empty function level environment variables)

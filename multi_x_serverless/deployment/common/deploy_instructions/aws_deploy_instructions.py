@@ -54,7 +54,7 @@ class AWSDeployInstructions(DeployInstructions):
                         params={
                             "role_name": role.name,
                             "trust_policy": lambda_trust_policy,
-                            "policy": role.policy,
+                            "policy": role.get_policy(self._provider),
                         },
                         output_var=iam_role_varname,
                     ),
@@ -74,7 +74,7 @@ class AWSDeployInstructions(DeployInstructions):
                         params={
                             "role_name": role.name,
                             "trust_policy": lambda_trust_policy,
-                            "policy": role.policy,
+                            "policy": role.get_policy(self._provider),
                         },
                         output_var=iam_role_varname,
                     ),

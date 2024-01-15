@@ -4,11 +4,13 @@ from typing import Any
 from multi_x_serverless.deployment.common.deploy.models.iam_role import IAMRole
 from multi_x_serverless.deployment.common.deploy.models.instructions import Instruction
 from multi_x_serverless.deployment.common.deploy.models.remote_state import RemoteState
+from multi_x_serverless.deployment.common.enums import Provider
 
 
 class DeployInstructions(ABC):
-    def __init__(self, region: str) -> None:
+    def __init__(self, region: str, provider: Provider) -> None:
         self._region = region
+        self._provider = provider
 
     @abstractmethod
     def get_deployment_instructions(
