@@ -1,3 +1,4 @@
+import uuid
 from typing import Optional
 
 import botocore.exceptions
@@ -24,14 +25,14 @@ class Deployer:
         self._deployment_packager = deployment_packager
         self._executor = executor
 
-    def re_deploy(self, regions: list[dict[str, str]], workflow_description: dict) -> list[Resource]:
+    def re_deploy(self, regions: list[dict[str, str]], workflow_function_description: dict) -> list[Resource]:
         try:
-            return self._re_deploy(regions, workflow_description)
+            return self._re_deploy(regions, workflow_function_description)
         except botocore.exceptions.ClientError as e:
             raise DeploymentError(e) from e
 
-    def _re_deploy(self, regions: list[dict[str, str]], workflow_description: dict) -> list[Resource]:
-        workflow = self._workflow_builder.re_build_workflow(self._config, regions, workflow_description)
+    def _re_deploy(self, regions: list[dict[str, str]], workflow_function_description: dict) -> list[Resource]:
+        workflow = self._workflow_builder.re_build_workflow(self._config, regions, workflow_function_description)
 
         self._deployment_packager.re_build(self._config, workflow)
 
@@ -43,7 +44,7 @@ class Deployer:
         self._executor.execute(deployment_plan)
 
         deployed_resources = self._executor.get_deployed_resources()
-        self._upload_deployed_resources_to_deployer_server(deployed_resources)
+        self._upload_deployed_resources_to_deployer_server(deployed_resources, self._config.workflow_id)
 
         return deployed_resources
 
@@ -57,8 +58,10 @@ class Deployer:
         # Build the workflow (DAG of the workflow)
         workflow = self._workflow_builder.build_workflow(self._config, regions)
 
+        self._set_workflow_id(workflow)
+
         # Upload the workflow to the solver
-        self._upload_workflow_to_solver_update_checker(workflow)
+        self._upload_workflow_to_solver_update_checker(workflow, self._config.workflow_id)
 
         # Build the workflow resources, e.g. deployment packages, iam roles, etc.
         self._deployment_packager.build(self._config, workflow)
@@ -77,25 +80,33 @@ class Deployer:
 
         # TODO (#9): Add unique id to workflow and communicate this unique ID
         # to both the deployer server, the update checker and the client
-        self._upload_workflow_to_deployer_server(workflow)
-        self._upload_deployed_resources_to_deployer_server(deployed_resources)
+        self._upload_workflow_to_deployer_server(workflow, self._config.workflow_id)
+        self._upload_deployed_resources_to_deployer_server(deployed_resources, self._config.workflow_id)
 
         return deployed_resources
 
-    def _upload_deployed_resources_to_deployer_server(self, deployed_resources: list[Resource]) -> None:
+    def _set_workflow_id(self, workflow: Workflow) -> None:
+        workflow_id = f"{workflow.name}-{workflow.version}-{uuid.uuid4().hex}"
+        self._config.set_workflow_id(workflow_id)
+
+    def _upload_deployed_resources_to_deployer_server(
+        self, deployed_resources: list[Resource], workflow_id: str
+    ) -> None:
         # TODO (#10): Upload deployed resources to deployer server
         pass
 
-    def _upload_workflow_to_solver_update_checker(self, workflow: Workflow) -> None:
+    def _upload_workflow_to_solver_update_checker(self, workflow: Workflow, workflow_id: str) -> None:
         workflow_config = workflow.get_instance_description()
 
         print(workflow_config.to_json())
+        print(workflow_id)
         # TODO (#8): Upload workflow to solver
 
-    def _upload_workflow_to_deployer_server(self, workflow: Workflow) -> None:
+    def _upload_workflow_to_deployer_server(self, workflow: Workflow, workflow_id: str) -> None:
         workflow_config = workflow.get_function_description()
 
         print(workflow_config)
+        print(workflow_id)
         # TODO (#9): Upload workflow to deployer server
 
 

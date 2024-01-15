@@ -26,7 +26,7 @@ class TestDeployer(unittest.TestCase):
         deployer = Deployer(config, workflow_builder, deployment_packager, executor)
 
         regions = [{"region": "us-west-1"}]
-        workflow = Workflow("test_workflow", [], [], [], config)
+        workflow = Workflow("test_workflow", "0.0.1", [], [], [], config)
         workflow_builder.build_workflow.return_value = workflow
         executor.get_deployed_resources.return_value = [Resource("test_resource", "test_resource")]
 
@@ -57,7 +57,7 @@ class TestDeployer(unittest.TestCase):
         deployer = Deployer(config, workflow_builder, deployment_packager, None)
 
         regions = [{"region": "us-west-1"}]
-        workflow = Workflow("test_workflow", [], [], [], config)
+        workflow = Workflow("test_workflow", "0.0.1", [], [], [], config)
         workflow_builder.build_workflow.return_value = workflow
 
         with self.assertRaises(RuntimeError, msg="Cannot deploy with deletion deployer"):

@@ -1,4 +1,5 @@
 workflow_name: "{{ workflow_name }}"
+workflow_version: "0.0.1"
 environment_variables:
   - key: "ENV_VAR_1"
     value: "value_1"

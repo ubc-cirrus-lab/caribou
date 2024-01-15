@@ -1,14 +1,15 @@
 from __future__ import annotations
 
-from typing import Sequence
+from typing import Optional, Sequence
 
 from multi_x_serverless.deployment.common.deploy.models.instructions import Instruction
 
 
 class Resource:
-    def __init__(self, name: str, resource_type: str) -> None:
+    def __init__(self, name: str, resource_type: str, version: Optional[str] = None) -> None:
         self.name = name
         self.resource_type = resource_type
+        self.version = version
 
     def dependencies(self) -> Sequence[Resource]:
         return []

@@ -31,7 +31,13 @@ class DeploymentPackager:
             deployment_package.filename = zip_file
 
     def re_build(self, config: Config, workflow: Workflow) -> None:
-        raise NotImplementedError
+        zip_file = self._download_deployment_package(config)
+        for deployment_package in workflow.get_deployment_packages():
+            deployment_package.filename = zip_file
+
+    def _download_deployment_package(self, config: Config) -> str:
+        # TODO (#9): retrieve the package from the server and return a filename
+        raise NotImplementedError()
 
     def _create_deployment_package(self, project_dir: str, python_version: str) -> str:
         package_filename = self._get_package_filename(project_dir, python_version)

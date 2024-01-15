@@ -21,6 +21,7 @@ class TestWorkflow(unittest.TestCase):
         self.function_instance2 = Mock(spec=FunctionInstance)
         self.workflow = Workflow(
             "workflow_name",
+            "0.0.1",
             [self.function],
             [self.function_instance, self.function_instance2],
             [("function_instance_1", "function_instance_2")],

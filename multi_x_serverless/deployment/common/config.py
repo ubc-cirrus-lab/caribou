@@ -25,6 +25,17 @@ class Config:
     def workflow_name(self) -> str:
         return self._lookup("workflow_name")
 
+    @property
+    def workflow_version(self) -> str:
+        return self._lookup("workflow_version")
+
+    @property
+    def workflow_id(self) -> str:
+        return self._lookup("workflow_id")
+
+    def set_workflow_id(self, workflow_id: str) -> None:
+        self.project_config["workflow_id"] = workflow_id
+
     def _lookup(self, key: str) -> Any:
         return self.project_config.get(key, {})
 
@@ -76,3 +87,7 @@ class Config:
     @property
     def iam_policy_file(self) -> str:
         return self._lookup("iam_policy_file")
+
+    @property
+    def deployment_package_remote_location(self) -> str:
+        return self._lookup("deployment_package_remote_location")

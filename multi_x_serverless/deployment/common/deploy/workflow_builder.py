@@ -27,6 +27,9 @@ class WorkflowBuilder:
         function_name_to_function: dict[str, MultiXServerlessFunction] = {}
         entry_point: Optional[MultiXServerlessFunction] = None
 
+        if config.workflow_name != config.workflow_app.name:
+            raise RuntimeError("Workflow name in config and workflow app must match")
+
         # First, we create the functions (the resources that we deploy to the serverless platform)
         for function in config.workflow_app.functions.values():
             function_deployment_name = f"{config.workflow_name}-{function.name}"
@@ -127,7 +130,14 @@ class WorkflowBuilder:
             edges.append((predecessor_instance_name, function_instance_name))
 
         functions: list[FunctionInstance] = list(function_instances.values())
-        return Workflow(resources=resources, functions=functions, edges=edges, name=config.workflow_name, config=config)
+        return Workflow(
+            resources=resources,
+            functions=functions,
+            edges=edges,
+            name=config.workflow_name,
+            config=config,
+            version=config.workflow_version,
+        )
 
     def re_build_workflow(
         self, config: Config, regions: list[dict[str, str]], workflow_description: dict[str, Any]
@@ -149,7 +159,14 @@ class WorkflowBuilder:
                 )
             )
 
-        return Workflow(resources=resources, functions=[], edges=[], name=config.workflow_name, config=config)
+        return Workflow(
+            resources=resources,
+            functions=[],
+            edges=[],
+            name=config.workflow_name,
+            config=config,
+            version=config.workflow_version,
+        )
 
     def _cycle_check(self, function: MultiXServerlessFunction, config: Config) -> None:
         visiting: set[MultiXServerlessFunction] = set()

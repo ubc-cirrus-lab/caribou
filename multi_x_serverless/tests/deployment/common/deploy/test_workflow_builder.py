@@ -17,6 +17,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         self.config = Mock(spec=Config)
         self.config.workflow_name = "test_workflow"
         self.config.workflow_app.functions = {}
+        self.config.workflow_app.name = "test_workflow"
         self.config.environment_variables = {}
         self.config.python_version = "3.8"
         self.config.home_regions = []
@@ -56,6 +57,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         function2.regions_and_providers = {"providers": {}}
         function2.environment_variables = {}
         self.config.workflow_app.functions = {"function1": function1, "function2": function2}
+
         with self.assertRaisesRegex(RuntimeError, "Multiple entry points defined"):
             self.builder.build_workflow(self.config, [])
 
@@ -283,6 +285,15 @@ class TestWorkflowBuilder(unittest.TestCase):
         self.assertEqual(role.name, "test_function-role")
         self.assertEqual(role.get_policy(Provider.AWS), '{"Version": "2012-10-17"}')
 
+    def test_build_workflow_and_config_name_not_equals(self):
+        self.builder = WorkflowBuilder()
+        config = Mock(spec=Config)
+        config.workflow_name = "test_workflow"
+        config.workflow_app.name = "not_test_workflow"
+
+        with self.assertRaisesRegex(RuntimeError, "Workflow name in config and workflow app must match"):
+            self.builder.build_workflow(config, [])
+
     def test_build_func_environment_variables(self):
         # function 1 (empty function level environment variables)
         function1 = Mock(spec=MultiXServerlessFunction)
@@ -321,6 +332,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         config.project_dir = self.project_dir
         config.regions_and_providers = {"providers": {}}
         config.workflow_app.get_successors.return_value = []
+        config.workflow_app.name = "test_workflow"
         config.iam_policy_file = "policy.json"
 
         workflow = self.builder.build_workflow(config, [])

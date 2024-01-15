@@ -8,18 +8,18 @@ from multi_x_serverless.deployment.common.factories.deployer_factory import Depl
 
 def main() -> int:
     try:
-        run_deployer(deployment_config={}, regions=[], workflow_description={})
+        run_deployer(deployment_config={}, regions=[], workflow_function_description={})
         return 0
     except Exception:  # pylint: disable=broad-except
         print(traceback.format_exc(), file=sys.stderr)
         return 2
 
 
-def run_deployer(deployment_config: dict, regions: list[dict[str, str]], workflow_description: dict) -> None:
+def run_deployer(deployment_config: dict, regions: list[dict[str, str]], workflow_function_description: dict) -> None:
     deployer_factory = DeployerFactory(project_dir=None)
     config: Config = deployer_factory.create_config_obj_from_dict(deployment_config=deployment_config)
     deployer: Deployer = create_default_deployer(config=config)
-    deployer.re_deploy(regions, workflow_description)
+    deployer.re_deploy(regions, workflow_function_description)
 
 
 if __name__ == "__main__":

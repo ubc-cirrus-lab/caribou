@@ -38,6 +38,7 @@ class RegionAndProviders(BaseModel):
 
 class ConfigSchema(BaseModel):
     workflow_name: str = Field(..., title="The name of the workflow")
+    workflow_version: str = Field(..., title="The version of the workflow")
     environment_variables: List[EnvironmentVariable] = Field(..., title="List of environment variables")
     iam_policy_file: str = Field(..., title="The IAM policy file")
     home_regions: List[ProviderRegion] = Field(..., title="List of home regions")

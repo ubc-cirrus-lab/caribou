@@ -13,6 +13,7 @@ class Workflow(Resource):
     def __init__(
         self,
         name: str,
+        version: str,
         resources: list[Function],
         functions: list[FunctionInstance],
         edges: list[tuple[str, str]],
@@ -22,7 +23,7 @@ class Workflow(Resource):
         self._functions = functions
         self._edges = edges
         self._config = config
-        super().__init__(name, "workflow")
+        super().__init__(name, "workflow", version)
 
     def __repr__(self) -> str:
         return f"Workflow(name={self.name}, resources={self._resources}, functions={self._functions}, edges={self._edges}, config={self._config})"  # pylint: disable=line-too-long
