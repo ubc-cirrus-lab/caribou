@@ -1,0 +1,3 @@
+ROUTING_DECISION_TABLE = "routing_decision_table"
+SOLVER_UPDATE_CHECKER_RESOURCE_TABLE = "solver_update_checker_resources_table"
+DEPLOYMENT_MANAGER_RESOURCE_TABLE = "deployment_manager_resources_table"

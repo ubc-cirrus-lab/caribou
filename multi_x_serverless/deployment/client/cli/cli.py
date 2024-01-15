@@ -4,7 +4,7 @@ import click
 
 from multi_x_serverless.deployment.client import __version__ as MULTI_X_SERVERLESS_VERSION
 from multi_x_serverless.deployment.client.cli.new_workflow import create_new_workflow_directory
-from multi_x_serverless.deployment.common.config import Config
+from multi_x_serverless.deployment.common.config.config import Config
 from multi_x_serverless.deployment.common.deploy.deployer import Deployer
 from multi_x_serverless.deployment.common.factories.deployer_factory import DeployerFactory
 

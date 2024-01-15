@@ -14,7 +14,7 @@ from random import choice
 
 from multi_x_serverless.deployment.client import MultiXServerlessWorkflow
 
-workflow = MultiXServerlessWorkflow("regression_tuning")
+workflow = MultiXServerlessWorkflow(name="regression_tuning", version="0.0.1")
 
 
 @workflow.serverless_function(

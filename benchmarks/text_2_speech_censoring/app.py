@@ -13,7 +13,7 @@ import numpy as np
 
 import tempfile
 
-workflow = MultiXServerlessWorkflow("text_2_speech_censoring")
+workflow = MultiXServerlessWorkflow(name="text_2_speech_censoring", version="0.0.1")
 
 
 @workflow.serverless_function(

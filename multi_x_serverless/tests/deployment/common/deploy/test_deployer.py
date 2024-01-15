@@ -1,6 +1,6 @@
 from unittest.mock import Mock, patch, mock_open
 from botocore.exceptions import ClientError
-from multi_x_serverless.deployment.common.config import Config
+from multi_x_serverless.deployment.common.config.config import Config
 from multi_x_serverless.deployment.common.deploy.models.resource import Resource
 from multi_x_serverless.deployment.common.deploy.models.workflow import Workflow
 from multi_x_serverless.deployment.common.remote_client.aws_remote_client import AWSRemoteClient
@@ -115,7 +115,7 @@ class TestDeployer(unittest.TestCase):
             deployer._upload_workflow_to_solver_update_checker(workflow, "test_workflow_id")
 
             set_value_in_table.assert_called_once_with(
-                "solver_update_checker_resources",
+                "solver_update_checker_resources_table",
                 "test_workflow_id",
                 '{"workflow_id": "test_workflow_id", "workflow_config": "test_workflow_description"}',
             )
@@ -134,7 +134,7 @@ class TestDeployer(unittest.TestCase):
             deployer._upload_workflow_to_deployer_server(workflow, "test_workflow_id")
 
             set_value_in_table.assert_called_once_with(
-                "deployment_manager_resources",
+                "deployment_manager_resources_table",
                 "test_workflow_id",
                 '{"workflow_id": "test_workflow_id", "workflow_function_description": "[{\\"name\\": \\"test_function\\", \\"version\\": \\"0.0.1\\"}]", "deployment_config": "{}"}',
             )

@@ -9,7 +9,7 @@ from multi_x_serverless.deployment.common.deploy.models.resource import Resource
 from multi_x_serverless.deployment.common.remote_client.remote_client import RemoteClient
 
 
-class AWSRemoteClient(RemoteClient):
+class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
     LAMBDA_CREATE_ATTEMPTS = 30
     DELAY_TIME = 5
 
@@ -256,8 +256,18 @@ class AWSRemoteClient(RemoteClient):
 
     def set_value_in_table(self, table_name: str, key: str, value: str) -> None:
         client = self._client("dynamodb")
-        client.put_item(TableName=table_name, Item={key: {"S": value}})
+        client.put_item(TableName=table_name, Item={"key": {"S": key}, "value": {"S": value}})
         print(f"Successfully set value {value} in table {table_name}")
+
+    def get_value_from_table(self, table_name: str, key: str) -> str:
+        client = self._client("dynamodb")
+        response = client.get_item(TableName=table_name, Key={"key": {"S": key}})
+        if "Item" not in response:
+            return ""
+        item = response.get("Item")
+        if item is not None and "value" in item:
+            return item["value"]["S"]
+        return ""
 
     def upload_resource(self, key: str, resource: bytes) -> None:
         client = self._client("s3")

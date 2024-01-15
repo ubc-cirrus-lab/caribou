@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import Mock
-from multi_x_serverless.deployment.common.config import Config
+from multi_x_serverless.deployment.common.config.config import Config
 from multi_x_serverless.deployment.common.deploy.models.deployment_package import DeploymentPackage
 from multi_x_serverless.deployment.common.deploy.models.function import Function
 from multi_x_serverless.deployment.common.deploy.models.function_instance import FunctionInstance

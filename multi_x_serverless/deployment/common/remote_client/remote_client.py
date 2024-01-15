@@ -86,6 +86,10 @@ class RemoteClient(ABC):
         raise NotImplementedError()
 
     @abstractmethod
+    def get_value_from_table(self, table_name: str, key: str) -> str:
+        raise NotImplementedError()
+
+    @abstractmethod
     def upload_resource(self, key: str, resource: bytes) -> None:
         raise NotImplementedError()
 

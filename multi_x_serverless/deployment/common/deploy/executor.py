@@ -1,6 +1,6 @@
 from typing import Any
 
-from multi_x_serverless.deployment.common.config import Config
+from multi_x_serverless.deployment.common.config.config import Config
 from multi_x_serverless.deployment.common.deploy.models.deployment_plan import DeploymentPlan
 from multi_x_serverless.deployment.common.deploy.models.instructions import APICall, Instruction, RecordResourceVariable
 from multi_x_serverless.deployment.common.deploy.models.variable import Variable

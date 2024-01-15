@@ -1,6 +1,6 @@
 import pytest
 from pydantic import ValidationError
-from multi_x_serverless.deployment.client.cli.config_schema import ConfigSchema, RegionAndProviders, Provider
+from multi_x_serverless.deployment.common.config.config_schema import ConfigSchema, RegionAndProviders, Provider
 import os
 from pathlib import Path
 import yaml

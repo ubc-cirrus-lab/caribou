@@ -25,7 +25,7 @@ class MockFrame:
 
 class TestMultiXServerlessWorkflow(unittest.TestCase):
     def setUp(self):
-        self.workflow = MultiXServerlessWorkflow(name="test-workflow")
+        self.workflow = MultiXServerlessWorkflow(name="test-workflow", version="0.0.1")
 
     def test_serverless_function(self):
         self.workflow.register_function = Mock()

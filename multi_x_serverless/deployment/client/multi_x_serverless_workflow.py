@@ -8,6 +8,8 @@ from types import FrameType
 from typing import Any, Callable, Optional
 
 from multi_x_serverless.deployment.client.multi_x_serverless_function import MultiXServerlessFunction
+from multi_x_serverless.deployment.common.constants import ROUTING_DECISION_TABLE
+from multi_x_serverless.deployment.common.deploy.models.endpoints import Endpoints
 from multi_x_serverless.deployment.common.factories.remote_client_factory import RemoteClientFactory
 
 
@@ -24,11 +26,13 @@ class MultiXServerlessWorkflow:
     :param name: The name of the workflow.
     """
 
-    def __init__(self, name: str):
+    def __init__(self, name: str, version: str):
         self.name = name
+        self.version = version
         self.functions: dict[str, MultiXServerlessFunction] = {}
         self._successor_index = 0
         self._function_names: set[str] = set()
+        self._endpoint = Endpoints()
 
     def get_function_and_wrapper_frame(self, current_frame: Optional[FrameType]) -> tuple[FrameType, FrameType]:
         if not current_frame:
@@ -303,8 +307,13 @@ class MultiXServerlessWorkflow:
         """
         Get the routing decision from the platform.
         """
-        # TODO (#7): Get routing decision from platform
-        return {}
+        result = self._endpoint.get_solver_routing_decision_client().get_value_from_table(
+            ROUTING_DECISION_TABLE, f"{self.name}-{self.version}"
+        )
+        if result is not None:
+            return json.loads(result)
+
+        raise RuntimeError("Could not get routing decision from platform")
 
     def register_function(
         self,

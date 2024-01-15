@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import Mock, patch
-from multi_x_serverless.deployment.common.config import Config
+from multi_x_serverless.deployment.common.config.config import Config
 from multi_x_serverless.deployment.client.multi_x_serverless_workflow import MultiXServerlessFunction
 from multi_x_serverless.deployment.common.deploy.workflow_builder import WorkflowBuilder
 from multi_x_serverless.deployment.common.provider import Provider
@@ -16,8 +16,10 @@ class TestWorkflowBuilder(unittest.TestCase):
         self.builder = WorkflowBuilder()
         self.config = Mock(spec=Config)
         self.config.workflow_name = "test_workflow"
+        self.config.workflow_version = "0.0.1"
         self.config.workflow_app.functions = {}
         self.config.workflow_app.name = "test_workflow"
+        self.config.workflow_app.version = "0.0.1"
         self.config.environment_variables = {}
         self.config.python_version = "3.8"
         self.config.home_regions = []
@@ -322,6 +324,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         self.builder = WorkflowBuilder()
         config = Mock(spec=Config)
         config.workflow_name = "test_workflow"
+        config.workflow_version = "0.0.1"
         config.workflow_app.functions = {"function1": function1, "function2": function2, "function3": function3}
         config.environment_variables = {
             "ENV_1": "global_env_1",
@@ -333,6 +336,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         config.regions_and_providers = {"providers": {}}
         config.workflow_app.get_successors.return_value = []
         config.workflow_app.name = "test_workflow"
+        config.workflow_app.version = "0.0.1"
         config.iam_policy_file = "policy.json"
 
         workflow = self.builder.build_workflow(config, [])

@@ -8,7 +8,7 @@ import uuid
 
 from multi_x_serverless.deployment.client import MultiXServerlessWorkflow
 
-workflow = MultiXServerlessWorkflow("image_processing")
+workflow = MultiXServerlessWorkflow(name="image_processing", version="0.0.1")
 
 
 @workflow.serverless_function(

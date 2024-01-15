@@ -7,9 +7,9 @@ import yaml
 from pydantic import ValidationError
 
 from multi_x_serverless.deployment.client import __version__ as MULTI_X_SERVERLESS_VERSION
-from multi_x_serverless.deployment.client.cli.config_schema import ConfigSchema
 from multi_x_serverless.deployment.client.multi_x_serverless_workflow import MultiXServerlessWorkflow
-from multi_x_serverless.deployment.common.config import Config
+from multi_x_serverless.deployment.common.config.config import Config
+from multi_x_serverless.deployment.common.config.config_schema import ConfigSchema
 from multi_x_serverless.deployment.common.deploy.deployer import (
     Deployer,
     create_default_deployer,

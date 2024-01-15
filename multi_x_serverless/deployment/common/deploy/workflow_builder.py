@@ -2,9 +2,9 @@ import os
 import queue
 from typing import Any, Optional
 
-from multi_x_serverless.deployment.client.cli.config_schema import Provider
 from multi_x_serverless.deployment.client.multi_x_serverless_workflow import MultiXServerlessFunction
-from multi_x_serverless.deployment.common.config import Config
+from multi_x_serverless.deployment.common.config.config import Config
+from multi_x_serverless.deployment.common.config.config_schema import Provider
 from multi_x_serverless.deployment.common.deploy.models.deployment_package import DeploymentPackage
 from multi_x_serverless.deployment.common.deploy.models.function import Function
 from multi_x_serverless.deployment.common.deploy.models.function_instance import FunctionInstance
@@ -29,6 +29,9 @@ class WorkflowBuilder:
 
         if config.workflow_name != config.workflow_app.name:
             raise RuntimeError("Workflow name in config and workflow app must match")
+
+        if config.workflow_version != config.workflow_app.version:
+            raise RuntimeError("Workflow version in config and workflow app must match")
 
         # First, we create the functions (the resources that we deploy to the serverless platform)
         for function in config.workflow_app.functions.values():

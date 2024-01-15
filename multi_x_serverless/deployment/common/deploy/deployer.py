@@ -1,10 +1,13 @@
 import json
-import uuid
 from typing import Optional
 
 import botocore.exceptions
 
-from multi_x_serverless.deployment.common.config import Config
+from multi_x_serverless.deployment.common.config.config import Config
+from multi_x_serverless.deployment.common.constants import (
+    DEPLOYMENT_MANAGER_RESOURCE_TABLE,
+    SOLVER_UPDATE_CHECKER_RESOURCE_TABLE,
+)
 from multi_x_serverless.deployment.common.deploy.deployment_packager import DeploymentPackager
 from multi_x_serverless.deployment.common.deploy.executor import Executor
 from multi_x_serverless.deployment.common.deploy.models.deployment_plan import DeploymentPlan
@@ -81,7 +84,7 @@ class Deployer:
         self._upload_deployment_package_resource(workflow)
 
     def _set_workflow_id(self, workflow: Workflow) -> None:
-        workflow_id = f"{workflow.name}-{workflow.version}-{uuid.uuid4().hex}"
+        workflow_id = f"{workflow.name}-{workflow.version}"
         self._config.set_workflow_id(workflow_id)
 
     def _upload_workflow_to_solver_update_checker(self, workflow: Workflow, workflow_id: str) -> None:
@@ -95,7 +98,7 @@ class Deployer:
         payload_json = json.dumps(payload)
 
         self._endpoints.get_solver_update_checker_client().set_value_in_table(
-            "solver_update_checker_resources", workflow_id, payload_json
+            SOLVER_UPDATE_CHECKER_RESOURCE_TABLE, workflow_id, payload_json
         )
 
     def _upload_workflow_to_deployer_server(self, workflow: Workflow, workflow_id: str) -> None:
@@ -112,7 +115,7 @@ class Deployer:
         payload_json = json.dumps(payload)
 
         self._endpoints.get_deployment_manager_client().set_value_in_table(
-            "deployment_manager_resources", workflow_id, payload_json
+            DEPLOYMENT_MANAGER_RESOURCE_TABLE, workflow_id, payload_json
         )
 
     def _upload_deployment_package_resource(self, workflow: Workflow) -> None:

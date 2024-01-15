@@ -2,7 +2,7 @@ from typing import Any
 
 from multi_x_serverless.deployment.client import MultiXServerlessWorkflow
 
-workflow = MultiXServerlessWorkflow("{{ workflow_name }}")
+workflow = MultiXServerlessWorkflow(name="{{ workflow_name }}", version="0.0.1")
 
 
 @workflow.serverless_function(

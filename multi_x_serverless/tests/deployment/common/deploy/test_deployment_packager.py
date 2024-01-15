@@ -5,7 +5,7 @@ from multi_x_serverless.deployment.common.deploy.deployment_packager import (
     DeploymentPackager,
     pip_import_string,
 )
-from multi_x_serverless.deployment.common.config import Config
+from multi_x_serverless.deployment.common.config.config import Config
 from multi_x_serverless.deployment.common.deploy.models.workflow import Workflow
 import os
 import shutil
@@ -106,7 +106,7 @@ class TestDeploymentPackager(unittest.TestCase):
         packager = DeploymentPackager(config)
         packager._add_mutli_x_serverless_dependency(mock_zipfile)
 
-        self.assertEqual(mock_zipfile.write.call_count, 12)
+        self.assertEqual(mock_zipfile.write.call_count, 13)
 
     @patch.object(DeploymentPackager, "_download_deployment_package", return_value="test.zip")
     def test_re_build(self, mock_download_deployment_package):

@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import Mock, patch
-from multi_x_serverless.deployment.common.config import Config
+from multi_x_serverless.deployment.common.config.config import Config
 from multi_x_serverless.deployment.common.deploy.models.deployment_plan import DeploymentPlan
 from multi_x_serverless.deployment.common.deploy.models.instructions import APICall, RecordResourceVariable
 from multi_x_serverless.deployment.common.deploy.models.resource import Resource

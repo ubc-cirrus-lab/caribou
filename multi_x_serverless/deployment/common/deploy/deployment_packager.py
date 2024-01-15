@@ -15,7 +15,7 @@ import pip
 import yaml
 
 import multi_x_serverless
-from multi_x_serverless.deployment.common.config import Config
+from multi_x_serverless.deployment.common.config.config import Config
 from multi_x_serverless.deployment.common.deploy.models.workflow import Workflow
 from multi_x_serverless.deployment.common.remote_client.remote_client import RemoteClient
 
@@ -113,6 +113,10 @@ class DeploymentPackager:
         zip_file.write(
             os.path.join(multi_x_serverless_path, "common", "deploy", "models", "resource.py"),
             os.path.join("multi_x_serverless", "deployment", "common", "deploy", "models", "resource.py"),
+        )
+        zip_file.write(
+            os.path.join(multi_x_serverless_path, "common", "deploy", "models", "endpoints.py"),
+            os.path.join("multi_x_serverless", "deployment", "common", "deploy", "models", "endpoints.py"),
         )
         zip_file.write(
             os.path.join(multi_x_serverless_path, "common", "enums.py"),
