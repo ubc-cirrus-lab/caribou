@@ -86,6 +86,14 @@ class RemoteClient(ABC):
         raise NotImplementedError()
 
     @abstractmethod
+    def upload_resource(self, key: str, resource: bytes) -> None:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def download_resource(self, key: str) -> bytes:
+        raise NotImplementedError()
+
+    @abstractmethod
     def update_function(
         self,
         function_name: str,

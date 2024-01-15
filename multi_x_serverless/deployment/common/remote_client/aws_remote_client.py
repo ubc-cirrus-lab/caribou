@@ -258,3 +258,13 @@ class AWSRemoteClient(RemoteClient):
         client = self._client("dynamodb")
         client.put_item(TableName=table_name, Item={key: {"S": value}})
         print(f"Successfully set value {value} in table {table_name}")
+
+    def upload_resource(self, key: str, resource: bytes) -> None:
+        client = self._client("s3")
+        client.put_object(Body=resource, Bucket="multi-x-serverless-resources", Key=key)
+        print(f"Successfully uploaded resource {key}")
+
+    def download_resource(self, key: str) -> bytes:
+        client = self._client("s3")
+        response = client.get_object(Bucket="multi-x-serverless-resources", Key=key)
+        return response["Body"].read()

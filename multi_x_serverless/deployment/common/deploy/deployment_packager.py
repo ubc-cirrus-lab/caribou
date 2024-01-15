@@ -17,6 +17,7 @@ import yaml
 import multi_x_serverless
 from multi_x_serverless.deployment.common.config import Config
 from multi_x_serverless.deployment.common.deploy.models.workflow import Workflow
+from multi_x_serverless.deployment.common.remote_client.remote_client import RemoteClient
 
 
 class DeploymentPackager:
@@ -30,14 +31,23 @@ class DeploymentPackager:
         for deployment_package in workflow.get_deployment_packages():
             deployment_package.filename = zip_file
 
-    def re_build(self, config: Config, workflow: Workflow) -> None:
-        zip_file = self._download_deployment_package(config)
+    def re_build(self, config: Config, workflow: Workflow, remote_client: RemoteClient) -> None:
+        zip_file = self._download_deployment_package(config, remote_client)
         for deployment_package in workflow.get_deployment_packages():
             deployment_package.filename = zip_file
 
-    def _download_deployment_package(self, config: Config) -> str:
-        # TODO (#9): retrieve the package from the server and return a filename
-        raise NotImplementedError()
+    def _download_deployment_package(self, config: Config, remote_client: RemoteClient) -> str:
+        deployment_package_filename = tempfile.mktemp(suffix=".zip")
+
+        deployment_package_content = remote_client.download_resource(config.workflow_id)
+
+        if deployment_package_content is None:
+            raise RuntimeError("Could not download deployment package")
+
+        with open(deployment_package_filename, "wb") as f:
+            f.write(deployment_package_content)
+
+        return deployment_package_filename
 
     def _create_deployment_package(self, project_dir: str, python_version: str) -> str:
         package_filename = self._get_package_filename(project_dir, python_version)
