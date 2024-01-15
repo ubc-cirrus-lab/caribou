@@ -34,6 +34,9 @@ class Deployer:
             raise DeploymentError(e) from e
 
     def _re_deploy(self, regions: list[dict[str, str]], workflow_function_description: dict) -> None:
+        if self._config.workflow_id is None or self._config.workflow_id == "{}":
+            raise RuntimeError("Workflow id is not set correctly")
+
         workflow = self._workflow_builder.re_build_workflow(self._config, regions, workflow_function_description)
 
         self._deployment_packager.re_build(self._config, workflow, self._endpoints.get_deployment_manager_client())

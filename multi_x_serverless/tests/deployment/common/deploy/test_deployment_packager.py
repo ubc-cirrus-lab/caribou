@@ -1,10 +1,12 @@
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, Mock, mock_open
 import tempfile
 from multi_x_serverless.deployment.common.deploy.deployment_packager import (
     DeploymentPackager,
     pip_import_string,
 )
+from multi_x_serverless.deployment.common.config import Config
+from multi_x_serverless.deployment.common.deploy.models.workflow import Workflow
 import os
 import shutil
 
@@ -105,6 +107,57 @@ class TestDeploymentPackager(unittest.TestCase):
         packager._add_mutli_x_serverless_dependency(mock_zipfile)
 
         self.assertEqual(mock_zipfile.write.call_count, 12)
+
+    @patch.object(DeploymentPackager, "_download_deployment_package", return_value="test.zip")
+    def test_re_build(self, mock_download_deployment_package):
+        config = Config({}, self.test_dir)
+        workflow = Workflow("test_workflow", "0.0.1", [], [], [], config)
+        remote_client = Mock()
+        packager = DeploymentPackager(config)
+
+        packager.re_build(config, workflow, remote_client)
+
+        mock_download_deployment_package.assert_called_once_with(config, remote_client)
+        for deployment_package in workflow.get_deployment_packages():
+            self.assertEqual(deployment_package.filename, "test.zip")
+
+    @patch.object(DeploymentPackager, "_create_deployment_package", return_value="test.zip")
+    def test_build(self, mock_create_deployment_package):
+        config = Config({}, self.test_dir)
+        workflow = Workflow("test_workflow", "0.0.1", [], [], [], config)
+        packager = DeploymentPackager(config)
+
+        packager.build(config, workflow)
+
+        mock_create_deployment_package.assert_called_once_with(self.test_dir, config.python_version)
+        for deployment_package in workflow.get_deployment_packages():
+            self.assertEqual(deployment_package.filename, "test.zip")
+
+    @patch("tempfile.mktemp", return_value="test.zip")
+    @patch("builtins.open", new_callable=mock_open)
+    def test__download_deployment_package(self, mock_open, mock_mktemp):
+        config = Config({}, self.test_dir)
+        remote_client = Mock()
+        remote_client.download_resource.return_value = b"test_content"
+        packager = DeploymentPackager(config)
+
+        result = packager._download_deployment_package(config, remote_client)
+
+        self.assertEqual(result, "test.zip")
+        mock_open.assert_called_once_with("test.zip", "wb")
+        file_handle = mock_open()
+        file_handle.write.assert_called_once_with(b"test_content")
+
+    @patch("tempfile.mktemp", return_value="test.zip")
+    @patch("builtins.open", new_callable=mock_open)
+    def test__download_deployment_package_with_none_content(self, mock_open, mock_mktemp):
+        config = Config({}, self.test_dir)
+        remote_client = Mock()
+        remote_client.download_resource.return_value = None
+        packager = DeploymentPackager(config)
+
+        with self.assertRaises(RuntimeError, msg="Could not download deployment package"):
+            packager._download_deployment_package(config, remote_client)
 
 
 if __name__ == "__main__":
