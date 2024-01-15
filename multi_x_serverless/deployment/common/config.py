@@ -1,3 +1,4 @@
+import json
 import sys
 from typing import Any, Optional
 
@@ -91,3 +92,6 @@ class Config:
     @property
     def deployment_package_remote_location(self) -> str:
         return self._lookup("deployment_package_remote_location")
+
+    def to_json(self) -> str:
+        return json.dumps(self.project_config)

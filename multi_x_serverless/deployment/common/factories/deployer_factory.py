@@ -15,7 +15,7 @@ from multi_x_serverless.deployment.common.deploy.deployer import (
     create_default_deployer,
     create_deletion_deployer,
 )
-from multi_x_serverless.deployment.common.enums import Provider
+from multi_x_serverless.deployment.common.provider import Provider
 
 
 class DeployerFactory:

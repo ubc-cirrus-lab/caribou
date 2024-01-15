@@ -41,8 +41,7 @@ def deploy(ctx: click.Context) -> None:
     factory: DeployerFactory = ctx.obj["factory"]
     config: Config = factory.create_config_obj()
     deployer: Deployer = factory.create_deployer(config=config)
-    deployment_information = deployer.deploy(config.home_regions)
-    print(deployment_information)
+    deployer.deploy(config.home_regions)
 
 
 __version__ = MULTI_X_SERVERLESS_VERSION

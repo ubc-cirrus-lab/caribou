@@ -1,4 +1,3 @@
-import pytest
 from unittest.mock import Mock, patch
 from botocore.exceptions import ClientError
 from multi_x_serverless.deployment.common.config import Config
@@ -8,7 +7,6 @@ from multi_x_serverless.deployment.common.deploy.deployer import Deployer, Deplo
 import unittest
 import tempfile
 import shutil
-import os
 
 
 class TestDeployer(unittest.TestCase):
@@ -30,12 +28,14 @@ class TestDeployer(unittest.TestCase):
         workflow_builder.build_workflow.return_value = workflow
         executor.get_deployed_resources.return_value = [Resource("test_resource", "test_resource")]
 
-        result = deployer.deploy(regions)
+        with patch.object(Deployer, "_upload_workflow_to_solver_update_checker", return_value=None), patch.object(
+            Deployer, "_upload_workflow_to_deployer_server", return_value=None
+        ):
+            deployer.deploy(regions)
 
         workflow_builder.build_workflow.assert_called_once_with(config, regions)
         deployment_packager.build.assert_called_once_with(config, workflow)
         executor.execute.assert_called_once()
-        self.assertEqual(result, [Resource("test_resource", "test_resource")])
 
     def test_deploy_with_client_error(self):
         config = Config({}, self.test_dir)
@@ -47,8 +47,11 @@ class TestDeployer(unittest.TestCase):
         regions = [{"region": "us-west-1"}]
         workflow_builder.build_workflow.side_effect = ClientError({"Error": {}}, "operation")
 
-        with self.assertRaises(DeploymentError):
-            deployer.deploy(regions)
+        with patch.object(Deployer, "_upload_workflow_to_solver_update_checker", return_value=None), patch.object(
+            Deployer, "_upload_workflow_to_deployer_server", return_value=None
+        ):
+            with self.assertRaises(DeploymentError):
+                deployer.deploy(regions)
 
     def test_deploy_without_executor(self):
         config = Config({}, self.test_dir)
@@ -60,8 +63,11 @@ class TestDeployer(unittest.TestCase):
         workflow = Workflow("test_workflow", "0.0.1", [], [], [], config)
         workflow_builder.build_workflow.return_value = workflow
 
-        with self.assertRaises(RuntimeError, msg="Cannot deploy with deletion deployer"):
-            deployer.deploy(regions)
+        with patch.object(Deployer, "_upload_workflow_to_solver_update_checker", return_value=None), patch.object(
+            Deployer, "_upload_workflow_to_deployer_server", return_value=None
+        ):
+            with self.assertRaises(RuntimeError, msg="Cannot deploy with deletion deployer"):
+                deployer.deploy(regions)
 
 
 if __name__ == "__main__":

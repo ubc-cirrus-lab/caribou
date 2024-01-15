@@ -253,3 +253,8 @@ class AWSRemoteClient(RemoteClient):
         client = self._client("sns")
         client.publish(TopicArn=identifier, Message=message)
         print(f"Successfully sent message to SNS topic {identifier}")
+
+    def set_value_in_table(self, table_name: str, key: str, value: str) -> None:
+        client = self._client("dynamodb")
+        client.put_item(TableName=table_name, Item={key: {"S": value}})
+        print(f"Successfully set value {value} in table {table_name}")

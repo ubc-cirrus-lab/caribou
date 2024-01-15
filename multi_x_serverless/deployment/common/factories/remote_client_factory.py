@@ -1,4 +1,4 @@
-from multi_x_serverless.deployment.common.enums import Provider
+from multi_x_serverless.deployment.common.provider import Provider
 from multi_x_serverless.deployment.common.remote_client.aws_remote_client import AWSRemoteClient
 from multi_x_serverless.deployment.common.remote_client.remote_client import RemoteClient
 

@@ -72,18 +72,6 @@ class TestExecutor(unittest.TestCase):
         expected_payload = {"name": "resource_name", "resource_type": "resource_type", "var_name": "value1"}
         self.assertEqual(self.executor.resource_values["resource_type"], [expected_payload])
 
-    def test_get_deployed_resources(self):
-        self.executor.resource_values = {
-            "resource_type1": [{"name": "resource_name1", "resource_type": "resource_type1", "var_name": "value1"}]
-        }
-
-        deployed_resources = self.executor.get_deployed_resources()
-
-        expected_resource = Resource(
-            "resource_type1", {"name": "resource_name1", "resource_type": "resource_type1", "var_name": "value1"}
-        )
-        self.assertEqual(deployed_resources, [expected_resource])
-
     def test_default_handler(self):
         with self.assertRaises(RuntimeError):
             self.executor._default_handler("instruction", "client")

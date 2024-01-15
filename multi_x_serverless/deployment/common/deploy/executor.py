@@ -3,7 +3,6 @@ from typing import Any
 from multi_x_serverless.deployment.common.config import Config
 from multi_x_serverless.deployment.common.deploy.models.deployment_plan import DeploymentPlan
 from multi_x_serverless.deployment.common.deploy.models.instructions import APICall, Instruction, RecordResourceVariable
-from multi_x_serverless.deployment.common.deploy.models.resource import Resource
 from multi_x_serverless.deployment.common.deploy.models.variable import Variable
 from multi_x_serverless.deployment.common.factories.remote_client_factory import RemoteClientFactory
 from multi_x_serverless.deployment.common.remote_client.remote_client import RemoteClient
@@ -66,10 +65,3 @@ class Executor:
 
     def _default_handler(self, instruction: Instruction, client: RemoteClient) -> None:
         raise RuntimeError(f"Unknown instruction type: {instruction.__class__.__name__}")
-
-    def get_deployed_resources(self) -> list[Resource]:
-        deployed_resources: list[Resource] = []
-        for resource_type, resource_names in self.resource_values.items():
-            for resource_name in resource_names:
-                deployed_resources.append(Resource(resource_type, resource_name))
-        return deployed_resources

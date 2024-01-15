@@ -1,7 +1,7 @@
 import json
 from unittest import TestCase, mock
 from multi_x_serverless.deployment.common.deploy.models.iam_role import IAMRole
-from multi_x_serverless.deployment.common.enums import Provider
+from multi_x_serverless.deployment.common.provider import Provider
 
 
 class TestIAMRole(TestCase):

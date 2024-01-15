@@ -82,6 +82,10 @@ class RemoteClient(ABC):
         raise NotImplementedError()
 
     @abstractmethod
+    def set_value_in_table(self, table_name: str, key: str, value: str) -> None:
+        raise NotImplementedError()
+
+    @abstractmethod
     def update_function(
         self,
         function_name: str,

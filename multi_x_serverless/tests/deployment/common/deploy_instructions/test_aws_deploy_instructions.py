@@ -4,7 +4,7 @@ from multi_x_serverless.deployment.common.deploy.models.iam_role import IAMRole
 from multi_x_serverless.deployment.common.deploy.models.instructions import APICall
 from multi_x_serverless.deployment.common.deploy.models.remote_state import RemoteState
 from multi_x_serverless.deployment.common.deploy_instructions.aws_deploy_instructions import AWSDeployInstructions
-from multi_x_serverless.deployment.common.enums import Provider
+from multi_x_serverless.deployment.common.provider import Provider
 
 
 class TestAWSDeployInstructions(unittest.TestCase):
