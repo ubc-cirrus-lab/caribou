@@ -15,7 +15,7 @@ class Solver(ABC):
     def __init__(self, workflow_config: WorkflowConfig) -> None:
         self._workflow_config = workflow_config
 
-        # Setup the input manager (Still require setup to be called)
+        # Declare the input manager
         self._input_manager = InputManager(workflow_config)
 
         # Get all regions allowed for the workflow
