@@ -75,8 +75,10 @@ class TopologicalSolver(Solver):
                         sum_cost += original_cost
                         sum_carbon += original_carbon
                         max_latency = max(max_latency, original_runtime)
-
-                    combined_deployments.append((combined_placements, sum_cost, sum_carbon, max_latency))
+                    if not self._fail_hard_resource_constraints(
+                        self._workflow_config.constraints, sum_cost, max_latency, sum_carbon
+                    ):
+                        combined_deployments.append((combined_placements, sum_cost, sum_carbon, max_latency))
             else:
                 for to_region_index in permited_regions_indices:
                     for combination in itertools.product(*previous_deployments):
@@ -120,7 +122,10 @@ class TopologicalSolver(Solver):
 
                             combined_placements[current_instance_index] = to_region_index
 
-                        combined_deployments.append((combined_placements, sum_cost, sum_carbon, max_latency))
+                        if not self._fail_hard_resource_constraints(
+                            self._workflow_config.constraints, sum_cost, max_latency, sum_carbon
+                        ):
+                            combined_deployments.append((combined_placements, sum_cost, sum_carbon, max_latency))
 
             deployments[current_instance_index] = combined_deployments
             processed_node_indicies.add(current_instance_index)
