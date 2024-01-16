@@ -80,7 +80,6 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
             },
             UpdateExpression="ADD #M :m",
         )
-        print(f"Successfully uploaded message {message} for merge")
         return response
 
     def get_predecessor_data(
@@ -125,7 +124,6 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
 
         if state != "Active":
             self._wait_for_function_to_become_active(function_name)
-        print(f"Successfully created function {function_name}")
         return arn
 
     def update_function(
@@ -160,7 +158,6 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         if response["State"] != "Active":
             self._wait_for_function_to_become_active(function_name)
 
-        print(f"Successfully updated function {function_name}")
         return response["FunctionArn"]
 
     def create_role(self, role_name: str, policy: str, trust_policy: dict) -> str:
@@ -169,7 +166,6 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         self.put_role_policy(role_name=role_name, policy_name=role_name, policy_document=policy)
 
         time.sleep(self.DELAY_TIME * 2)  # Wait for role to become active
-        print(f"Successfully created role {role_name}")
         return response["Role"]["Arn"]
 
     def _wait_for_role_to_become_active(self, role_name: str) -> None:
@@ -188,7 +184,6 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
 
     def update_role(self, role_name: str, policy: str, trust_policy: dict) -> str:
         client = self._client("iam")
-        print(policy)
         try:
             current_role_policy = client.get_role_policy(RoleName=role_name, PolicyName=role_name)
             if current_role_policy["PolicyDocument"] != policy:
@@ -202,7 +197,6 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
                     client.create_role(RoleName=role_name, AssumeRolePolicyDocument=json.dumps(trust_policy))
             except ClientError:
                 client.create_role(RoleName=role_name, AssumeRolePolicyDocument=json.dumps(trust_policy))
-        print(f"Successfully updated role {role_name}")
         return self.get_iam_role(role_name)
 
     def _create_lambda_function(self, kwargs: dict[str, Any]) -> tuple[str, str]:
@@ -224,7 +218,6 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         client = self._client("sns")
         response = client.create_topic(Name=topic_name)  # If topic exists, this will return the existing topic
         # See: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sns/client/create_topic.html
-        print(f"Successfully created SNS topic {topic_name}")
         return response["TopicArn"]
 
     def subscribe_sns_topic(self, topic_arn: str, protocol: str, endpoint: str) -> None:
@@ -235,7 +228,6 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
             Endpoint=endpoint,
             ReturnSubscriptionArn=True,
         )
-        print(f"Successfully subscribed function {endpoint} to SNS topic {topic_arn}")
         return response["SubscriptionArn"]
 
     def add_lambda_permission_for_sns_topic(self, topic_arn: str, lambda_function_arn: str) -> None:
@@ -247,17 +239,14 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
             Principal="sns.amazonaws.com",
             SourceArn=topic_arn,
         )
-        print(f"Successfully added lambda permission for SNS topic {topic_arn}")
 
     def send_message_to_messaging_service(self, identifier: str, message: str) -> None:
         client = self._client("sns")
         client.publish(TopicArn=identifier, Message=message)
-        print(f"Successfully sent message to SNS topic {identifier}")
 
     def set_value_in_table(self, table_name: str, key: str, value: str) -> None:
         client = self._client("dynamodb")
         client.put_item(TableName=table_name, Item={"key": {"S": key}, "value": {"S": value}})
-        print(f"Successfully set value {value} in table {table_name}")
 
     def get_value_from_table(self, table_name: str, key: str) -> str:
         client = self._client("dynamodb")
@@ -272,7 +261,6 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
     def upload_resource(self, key: str, resource: bytes) -> None:
         client = self._client("s3")
         client.put_object(Body=resource, Bucket="multi-x-serverless-resources", Key=key)
-        print(f"Successfully uploaded resource {key}")
 
     def download_resource(self, key: str) -> bytes:
         client = self._client("s3")
