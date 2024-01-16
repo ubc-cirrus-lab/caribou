@@ -9,9 +9,10 @@ class CarbonRegionFromToLoader(Loader):
 
         # TODO (#35): Load data from database, convert to proper format and store in self._data
 
-        # template of output data
+        # Template of the loaded data - Also in docs
+        # Key for this data is the (from region name, to region name)
         self._data = {
-            "data_transfer_co2e": {},  # "PLACEHOLDER: loaded dictionary (((from_region_provider, from_region_name), (to_region_provider, to_region_name)): gCO2eq/GB)",
+            "data_transfer_co2e": {(("p1", "r1"), ("p1", "r2")): 3.05},  # gCO2eq/GB
         }
 
         return False  # Not implemented

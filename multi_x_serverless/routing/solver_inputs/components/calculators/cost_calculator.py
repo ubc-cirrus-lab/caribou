@@ -9,34 +9,18 @@ class CostCalculator(Calculator):
 
     def calculate_execution_cost(
         self,
-        compute_cost_information: list[tuple[float, int]],
+        compute_cost: float,
         compute_configuration: dict[str, float],
         execution_time: float,
     ) -> float:
-        # TODO (#32): Implement this function
         memory: float = float(compute_configuration["memory"])
         vcpu: float = float(compute_configuration["vcpu"])
 
-        # print("\n\nNew stuff:", compute_cost_information, compute_configuration, execution_time)
-
-        # if estimated_gb_seconds_per_month <= compute_free_tier:
-        #     return compute_cost
-
-        # estimated_gb_seconds_per_month = (
-        #         estimated_memory * estimated_duration * estimated_number_of_requests_per_month
-        #     )
-
-        # estimated_gb_seconds_per_month -= compute_free_tier
-
-        # for price_dimension in price_dimensions.values():
-        #     if estimated_gb_seconds_per_month <= int(price_dimension["endRange"]):
-        #         compute_cost += float(price_dimension["pricePerUnit"]["USD"]) * estimated_gb_seconds_per_month
-        #         break
-        #     compute_cost += float(price_dimension["pricePerUnit"]["USD"]) * int(price_dimension["endRange"])
-        #     estimated_gb_seconds_per_month -= int(price_dimension["endRange"])
-        # return compute_cost
-
-        return 0.0
+        # Compute cost in USD /  GB-seconds
+        # Memory in MB, execution_time in seconds, vcpu in vcpu
+        memory_gb = memory / 1024
+        gbs = memory_gb * vcpu * execution_time
+        return compute_cost * gbs
 
     def calculate_transmission_cost(self, transmission_cost_per_gb: float, transmission_size: float) -> float:
         # Both in units of gb

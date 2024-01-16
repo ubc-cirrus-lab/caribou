@@ -9,11 +9,14 @@ class DataCenterRegionToRegionLoader(Loader):
 
         # TODO (#35): Load data from database, convert to proper format and store in self._data
 
-        # template of output data
+        # Template of the loaded data - Also in docs
+        # Key for this data is the (from region, to region)
         self._data = {
-            "data_transfer_ingress_cost": {},  # "PLACEHOLDER: loaded dictionary (((from_region_provider, from_region_name), (to_region_provider, to_region_name)): cost in USD)",
-            "data_transfer_egress_cost": {},  # "PLACEHOLDER: loaded dictionary (((from_region_provider, from_region_name), (to_region_provider, to_region_name)): cost in USD)",
-            "transmission_times": {},  # "PLACEHOLDER: loaded dictionary ((from_instance_name, to_instance_name): [(size of package, transmission time in seconds)])"
+            "data_transfer_ingress_cost": {(("p1", "r1"), ("p1", "r2")): 0.0},  # Cost in USD / GB
+            "data_transfer_egress_cost": {(("p1", "r1"), ("p1", "r2")): 0.08},  # Cost in USD / GB
+            "transmission_times": {
+                (("p1", "r1"), ("p1", "r2")): [(5, 0.03), (10, 0.05)]
+            },  # Transmission time in [(transmitted data in GB, transmission time in seconds)]
         }
 
         return False  # Not implemented

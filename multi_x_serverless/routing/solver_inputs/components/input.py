@@ -1,3 +1,4 @@
+import typing
 from abc import ABC, abstractmethod
 
 import numpy as np
@@ -8,10 +9,10 @@ from multi_x_serverless.routing.solver_inputs.components.data_sources.data_sourc
 class Input(ABC):
     _data_source_manager: DataSourceManager
     _execution_matrix: np.ndarray
-    _transmission_matrix: np.ndarray
 
-    def __init__(self) -> None:
-        self._cache: dict[str, float] = {}
+    @abstractmethod
+    def setup(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        raise NotImplementedError
 
     @abstractmethod
     def get_transmission_value(

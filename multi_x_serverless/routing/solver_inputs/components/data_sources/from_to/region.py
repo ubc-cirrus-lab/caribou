@@ -24,9 +24,10 @@ class RegionToRegionSource(Source):
                     self._data[from_region_index] = {}
 
                 self._data[from_region_index][to_region_index] = {
-                    # CO2 information
+                    # Data Collector information
+                    ## CO2 information
                     "data_transfer_co2e": loaded_data.get("data_transfer_co2e", {}).get((from_region, to_region), -1),
-                    # Datacenter information
+                    ## Datacenter information
                     "data_transfer_ingress_cost": loaded_data.get("data_transfer_ingress_cost", {}).get(
                         (from_region, to_region), -1
                     ),

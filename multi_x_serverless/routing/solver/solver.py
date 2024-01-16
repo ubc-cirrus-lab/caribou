@@ -3,12 +3,12 @@ from typing import Optional
 
 import numpy as np
 
-from ..formatter.formatter import Formatter
-from ..models.dag import DAG
-from ..models.region import Region
-from ..ranker.ranker import Ranker
-from ..solver_inputs.input_manager import InputManager
-from ..workflow_config import WorkflowConfig
+from multi_x_serverless.routing.formatter.formatter import Formatter
+from multi_x_serverless.routing.models.dag import DAG
+from multi_x_serverless.routing.models.region import Region
+from multi_x_serverless.routing.ranker.ranker import Ranker
+from multi_x_serverless.routing.solver_inputs.input_manager import InputManager
+from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
 
 class Solver(ABC):

@@ -4,14 +4,15 @@ from multi_x_serverless.routing.solver_inputs.components.loaders.loader import L
 
 
 class WorkflowInstanceFromToLoader(Loader):
-    def setup(self, workflow_id: str) -> bool:  # Returns if successful and reason if not
+    def setup(self, workflow_id: str) -> bool:
         self._data = {}
 
         # TODO (#35): Load data from database, convert to proper format and store in self._data
 
-        # template of output data
+        # Template of the loaded data - Also in docs
+        # Key for this data is the (from instance name, to instance name)
         self._data = {
-            "data_transfer_size": {},  # "PLACEHOLDER: loaded dictionary ((from_instance_name, to_instance_name): data transfer size in GB)",
+            "data_transfer_size": {("i1", "i2"): 0.4},  # Data transfer size in GB
         }
 
-        return False  #  Not implemented
+        return False  #  Not yet implemented

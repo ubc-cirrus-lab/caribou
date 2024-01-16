@@ -69,9 +69,11 @@ class InputManager:
         instances_indicies: list[int] = list(instance_indexer.get_value_indices().values())
         regions_indicies: list[int] = list(regions_indexer.get_value_indices().values())
 
-        self._carbon_input.setup(instances_indicies, regions_indicies, self._data_source_manager)
-        self._cost_input.setup(instances_indicies, regions_indicies, self._data_source_manager)
+        # First initialize runtime manager, the runtime of this WILL be used in the carbon and cost input managers
         self._runtime_input.setup(instances_indicies, regions_indicies, self._data_source_manager)
+
+        self._carbon_input.setup(instances_indicies, regions_indicies, self._data_source_manager, self._runtime_input)
+        self._cost_input.setup(instances_indicies, regions_indicies, self._data_source_manager, self._runtime_input)
 
         return True  # At this point we have successfully setup the input manager
 

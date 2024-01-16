@@ -16,7 +16,6 @@ class Loader(ABC):
         """
         This function is responsible for retrieving a dictionary representation of the loaded data.
         """
-
         # Throw error if data has not been loaded
         if self._data is None:
             raise ValueError("Data has not been loaded yet. Please call the setup function first.")
