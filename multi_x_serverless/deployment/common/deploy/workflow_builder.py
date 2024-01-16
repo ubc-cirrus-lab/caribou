@@ -145,14 +145,20 @@ class WorkflowBuilder:
     def _get_function_name(self, config: Config, function: MultiXServerlessFunction) -> str:
         # A function name is of the form <workflow_name>-<workflow_version>-<function_name>
         # This is used to uniquely identify a function with respect to a workflow and its version
-        return f"{config.workflow_name}-{config.workflow_version}-{function.name}"
+        name = f"{config.workflow_name}-{config.workflow_version}-{function.name}"
+        return name.replace(".", "_")
 
     def re_build_workflow(
-        self, config: Config, regions: list[dict[str, str]], workflow_description: dict[str, Any]
+        self,
+        config: Config,
+        function_to_deployment_regions: dict[str, list[dict[str, str]]],
+        workflow_function_descriptions: list[dict],
     ) -> Workflow:
         resources: list[Function] = []
 
-        for function in workflow_description["functions"]:
+        for function in workflow_function_descriptions:
+            if function["name"] not in function_to_deployment_regions:
+                continue
             resources.append(
                 Function(
                     name=function["name"],
@@ -161,7 +167,7 @@ class WorkflowBuilder:
                     handler=function["handler"],
                     role=IAMRole(function["role"]["policy_file"], function["role"]["role_name"]),
                     deployment_package=DeploymentPackage(),
-                    deploy_regions=regions,
+                    deploy_regions=function_to_deployment_regions[function["name"]],
                     entry_point=function["entry_point"],
                     providers=function["providers"],
                 )

@@ -61,6 +61,14 @@ class Workflow(Resource):
             function_descriptions.append(function.to_json())
         return function_descriptions
 
+    def get_deployed_regions_initial_deployment(self) -> dict[str, list[dict[str, str]]]:
+        if self._config is None:
+            raise RuntimeError("Error in workflow config creation, given config is None, this should not happen")
+        deployed_regions = {}
+        for function in self._resources:
+            deployed_regions[function.name] = self._config.home_regions
+        return deployed_regions
+
     def get_instance_description(self) -> WorkflowConfig:
         if self._config is None:
             raise RuntimeError("Error in workflow config creation, given config is None, this should not happen")

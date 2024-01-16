@@ -31,15 +31,15 @@ class DeploymentPackager:
         for deployment_package in workflow.get_deployment_packages():
             deployment_package.filename = zip_file
 
-    def re_build(self, config: Config, workflow: Workflow, remote_client: RemoteClient) -> None:
-        zip_file = self._download_deployment_package(config, remote_client)
+    def re_build(self, workflow: Workflow, remote_client: RemoteClient) -> None:
+        zip_file = self._download_deployment_package(remote_client)
         for deployment_package in workflow.get_deployment_packages():
             deployment_package.filename = zip_file
 
-    def _download_deployment_package(self, config: Config, remote_client: RemoteClient) -> str:
+    def _download_deployment_package(self, remote_client: RemoteClient) -> str:
         deployment_package_filename = tempfile.mktemp(suffix=".zip")
 
-        deployment_package_content = remote_client.download_resource(config.workflow_id)
+        deployment_package_content = remote_client.download_resource(f"deployment_package_{self._config.workflow_id}")
 
         if deployment_package_content is None:
             raise RuntimeError("Could not download deployment package")

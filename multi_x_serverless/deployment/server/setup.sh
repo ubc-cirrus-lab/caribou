@@ -10,7 +10,7 @@ create_table() {
         --table-name "$table_name" \
         --attribute-definitions AttributeName=key,AttributeType=S \
         --key-schema AttributeName=key,KeyType=HASH \
-        --provisioned-throughput ReadCapacityUnits=1,WriteCapacityUnits=1
+        --billing-mode PAY_PER_REQUEST
 }
 
 # List of table names
@@ -21,3 +21,13 @@ for table_name in "${table_names[@]}"; do
     echo "Creating table: $table_name"
     create_table "$table_name"
 done
+
+create_bucket() {
+    local bucket_name=$1
+    aws s3api create-bucket --bucket "$bucket_name" --region us-east-1
+}
+
+bucket_name="multi-x-serverless-resources"
+
+echo "Creating bucket: $bucket_name"
+create_bucket "$bucket_name"

@@ -94,4 +94,6 @@ class Config:
         return self._lookup("deployment_package_remote_location")
 
     def to_json(self) -> str:
-        return json.dumps(self.project_config)
+        project_config_copy = self.project_config.copy()
+        project_config_copy.pop("workflow_app", None)
+        return json.dumps(project_config_copy)
