@@ -188,20 +188,20 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
 
     def update_role(self, role_name: str, policy: str, trust_policy: dict) -> str:
         client = self._client("iam")
+        print(policy)
         try:
             current_role_policy = client.get_role_policy(RoleName=role_name, PolicyName=role_name)
             if current_role_policy["PolicyDocument"] != policy:
                 client.delete_role_policy(RoleName=role_name, PolicyName=role_name)
                 self.put_role_policy(role_name=role_name, policy_name=role_name, policy_document=policy)
         except ClientError:
-            self.put_role_policy(role_name=role_name, policy_name=role_name, policy_document=policy)
-        try:
-            current_trust_policy = client.get_role(RoleName=role_name)["Role"]["AssumeRolePolicyDocument"]
-            if current_trust_policy != trust_policy:
-                client.delete_role(RoleName=role_name)
+            try:
+                current_trust_policy = client.get_role(RoleName=role_name)["Role"]["AssumeRolePolicyDocument"]
+                if current_trust_policy != trust_policy:
+                    client.delete_role(RoleName=role_name)
+                    client.create_role(RoleName=role_name, AssumeRolePolicyDocument=json.dumps(trust_policy))
+            except ClientError:
                 client.create_role(RoleName=role_name, AssumeRolePolicyDocument=json.dumps(trust_policy))
-        except ClientError:
-            client.create_role(RoleName=role_name, AssumeRolePolicyDocument=json.dumps(trust_policy))
         print(f"Successfully updated role {role_name}")
         return self.get_iam_role(role_name)
 

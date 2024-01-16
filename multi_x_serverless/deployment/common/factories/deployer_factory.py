@@ -86,7 +86,7 @@ class DeployerFactory:
                 if not isinstance(provider_region, dict):
                     raise RuntimeError("only_regions must be a list of strings")
                 provider = provider_region["provider"]
-                if provider not in Provider.__members__:
+                if provider not in [provider.value for provider in Provider]:
                     raise RuntimeError(f"Provider {provider} is not supported")
                 if provider not in defined_providers:
                     raise RuntimeError(f"Provider {provider} is not defined in providers")

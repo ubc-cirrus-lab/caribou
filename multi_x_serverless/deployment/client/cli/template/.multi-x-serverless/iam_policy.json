@@ -6,10 +6,16 @@
                 "Action": [
                     "logs:CreateLogGroup",
                     "logs:CreateLogStream",
-                    "logs:PutLogEvents",
+                    "logs:PutLogEvents"
+                ],
+                "Resource": "arn:aws:logs:*:*:*",
+                "Effect": "Allow"
+            },
+            {
+                "Action": [
                     "sns:Publish"
                 ],
-                "Resource": "arn:aws:W:*:*:*",
+                "Resource": "arn:aws:sns:::*",
                 "Effect": "Allow"
             }
         ]

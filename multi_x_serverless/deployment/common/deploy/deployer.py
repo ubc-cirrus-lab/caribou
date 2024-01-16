@@ -55,6 +55,10 @@ class Deployer:
         try:
             self._deploy(regions)
         except botocore.exceptions.ClientError as e:
+            if e.response["Error"]["Code"] == "ResourceNotFoundException":
+                raise DeploymentError(
+                    "Are all the resources at the server side created?"
+                ) from e
             raise DeploymentError(e) from e
 
     def _deploy(self, regions: list[dict[str, str]]) -> None:

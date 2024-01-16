@@ -84,7 +84,7 @@ class DeploymentPackager:
         )
         zip_file.write(
             os.path.join(multi_x_serverless_path, "common", "__init__.py"),
-            os.path.join("multi_x_serverless", "deployment", "client", "__init__.py"),
+            os.path.join("multi_x_serverless", "deployment", "common", "__init__.py"),
         )
         zip_file.write(
             os.path.join(multi_x_serverless_path, "common", "factories", "__init__.py"),
@@ -119,8 +119,8 @@ class DeploymentPackager:
             os.path.join("multi_x_serverless", "deployment", "common", "deploy", "models", "endpoints.py"),
         )
         zip_file.write(
-            os.path.join(multi_x_serverless_path, "common", "enums.py"),
-            os.path.join("multi_x_serverless", "deployment", "common", "enums.py"),
+            os.path.join(multi_x_serverless_path, "common", "provider.py"),
+            os.path.join("multi_x_serverless", "deployment", "common", "provider.py"),
         )
 
     def _add_py_dependencies(self, zip_file: zipfile.ZipFile, deps_dir: str) -> None:

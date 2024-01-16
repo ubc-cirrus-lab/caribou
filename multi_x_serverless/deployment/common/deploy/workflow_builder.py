@@ -35,7 +35,7 @@ class WorkflowBuilder:
 
         # First, we create the functions (the resources that we deploy to the serverless platform)
         for function in config.workflow_app.functions.values():
-            function_deployment_name = f"{config.workflow_name}-{function.name}"
+            function_deployment_name = self._get_function_name(config, function)
             function_role = self.get_function_role(config, function_deployment_name)
             if function.regions_and_providers and "providers" in function.regions_and_providers:
                 providers = (
@@ -141,6 +141,11 @@ class WorkflowBuilder:
             config=config,
             version=config.workflow_version,
         )
+
+    def _get_function_name(self, config: Config, function: MultiXServerlessFunction) -> str:
+        # A function name is of the form <workflow_name>-<workflow_version>-<function_name>
+        # This is used to uniquely identify a function with respect to a workflow and its version
+        return f"{config.workflow_name}-{config.workflow_version}-{function.name}"
 
     def re_build_workflow(
         self, config: Config, regions: list[dict[str, str]], workflow_description: dict[str, Any]

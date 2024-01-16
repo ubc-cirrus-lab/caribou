@@ -179,4 +179,4 @@ class AWSDeployInstructions(DeployInstructions):
         )
 
     def _get_memory_and_timeout(self, providers: dict[str, Any]) -> tuple[int, int]:
-        return providers["aws"]["memory"], providers["aws"]["timeout"]
+        return providers["aws"]["config"]["memory"], providers["aws"]["config"]["timeout"]
