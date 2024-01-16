@@ -39,12 +39,6 @@ class TopologicalSolver(Solver):
                 np.array([(region["provider"], region["region"]) for region in permited_regions])
             )
 
-            # For testing purposes -> will be removed or transfered to logger.
-            # print()
-            # print("current_instance_index:", current_instance_index)
-            # print("prerequisites_indices:", prerequisites_indices)
-            # print("permited_regions_indices:", permited_regions_indices)
-
             # This is the current deployment in this iteration
             # Such that if we move all of previous deployment to any of the current
             # permitted regions, what are the deployments.
@@ -52,13 +46,6 @@ class TopologicalSolver(Solver):
             prev_options_length = 0
             previous_deployments: list = []
             for previous_instance_index in prerequisites_indices:
-                # # For testing purposes -> will be removed or transfered to logger.
-                # print(
-                #     "previous deployment length of instance:",
-                #     previous_instance_index,
-                #     "-",
-                #     len(deployments[previous_instance_index]),
-                # )
                 previous_deployment = []
                 for deployment in deployments[previous_instance_index]:
                     previous_deployment.append((deployment, previous_instance_index))
@@ -135,11 +122,7 @@ class TopologicalSolver(Solver):
 
                         combined_deployments.append((combined_placements, sum_cost, sum_carbon, max_latency))
 
-            # # For testing purposes -> will be removed or transfered to logger.
-            # print("New combined deployment length:", len(combined_deployments))
             deployments[current_instance_index] = combined_deployments
             processed_node_indicies.add(current_instance_index)
 
-        # # For testing purposes -> will be removed or transfered to logger.
-        # print("\n")
         return deployments[-1]  # Return the result for the virtual end node
