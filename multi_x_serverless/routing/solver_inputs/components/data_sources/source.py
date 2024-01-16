@@ -16,9 +16,9 @@ class Source(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def get_value(self, *args: typing.Any, **kwargs: typing.Any) -> typing.Any: 
-        # Doesnt have to be float, data_sources do not enforce the type of 
-        # data they contain to be any specific type, as doing so limit their flexibility. 
+    def get_value(self, *args: typing.Any, **kwargs: typing.Any) -> typing.Any:
+        # Doesnt have to be float, data_sources do not enforce the type of
+        # data they contain to be any specific type, as doing so limit their flexibility.
         """
         This function is responsible for retrieving a single value from a source.
         """

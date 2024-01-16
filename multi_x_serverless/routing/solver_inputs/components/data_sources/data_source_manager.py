@@ -40,16 +40,12 @@ class DataSourceManager:
     def get_instance_to_instance_data(self, data_name: str, from_instance_index: int, to_instance_index: int) -> float:
         return self._instance_to_instance_source.get_value(data_name, from_instance_index, to_instance_index)
 
-    def get_region_data(
-        self, data_name: str, region_index: int
-    ) -> typing.Any:  
+    def get_region_data(self, data_name: str, region_index: int) -> typing.Any:
         # Result type might not necessarily be float
         # Since region_source contains non-float data
         return self._region_source.get_value(data_name, region_index)
 
-    def get_instance_data(
-        self, data_name: str, instance_index: int
-    ) -> typing.Any: 
+    def get_instance_data(self, data_name: str, instance_index: int) -> typing.Any:
         # Result type might not necessarily be float
         # Since instance_source contains non-float data
         return self._instance_source.get_value(data_name, instance_index)
