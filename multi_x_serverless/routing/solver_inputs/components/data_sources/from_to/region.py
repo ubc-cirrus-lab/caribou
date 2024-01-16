@@ -37,7 +37,8 @@ class RegionToRegionSource(Source):
                     "transmission_times": loaded_data.get("transmission_times", {}).get((from_region, to_region), []),
                 }
 
-    def get_value(
-        self, data_name: str, from_region_index: int, to_region_index: int
-    ) -> typing.Any:  # Result type might not necessarily be float
+    def get_value(self, data_name: str, from_region_index: int, to_region_index: int) -> typing.Any:
+        # Result type might not necessarily be float
+        # For example transmission_times is a list of data transfer size to expected
+        # Network latency.
         return self._data[from_region_index][to_region_index][data_name]

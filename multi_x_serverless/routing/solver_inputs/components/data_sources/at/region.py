@@ -34,5 +34,7 @@ class RegionSource(Source):
                 "free_tier_compute": loaded_data.get("free_tier_compute", {}).get(region, -1),
             }
 
-    def get_value(self, data_name: str, region_index: int) -> typing.Any:  # Result type might not necessarily be float
+    def get_value(self, data_name: str, region_index: int) -> typing.Any:
+        # Result type might not necessarily be float
+        # For example provider_name is a string
         return self._data[region_index][data_name]

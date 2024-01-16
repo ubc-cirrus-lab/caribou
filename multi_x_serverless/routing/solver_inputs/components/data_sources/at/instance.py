@@ -59,7 +59,7 @@ class InstanceSource(Source):
 
         return provider_configurations
 
-    def get_value(
-        self, data_name: str, instance_index: int
-    ) -> typing.Any:  # Result type might not necessarily be float
+    def get_value(self, data_name: str, instance_index: int) -> typing.Any:
+        # Result type might not necessarily be float, such as provider_configurations
+        # Which is a tuple containing memory and vcpu information of a instance.
         return self._data[instance_index][data_name]
