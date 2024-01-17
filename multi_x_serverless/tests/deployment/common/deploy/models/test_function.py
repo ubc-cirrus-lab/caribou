@@ -35,11 +35,17 @@ class TestFunction(unittest.TestCase):
     def test_get_deployment_instructions(self):
         with patch(
             "multi_x_serverless.deployment.common.factories.deploy_instruction_factory.DeployInstructionFactory.get_deploy_instructions"
-        ) as mock_get_deploy_instructions:
+        ) as mock_get_deploy_instructions, patch(
+            "multi_x_serverless.deployment.common.deploy.models.resource.Resource"
+        ) as MockResource:
             mock_deploy_instruction = Mock()
             mock_get_deploy_instructions.return_value = mock_deploy_instruction
             mock_deploy_instruction.get_deployment_instructions.return_value = [Instruction("Some instruction")]
 
+            mock_resource = MockResource()
+            mock_resource.resource_exists.return_value = False
+
+            self.function._remote_states = {"aws": {"us-west-1": mock_resource}}
             self.deployment_package.filename = "filename"
             instructions = self.function.get_deployment_instructions()
 
