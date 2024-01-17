@@ -106,10 +106,7 @@ class MultiXServerlessWorkflow:
         payload_wrapper["workflow_placement_decision"] = successor_workflow_placement_decision_dictionary
         json_payload = json.dumps(payload_wrapper)
 
-        provider_region, identifier = self.get_successor_workflow_placement_decision(
-            successor_instance_name, workflow_placement_decision
-        )
-        provider, region = provider_region.split(":")
+        provider, region, identifier = self.get_successor_workflow_placement_decision(successor_instance_name, workflow_placement_decision)
 
         merge = successor_instance_name.split(":", maxsplit=2)[1] == "merge"
 
@@ -133,10 +130,10 @@ class MultiXServerlessWorkflow:
 
     def get_successor_workflow_placement_decision(
         self, successor_instance_name: str, workflow_placement_decision: dict[str, Any]
-    ) -> tuple[str, str]:
+    ) -> tuple[str, str, str]:
         provider_region = workflow_placement_decision["workflow_placement"][successor_instance_name]["provider_region"]
         identifier = workflow_placement_decision["workflow_placement"][successor_instance_name]["identifier"]
-        return provider_region, identifier
+        return provider_region["provider"], provider_region["region"], identifier
 
     # This method is used to get the name of the next successor instance and its workflow_placement decision.
     # It takes the current function, workflow_placement decision, wrapper frame, and function frame as parameters.
@@ -287,10 +284,8 @@ class MultiXServerlessWorkflow:
         current_instance_name = workflow_placement_decision["current_instance_name"]
         workflow_instance_id = workflow_placement_decision["run_id"]
 
-        provider_region = workflow_placement_decision["workflow_placement"][current_instance_name][
-            "provider_region"
-        ].split(":")
-        return provider_region[0], provider_region[1], current_instance_name, workflow_instance_id
+        provider_region = workflow_placement_decision["workflow_placement"][current_instance_name]["provider_region"]
+        return provider_region["provider"], provider_region["region"], current_instance_name, workflow_instance_id
 
     def get_workflow_placement_decision_from_platform(self) -> dict[str, Any]:
         """
