@@ -161,6 +161,52 @@ class TestDeployer(unittest.TestCase):
 
             upload_resource.assert_called_once_with("deployment_package_test_id", b"test_deployment_package")
 
+    def test_merge_deployed_regions(self):
+        config = Config({}, self.test_dir)
+        workflow_builder = Mock()
+        deployment_packager = Mock()
+        executor = Mock()
+        deployer = Deployer(config, workflow_builder, deployment_packager, executor)
+
+        deployed_regions = {"test_function": [{"region": "us-west-1"}]}
+        filtered_function_to_deployment_regions = {
+            "test_function": [{"region": "us-west-2"}],
+            "new_function": [{"region": "us-east-1"}],
+        }
+
+        expected_merged_regions = {
+            "test_function": [{"region": "us-west-1"}, {"region": "us-west-2"}],
+            "new_function": [{"region": "us-east-1"}],
+        }
+
+        merged_regions = deployer._merge_deployed_regions(deployed_regions, filtered_function_to_deployment_regions)
+
+        self.assertEqual(merged_regions, expected_merged_regions)
+
+    def test_filter_function_to_deployment_regions(self):
+        config = Config({}, self.test_dir)
+        workflow_builder = Mock()
+        deployment_packager = Mock()
+        executor = Mock()
+        deployer = Deployer(config, workflow_builder, deployment_packager, executor)
+
+        function_to_deployment_regions = {
+            "test_function": [{"region": "us-west-1"}, {"region": "us-west-2"}],
+            "new_function": [{"region": "us-east-1"}],
+        }
+        deployed_regions = {"test_function": [{"region": "us-west-1"}]}
+
+        expected_filtered_regions = {
+            "test_function": [{"region": "us-west-2"}],
+            "new_function": [{"region": "us-east-1"}],
+        }
+
+        filtered_regions = deployer._filter_function_to_deployment_regions(
+            function_to_deployment_regions, deployed_regions
+        )
+
+        self.assertEqual(filtered_regions, expected_filtered_regions)
+
 
 if __name__ == "__main__":
     unittest.main()

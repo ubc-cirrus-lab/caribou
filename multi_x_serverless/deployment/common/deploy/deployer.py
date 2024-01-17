@@ -90,6 +90,8 @@ class Deployer:
                 filtered_function_to_deployment_regions[function_name] = [
                     region for region in deployment_regions if region not in deployed_regions[function_name]
                 ]
+            else:
+                filtered_function_to_deployment_regions[function_name] = deployment_regions
         return filtered_function_to_deployment_regions
 
     def _merge_deployed_regions(
