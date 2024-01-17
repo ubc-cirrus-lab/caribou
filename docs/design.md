@@ -10,9 +10,15 @@ In this document we will discuss the design decisions that have been made for th
       1. [Logical Node Naming Scheme](#logical-node-naming-scheme)
       2. [Connection to Physical Representation](#connection-to-physical-representation)
    3. [Discussion](#discussion)
-2. [Source Code Annotation](#source-code-annotation)
-3. [Merge Node](#merge-node)
-4. [References](#references)
+2. [Solver Dataflow Architecture](#solver-dataflow-architecture)
+   1. [Data Collector](#data-collector)
+   2. [Solver Input](#solver-input)
+3. [Solver Methodologies](#solver-methodologies)
+   1. [Simple Solver](#simple-solver)
+   2. [Brute Force Solver](#brute-force-solver)
+4. [Source Code Annotation](#source-code-annotation)
+5. [Merge Node](#merge-node)
+6. [References](#references)
 
 ##  Dataflow DAG Model
 
@@ -93,6 +99,72 @@ The physical representation is a set of nodes because we do not need to represen
 The physical representation is furthermore a set because we do not need to represent the same node multiple times.
 This notation is only used for the deployment utilities and is hidden from the solver.
 
+## Solver Dataflow Architecture
+
+In order to determine the most optimal deployment path for each instance of a workflow, prioritizing cost, carbon, or runtime objectives, the solver must be able to gather a large amount of data from various sources and properly utilize those values for calculations. Data gathering steps should be decoupled from the solver directly, and some calculated values may be reused for different runs of a solver. Thus, these responsibilities are handled by the Data Collector and Solver Input.
+
+### Data Collector
+
+This application is responsible for directly interacting with and retrieving information from both external APIs and summarizing workflow invocation information. The data collector consists of many different parts, each responsible for different types of data and each invoked at different timming intervals.
+
+#### Workflow Information Collector
+This component is responsible for summarizing invocation information of a workflow and presenting it for use in the solver.
+
+Below are the different pieces of information collected by this collector:
+- `execution_time`: The average execution time of function invocation of an specific instance in units of seconds.
+- `probability`: The probability that an instance node of being traversed in each invocation of a workflow.
+- `data_transfer_size`: The average data transfer size that an instance node will supply to another instance after each invocation.
+
+#### Datacenter Information Collector
+This component is responsible for collecting and summarizing datacenter information used in the solver. Some fields are specific to certain providers and not applicable to others. Datacenter regions are also simply referred to as regions here.
+
+Below are the different information that involved that are collected and sumarized by this collector:
+
+- `data_transfer_ingress_cost`: Cost of ingress from one region to another in units of USD / GB.
+- `data_transfer_egress_cost`: Cost of egress from one region to another in units of USD / GB.
+- `transmission_times`: The transmission time in seconds that it takes to transmit data a range of data sizes in GB.
+- `compute_cost`: The compute cost of execution in one region in units of USD / GBs.
+- `pue`: The Power Usage Effectiveness of a datacenter region.
+- `cfe`: Carbon Free Energy (in fraction), google specific concept.
+- `average_kw_compute`: Average kw of power from unit of compute, in units of kw / Compute. 
+- `memory_kw_mb`: Average kw of power from unit of Memory, in units of kw / MB. 
+- `free_tier_invocations`: Number of free invocations remaining in an region.
+- `free_tier_compute`: Amount of free compute available in an region, in units of GB-s.
+
+#### Carbon Information Collecton
+This component is responsible for collecting and summarizing information from external Carbon Intensity APIs and presenting it for use in the solver. Datacenter regions are also simply referred to as regions here.
+
+Below are the different pieces of information involved that are collected and summarized by this collector:
+
+- `grid_co2e`: The carbon intensity of the electric grid in a datacenter region, in units of gCO2eq / kWh.
+- `data_transfer_co2e`: The carbon intensity of data movement in units of gCO2eq / GB.
+
+### Solver Input
+The solver input is responsible for loading the saved database from the [Data Collector](#data-collector), organizing all applicable data in a format usable for calculation, and presenting an easy-to-use interface for the solver.
+
+Currently, the solver can access the information with the following simple function calls:
+```python
+get_execution_cost_carbon_runtime(instance_index: int, region_index: int)
+```
+
+```python
+get_transmission_cost_carbon_runtime(from_instance_index: int, to_instance_index: int, from_region_index: int, to_region_index: int):
+```
+
+The solver can easily use these functions to quickly calculate the cost, carbon, and runtime of both execution and transmission at each step of a workflow.
+
+## Solver Methodologies
+
+In this project, we provide a variety of different solvers with different methododlogies, each with tradeoffs between speed, computational resource utilization, and thoroughness.
+
+### Simple Solver
+
+This solver deploys the entire workflow, along with all its functions and instances, in a single region. It can perform quickly with minimal computational resource utilization, but at the expense of having coarse-grained deployment options and low thoroughness.
+
+### Brute Force Solver
+
+In this solver, each instance of a workflow can be deployed in any of the user-defined permitted regions, and the solver will attempt to exhaustively search through all possibilities. Thus, this solver will have high thoroughness but at the cost of slow speed and very high computational resource utilization.
+
 ## Source Code Annotation
 
 In an initial version of the project we used a JSON config based approach towards transmitting the workflow information to the deployment utilities.
@@ -156,9 +228,9 @@ There can only be one entry point in a workflow.
 This can be used to override the global settings in the `config.yml`.
 If none or an empty dictionary is provided, the global config takes precedence.
 The dictionary has two keys:
-  - `only_regions`: A list of regions that the function can be deployed to.
+  - `allowed_regions`: A list of regions that the function can be deployed to.
   If this list is empty, the function can be deployed to any region.
-  - `forbidden_regions`: A list of regions that the function cannot be deployed to.
+  - `disallowed_regions`: A list of regions that the function cannot be deployed to.
   If this list is empty, the function can be deployed to any region.
   - `providers`: A list of providers that the function can be deployed to.
   This can be used to override the global settings in the `config.yml`.
