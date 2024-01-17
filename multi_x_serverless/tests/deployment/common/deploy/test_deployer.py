@@ -77,13 +77,14 @@ class TestDeployer(unittest.TestCase):
         deployment_packager = Mock()
         deployer = Deployer(config, workflow_builder, deployment_packager, None)
 
-        regions = [{"region": "us-west-1"}]
-        workflow_function_description = {"name": "test_function", "version": "0.0.1"}
+        function_to_deployment_regions = {"test_function": [{"region": "us-west-2"}]}
+        workflow_function_description = [{"name": "test_function", "version": "0.0.1"}]
+        deployed_regions = {"test_function": [{"region": "us-west-1"}]}
         workflow = Workflow("test_workflow", "0.0.1", [], [], [], config)
         workflow_builder.re_build_workflow.return_value = workflow
 
         with self.assertRaises(RuntimeError, msg="Cannot deploy with deletion deployer"):
-            deployer.re_deploy(regions, workflow_function_description)
+            deployer.re_deploy(function_to_deployment_regions, workflow_function_description, deployed_regions)
 
     def test_re_deploy_with_client_error(self):
         config = Config({}, self.test_dir)
@@ -91,13 +92,14 @@ class TestDeployer(unittest.TestCase):
         deployment_packager = Mock()
         executor = Mock()
         deployer = Deployer(config, workflow_builder, deployment_packager, executor)
+        deployed_regions = {"test_function": [{"region": "us-west-1"}]}
 
-        regions = [{"region": "us-west-1"}]
-        workflow_function_description = {"name": "test_function", "version": "0.0.1"}
+        function_to_deployment_regions = {"test_function": [{"region": "us-west-2"}]}
+        workflow_function_description = [{"name": "test_function", "version": "0.0.1"}]
 
         with patch.object(Deployer, "_re_deploy", side_effect=ClientError({}, "TestOperation")):
             with self.assertRaises(DeploymentError):
-                deployer.re_deploy(regions, workflow_function_description)
+                deployer.re_deploy(function_to_deployment_regions, workflow_function_description, deployed_regions)
 
     def test_upload_workflow_to_solver_update_checker(self):
         config = Config({}, self.test_dir)
@@ -129,6 +131,9 @@ class TestDeployer(unittest.TestCase):
 
         workflow = Mock(spec=Workflow)
         workflow.get_function_description = Mock(return_value=[{"name": "test_function", "version": "0.0.1"}])
+        workflow.get_deployed_regions_initial_deployment = Mock(
+            return_value={"test_function": [{"region": "us-west-1"}]}
+        )
 
         with patch.object(AWSRemoteClient, "set_value_in_table") as set_value_in_table:
             deployer._upload_workflow_to_deployer_server(workflow, "test_workflow_id")
@@ -136,7 +141,7 @@ class TestDeployer(unittest.TestCase):
             set_value_in_table.assert_called_once_with(
                 "deployment_manager_resources_table",
                 "test_workflow_id",
-                '{"workflow_id": "test_workflow_id", "workflow_function_description": "[{\\"name\\": \\"test_function\\", \\"version\\": \\"0.0.1\\"}]", "deployment_config": "{}"}',
+                '{"workflow_id": "test_workflow_id", "workflow_function_descriptions": "[{\\"name\\": \\"test_function\\", \\"version\\": \\"0.0.1\\"}]", "deployment_config": "{}", "deployed_regions": "{\\"test_function\\": [{\\"region\\": \\"us-west-1\\"}]}"}',
             )
 
     def test_upload_deployment_package_resource(self):

@@ -13,7 +13,7 @@ class TestAWSDeployInstructions(unittest.TestCase):
     def test_get_deployment_instructions(self, mock_exists, mock_open):
         name = "test"
         role = IAMRole(role_name="test_role", policy_file="test_policy.json")
-        providers = {"aws": {"memory": 128, "timeout": 3}}
+        providers = {"aws": {"config": {"memory": 128, "timeout": 3}}}
         runtime = "python3.8"
         handler = "handler"
         environment_variables = {"var": "value"}

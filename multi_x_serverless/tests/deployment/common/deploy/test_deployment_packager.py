@@ -115,9 +115,9 @@ class TestDeploymentPackager(unittest.TestCase):
         remote_client = Mock()
         packager = DeploymentPackager(config)
 
-        packager.re_build(config, workflow, remote_client)
+        packager.re_build(workflow, remote_client)
 
-        mock_download_deployment_package.assert_called_once_with(config, remote_client)
+        mock_download_deployment_package.assert_called_once_with(remote_client)
         for deployment_package in workflow.get_deployment_packages():
             self.assertEqual(deployment_package.filename, "test.zip")
 
@@ -141,7 +141,7 @@ class TestDeploymentPackager(unittest.TestCase):
         remote_client.download_resource.return_value = b"test_content"
         packager = DeploymentPackager(config)
 
-        result = packager._download_deployment_package(config, remote_client)
+        result = packager._download_deployment_package(remote_client)
 
         self.assertEqual(result, "test.zip")
         mock_open.assert_called_once_with("test.zip", "wb")
@@ -157,7 +157,7 @@ class TestDeploymentPackager(unittest.TestCase):
         packager = DeploymentPackager(config)
 
         with self.assertRaises(RuntimeError, msg="Could not download deployment package"):
-            packager._download_deployment_package(config, remote_client)
+            packager._download_deployment_package(remote_client)
 
 
 if __name__ == "__main__":

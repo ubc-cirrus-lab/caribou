@@ -36,6 +36,12 @@ class Deployer:
         workflow_function_descriptions: list[dict],
         deployed_regions: dict[str, list[dict[str, str]]],
     ) -> None:
+        if not isinstance(function_to_deployment_regions, dict):
+            raise TypeError("function_to_deployment_regions must be a dictionary")
+        if not isinstance(workflow_function_descriptions, list):
+            raise TypeError("workflow_function_descriptions must be a list")
+        if not isinstance(deployed_regions, dict):
+            raise TypeError("deployed_regions must be a dictionary")
         try:
             self._re_deploy(function_to_deployment_regions, workflow_function_descriptions, deployed_regions)
         except botocore.exceptions.ClientError as e:
@@ -103,7 +109,7 @@ class Deployer:
         try:
             self._deploy(regions)
         except botocore.exceptions.ClientError as e:
-            if e.response["Error"]["Code"] == "ResourceNotFoundException":
+            if type(e).__name__ == "ResourceNotFoundException":
                 raise DeploymentError("Are all the resources at the server side created?") from e
             raise DeploymentError(e) from e
 
