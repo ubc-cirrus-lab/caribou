@@ -236,7 +236,7 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         try:
             client.remove_permission(FunctionName=lambda_function_arn, StatementId="sns")
         except ClientError:
-            # No permission to remove
+            # No permission to remove
             pass
         client.add_permission(
             FunctionName=lambda_function_arn,

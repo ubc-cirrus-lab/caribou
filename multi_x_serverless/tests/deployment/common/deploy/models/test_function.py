@@ -53,7 +53,7 @@ class TestFunction(unittest.TestCase):
                 self.function.environment_variables,
                 self.function.deployment_package.filename,
                 self.function._remote_states["aws"]["us-west-1"],
-                self.function._remote_states["aws"]["us-west-1"].resource_exists(self.function),
+                False,
             )
             self.assertEqual(instructions, {"aws:us-west-1": [Instruction("Some instruction")]})
 
