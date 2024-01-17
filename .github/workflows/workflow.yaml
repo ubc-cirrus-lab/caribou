@@ -43,9 +43,12 @@ jobs:
       - name: Run tests
         run: |
           poetry run pytest --cache-clear --cov=multi_x_serverless/ --cov-fail-under=90
-          poetry run pytest --cache-clear --cov=multi_x_serverless/ --cov-fail-under=90 > pytest-coverage.txt
-      - name: Comment coverage
-        uses: coroo/pytest-coverage-commentator@v1.0.2
+          poetry run pytest --junitxml=pytest.xml --cov-report=term-missing:skip-covered --cov-fail-under=90 --cov=multi_x_serverless multi_x_serverless/tests | tee pytest-coverage.txt
+      - name: Pytest coverage comment
+        uses: MishaKav/pytest-coverage-comment@main
+        with:
+          pytest-coverage-path: ./pytest-coverage.txt
+          junitxml-path: ./pytest.xml
 
   mypy:
     runs-on: ubuntu-latest
