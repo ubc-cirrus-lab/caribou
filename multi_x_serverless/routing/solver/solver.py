@@ -87,12 +87,10 @@ class Solver(ABC):
     def _fail_hard_resource_constraints(
         self, constraints: Optional[dict], cost: float, runtime: float, carbon: float
     ) -> bool:
-        print("\n\n", constraints, cost, runtime, carbon)
         if constraints is None or "hard_resource_constraints" not in constraints:
             return False
         hard_resource_constraints = constraints["hard_resource_constraints"]
 
-        print("\n\n", cost, hard_resource_constraints["cost"]["value"])
         return (
             "cost" in hard_resource_constraints
             and cost > hard_resource_constraints["cost"]["value"]

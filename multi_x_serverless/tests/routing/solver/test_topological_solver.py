@@ -109,9 +109,18 @@ class TestTopologicalSolver(unittest.TestCase):
 
         self.workflow_config.constraints = {
             "hard_resource_constraints": {
-                "cost": 15,
-                "runtime": 15,
-                "carbon": 15,
+                "cost": {
+                    "type": "absolute",
+                    "value": 150,
+                },
+                "runtime": {
+                    "type": "absolute",
+                    "value": 300,
+                },
+                "carbon": {
+                    "type": "absolute",
+                    "value": 300,
+                },
             }
         }
 
