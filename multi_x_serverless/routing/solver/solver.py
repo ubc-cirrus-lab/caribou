@@ -80,7 +80,7 @@ class Solver(ABC):
         return self._ranker.rank(results)
 
     def _select_result(self, results: list[tuple[dict, float, float, float]]) -> tuple[dict, float, float, float]:
-        # TODO (#72): Implement more dynamic selection of result
+        # TODO (#48): Implement more dynamic selection of result
         return results[0]
 
     def _instantiate_input_manager(self) -> None:
