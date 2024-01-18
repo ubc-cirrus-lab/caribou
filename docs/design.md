@@ -269,9 +269,9 @@ Different parts of this dictionary are provided by different components of the s
 - The `workflow_placement` is set by the solver and contains the current placement of the function instances.
   The `identifier` is a unique identifier for the function instance at a provider.
   This is provided by the deployment utilities.
-- The `current_instance_name` is initially set by the solver as the name of the entry point function.
+- The `current_instance_name` is initially set by the deployment utilities as the name of the entry point function.
   It is then updated by the function instances to identify the successor function instance.
-- The `instances` is set by the solver and contains the information about the workflow DAG.
+- The `instances` is set by the deployment utilities and contains the information about the workflow DAG.
 
 ### Component Interaction Order
 

@@ -27,5 +27,5 @@ class Endpoints:
     def get_solver_update_checker_client(self) -> RemoteClient:
         return self._solver_update_checker_client
 
-    def get_solver_routing_decision_client(self) -> RemoteClient:
+    def get_solver_workflow_placement_decision_client(self) -> RemoteClient:
         return self._solver_routing_decision_client

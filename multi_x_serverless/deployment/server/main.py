@@ -2,10 +2,10 @@ import json
 import sys
 import traceback
 
+from multi_x_serverless.common.constants import DEPLOYMENT_MANAGER_RESOURCE_TABLE
+from multi_x_serverless.common.models.endpoints import Endpoints
 from multi_x_serverless.deployment.common.config.config import Config
-from multi_x_serverless.deployment.common.constants import DEPLOYMENT_MANAGER_RESOURCE_TABLE
 from multi_x_serverless.deployment.common.deploy.deployer import Deployer, create_default_deployer
-from multi_x_serverless.deployment.common.deploy.models.endpoints import Endpoints
 from multi_x_serverless.deployment.common.factories.deployer_factory import DeployerFactory
 
 

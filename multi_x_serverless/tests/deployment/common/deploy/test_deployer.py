@@ -32,7 +32,9 @@ class TestDeployer(unittest.TestCase):
 
         with patch.object(Deployer, "_upload_workflow_to_solver_update_checker", return_value=None), patch.object(
             Deployer, "_upload_workflow_to_deployer_server", return_value=None
-        ), patch.object(Deployer, "_upload_deployment_package_resource", return_value=None):
+        ), patch.object(Deployer, "_upload_deployment_package_resource", return_value=None), patch.object(
+            Deployer, "_upload_workflow_placement_decision", return_value=None
+        ):
             deployer.deploy(regions)
 
         workflow_builder.build_workflow.assert_called_once_with(config, regions)

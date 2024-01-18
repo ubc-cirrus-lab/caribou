@@ -29,7 +29,7 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
 
     def test_serverless_function(self):
         self.workflow.register_function = Mock()
-        self.workflow.get_routing_decision_from_platform = Mock(return_value={"decision": 1})
+        self.workflow.get_workflow_placement_decision_from_platform = Mock(return_value={"decision": 1})
 
         @self.workflow.serverless_function(
             name="test_func",
@@ -95,16 +95,16 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
             ),
         )
 
-        self.assertEqual(test_func.routing_decision, {})
+        self.assertEqual(test_func.workflow_placement_decision, {})
 
         self.assertEqual(test_func(2), 4)
 
-        # Check if the routing_decision attribute was set correctly
-        self.assertEqual(test_func.routing_decision["decision"], 1)
+        # Check if the workflow_placement_decision attribute was set correctly
+        self.assertEqual(test_func.workflow_placement_decision["decision"], 1)
 
     def test_serverless_function_with_environment_variables(self):
         self.workflow.register_function = Mock()
-        self.workflow.get_routing_decision_from_platform = Mock(return_value={"decision": 1})
+        self.workflow.get_workflow_placement_decision_from_platform = Mock(return_value={"decision": 1})
 
         @self.workflow.serverless_function(
             name="test_func",
@@ -171,20 +171,20 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
         self.assertEqual(registered_func.__name__, "test_func")
         self.assertEqual(args[1:], ("test_func", False, {}, []))
 
-        self.assertEqual(test_func.routing_decision, {})
+        self.assertEqual(test_func.workflow_placement_decision, {})
 
         self.assertEqual(
             test_func(
-                '{"payload": 2, "routing_decision": {"routing_placement": {"test_instance_1": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_instance", "instances": [{"instance_name": "test_instance", "succeeding_instances": ["test_instance_1"]}]}}'
+                '{"payload": 2, "workflow_placement_decision": {"workflow_placement": {"test_instance_1": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_instance", "instances": [{"instance_name": "test_instance", "succeeding_instances": ["test_instance_1"]}]}}'
             ),
             4,
         )
 
-        # Check if the routing_decision attribute was set correctly
+        # Check if the workflow_placement_decision attribute was set correctly
         self.assertEqual(
-            test_func.routing_decision,
+            test_func.workflow_placement_decision,
             {
-                "routing_placement": {
+                "workflow_placement": {
                     "test_instance_1": {"provider_region": "aws:region", "identifier": "test_identifier"}
                 },
                 "current_instance_name": "test_instance",
@@ -221,14 +221,14 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
 
             # Call test_func with a payload
             response = test_func(
-                '{"payload": 2, "routing_decision": {"run_id": "123", "routing_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "test_func_1::": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_func", "instances": [{"instance_name": "test_func", "succeeding_instances": ["test_func_1::"]}]}}'
+                '{"payload": 2, "workflow_placement_decision": {"run_id": "123", "workflow_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "test_func_1::": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_func", "instances": [{"instance_name": "test_func", "succeeding_instances": ["test_func_1::"]}]}}'
             )
 
             mock_factory_class.get_remote_client.assert_called_once_with("aws", "region")
 
             # Check if invoke_serverless_function was called with the correct arguments
             mock_factory_class.get_remote_client("aws", "region").invoke_function.assert_called_once_with(
-                message='{"payload": 2, "routing_decision": {"run_id": "123", "routing_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "test_func_1::": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_func_1::", "instances": [{"instance_name": "test_func", "succeeding_instances": ["test_func_1::"]}]}}',
+                message='{"payload": 2, "workflow_placement_decision": {"run_id": "123", "workflow_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "test_func_1::": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_func_1::", "instances": [{"instance_name": "test_func", "succeeding_instances": ["test_func_1::"]}]}}',
                 identifier="test_identifier",
                 workflow_instance_id="123",
                 merge=False,
@@ -280,14 +280,14 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
 
             # Call test_func with a payload
             response = test_func(
-                '{"payload": 2, "routing_decision": {"run_id": "123", "routing_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "merge_func:merge:": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_func", "instances": [{"instance_name": "test_func", "succeeding_instances": ["merge_func:merge:"]}, {"instance_name": "merge_func:merge:", "preceding_instances": ["test_func"]}]}}'
+                '{"payload": 2, "workflow_placement_decision": {"run_id": "123", "workflow_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "merge_func:merge:": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_func", "instances": [{"instance_name": "test_func", "succeeding_instances": ["merge_func:merge:"]}, {"instance_name": "merge_func:merge:", "preceding_instances": ["test_func"]}]}}'
             )
 
             mock_factory_class.get_remote_client.assert_called_once_with("aws", "region")
 
             # Check if invoke_serverless_function was called with the correct arguments
             mock_factory_class.get_remote_client("aws", "region").invoke_function.assert_called_once_with(
-                message='{"payload": 2, "routing_decision": {"run_id": "123", "routing_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "merge_func:merge:": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "merge_func:merge:", "instances": [{"instance_name": "test_func", "succeeding_instances": ["merge_func:merge:"]}, {"instance_name": "merge_func:merge:", "preceding_instances": ["test_func"]}]}}',
+                message='{"payload": 2, "workflow_placement_decision": {"run_id": "123", "workflow_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "merge_func:merge:": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "merge_func:merge:", "instances": [{"instance_name": "test_func", "succeeding_instances": ["merge_func:merge:"]}, {"instance_name": "merge_func:merge:", "preceding_instances": ["test_func"]}]}}',
                 identifier="test_identifier",
                 workflow_instance_id="123",
                 merge=True,
@@ -354,14 +354,14 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
 
             # Call test_func with a payload
             response = test_func(
-                '{"payload": 2, "routing_decision": {"run_id": "123", "routing_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "test_func2": {"provider_region": "aws:region", "identifier": "test_identifier"}, "merge_func:merge:": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_func", "instances": [{"instance_name": "test_func", "succeeding_instances": ["merge_func:merge:"]}, {"instance_name": "test_func2", "succeeding_instances": ["merge_func:merge:"]}, {"instance_name": "merge_func:merge:", "preceding_instances": ["test_func", "test_func2"]}]}}'
+                '{"payload": 2, "workflow_placement_decision": {"run_id": "123", "workflow_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "test_func2": {"provider_region": "aws:region", "identifier": "test_identifier"}, "merge_func:merge:": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_func", "instances": [{"instance_name": "test_func", "succeeding_instances": ["merge_func:merge:"]}, {"instance_name": "test_func2", "succeeding_instances": ["merge_func:merge:"]}, {"instance_name": "merge_func:merge:", "preceding_instances": ["test_func", "test_func2"]}]}}'
             )
 
             mock_factory_class.get_remote_client.assert_called_once_with("aws", "region")
 
             # Check if invoke_serverless_function was called with the correct arguments
             mock_factory_class.get_remote_client("aws", "region").invoke_function.assert_called_once_with(
-                message='{"payload": 2, "routing_decision": {"run_id": "123", "routing_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "test_func2": {"provider_region": "aws:region", "identifier": "test_identifier"}, "merge_func:merge:": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "merge_func:merge:", "instances": [{"instance_name": "test_func", "succeeding_instances": ["merge_func:merge:"]}, {"instance_name": "test_func2", "succeeding_instances": ["merge_func:merge:"]}, {"instance_name": "merge_func:merge:", "preceding_instances": ["test_func", "test_func2"]}]}}',
+                message='{"payload": 2, "workflow_placement_decision": {"run_id": "123", "workflow_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "test_func2": {"provider_region": "aws:region", "identifier": "test_identifier"}, "merge_func:merge:": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "merge_func:merge:", "instances": [{"instance_name": "test_func", "succeeding_instances": ["merge_func:merge:"]}, {"instance_name": "test_func2", "succeeding_instances": ["merge_func:merge:"]}, {"instance_name": "merge_func:merge:", "preceding_instances": ["test_func", "test_func2"]}]}}',
                 identifier="test_identifier",
                 workflow_instance_id="123",
                 merge=True,
@@ -401,14 +401,14 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
 
             # Call test_func with a payload
             response = test_func(
-                '{"routing_decision": {"run_id": "123", "routing_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "test_func_1::": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_func", "instances": [{"instance_name": "test_func", "succeeding_instances": ["test_func_1::"]}]}}'
+                '{"workflow_placement_decision": {"run_id": "123", "workflow_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "test_func_1::": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_func", "instances": [{"instance_name": "test_func", "succeeding_instances": ["test_func_1::"]}]}}'
             )
 
             mock_factory_class.get_remote_client.assert_called_once_with("aws", "region")
 
             # Check if invoke_serverless_function was called with the correct arguments
             mock_factory_class.get_remote_client("aws", "region").invoke_function.assert_called_once_with(
-                message='{"routing_decision": {"run_id": "123", "routing_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "test_func_1::": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_func_1::", "instances": [{"instance_name": "test_func", "succeeding_instances": ["test_func_1::"]}]}}',
+                message='{"workflow_placement_decision": {"run_id": "123", "workflow_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "test_func_1::": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_func_1::", "instances": [{"instance_name": "test_func", "succeeding_instances": ["test_func_1::"]}]}}',
                 identifier="test_identifier",
                 workflow_instance_id="123",
                 merge=False,
@@ -448,14 +448,14 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
 
             # Call test_func with a payload
             response = test_func(
-                r'{"payload": "{\"key\": \"value\"}", "routing_decision": {"run_id": "123", "routing_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "test_func_1::": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_func", "instances": [{"instance_name": "some_instance", "succeeding_instances": ["test_func_1::"]}, {"instance_name": "test_func", "succeeding_instances": ["test_func_1::"]}]}}'
+                r'{"payload": "{\"key\": \"value\"}", "workflow_placement_decision": {"run_id": "123", "workflow_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "test_func_1::": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_func", "instances": [{"instance_name": "some_instance", "succeeding_instances": ["test_func_1::"]}, {"instance_name": "test_func", "succeeding_instances": ["test_func_1::"]}]}}'
             )
 
             mock_factory_class.get_remote_client.assert_called_once_with("aws", "region")
 
             # Check if invoke_serverless_function was called with the correct arguments
             mock_factory_class.get_remote_client("aws", "region").invoke_function.assert_called_once_with(
-                message=r'{"payload": "{\"key\": \"value\"}", "routing_decision": {"run_id": "123", "routing_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "test_func_1::": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_func_1::", "instances": [{"instance_name": "some_instance", "succeeding_instances": ["test_func_1::"]}, {"instance_name": "test_func", "succeeding_instances": ["test_func_1::"]}]}}',
+                message=r'{"payload": "{\"key\": \"value\"}", "workflow_placement_decision": {"run_id": "123", "workflow_placement": {"test_func": {"provider_region": "aws:region", "identifier": "test_identifier"}, "test_func_1::": {"provider_region": "aws:region", "identifier": "test_identifier"}}, "current_instance_name": "test_func_1::", "instances": [{"instance_name": "some_instance", "succeeding_instances": ["test_func_1::"]}, {"instance_name": "test_func", "succeeding_instances": ["test_func_1::"]}]}}',
                 identifier="test_identifier",
                 workflow_instance_id="123",
                 merge=False,
@@ -526,28 +526,28 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
         ):
             self.workflow.get_successors(function_obj_5)
 
-    def test_get_routing_decision(self):
-        # Test when 'wrapper' is in frame.f_locals and wrapper has 'routing_decision' attribute
+    def test_get_workflow_placement_decision(self):
+        # Test when 'wrapper' is in frame.f_locals and wrapper has 'workflow_placement_decision' attribute
         frame = Mock(spec=FrameType)
-        frame.f_locals = {"wrapper": Mock(routing_decision="decision")}
-        self.assertEqual(self.workflow.get_routing_decision(frame), "decision")
+        frame.f_locals = {"wrapper": Mock(workflow_placement_decision="decision")}
+        self.assertEqual(self.workflow.get_workflow_placement_decision(frame), "decision")
 
         # Test when 'wrapper' is not in frame.f_locals
         frame.f_locals = {}
         with self.assertRaises(RuntimeError):
-            self.workflow.get_routing_decision(frame)
+            self.workflow.get_workflow_placement_decision(frame)
 
-        # Test when 'wrapper' is in frame.f_locals but wrapper does not have 'routing_decision' attribute
+        # Test when 'wrapper' is in frame.f_locals but wrapper does not have 'workflow_placement_decision' attribute
         mock_wrapper = Mock()
-        mock_wrapper.routing_decision = None
+        mock_wrapper.workflow_placement_decision = None
         frame.f_locals = {"wrapper": mock_wrapper}
-        self.assertEqual(self.workflow.get_routing_decision(frame), None)
+        self.assertEqual(self.workflow.get_workflow_placement_decision(frame), None)
 
         mock_wrapper = Mock()
-        del mock_wrapper.routing_decision
+        del mock_wrapper.workflow_placement_decision
         frame.f_locals = {"wrapper": mock_wrapper}
         with self.assertRaises(RuntimeError, msg="Could not get routing decision"):
-            self.workflow.get_routing_decision(frame)
+            self.workflow.get_workflow_placement_decision(frame)
 
     def test_get_function__name__from_frame(self):
         # Test when '__name__' is in frame.f_locals
@@ -579,7 +579,7 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
         self.assertFalse(self.workflow.is_entry_point(frame))
 
     def test_get_next_instance_name(self):
-        routing_decision = {
+        workflow_placement_decision = {
             "instances": [
                 {
                     "instance_name": "current_instance",
@@ -592,13 +592,13 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
         successor_function_name = "successor_function"
 
         next_instance_name = self.workflow.get_next_instance_name(
-            current_instance_name, routing_decision, successor_function_name
+            current_instance_name, workflow_placement_decision, successor_function_name
         )
 
         self.assertEqual(next_instance_name, "successor_function:merge")
 
     def test_get_next_instance_name_non_merge_successor(self):
-        routing_decision = {
+        workflow_placement_decision = {
             "instances": [
                 {
                     "instance_name": "current_instance",
@@ -616,18 +616,18 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
         # Test with _successor_index = 0
         self.workflow._successor_index = 0
         next_instance_name = self.workflow.get_next_instance_name(
-            current_instance_name, routing_decision, successor_function_name
+            current_instance_name, workflow_placement_decision, successor_function_name
         )
         self.assertEqual(next_instance_name, "successor_function:current_instance_0_0")
 
         # The _successor_index should be incremented
         next_instance_name = self.workflow.get_next_instance_name(
-            current_instance_name, routing_decision, successor_function_name
+            current_instance_name, workflow_placement_decision, successor_function_name
         )
         self.assertEqual(next_instance_name, "successor_function:current_instance_0_1")
 
     def test_get_next_instance_name_no_current_instance(self):
-        routing_decision = {
+        workflow_placement_decision = {
             "instances": [
                 {"instance_name": "other_instance", "succeeding_instances": ["other_successor_function:merge"]},
             ]
@@ -636,10 +636,12 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
         successor_function_name = "successor_function"
 
         with self.assertRaises(RuntimeError, msg="Could not find current instance"):
-            self.workflow.get_next_instance_name(current_instance_name, routing_decision, successor_function_name)
+            self.workflow.get_next_instance_name(
+                current_instance_name, workflow_placement_decision, successor_function_name
+            )
 
     def test_get_next_instance_name_no_successor_instance(self):
-        routing_decision = {
+        workflow_placement_decision = {
             "instances": [
                 {"instance_name": "current_instance", "succeeding_instances": ["other_successor_function:merge"]},
             ]
@@ -648,10 +650,12 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
         successor_function_name = "successor_function"
 
         with self.assertRaises(RuntimeError, msg="Could not find successor instance"):
-            self.workflow.get_next_instance_name(current_instance_name, routing_decision, successor_function_name)
+            self.workflow.get_next_instance_name(
+                current_instance_name, workflow_placement_decision, successor_function_name
+            )
 
     def test_get_next_instance_name_multiple_successor_instances_no_match(self):
-        routing_decision = {
+        workflow_placement_decision = {
             "instances": [
                 {
                     "instance_name": "current_instance",
@@ -663,7 +667,9 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
         successor_function_name = "successor_function"
 
         with self.assertRaises(RuntimeError, msg="Could not find successor instance"):
-            self.workflow.get_next_instance_name(current_instance_name, routing_decision, successor_function_name)
+            self.workflow.get_next_instance_name(
+                current_instance_name, workflow_placement_decision, successor_function_name
+            )
 
     def test_get_function_and_wrapper_frame_no_current_frame(self):
         with self.assertRaises(RuntimeError, msg="Could not get current frame"):
@@ -737,11 +743,11 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
         this_frame = inspect.currentframe()
         wrapper_frame = Mock()
         self.workflow.get_function_and_wrapper_frame = Mock(return_value=(None, wrapper_frame))
-        self.workflow.get_routing_decision = Mock(
+        self.workflow.get_workflow_placement_decision = Mock(
             return_value={
                 "current_instance_name": "current_instance",
                 "run_id": "workflow_instance_id",
-                "routing_placement": {"current_instance": {"provider_region": "aws:us-west-1"}},
+                "workflow_placement": {"current_instance": {"provider_region": "aws:us-west-1"}},
             }
         )
 

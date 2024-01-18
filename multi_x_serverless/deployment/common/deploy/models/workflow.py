@@ -1,4 +1,4 @@
-from typing import Sequence
+from typing import Any, Sequence
 
 from multi_x_serverless.deployment.common.config.config import Config
 from multi_x_serverless.deployment.common.deploy.models.deployment_package import DeploymentPackage
@@ -102,3 +102,45 @@ class Workflow(Resource):
 
         workflow_config = WorkflowConfig(workflow_description)
         return workflow_config
+
+    def __get_entry_point_instance_name(self) -> str:
+        """
+        Returns the name of the instance that is the entry point of the workflow.
+        """
+        for instance in self._functions:
+            if instance.entry_point:
+                return instance.name
+        raise RuntimeError("No entry point instance found, this should not happen")
+
+    def __get_workflow_placement(self, resource_values: dict[str, list[Any]]) -> dict[str, list[dict[str, str]]]:
+        print(resource_values)
+        return {}
+
+    def __extend_stage_area_placement(
+        self, resource_values: dict[str, list[Any]], staging_area_placement: dict[str, Any]
+    ) -> dict[str, list[dict[str, str]]]:
+        raise NotImplementedError
+
+    def get_workflow_placement_decision(self, resource_values: dict[str, list[Any]]) -> dict[str, Any]:
+        """
+        The desired output format is explained in the `docs/design.md` file under `Workflow Placement Decision`.
+        """
+        result: dict[str, Any] = {}
+
+        result["instances"] = self.get_instance_description().instances
+        result["current_instance_name"] = self.__get_entry_point_instance_name()
+        result["workflow_placement"] = self.__get_workflow_placement(resource_values)
+        return result
+
+    def get_workflow_placement_decision_extend_staging(
+        self, resource_values: dict[str, list[Any]], staging_area_placement: dict[str, Any]
+    ) -> dict[str, Any]:
+        """
+        The desired output format is explained in the `docs/design.md` file under `Workflow Placement Decision`.
+        """
+        result: dict[str, Any] = {}
+
+        result["instances"] = self.get_instance_description().instances
+        result["current_instance_name"] = self.__get_entry_point_instance_name()
+        result["workflow_placement"] = self.__extend_stage_area_placement(resource_values, staging_area_placement)
+        return result

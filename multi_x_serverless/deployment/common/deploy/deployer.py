@@ -3,15 +3,17 @@ from typing import Optional
 
 import botocore.exceptions
 
-from multi_x_serverless.deployment.common.config.config import Config
-from multi_x_serverless.deployment.common.constants import (
+from multi_x_serverless.common.constants import (
     DEPLOYMENT_MANAGER_RESOURCE_TABLE,
     SOLVER_UPDATE_CHECKER_RESOURCE_TABLE,
+    WORKFLOW_PLACEMENT_DECISION_TABLE,
+    WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE,
 )
+from multi_x_serverless.common.models.endpoints import Endpoints
+from multi_x_serverless.deployment.common.config.config import Config
 from multi_x_serverless.deployment.common.deploy.deployment_packager import DeploymentPackager
 from multi_x_serverless.deployment.common.deploy.executor import Executor
 from multi_x_serverless.deployment.common.deploy.models.deployment_plan import DeploymentPlan
-from multi_x_serverless.deployment.common.deploy.models.endpoints import Endpoints
 from multi_x_serverless.deployment.common.deploy.models.workflow import Workflow
 from multi_x_serverless.deployment.common.deploy.workflow_builder import WorkflowBuilder
 
@@ -85,6 +87,7 @@ class Deployer:
         )
 
         self._update_workflow_to_deployer_server(workflow, self._config.workflow_id, merged_deployer_regions)
+        self._update_workflow_placement_decision(workflow)
 
     def _filter_function_to_deployment_regions(
         self,
@@ -151,6 +154,7 @@ class Deployer:
 
         self._upload_workflow_to_deployer_server(workflow, self._config.workflow_id)
         self._upload_deployment_package_resource(workflow)
+        self._upload_workflow_placement_decision(workflow)
 
     def _set_workflow_id(self, workflow: Workflow) -> None:
         workflow_id = f"{workflow.name}-{workflow.version}"
@@ -173,6 +177,41 @@ class Deployer:
     def _get_workflow_already_deployed(self, workflow_id: str) -> bool:
         return self._endpoints.get_solver_update_checker_client().get_key_present_in_table(
             SOLVER_UPDATE_CHECKER_RESOURCE_TABLE, workflow_id
+        )
+
+    def _update_workflow_placement_decision(self, workflow: Workflow) -> None:
+        staging_area_data = self._endpoints.get_solver_workflow_placement_decision_client().get_value_from_table(
+            WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE, self._config.workflow_id
+        )
+        if staging_area_data is None:
+            raise RuntimeError("Staging area data is None")
+
+        staging_area_data_json = json.loads(staging_area_data)
+
+        if not isinstance(staging_area_data_json, dict):
+            raise RuntimeError("Staging area data is not a dictionary")
+
+        if self._executor is None:
+            raise RuntimeError("Cannot deploy with deletion deployer")
+
+        workflow_placement_decision = workflow.get_workflow_placement_decision_extend_staging(
+            self._executor.resource_values, staging_area_data_json
+        )
+        workflow_placement_decision_json = json.dumps(workflow_placement_decision)
+
+        self._endpoints.get_solver_update_checker_client().set_value_in_table(
+            WORKFLOW_PLACEMENT_DECISION_TABLE, self._config.workflow_id, workflow_placement_decision_json
+        )
+
+    def _upload_workflow_placement_decision(self, workflow: Workflow) -> None:
+        if self._executor is None:
+            raise RuntimeError("Cannot deploy with deletion deployer")
+
+        workflow_placement_decision = workflow.get_workflow_placement_decision(self._executor.resource_values)
+        workflow_placement_decision_json = json.dumps(workflow_placement_decision)
+
+        self._endpoints.get_solver_update_checker_client().set_value_in_table(
+            WORKFLOW_PLACEMENT_DECISION_TABLE, self._config.workflow_id, workflow_placement_decision_json
         )
 
     def _upload_workflow_to_deployer_server(self, workflow: Workflow, workflow_id: str) -> None:

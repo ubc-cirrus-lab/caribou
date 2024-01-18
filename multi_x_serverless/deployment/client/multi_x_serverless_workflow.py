@@ -7,9 +7,9 @@ import uuid
 from types import FrameType
 from typing import Any, Callable, Optional
 
+from multi_x_serverless.common.constants import WORKFLOW_PLACEMENT_DECISION_TABLE
+from multi_x_serverless.common.models.endpoints import Endpoints
 from multi_x_serverless.deployment.client.multi_x_serverless_function import MultiXServerlessFunction
-from multi_x_serverless.deployment.common.constants import ROUTING_DECISION_TABLE
-from multi_x_serverless.deployment.common.deploy.models.endpoints import Endpoints
 from multi_x_serverless.deployment.common.factories.remote_client_factory import RemoteClientFactory
 
 
@@ -80,12 +80,15 @@ class MultiXServerlessWorkflow:
         """
         Invoke a serverless function which is part of this workflow.
         """
-        # If the function from which this function is called is the entry point obtain current workflow_placement decision
-        # If not, the workflow_placement decision was stored in the message received from the predecessor function
+        # If the function from which this function is called is the entry point obtain current
+        # workflow_placement decision
+        # If not, the workflow_placement decision was stored in the message received from the
+        # predecessor function
         # Post message to SNS -> return
         # Do not wait for response
 
-        # We need to go back two frames to get the frame of the wrapper function that stores the workflow_placement decision
+        # We need to go back two frames to get the frame of the wrapper function that stores
+        # the workflow_placement decision
         # and the payload (see more on this in the explanation of the decorator `serverless_function`)
         function_frame, wrapper_frame = self.get_function_and_wrapper_frame(inspect.currentframe())
 
@@ -103,7 +106,9 @@ class MultiXServerlessWorkflow:
         payload_wrapper["workflow_placement_decision"] = successor_workflow_placement_decision_dictionary
         json_payload = json.dumps(payload_wrapper)
 
-        provider_region, identifier = self.get_successor_workflow_placement_decision(successor_instance_name, workflow_placement_decision)
+        provider_region, identifier = self.get_successor_workflow_placement_decision(
+            successor_instance_name, workflow_placement_decision
+        )
         provider, region = provider_region.split(":")
 
         merge = successor_instance_name.split(":", maxsplit=2)[1] == "merge"
@@ -208,7 +213,8 @@ class MultiXServerlessWorkflow:
 
     def get_workflow_placement_decision(self, frame: FrameType) -> dict[str, Any]:
         """
-        The structure of the workflow placement decision is explained in the `docs/design.md` file under `Workflow Placement Decision`.
+        The structure of the workflow placement decision is explained in the
+        `docs/design.md` file under `Workflow Placement Decision`.
         """
         # Get the workflow_placement decision from the wrapper function
         if "wrapper" in frame.f_locals:
@@ -261,7 +267,8 @@ class MultiXServerlessWorkflow:
         if not previous_frame:
             raise RuntimeError("Could not get previous frame")
 
-        # We need to go back two frames to get the frame of the wrapper function that stores the workflow_placement decision
+        # We need to go back two frames to get the frame of the wrapper function that
+        # stores the workflow_placement decision.
         # and the payload (see more on this in the explanation of the decorator `serverless_function`)
         _, wrapper_frame = self.get_function_and_wrapper_frame(this_frame)
 
@@ -280,7 +287,9 @@ class MultiXServerlessWorkflow:
         current_instance_name = workflow_placement_decision["current_instance_name"]
         workflow_instance_id = workflow_placement_decision["run_id"]
 
-        provider_region = workflow_placement_decision["workflow_placement"][current_instance_name]["provider_region"].split(":")
+        provider_region = workflow_placement_decision["workflow_placement"][current_instance_name][
+            "provider_region"
+        ].split(":")
         return provider_region[0], provider_region[1], current_instance_name, workflow_instance_id
 
     def get_workflow_placement_decision_from_platform(self) -> dict[str, Any]:
@@ -288,7 +297,7 @@ class MultiXServerlessWorkflow:
         Get the workflow_placement decision from the platform.
         """
         result = self._endpoint.get_solver_workflow_placement_decision_client().get_value_from_table(
-            ROUTING_DECISION_TABLE, f"{self.name}-{self.version}"
+            WORKFLOW_PLACEMENT_DECISION_TABLE, f"{self.name}-{self.version}"
         )
         if result is not None:
             return json.loads(result)
@@ -383,7 +392,7 @@ class MultiXServerlessWorkflow:
             def wrapper(*args, **kwargs):  # type: ignore # pylint: disable=unused-argument
                 # Modify args and kwargs here as needed
                 if entry_point:
-                    wrapper.workflow_placement_decision = self.get_workflow_placement_decision_from_platform()  # type: ignore
+                    wrapper.workflow_placement_decision = self.get_workflow_placement_decision_from_platform()  # type: ignore  # pylint: disable=line-too-long
                     # This is the first function to be called, so we need to generate a run id
                     # This run id will be used to identify the workflow instance
                     # For example for the merge function, we need to know which workflow instance to merge
