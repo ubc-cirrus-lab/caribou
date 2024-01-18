@@ -56,6 +56,13 @@ class Deployer:
         if self._config.workflow_id is None or self._config.workflow_id == "{}":
             raise RuntimeError("Workflow id is not set correctly")
 
+        workflow_deployed = self._get_workflow_already_deployed(self._config.workflow_id)
+
+        if not workflow_deployed:
+            raise DeploymentError(
+                f"Workflow {self._config.workflow_name} with version {self._config.workflow_version} not deployed, something went wrong"  # pylint: disable=line-too-long
+            )
+
         filtered_function_to_deployment_regions = self._filter_function_to_deployment_regions(
             function_to_deployment_regions, deployed_regions
         )
@@ -121,6 +128,12 @@ class Deployer:
 
         self._set_workflow_id(workflow)
 
+        already_deployed = self._get_workflow_already_deployed(self._config.workflow_id)
+        if already_deployed:
+            raise DeploymentError(
+                f"Workflow {self._config.workflow_name} with version {self._config.workflow_version} already deployed, please use a different version number"  # pylint: disable=line-too-long
+            )
+
         # Upload the workflow to the solver
         self._upload_workflow_to_solver_update_checker(workflow, self._config.workflow_id)
 
@@ -155,6 +168,11 @@ class Deployer:
 
         self._endpoints.get_solver_update_checker_client().set_value_in_table(
             SOLVER_UPDATE_CHECKER_RESOURCE_TABLE, workflow_id, payload_json
+        )
+
+    def _get_workflow_already_deployed(self, workflow_id: str) -> bool:
+        return self._endpoints.get_solver_update_checker_client().get_key_present_in_table(
+            SOLVER_UPDATE_CHECKER_RESOURCE_TABLE, workflow_id
         )
 
     def _upload_workflow_to_deployer_server(self, workflow: Workflow, workflow_id: str) -> None:

@@ -48,6 +48,9 @@ class TestRemoteClient(unittest.TestCase):
         ):
             pass
 
+        def get_key_present_in_table(self, table_name: str, key: str) -> bool:
+            pass
+
     def test_invoke_function(self):
         client = self.MockRemoteClient()
         client.send_message_to_messaging_service = Mock()

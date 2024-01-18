@@ -264,6 +264,11 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
             return item["value"]["S"]
         return ""
 
+    def get_key_present_in_table(self, table_name: str, key: str) -> bool:
+        client = self._client("dynamodb")
+        response = client.get_item(TableName=table_name, Key={"key": {"S": key}})
+        return "Item" in response
+
     def upload_resource(self, key: str, resource: bytes) -> None:
         client = self._client("s3")
         client.put_object(Body=resource, Bucket="multi-x-serverless-resources", Key=key)

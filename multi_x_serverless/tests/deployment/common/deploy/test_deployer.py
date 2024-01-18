@@ -71,6 +71,25 @@ class TestDeployer(unittest.TestCase):
             with self.assertRaises(RuntimeError, msg="Cannot deploy with deletion deployer"):
                 deployer.deploy(regions)
 
+    def test_deploy_with_existing_workflow(self):
+        config = Config({}, self.test_dir)
+        workflow_builder = Mock()
+        deployment_packager = Mock()
+        executor = Mock()
+        deployer = Deployer(config, workflow_builder, deployment_packager, executor)
+
+        regions = [{"region": "us-west-1"}]
+        workflow = Workflow("test_workflow", "0.0.1", [], [], [], config)
+        workflow_builder.build_workflow.return_value = workflow
+        executor.get_deployed_resources.return_value = [Resource("test_resource", "test_resource")]
+
+        with patch.object(
+            Deployer, "_get_workflow_already_deployed", return_value=None
+        ) as get_workflow_already_deployed:
+            get_workflow_already_deployed.return_value = True
+            with self.assertRaises(DeploymentError, msg="Workflow {} with version {} already deployed"):
+                deployer.deploy(regions)
+
     def test_re_deploy_without_executor(self):
         config = Config({}, self.test_dir)
         workflow_builder = Mock()
@@ -83,8 +102,32 @@ class TestDeployer(unittest.TestCase):
         workflow = Workflow("test_workflow", "0.0.1", [], [], [], config)
         workflow_builder.re_build_workflow.return_value = workflow
 
-        with self.assertRaises(RuntimeError, msg="Cannot deploy with deletion deployer"):
-            deployer.re_deploy(function_to_deployment_regions, workflow_function_description, deployed_regions)
+        with patch.object(
+            Deployer, "_get_workflow_already_deployed", return_value=None
+        ) as get_workflow_already_deployed:
+            get_workflow_already_deployed.return_value = True
+            with self.assertRaises(RuntimeError, msg="Cannot deploy with deletion deployer"):
+                deployer.re_deploy(function_to_deployment_regions, workflow_function_description, deployed_regions)
+
+    def test_re_deploy_workflow_not_deployed(self):
+        config = Config({}, self.test_dir)
+        workflow_builder = Mock()
+        deployment_packager = Mock()
+        executor = Mock()
+        deployer = Deployer(config, workflow_builder, deployment_packager, executor)
+
+        function_to_deployment_regions = {"test_function": [{"region": "us-west-2"}]}
+        workflow_function_description = [{"name": "test_function", "version": "0.0.1"}]
+        deployed_regions = {"test_function": [{"region": "us-west-1"}]}
+
+        with patch.object(
+            Deployer, "_get_workflow_already_deployed", return_value=None
+        ) as get_workflow_already_deployed:
+            get_workflow_already_deployed.return_value = False
+            with self.assertRaises(
+                DeploymentError, msg="Workflow {} with version {} not deployed, something went wrong"
+            ):
+                deployer.re_deploy(function_to_deployment_regions, workflow_function_description, deployed_regions)
 
     def test_re_deploy_with_client_error(self):
         config = Config({}, self.test_dir)
