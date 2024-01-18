@@ -120,22 +120,21 @@ workflow = MultiXServerlessWorkflow("workflow_name")
     name="First-Function",
     entry_point=True,
     regions_and_providers={
-        "only_regions": [
+        "allowed_regions": [
           {
             "provider": "aws",
             "region": "us-east-1",
           }
         ],
-        "forbidden_regions": None,
-        "providers": [
-            {
-                "name": "aws",
+        "disallowed_regions": None,
+        "providers": {
+            "aws": {
                 "config": {
                     "timeout": 60,
                     "memory": 128,
                 },
-            }
-        ],
+            },
+        },
     },
     environment_variables=[
         {
@@ -156,9 +155,9 @@ There can only be one entry point in a workflow.
 This can be used to override the global settings in the `config.yml`.
 If none or an empty dictionary is provided, the global config takes precedence.
 The dictionary has two keys:
-  - `only_regions`: A list of regions that the function can be deployed to.
+  - `allowed_regions`: A list of regions that the function can be deployed to.
   If this list is empty, the function can be deployed to any region.
-  - `forbidden_regions`: A list of regions that the function cannot be deployed to.
+  - `disallowed_regions`: A list of regions that the function cannot be deployed to.
   If this list is empty, the function can be deployed to any region.
   - `providers`: A list of providers that the function can be deployed to.
   This can be used to override the global settings in the `config.yml`.
@@ -198,6 +197,8 @@ This is done with the following annotation:
 responses: list[Any] = workflow.get_predecessor_data()
 ```
 
+Using this annotation within a function has an important implication with regards to when the entire function is being executed. The entire function is only executed once all predecessor calls have been completed and the data has been merged. This is important to keep in mind when designing the workflow. Any code within the function preceding the annotation is also executed only once all predecessor calls have been completed and the data has been merged.
+
 ## Merge Node
 
 The merge nodes have a special semantic.
@@ -214,6 +215,8 @@ The logic of the merge node is implemented as follows:
 2. The predecessor will then atomically increment a counter in the distributed key-value store.
 3. The new value of the counter is then checked against the number of predecessors of the merge node.
 4. If the counter is equal to the number of predecessors, the merge node will be called. Otherwise, the predecessor will not call the merge node. This ensures that the merge node is only called when all predecessors have called the merge node.
+
+As previously mentioned, the code in the merge node is only executed once all predecessors have written their responses to the distributed key-value store and the counter has been incremented to the number of predecessors, i.e., the merge node is only called once all predecessors have called the merge node.
 
 ##  References
 

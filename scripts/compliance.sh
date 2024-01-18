@@ -24,4 +24,4 @@ poetry run mypy multi_x_serverless
 
 # Run pytest
 echo "Running pytest..."
-poetry run pytest multi_x_serverless --cov-reset --cache-clear --cov-fail-under=90
+poetry run pytest --junitxml=pytest.xml --cov-report=term-missing:skip-covered --cov-fail-under=90 --cov=multi_x_serverless multi_x_serverless/tests

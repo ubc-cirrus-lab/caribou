@@ -21,10 +21,10 @@ constraints:
     runtime: null
     carbon: null
   regions_and_providers: # Either the user specify only allowed regions (which will override everything else)
-    only_regions: null # Only check other conditions if this is None, else will restrict to ONLY those regions
-    forbidden_regions: null
+    allowed_regions: null # Only check other conditions if this is None, else will restrict to ONLY those regions
+    disallowed_regions: null
 providers:
-  - name: "aws"
+  aws:
     config:
       timeout: 60
       memory: 128

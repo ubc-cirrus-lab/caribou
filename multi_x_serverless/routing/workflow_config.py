@@ -27,6 +27,11 @@ class WorkflowConfig:
     def to_json(self) -> str:
         return json.dumps(self._workflow_config)
 
+    def resolve_functions(self) -> np.ndarray:
+        functions = [instance["function_name"] for instance in self.instances]
+        functions = list(set(functions))
+        return np.array(functions)
+
     @property
     def regions_and_providers(self) -> dict:
         return self._lookup("regions_and_providers")

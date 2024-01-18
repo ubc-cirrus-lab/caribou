@@ -14,34 +14,33 @@ from random import choice
 
 from multi_x_serverless.deployment.client import MultiXServerlessWorkflow
 
-workflow = MultiXServerlessWorkflow("regression_tuning")
+workflow = MultiXServerlessWorkflow(name="regression_tuning", version="0.0.1")
 
 
 @workflow.serverless_function(
     name="GetInput",
     entry_point=True,
     regions_and_providers={
-        "only_regions": [
+        "allowed_regions": [
             {
                 "provider": "aws",
                 "region": "us-east-1",
             }
         ],
-        "forbidden_regions": [
+        "disallowed_regions": [
             {
                 "provider": "aws",
                 "region": "us-east-2",
             }
         ],
-        "providers": [
-            {
-                "name": "aws",
+        "providers": {
+            "aws": {
                 "config": {
                     "timeout": 60,
                     "memory": 128,
                 },
-            }
-        ],
+            },
+        },
     },
 )
 def get_input(event: dict[str, Any]) -> dict[str, Any]:

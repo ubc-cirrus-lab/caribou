@@ -33,6 +33,14 @@ And run any file with:
 poetry run <executable> <args>
 ```
 
+###   Deployment Server
+
+The deployment server can be found in `multi_x_serverless/deployment/server` and can be setup with:
+
+```bash
+poetry run ./multi_x_serverless/deployment/server/setup.sh
+```
+
 ###  Deployment Client
 
 The deployment client can be found in `multi_x_serverless/deployment/client` and can be run with:
@@ -47,20 +55,6 @@ To see the available commands, use:
 poetry run multi_x_serverless --help
 ```
 
-### Other Serverless Functions
-
-To deploy the serverless AWS function, use chalice (comes with the dependencies):
-
-```bash
-poetry run chalice deploy --stage <stage>
-```
-
-To run the serverless function locally, use (don't forget to disable the serverless deployment, meaning comment out for example `@app.schedule`):
-
-```bash
-poetry run python app.py
-```
-
 ## Architecture
 
 For the architecture, see the current [draw.io](https://app.diagrams.net/#G1rql5LiXzNiWIzN1-zJmqYMQYyUwjmrOq) diagram.
@@ -71,4 +65,4 @@ For the architecture, see the current [draw.io](https://app.diagrams.net/#G1rql5
 
 ##  License
 
-TODO: We are inspired by the chalice project so we will probably use the same license.
+Apache License 2.0

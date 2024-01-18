@@ -7,8 +7,10 @@ import uuid
 from types import FrameType
 from typing import Any, Callable, Optional
 
-from multi_x_serverless.deployment.client.factories.remote_client_factory import RemoteClientFactory
 from multi_x_serverless.deployment.client.multi_x_serverless_function import MultiXServerlessFunction
+from multi_x_serverless.deployment.common.constants import ROUTING_DECISION_TABLE
+from multi_x_serverless.deployment.common.deploy.models.endpoints import Endpoints
+from multi_x_serverless.deployment.common.factories.remote_client_factory import RemoteClientFactory
 
 
 class MultiXServerlessWorkflow:
@@ -24,11 +26,13 @@ class MultiXServerlessWorkflow:
     :param name: The name of the workflow.
     """
 
-    def __init__(self, name: str):
+    def __init__(self, name: str, version: str):
         self.name = name
+        self.version = version
         self.functions: dict[str, MultiXServerlessFunction] = {}
         self._successor_index = 0
-        self._remote_client_factory = RemoteClientFactory()
+        self._function_names: set[str] = set()
+        self._endpoint = Endpoints()
 
     def get_function_and_wrapper_frame(self, current_frame: Optional[FrameType]) -> tuple[FrameType, FrameType]:
         if not current_frame:
@@ -53,30 +57,29 @@ class MultiXServerlessWorkflow:
         function_calls = re.findall(r"invoke_serverless_function\((.*?)\)", source_code)
         successors: list[MultiXServerlessFunction] = []
         for call in function_calls:
+            function_name = None
             if "," not in call:
-                raise RuntimeError(
-                    f"""Could not parse function call ({call}) in function
-                    ({function}), did you provide the payload?"""
-                )
-            function_name = call.strip().split(",", maxsplit=1)[0].strip('"')
+                function_name = call.strip().strip('"')
+            else:
+                function_name = call.strip().split(",", maxsplit=1)[0].strip('"')
             successor = next(
                 (func for func in self.functions.values() if func.function_callable.__name__ == function_name), None
             )
             if successor:
                 successors.append(successor)
+            else:
+                raise RuntimeError(f"Could not find function with name {function_name}, was the function registered?")
         return successors
 
     def invoke_serverless_function(
-        self, function: Callable[..., Any], payload: Optional[dict | Any] = None, conditional: bool = True
+        self,
+        function: Callable[..., Any],
+        payload: Optional[dict | Any] = None,
+        conditional: bool = True,  # pylint: disable=unused-argument
     ) -> None:
         """
         Invoke a serverless function which is part of this workflow.
         """
-        if not payload:
-            payload = {}
-
-        if not conditional:
-            return
         # If the function from which this function is called is the entry point obtain current routing decision
         # If not, the routing decision was stored in the message received from the predecessor function
         # Post message to SNS -> return
@@ -93,7 +96,9 @@ class MultiXServerlessWorkflow:
         )
 
         # Wrap the payload and add the routing decision
-        payload_wrapper = {"payload": payload}
+        payload_wrapper = {}
+        if payload:
+            payload_wrapper["payload"] = payload
 
         payload_wrapper["routing_decision"] = successor_routing_decision_dictionary
         json_payload = json.dumps(payload_wrapper)
@@ -112,7 +117,7 @@ class MultiXServerlessWorkflow:
                     break
             function_name = successor_instance_name.split(":", maxsplit=1)[0]
 
-        self._remote_client_factory.get_remote_client(provider, region).invoke_function(
+        RemoteClientFactory.get_remote_client(provider, region).invoke_function(
             message=json_payload,
             identifier=identifier,
             workflow_instance_id=routing_decision["run_id"],
@@ -261,7 +266,7 @@ class MultiXServerlessWorkflow:
             workflow_instance_id,
         ) = self.get_current_instance_provider_region_instance_name()
 
-        client = self._remote_client_factory.get_remote_client(provider, region)
+        client = RemoteClientFactory.get_remote_client(provider, region)
 
         response = client.get_predecessor_data(current_instance_name, workflow_instance_id)
 
@@ -302,8 +307,13 @@ class MultiXServerlessWorkflow:
         """
         Get the routing decision from the platform.
         """
-        # TODO (#7): Get routing decision from platform
-        return {}
+        result = self._endpoint.get_solver_routing_decision_client().get_value_from_table(
+            ROUTING_DECISION_TABLE, f"{self.name}-{self.version}"
+        )
+        if result is not None:
+            return json.loads(result)
+
+        raise RuntimeError("Could not get routing decision from platform")
 
     def register_function(
         self,
@@ -322,6 +332,11 @@ class MultiXServerlessWorkflow:
         later by the deployment manager.
         """
         wrapper = MultiXServerlessFunction(function, name, entry_point, regions_and_providers, environment_variables)
+        if function.__name__ in self.functions:
+            raise RuntimeError(f"Function with function name {function.__name__} already registered")
+        if name in self._function_names:
+            raise RuntimeError(f"Function with given name {name} already registered")
+        self._function_names.add(name)
         self.functions[function.__name__] = wrapper
 
     def serverless_function(
@@ -393,6 +408,8 @@ class MultiXServerlessWorkflow:
                     # This run id will be used to identify the workflow instance
                     # For example for the merge function, we need to know which workflow instance to merge
                     wrapper.routing_decision["run_id"] = uuid.uuid4().hex  # type: ignore
+                    if len(args) == 0:
+                        return func()
                     payload = args[0]
                 else:
                     # Get the routing decision from the message received from the predecessor function
@@ -400,6 +417,8 @@ class MultiXServerlessWorkflow:
                     if "routing_decision" not in argument:
                         raise RuntimeError("Could not get routing decision from message")
                     wrapper.routing_decision = argument["routing_decision"]  # type: ignore
+                    if "payload" not in argument:
+                        return func()
                     payload = argument.get("payload", {})
 
                 # Call the original function with the modified arguments

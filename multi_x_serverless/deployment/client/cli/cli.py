@@ -1,13 +1,12 @@
 import os
 
 import click
-from botocore.session import Session
 
 from multi_x_serverless.deployment.client import __version__ as MULTI_X_SERVERLESS_VERSION
 from multi_x_serverless.deployment.client.cli.new_workflow import create_new_workflow_directory
-from multi_x_serverless.deployment.client.config import Config
-from multi_x_serverless.deployment.client.deploy.deployer import Deployer
-from multi_x_serverless.deployment.client.factories.cli_factory import CLIFactory
+from multi_x_serverless.deployment.common.config.config import Config
+from multi_x_serverless.deployment.common.deploy.deployer import Deployer
+from multi_x_serverless.deployment.common.factories.deployer_factory import DeployerFactory
 
 
 @click.group()
@@ -19,7 +18,7 @@ def cli(ctx: click.Context, project_dir: str) -> None:
     elif not os.path.isabs(project_dir):
         project_dir = os.path.abspath(project_dir)
     ctx.obj["project_dir"] = project_dir
-    ctx.obj["factory"] = CLIFactory(project_dir)
+    ctx.obj["factory"] = DeployerFactory(project_dir)
     os.chdir(project_dir)
 
 
@@ -39,12 +38,10 @@ def new_workflow(_: click.Context, workflow_name: str) -> None:
 @cli.command("deploy", help="Deploy the workflow.")
 @click.pass_context
 def deploy(ctx: click.Context) -> None:
-    factory: CLIFactory = ctx.obj["factory"]
+    factory: DeployerFactory = ctx.obj["factory"]
     config: Config = factory.create_config_obj()
-    session: Session = factory.create_session()
-    deployer: Deployer = factory.create_deployer(config=config, session=session)
-    deployment_information = deployer.deploy()
-    print(deployment_information)
+    deployer: Deployer = factory.create_deployer(config=config)
+    deployer.deploy(config.home_regions)
 
 
 __version__ = MULTI_X_SERVERLESS_VERSION

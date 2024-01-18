@@ -47,6 +47,7 @@ coverage.xml
 cover/
 coverage_html_report/
 pytest-coverage.*
+pytest.xml
 
 # pyenv
 .python-version
