@@ -1,6 +1,5 @@
 from typing import Any, Sequence
 
-
 from multi_x_serverless.deployment.common.config.config import Config
 from multi_x_serverless.deployment.common.deploy.models.deployment_package import DeploymentPackage
 from multi_x_serverless.deployment.common.deploy.models.function import Function
