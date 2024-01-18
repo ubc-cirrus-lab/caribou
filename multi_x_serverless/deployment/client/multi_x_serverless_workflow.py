@@ -80,30 +80,30 @@ class MultiXServerlessWorkflow:
         """
         Invoke a serverless function which is part of this workflow.
         """
-        # If the function from which this function is called is the entry point obtain current routing decision
-        # If not, the routing decision was stored in the message received from the predecessor function
+        # If the function from which this function is called is the entry point obtain current workflow_placement decision
+        # If not, the workflow_placement decision was stored in the message received from the predecessor function
         # Post message to SNS -> return
         # Do not wait for response
 
-        # We need to go back two frames to get the frame of the wrapper function that stores the routing decision
+        # We need to go back two frames to get the frame of the wrapper function that stores the workflow_placement decision
         # and the payload (see more on this in the explanation of the decorator `serverless_function`)
         function_frame, wrapper_frame = self.get_function_and_wrapper_frame(inspect.currentframe())
 
-        routing_decision = self.get_routing_decision(wrapper_frame)
+        workflow_placement_decision = self.get_workflow_placement_decision(wrapper_frame)
 
-        successor_instance_name, successor_routing_decision_dictionary = self.get_successor_instance_name(
-            function, routing_decision, wrapper_frame, function_frame
+        successor_instance_name, successor_workflow_placement_decision_dictionary = self.get_successor_instance_name(
+            function, workflow_placement_decision, wrapper_frame, function_frame
         )
 
-        # Wrap the payload and add the routing decision
+        # Wrap the payload and add the workflow_placement decision
         payload_wrapper = {}
         if payload:
             payload_wrapper["payload"] = payload
 
-        payload_wrapper["routing_decision"] = successor_routing_decision_dictionary
+        payload_wrapper["workflow_placement_decision"] = successor_workflow_placement_decision_dictionary
         json_payload = json.dumps(payload_wrapper)
 
-        provider_region, identifier = self.get_successor_routing_decision(successor_instance_name, routing_decision)
+        provider_region, identifier = self.get_successor_workflow_placement_decision(successor_instance_name, workflow_placement_decision)
         provider, region = provider_region.split(":")
 
         merge = successor_instance_name.split(":", maxsplit=2)[1] == "merge"
@@ -111,7 +111,7 @@ class MultiXServerlessWorkflow:
         expected_counter = -1
         function_name = None
         if merge:
-            for instance in routing_decision["instances"]:
+            for instance in workflow_placement_decision["instances"]:
                 if instance["instance_name"] == successor_instance_name:
                     expected_counter = len(instance["preceding_instances"])
                     break
@@ -120,25 +120,25 @@ class MultiXServerlessWorkflow:
         RemoteClientFactory.get_remote_client(provider, region).invoke_function(
             message=json_payload,
             identifier=identifier,
-            workflow_instance_id=routing_decision["run_id"],
+            workflow_instance_id=workflow_placement_decision["run_id"],
             merge=merge,
             function_name=function_name,
             expected_counter=expected_counter,
         )
 
-    def get_successor_routing_decision(
-        self, successor_instance_name: str, routing_decision: dict[str, Any]
+    def get_successor_workflow_placement_decision(
+        self, successor_instance_name: str, workflow_placement_decision: dict[str, Any]
     ) -> tuple[str, str]:
-        provider_region = routing_decision["routing_placement"][successor_instance_name]["provider_region"]
-        identifier = routing_decision["routing_placement"][successor_instance_name]["identifier"]
+        provider_region = workflow_placement_decision["workflow_placement"][successor_instance_name]["provider_region"]
+        identifier = workflow_placement_decision["workflow_placement"][successor_instance_name]["identifier"]
         return provider_region, identifier
 
-    # This method is used to get the name of the next successor instance and its routing decision.
-    # It takes the current function, routing decision, wrapper frame, and function frame as parameters.
+    # This method is used to get the name of the next successor instance and its workflow_placement decision.
+    # It takes the current function, workflow_placement decision, wrapper frame, and function frame as parameters.
     def get_successor_instance_name(
         self,
         function: Callable[..., Any],
-        routing_decision: dict[str, Any],
+        workflow_placement_decision: dict[str, Any],
         wrapper_frame: FrameType,
         function_frame: FrameType,
     ) -> tuple[str, dict[str, Any]]:
@@ -155,38 +155,38 @@ class MultiXServerlessWorkflow:
         if is_entry_point:
             current_instance_name = f"{current_function_name}:entry_point:0"
         else:
-            current_instance_name = routing_decision["current_instance_name"]
+            current_instance_name = workflow_placement_decision["current_instance_name"]
 
         # Get the name of the next instance based on the current instance and successor function name
         next_instance_name = self.get_next_instance_name(
-            current_instance_name, routing_decision, successor_function_name
+            current_instance_name, workflow_placement_decision, successor_function_name
         )
 
-        # Create the successor routing decision by copying the original routing decision
+        # Create the successor workflow_placement decision by copying the original workflow_placement decision
         # and updating the current instance name to the next instance name
-        successor_routing_decision = self.get_successor_routing_decision_dictionary(
-            routing_decision, next_instance_name
+        successor_workflow_placement_decision = self.get_successor_workflow_placement_decision_dictionary(
+            workflow_placement_decision, next_instance_name
         )
 
-        # Return the next instance name and the successor routing decision
-        return next_instance_name, successor_routing_decision
+        # Return the next instance name and the successor workflow_placement decision
+        return next_instance_name, successor_workflow_placement_decision
 
-    def get_successor_routing_decision_dictionary(
-        self, routing_decision: dict[str, Any], next_instance_name: str
+    def get_successor_workflow_placement_decision_dictionary(
+        self, workflow_placement_decision: dict[str, Any], next_instance_name: str
     ) -> dict[str, Any]:
-        # Copy the routing decision
-        successor_routing_decision = routing_decision.copy()
+        # Copy the workflow_placement decision
+        successor_workflow_placement_decision = workflow_placement_decision.copy()
         # Update the current instance name to the next instance name
-        successor_routing_decision["current_instance_name"] = next_instance_name
-        return successor_routing_decision
+        successor_workflow_placement_decision["current_instance_name"] = next_instance_name
+        return successor_workflow_placement_decision
 
     # This method is used to get the name of the next successor instance based on the current instance name,
-    # routing decision, and successor function name.
+    # workflow_placement decision, and successor function name.
     def get_next_instance_name(
-        self, current_instance_name: str, routing_decision: dict[str, Any], successor_function_name: str
+        self, current_instance_name: str, workflow_placement_decision: dict[str, Any], successor_function_name: str
     ) -> str:
-        # Get the routing decision for the current instance
-        for instance in routing_decision["instances"]:
+        # Get the workflow_placement decision for the current instance
+        for instance in workflow_placement_decision["instances"]:
             if instance["instance_name"] == current_instance_name:
                 successor_instances = instance["succeeding_instances"]
                 # If there is only one successor instance, return it
@@ -206,37 +206,17 @@ class MultiXServerlessWorkflow:
                 raise RuntimeError("Could not find successor instance")
         raise RuntimeError("Could not find current instance")
 
-    def get_routing_decision(self, frame: FrameType) -> dict[str, Any]:
+    def get_workflow_placement_decision(self, frame: FrameType) -> dict[str, Any]:
         """
-        This is the structure of the routhing decision:
-
-        {
-            "run_id": "test_run_id",
-            "routing_placement": {
-                "test_func": {
-                    "provider_region": "aws:region",
-                    "identifier": "test_identifier"
-                },
-                "test_func_1": {
-                    "provider_region": "aws:region",
-                    "identifier": "test_identifier"
-                }
-            },
-            "current_instance_name": "test_func",
-            "instances": [
-                {
-                    "instance_name": "test_func", "succeeding_instances": ["test_func_1"], "preceding_instances": []
-                }
-            ]
-        }
+        The structure of the workflow placement decision is explained in the `docs/design.md` file under `Workflow Placement Decision`.
         """
-        # Get the routing decision from the wrapper function
+        # Get the workflow_placement decision from the wrapper function
         if "wrapper" in frame.f_locals:
             wrapper = frame.f_locals["wrapper"]
-            if hasattr(wrapper, "routing_decision"):
-                return wrapper.routing_decision
+            if hasattr(wrapper, "workflow_placement_decision"):
+                return wrapper.workflow_placement_decision
 
-        raise RuntimeError("Could not get routing decision")
+        raise RuntimeError("Could not get workflow_placement decision")
 
     def get_function__name__from_frame(self, frame: FrameType) -> str:
         # Get the name of the function from the frame
@@ -281,39 +261,39 @@ class MultiXServerlessWorkflow:
         if not previous_frame:
             raise RuntimeError("Could not get previous frame")
 
-        # We need to go back two frames to get the frame of the wrapper function that stores the routing decision
+        # We need to go back two frames to get the frame of the wrapper function that stores the workflow_placement decision
         # and the payload (see more on this in the explanation of the decorator `serverless_function`)
         _, wrapper_frame = self.get_function_and_wrapper_frame(this_frame)
 
-        routing_decision = self.get_routing_decision(wrapper_frame)
+        workflow_placement_decision = self.get_workflow_placement_decision(wrapper_frame)
 
-        if "current_instance_name" not in routing_decision:
+        if "current_instance_name" not in workflow_placement_decision:
             raise RuntimeError(
                 "Could not get current instance name, is this the entry point? Entry point cannot be merge function"
             )
 
-        if "run_id" not in routing_decision:
+        if "run_id" not in workflow_placement_decision:
             raise RuntimeError(
                 "Could not get workflow instance id, is this the entry point? Entry point cannot be merge function"
             )
 
-        current_instance_name = routing_decision["current_instance_name"]
-        workflow_instance_id = routing_decision["run_id"]
+        current_instance_name = workflow_placement_decision["current_instance_name"]
+        workflow_instance_id = workflow_placement_decision["run_id"]
 
-        provider_region = routing_decision["routing_placement"][current_instance_name]["provider_region"].split(":")
+        provider_region = workflow_placement_decision["workflow_placement"][current_instance_name]["provider_region"].split(":")
         return provider_region[0], provider_region[1], current_instance_name, workflow_instance_id
 
-    def get_routing_decision_from_platform(self) -> dict[str, Any]:
+    def get_workflow_placement_decision_from_platform(self) -> dict[str, Any]:
         """
-        Get the routing decision from the platform.
+        Get the workflow_placement decision from the platform.
         """
-        result = self._endpoint.get_solver_routing_decision_client().get_value_from_table(
+        result = self._endpoint.get_solver_workflow_placement_decision_client().get_value_from_table(
             ROUTING_DECISION_TABLE, f"{self.name}-{self.version}"
         )
         if result is not None:
             return json.loads(result)
 
-        raise RuntimeError("Could not get routing decision from platform")
+        raise RuntimeError("Could not get workflow_placement decision from platform")
 
     def register_function(
         self,
@@ -326,7 +306,7 @@ class MultiXServerlessWorkflow:
         """
         Register a function as a serverless function.
 
-        Where the function is deployed depends on the routing decision which will be made by the solver.
+        Where the function is deployed depends on the workflow_placement decision which will be made by the solver.
 
         At this point we only need to register the function with the wrapper, the actual deployment will be done
         later by the deployment manager.
@@ -376,7 +356,7 @@ class MultiXServerlessWorkflow:
             It takes the same arguments as the original function and can modify these arguments
             before calling the original function.
             It can also modify the return value of the original function.
-            In this case, wrapper unwraps the arguments of func and retrieves the routing decision
+            In this case, wrapper unwraps the arguments of func and retrieves the workflow_placement decision
             and calls func with the modified unwrapped payload.
         """
         if regions_and_providers is None:
@@ -403,20 +383,20 @@ class MultiXServerlessWorkflow:
             def wrapper(*args, **kwargs):  # type: ignore # pylint: disable=unused-argument
                 # Modify args and kwargs here as needed
                 if entry_point:
-                    wrapper.routing_decision = self.get_routing_decision_from_platform()  # type: ignore
+                    wrapper.workflow_placement_decision = self.get_workflow_placement_decision_from_platform()  # type: ignore
                     # This is the first function to be called, so we need to generate a run id
                     # This run id will be used to identify the workflow instance
                     # For example for the merge function, we need to know which workflow instance to merge
-                    wrapper.routing_decision["run_id"] = uuid.uuid4().hex  # type: ignore
+                    wrapper.workflow_placement_decision["run_id"] = uuid.uuid4().hex  # type: ignore
                     if len(args) == 0:
                         return func()
                     payload = args[0]
                 else:
-                    # Get the routing decision from the message received from the predecessor function
+                    # Get the workflow_placement decision from the message received from the predecessor function
                     argument = json.loads(args[0])
-                    if "routing_decision" not in argument:
-                        raise RuntimeError("Could not get routing decision from message")
-                    wrapper.routing_decision = argument["routing_decision"]  # type: ignore
+                    if "workflow_placement_decision" not in argument:
+                        raise RuntimeError("Could not get workflow_placement decision from message")
+                    wrapper.workflow_placement_decision = argument["workflow_placement_decision"]  # type: ignore
                     if "payload" not in argument:
                         return func()
                     payload = argument.get("payload", {})
@@ -424,7 +404,7 @@ class MultiXServerlessWorkflow:
                 # Call the original function with the modified arguments
                 return func(payload)
 
-            wrapper.routing_decision = {}  # type: ignore
+            wrapper.workflow_placement_decision = {}  # type: ignore
             wrapper.entry_point = entry_point  # type: ignore
             wrapper.original_function = func  # type: ignore
             self.register_function(func, handler_name, entry_point, regions_and_providers, environment_variables)
