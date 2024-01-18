@@ -59,9 +59,11 @@ class DeployerFactory:
         except ValidationError as exc:
             raise RuntimeError(f"Invalid project config: {exc}") from exc
 
-        self.__validate_only_regions_and_providers(project_config)
+        self.__validate_allowed_and_disallowed_regions_and_providers(project_config)
 
-    def __validate_only_regions_and_providers(self, project_config: dict) -> None:
+    def __validate_allowed_and_disallowed_regions_and_providers(  # pylint: disable=too-many-branches
+        self, project_config: dict
+    ) -> None:
         if "regions_and_providers" not in project_config:
             raise RuntimeError("regions_and_providers must be defined in project config")
         if not isinstance(project_config["regions_and_providers"], dict):
@@ -70,26 +72,52 @@ class DeployerFactory:
             raise RuntimeError("at least one provider must be defined in regions_and_providers")
         if not isinstance(project_config["regions_and_providers"]["providers"], dict):
             raise RuntimeError("providers must be a dictionary")
-        if "only_regions" in project_config["regions_and_providers"]:
+        if (
+            "allowed_regions" in project_config["regions_and_providers"]
+            or "disallowed_regions" in project_config["regions_and_providers"]
+        ):
             possible_providers = [provider.value for provider in Provider]
             defined_providers = [
                 provider_name
                 for provider_name in project_config["regions_and_providers"]["providers"].keys()
                 if provider_name in possible_providers
             ]
-            only_regions = project_config["regions_and_providers"]["only_regions"]
-            if not only_regions:
-                only_regions = []
-            if only_regions and not isinstance(only_regions, list):
-                raise RuntimeError("only_regions must be a list")
-            for provider_region in only_regions:
-                if not isinstance(provider_region, dict):
-                    raise RuntimeError("only_regions must be a list of strings")
-                provider = provider_region["provider"]
-                if provider not in [provider.value for provider in Provider]:
-                    raise RuntimeError(f"Provider {provider} is not supported")
-                if provider not in defined_providers:
-                    raise RuntimeError(f"Provider {provider} is not defined in providers")
+            allowed_regions_collection = set()
+            if "allowed_regions" in project_config["regions_and_providers"]:
+                allowed_regions = project_config["regions_and_providers"]["allowed_regions"]
+                if not allowed_regions:
+                    allowed_regions = []
+                if allowed_regions and not isinstance(allowed_regions, list):
+                    raise RuntimeError("allowed_regions must be a list")
+                for provider_region in allowed_regions:
+                    if "provider" not in provider_region or "region" not in provider_region:
+                        raise RuntimeError(f"Region {provider_region} must have both provider and region defined")
+                    allowed_regions_collection.add(f"{provider_region['provider']}-{provider_region['region']}")
+                    if not isinstance(provider_region, dict):
+                        raise RuntimeError("allowed_regions must be a list of strings")
+                    provider = provider_region["provider"]
+                    if provider not in [provider.value for provider in Provider]:
+                        raise RuntimeError(f"Provider {provider} is not supported")
+                    if provider not in defined_providers:
+                        raise RuntimeError(f"Provider {provider} is not defined in providers")
+            if "disallowed_regions" in project_config["regions_and_providers"]:
+                disallowed_regions = project_config["regions_and_providers"]["disallowed_regions"]
+                if not disallowed_regions:
+                    disallowed_regions = []
+                if disallowed_regions and not isinstance(disallowed_regions, list):
+                    raise RuntimeError("disallowed_regions must be a list")
+                for provider_region in disallowed_regions:
+                    if "provider" not in provider_region or "region" not in provider_region:
+                        raise RuntimeError(f"Region {provider_region} must have both provider and region defined")
+                    if f"{provider_region['provider']}-{provider_region['region']}" in allowed_regions_collection:
+                        raise RuntimeError(f"Region {provider_region} cannot be both allowed and disallowed")
+                    if not isinstance(provider_region, dict):
+                        raise RuntimeError("disallowed_regions must be a list of strings")
+                    provider = provider_region["provider"]
+                    if provider not in [provider.value for provider in Provider]:
+                        raise RuntimeError(f"Provider {provider} is not supported")
+                    if provider not in defined_providers:
+                        raise RuntimeError(f"Provider {provider} is not defined in providers")
 
     def load_workflow_app(self) -> MultiXServerlessWorkflow:
         if self.project_dir is None:

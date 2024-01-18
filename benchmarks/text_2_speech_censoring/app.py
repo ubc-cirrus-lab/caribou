@@ -20,13 +20,13 @@ workflow = MultiXServerlessWorkflow(name="text_2_speech_censoring", version="0.0
     name="GetInput",
     entry_point=True,
     regions_and_providers={
-        "only_regions": [
+        "allowed_regions": [
             {
                 "provider": "aws",
                 "region": "us-east-1",
             }
         ],
-        "forbidden_regions": [
+        "disallowed_regions": [
             {
                 "provider": "aws",
                 "region": "us-east-2",

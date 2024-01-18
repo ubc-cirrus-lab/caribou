@@ -102,7 +102,7 @@ class TestDeployerFactory(unittest.TestCase):
         deployer = factory.create_deletion_deployer(config)
         self.assertIsInstance(deployer, Deployer)
 
-    def test_validate_only_regions_and_providers(self):
+    def test_validate_allowed_and_disallowed_regions_and_providers(self):
         factory = DeployerFactory("project_dir")
         # Test with valid project_config
         project_config = {
@@ -112,33 +112,34 @@ class TestDeployerFactory(unittest.TestCase):
                         "config": {"memory": 128, "timeout": 10},
                     }
                 },
-                "only_regions": [{"provider": "aws"}],
+                "allowed_regions": [{"provider": "aws", "region": "eu-central-1"}],
+                "disallowed_regions": [{"provider": "aws", "region": "eu-central-2"}],
             }
         }
         # This should not raise any exceptions
-        factory._DeployerFactory__validate_only_regions_and_providers(project_config)
+        factory._DeployerFactory__validate_allowed_and_disallowed_regions_and_providers(project_config)
 
         # Test without regions_and_providers
         project_config = {}
-        with self.assertRaises(RuntimeError):
-            factory._DeployerFactory__validate_only_regions_and_providers(project_config)
+        with self.assertRaises(RuntimeError, msg="regions_and_providers must be defined in project config"):
+            factory._DeployerFactory__validate_allowed_and_disallowed_regions_and_providers(project_config)
 
         # Test with regions_and_providers not a dictionary
         project_config = {"regions_and_providers": "not a dictionary"}
-        with self.assertRaises(RuntimeError):
-            factory._DeployerFactory__validate_only_regions_and_providers(project_config)
+        with self.assertRaises(RuntimeError, msg="regions_and_providers must be a dictionary"):
+            factory._DeployerFactory__validate_allowed_and_disallowed_regions_and_providers(project_config)
 
         # Test without providers
         project_config = {"regions_and_providers": {}}
-        with self.assertRaises(RuntimeError):
-            factory._DeployerFactory__validate_only_regions_and_providers(project_config)
+        with self.assertRaises(RuntimeError, msg="at least one provider must be defined in regions_and_providers"):
+            factory._DeployerFactory__validate_allowed_and_disallowed_regions_and_providers(project_config)
 
         # Test with providers not a dictionary
         project_config = {"regions_and_providers": {"providers": "not a dictionary"}}
-        with self.assertRaises(RuntimeError):
-            factory._DeployerFactory__validate_only_regions_and_providers(project_config)
+        with self.assertRaises(RuntimeError, msg="providers must be a dictionary"):
+            factory._DeployerFactory__validate_allowed_and_disallowed_regions_and_providers(project_config)
 
-        # Test with only_regions not a list
+        # Test with allowed_regions not a list
         project_config = {
             "regions_and_providers": {
                 "providers": {
@@ -146,13 +147,13 @@ class TestDeployerFactory(unittest.TestCase):
                         "config": {"memory": 128, "timeout": 10},
                     }
                 },
-                "only_regions": "not a list",
+                "allowed_regions": "not a list",
             }
         }
-        with self.assertRaises(RuntimeError):
-            factory._DeployerFactory__validate_only_regions_and_providers(project_config)
+        with self.assertRaises(RuntimeError, msg="allowed_regions must be a list"):
+            factory._DeployerFactory__validate_allowed_and_disallowed_regions_and_providers(project_config)
 
-        # Test with only_regions a list of non-dictionaries
+        # Test with allowed_regions a list of non-dictionaries
         project_config = {
             "regions_and_providers": {
                 "providers": {
@@ -160,11 +161,27 @@ class TestDeployerFactory(unittest.TestCase):
                         "config": {"memory": 128, "timeout": 10},
                     }
                 },
-                "only_regions": ["not a dictionary"],
+                "allowed_regions": ["not a dictionary"],
             }
         }
-        with self.assertRaises(RuntimeError):
-            factory._DeployerFactory__validate_only_regions_and_providers(project_config)
+        with self.assertRaises(RuntimeError, msg="allowed_regions must be a list of dictionaries"):
+            factory._DeployerFactory__validate_allowed_and_disallowed_regions_and_providers(project_config)
+
+        # Test with missing region in allowed_regions
+        project_config = {
+            "regions_and_providers": {
+                "providers": {
+                    "aws": {
+                        "config": {"memory": 128, "timeout": 10},
+                    }
+                },
+                "allowed_regions": [{"provider": "aws"}],
+            }
+        }
+        with self.assertRaises(
+            RuntimeError, msg="Region {'provider': 'aws'} must have both provider and region defined"
+        ):
+            factory._DeployerFactory__validate_allowed_and_disallowed_regions_and_providers(project_config)
 
         # Test with unsupported provider
         project_config = {
@@ -174,11 +191,11 @@ class TestDeployerFactory(unittest.TestCase):
                         "config": {"memory": 128, "timeout": 10},
                     }
                 },
-                "only_regions": [{"provider": "unsupported"}],
+                "allowed_regions": [{"provider": "unsupported", "region": "eu-central-1"}],
             }
         }
-        with self.assertRaises(RuntimeError):
-            factory._DeployerFactory__validate_only_regions_and_providers(project_config)
+        with self.assertRaises(RuntimeError, msg="Provider unsupported is not supported"):
+            factory._DeployerFactory__validate_allowed_and_disallowed_regions_and_providers(project_config)
 
         # Test with provider not defined in providers
         project_config = {
@@ -188,11 +205,134 @@ class TestDeployerFactory(unittest.TestCase):
                         "config": {"memory": 128, "timeout": 10},
                     }
                 },
-                "only_regions": [{"provider": "gcp"}],
+                "allowed_regions": [{"provider": "gcp", "region": "eu-central-1"}],
             }
         }
-        with self.assertRaises(RuntimeError):
-            factory._DeployerFactory__validate_only_regions_and_providers(project_config)
+        with self.assertRaises(RuntimeError, msg="Provider gcp is not defined in providers"):
+            factory._DeployerFactory__validate_allowed_and_disallowed_regions_and_providers(project_config)
+
+        # Test with a valid project_config
+        project_config = {
+            "regions_and_providers": {
+                "providers": {
+                    "aws": {
+                        "config": {"memory": 128, "timeout": 10},
+                        "account_id": "123456789012",
+                        "role_name": "test",
+                        "region": "eu-central-1",
+                    }
+                },
+                "allowed_regions": [{"provider": "aws", "region": "eu-central-1"}],
+            }
+        }
+
+        # This should not raise any exceptions
+        factory._DeployerFactory__validate_allowed_and_disallowed_regions_and_providers(project_config)
+
+        # Test with disallowed_regions not a list
+        project_config = {
+            "regions_and_providers": {
+                "providers": {
+                    "aws": {
+                        "config": {"memory": 128, "timeout": 10},
+                    }
+                },
+                "disallowed_regions": "not a list",
+            }
+        }
+        with self.assertRaises(RuntimeError, msg="disallowed_regions must be a list"):
+            factory._DeployerFactory__validate_allowed_and_disallowed_regions_and_providers(project_config)
+
+        # Test with disallowed_regions a list of non-dictionaries
+        project_config = {
+            "regions_and_providers": {
+                "providers": {
+                    "aws": {
+                        "config": {"memory": 128, "timeout": 10},
+                    }
+                },
+                "disallowed_regions": ["not a dictionary"],
+            }
+        }
+        with self.assertRaises(RuntimeError, msg="disallowed_regions must be a list of dictionaries"):
+            factory._DeployerFactory__validate_allowed_and_disallowed_regions_and_providers(project_config)
+
+        # Test with missing region in disallowed_regions
+        project_config = {
+            "regions_and_providers": {
+                "providers": {
+                    "aws": {
+                        "config": {"memory": 128, "timeout": 10},
+                    }
+                },
+                "disallowed_regions": [{"provider": "aws"}],
+            }
+        }
+        with self.assertRaises(
+            RuntimeError, msg="Region {'provider': 'aws'} must have both provider and region defined"
+        ):
+            factory._DeployerFactory__validate_allowed_and_disallowed_regions_and_providers(project_config)
+
+        # Test with unsupported provider
+        project_config = {
+            "regions_and_providers": {
+                "providers": {
+                    "aws": {
+                        "config": {"memory": 128, "timeout": 10},
+                    }
+                },
+                "disallowed_regions": [{"provider": "unsupported", "region": "eu-central-1"}],
+            }
+        }
+        with self.assertRaises(RuntimeError, msg="Provider unsupported is not supported"):
+            factory._DeployerFactory__validate_allowed_and_disallowed_regions_and_providers(project_config)
+
+        # Test with provider not defined in providers
+        project_config = {
+            "regions_and_providers": {
+                "providers": {
+                    "aws": {
+                        "config": {"memory": 128, "timeout": 10},
+                    }
+                },
+                "disallowed_regions": [{"provider": "gcp", "region": "eu-central-1"}],
+            }
+        }
+        with self.assertRaises(RuntimeError, msg="Provider gcp is not defined in providers"):
+            factory._DeployerFactory__validate_allowed_and_disallowed_regions_and_providers(project_config)
+
+        # Test with provider not defined in providers
+        project_config = {
+            "regions_and_providers": {
+                "providers": {
+                    "aws": {
+                        "config": {"memory": 128, "timeout": 10},
+                    }
+                },
+                "disallowed_regions": [{"provider": "aws", "region": "eu-central-1"}],
+                "allowed_regions": [{"provider": "aws", "region": "eu-central-1"}],
+            }
+        }
+        with self.assertRaises(RuntimeError, msg="Region eu-central-1 cannot be both allowed and disallowed"):
+            factory._DeployerFactory__validate_allowed_and_disallowed_regions_and_providers(project_config)
+
+        # Test with a valid project_config
+        project_config = {
+            "regions_and_providers": {
+                "providers": {
+                    "aws": {
+                        "config": {"memory": 128, "timeout": 10},
+                        "account_id": "123456789012",
+                        "role_name": "test",
+                        "region": "eu-central-1",
+                    }
+                },
+                "disallowed_regions": [{"provider": "aws", "region": "eu-central-1"}],
+            }
+        }
+
+        # This should not raise any exceptions
+        factory._DeployerFactory__validate_allowed_and_disallowed_regions_and_providers(project_config)
 
 
 if __name__ == "__main__":

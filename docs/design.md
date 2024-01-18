@@ -120,13 +120,13 @@ workflow = MultiXServerlessWorkflow("workflow_name")
     name="First-Function",
     entry_point=True,
     regions_and_providers={
-        "only_regions": [
+        "allowed_regions": [
           {
             "provider": "aws",
             "region": "us-east-1",
           }
         ],
-        "forbidden_regions": None,
+        "disallowed_regions": None,
         "providers": {
             "aws": {
                 "config": {
@@ -155,9 +155,9 @@ There can only be one entry point in a workflow.
 This can be used to override the global settings in the `config.yml`.
 If none or an empty dictionary is provided, the global config takes precedence.
 The dictionary has two keys:
-  - `only_regions`: A list of regions that the function can be deployed to.
+  - `allowed_regions`: A list of regions that the function can be deployed to.
   If this list is empty, the function can be deployed to any region.
-  - `forbidden_regions`: A list of regions that the function cannot be deployed to.
+  - `disallowed_regions`: A list of regions that the function cannot be deployed to.
   If this list is empty, the function can be deployed to any region.
   - `providers`: A list of providers that the function can be deployed to.
   This can be used to override the global settings in the `config.yml`.

@@ -35,13 +35,13 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
             name="test_func",
             entry_point=True,
             regions_and_providers={
-                "only_regions": [
+                "allowed_regions": [
                     {
                         "provider": "aws",
                         "region": "us-east-1",
                     }
                 ],
-                "forbidden_regions": [
+                "disallowed_regions": [
                     {
                         "provider": "aws",
                         "region": "us-east-2",
@@ -70,13 +70,13 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
                 "test_func",
                 True,
                 {
-                    "only_regions": [
+                    "allowed_regions": [
                         {
                             "provider": "aws",
                             "region": "us-east-1",
                         }
                     ],
-                    "forbidden_regions": [
+                    "disallowed_regions": [
                         {
                             "provider": "aws",
                             "region": "us-east-2",
@@ -110,8 +110,8 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
             name="test_func",
             entry_point=True,
             regions_and_providers={
-                "only_regions": [["aws", "us-east-1"]],
-                "forbidden_regions": [["aws", "us-east-2"]],
+                "allowed_regions": [["aws", "us-east-1"]],
+                "disallowed_regions": [["aws", "us-east-2"]],
                 "providers": {
                     "aws": {
                         "config": {
@@ -139,8 +139,8 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
                 "test_func",
                 True,
                 {
-                    "only_regions": [["aws", "us-east-1"]],
-                    "forbidden_regions": [["aws", "us-east-2"]],
+                    "allowed_regions": [["aws", "us-east-1"]],
+                    "disallowed_regions": [["aws", "us-east-2"]],
                     "providers": {
                         "aws": {
                             "config": {

@@ -18,8 +18,8 @@ class ProviderRegion(BaseModel):
 
 
 class RegionAndProviders(BaseModel):
-    only_regions: Optional[List[ProviderRegion]] = Field(None, title="List of regions to deploy to")
-    forbidden_regions: Optional[List[ProviderRegion]] = Field(None, title="List of regions to not deploy to")
+    allowed_regions: Optional[List[ProviderRegion]] = Field(None, title="List of regions to deploy to")
+    disallowed_regions: Optional[List[ProviderRegion]] = Field(None, title="List of regions to not deploy to")
     providers: Dict[str, Provider] = Field(..., title="List of possible providers with their configurations")
 
     @model_validator(mode="after")

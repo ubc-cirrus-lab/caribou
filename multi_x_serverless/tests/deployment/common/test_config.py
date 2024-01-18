@@ -70,13 +70,13 @@ class TestConfig(unittest.TestCase):
 
     def test_regions_and_providers(self):
         self.config.project_config["regions_and_providers"] = {
-            "only_regions": [
+            "allowed_regions": [
                 {
                     "provider": "aws",
                     "region": "us-east-1",
                 }
             ],
-            "forbidden_regions": [
+            "disallowed_regions": [
                 {
                     "provider": "aws",
                     "region": "us-east-2",
@@ -94,13 +94,13 @@ class TestConfig(unittest.TestCase):
         self.assertEqual(
             self.config.regions_and_providers,
             {
-                "only_regions": [
+                "allowed_regions": [
                     {
                         "provider": "aws",
                         "region": "us-east-1",
                     }
                 ],
-                "forbidden_regions": [
+                "disallowed_regions": [
                     {
                         "provider": "aws",
                         "region": "us-east-2",
