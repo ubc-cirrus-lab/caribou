@@ -42,6 +42,7 @@ jobs:
         uses: ./.github/actions/poetry
       - name: Run tests
         run: |
+          set -e
           poetry run pytest --cache-clear --cov=multi_x_serverless/ --cov-fail-under=90
           poetry run pytest --junitxml=pytest.xml --cov-report=term-missing:skip-covered --cov-fail-under=90 --cov=multi_x_serverless multi_x_serverless/tests | tee pytest-coverage.txt
       - name: Pytest coverage comment
