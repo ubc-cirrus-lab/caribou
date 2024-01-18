@@ -16,9 +16,15 @@ class TestWorkflow(unittest.TestCase):
     def setUp(self):
         self.test_dir = tempfile.mkdtemp()
         self.config = Config({}, self.test_dir)
+        self.config.project_config["home_regions"] = ["region"]
         self.function = Mock(spec=Function)
         self.function_instance = Mock(spec=FunctionInstance)
+        self.function_instance.name = "function_instance_1"
+        self.function_instance.entry_point = True
+        self.function_instance.function_resource_name = "function_instance_1"
         self.function_instance2 = Mock(spec=FunctionInstance)
+        self.function_instance2.name = "function_instance_2"
+        self.function_instance2.function_resource_name = "function_instance_2"
         self.workflow = Workflow(
             "workflow_name",
             "0.0.1",
@@ -90,6 +96,91 @@ class TestWorkflow(unittest.TestCase):
         with self.assertRaises(RuntimeError) as context:
             self.workflow.get_instance_description()
         self.assertEqual(str(context.exception), "Error in workflow config creation, this should not happen")
+
+    def test__get_entry_point_instance_name(self):
+        self.assertEqual(self.workflow._get_entry_point_instance_name(), "function_instance_1")
+
+    def test_get_workflow_placement(self):
+        resource_values = {
+            "function": [
+                {"name": "function_instance_1", "function_identifier": "identifier_1"},
+                {"name": "function_instance_2", "function_identifier": "identifier_2"},
+            ]
+        }
+        expected_output = {
+            "function_instance_1": {"identifier": "identifier_1", "provider_region": "region"},
+            "function_instance_2": {"identifier": "identifier_2", "provider_region": "region"},
+        }
+        self.assertEqual(self.workflow._get_workflow_placement(resource_values), expected_output)
+
+    def test_extend_stage_area_placement(self):
+        resource_values = {
+            "function": [
+                {"name": "function_instance_1", "function_identifier": "identifier_1"},
+                {"name": "function_instance_2", "function_identifier": "identifier_2"},
+            ]
+        }
+        staging_area_placement = {"function_instance_1": {}, "function_instance_2": {}}
+        expected_output = {
+            "function_instance_1": {"identifier": "identifier_1"},
+            "function_instance_2": {"identifier": "identifier_2"},
+        }
+        self.assertEqual(
+            self.workflow._extend_stage_area_placement(resource_values, staging_area_placement),
+            expected_output,
+        )
+
+    def test_get_function_instance_to_identifier(self):
+        resource_values = {
+            "function": [
+                {"name": "function_instance_1", "function_identifier": "identifier_1"},
+                {"name": "function_instance_2", "function_identifier": "identifier_2"},
+            ]
+        }
+        expected_output = {"function_instance_1": "identifier_1", "function_instance_2": "identifier_2"}
+        self.assertEqual(self.workflow._get_function_instance_to_identifier(resource_values), expected_output)
+
+    def test_get_workflow_placement_decision(self):
+        resource_values = {
+            "function": [
+                {"name": "function_instance_1", "function_identifier": "identifier_1"},
+                {"name": "function_instance_2", "function_identifier": "identifier_2"},
+            ]
+        }
+        self.workflow.get_instance_description = Mock(return_value=Mock(instances=["instance_1", "instance_2"]))
+        self.workflow._Workflow__get_entry_point_instance_name = Mock(return_value="entry_point_instance")
+        expected_output = {
+            "instances": ["instance_1", "instance_2"],
+            "current_instance_name": "function_instance_1",
+            "workflow_placement": {
+                "function_instance_1": {"identifier": "identifier_1", "provider_region": "region"},
+                "function_instance_2": {"identifier": "identifier_2", "provider_region": "region"},
+            },
+        }
+        self.assertEqual(self.workflow.get_workflow_placement_decision(resource_values), expected_output)
+
+    def test_get_workflow_placement_decision_extend_staging(self):
+        resource_values = {
+            "function": [
+                {"name": "function_instance_1", "function_identifier": "identifier_1"},
+                {"name": "function_instance_2", "function_identifier": "identifier_2"},
+            ]
+        }
+        staging_area_placement = {"function_instance_1": {}, "function_instance_2": {}}
+        self.workflow.get_instance_description = Mock(return_value=Mock(instances=["instance_1", "instance_2"]))
+        self.workflow._Workflow__get_entry_point_instance_name = Mock(return_value="entry_point_instance")
+        expected_output = {
+            "instances": ["instance_1", "instance_2"],
+            "current_instance_name": "function_instance_1",
+            "workflow_placement": {
+                "function_instance_1": {"identifier": "identifier_1"},
+                "function_instance_2": {"identifier": "identifier_2"},
+            },
+        }
+        self.assertEqual(
+            self.workflow.get_workflow_placement_decision_extend_staging(resource_values, staging_area_placement),
+            expected_output,
+        )
 
 
 if __name__ == "__main__":

@@ -31,12 +31,13 @@ class TopologicalSolver(Solver):
 
             # serverless region related information - per instance level
             # Where start hop and end hop should be already integrated into restrictions
-            permited_regions: list[dict[(str, str)]] = self._filter_regions_instance(regions, current_instance_index)
-            if len(permited_regions) == 0:  # Should never happen in a valid DAG
-                raise Exception("There are no permited regions for this instance")
+            permitted_regions: list[dict[(str, str)]] = self._filter_regions_instance(regions, current_instance_index)
+            if len(permitted_regions) == 0:  # Should never happen in a valid DAG
+                raise Exception("There are no permitted regions for this instance")
 
-            permited_regions_indices = self._region_indexer.values_to_indices(
-                np.array([(region["provider"], region["region"]) for region in permited_regions])
+            all_regions_indices = self._region_indexer.get_value_indices()
+            permitted_regions_indices = np.array(
+                [all_regions_indices[(region["provider"], region["region"])] for region in permitted_regions]
             )
 
             # This is the current deployment in this iteration
@@ -80,7 +81,7 @@ class TopologicalSolver(Solver):
                     ):
                         combined_deployments.append((combined_placements, sum_cost, sum_carbon, max_latency))
             else:
-                for to_region_index in permited_regions_indices:
+                for to_region_index in permitted_regions_indices:
                     for combination in itertools.product(*previous_deployments):
                         # For each combination of deployments, merge them together
                         combined_placements = {}

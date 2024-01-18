@@ -12,7 +12,10 @@ In this document we will discuss the design decisions that have been made for th
    3. [Discussion](#discussion)
 2. [Source Code Annotation](#source-code-annotation)
 3. [Merge Node](#merge-node)
-4. [References](#references)
+    1. [Implementation](#implementation)
+4. [Workflow Placement Decision](#workflow-placement-decision)
+    1. [Component Interaction Order](#component-interaction-order)
+5. [References](#references)
 
 ##  Dataflow DAG Model
 
@@ -217,6 +220,72 @@ The logic of the merge node is implemented as follows:
 4. If the counter is equal to the number of predecessors, the merge node will be called. Otherwise, the predecessor will not call the merge node. This ensures that the merge node is only called when all predecessors have called the merge node.
 
 As previously mentioned, the code in the merge node is only executed once all predecessors have written their responses to the distributed key-value store and the counter has been incremented to the number of predecessors, i.e., the merge node is only called once all predecessors have called the merge node.
+
+## Workflow Placement Decision
+
+The workflow placement decision is a dictionary of information with regards to current function instance placement.
+This information is used both to determine the current function instance, as well as to determine where the next function instance is to be called.
+Additonally, this information is used to deploy functions to new regions and providers.
+The dictionary contains the following information:
+
+```json
+{
+  "run_id": "test_run_id",
+  "workflow_placement": {
+    "function_name:entry_point:0": {
+      "provider_region": {
+        "provider": "aws",
+        "region": "region"
+      },
+      "identifier": "test_identifier"
+    },
+    "function_name_2:function_name_0_0:1": {
+      "provider_region": {
+        "provider": "aws",
+        "region": "region"
+      },
+      "identifier": "test_identifier"
+    }
+  },
+  "current_instance_name": "function_name:entry_point:0",
+  "instances": [
+    {
+      "instance_name": "function_name:entry_point:0",
+      "succeeding_instances": ["function_name_2:function_name_0_0:1"],
+      "preceding_instances": []
+    },
+    {
+      "instance_name": "function_name_2:function_name_0_0:1",
+      "succeeding_instances": [],
+      "preceding_instances": ["function_name:entry_point:0"]
+    }
+  ]
+}
+```
+
+Different parts of this dictionary are provided by different components of the system.
+
+- The `run_id` is set by the initial function of the workflow.
+- The `workflow_placement` is set by the solver and contains the current placement of the function instances.
+  The `identifier` is a unique identifier for the function instance at a provider.
+  This is provided by the deployment utilities.
+- The `current_instance_name` is initially set by the deployment utilities as the name of the entry point function.
+  It is then updated by the function instances to identify the successor function instance.
+- The `instances` is set by the deployment utilities and contains the information about the workflow DAG.
+
+### Component Interaction Order
+
+The following is the order in which the different components interact with each other with regards to the workflow placement decision:
+
+1. The deployment client uploads an initial version of the workflow placement decision to the distributed key-value store.
+2. The solver update checker is informed of a new workflow to be solved.
+3. The solver update checker triggers the solver to solve the workflow.
+4. The solver updates the workflow placement decision with the current placement of the function instances in a staging distributed key-value store.
+5. The deployment client checks the staging distributed key-value store for updates to the workflow placement decision and re-deploys function instances if necessary.
+6. The deployment client uploads the updated workflow placement decision to the distributed key-value store.
+
+During a workflow execution, the initial function instance will download the workflow placement decision from the distributed key-value store and add the `run_id`.
+Subsequent functions will receive the workflow placement decision from the previous function instance which updated the `current_instance_name` to the name of the current function instance.
 
 ##  References
 

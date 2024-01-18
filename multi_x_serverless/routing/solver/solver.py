@@ -1,8 +1,11 @@
+import json
 from abc import ABC, abstractmethod
 from typing import Optional
 
 import numpy as np
 
+from multi_x_serverless.common.constants import WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE
+from multi_x_serverless.common.models.endpoints import Endpoints
 from multi_x_serverless.routing.formatter.formatter import Formatter
 from multi_x_serverless.routing.models.dag import DAG
 from multi_x_serverless.routing.models.region import Region
@@ -34,10 +37,16 @@ class Solver(ABC):
         # Initiate input_manager
         self._instantiate_input_manager()
 
-    def solve(self) -> list[dict]:
+        self._endpoints = Endpoints()
+
+    def solve(self) -> None:
         solved_results = self._solve(self.worklow_level_permitted_regions)
         ranked_results = self.rank_solved_results(solved_results)
-        return self._formatter.format(ranked_results)
+        selected_result = self._select_result(ranked_results)
+        formatted_result = self._formatter.format(
+            selected_result, self._dag.indicies_to_values(), self._region_indexer.indicies_to_values()
+        )
+        self._upload_result(formatted_result)
 
     @abstractmethod
     def _solve(self, regions: list[dict]) -> list[tuple[dict, float, float, float]]:
@@ -70,8 +79,21 @@ class Solver(ABC):
     ) -> list[tuple[dict, float, float, float]]:
         return self._ranker.rank(results)
 
+    def _select_result(self, results: list[tuple[dict, float, float, float]]) -> tuple[dict, float, float, float]:
+        # TODO (#48): Implement more dynamic selection of result
+        return results[0]
+
     def _instantiate_input_manager(self) -> None:
         self._input_manager.setup(self._region_indexer, self._dag)
+
+    def _upload_result(
+        self,
+        result: dict,
+    ) -> None:
+        result_json = json.dumps(result)
+        self._endpoints.get_solver_workflow_placement_decision_client().set_value_in_table(
+            WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE, self._workflow_config.workflow_id, result_json
+        )
 
     def get_dag_representation(self) -> DAG:
         nodes = [

@@ -1,4 +1,5 @@
 from collections import deque
+from typing import Any
 
 import numpy as np
 
@@ -90,14 +91,6 @@ class DAG(Indexer):
 
     def get_adj_matrix(self) -> np.ndarray:
         return self._adj_matrix
-
-    def values_to_indices(self, instances: np.ndarray) -> np.ndarray:
-        return np.array([self._value_indices[instance] for instance in instances])
-
-    def indicies_to_values(self, indices: np.ndarray) -> np.ndarray:
-        # Can be optimized
-        reverse_mapping = {index: instance for instance, index in self._value_indices.items()}
-        return np.array([reverse_mapping.get(index) for index in indices])
 
     @property
     def num_nodes(self) -> int:

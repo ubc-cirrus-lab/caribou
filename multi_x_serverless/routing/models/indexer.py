@@ -1,25 +1,24 @@
-import typing
 from abc import ABC, abstractmethod
+from typing import Any
 
 import numpy as np
 
 
 class Indexer(ABC):
-    _value_indices: dict
+    def __init__(self) -> None:
+        if not hasattr(self, "_value_indices"):
+            self._value_indices: dict[Any, int] = {}
 
-    def get_value_indices(self) -> dict:
+        self._indices_to_values: dict[int, Any] = self.indicies_to_values()
+
+    def get_value_indices(self) -> dict[Any, int]:
         return self._value_indices
 
-    @abstractmethod
-    def values_to_indices(self, values: np.ndarray) -> np.ndarray:
-        raise NotImplementedError
+    def indicies_to_values(self) -> dict[int, Any]:
+        return {index: instance for instance, index in self._value_indices.items()}
 
-    @abstractmethod
-    def indicies_to_values(self, indices: np.ndarray) -> np.ndarray:
-        raise NotImplementedError
+    def value_to_index(self, value: Any) -> int:
+        return self._value_indices[value]
 
-    def value_to_index(self, value: typing.Any) -> int:
-        return int(self.values_to_indices(np.array([value]))[0])
-
-    def index_to_value(self, index: int) -> typing.Any:
-        return self.indicies_to_values(np.array([index]))[0]
+    def index_to_value(self, index: int) -> Any:
+        return self._indices_to_values[index]
