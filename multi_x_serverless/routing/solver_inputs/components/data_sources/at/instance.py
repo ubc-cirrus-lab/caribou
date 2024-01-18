@@ -40,8 +40,9 @@ class InstanceSource(Source):
 
             # Instance specific provider configuration
             instance_provider_information = {}
-            for provider_information in instance_information["regions_and_providers"]["providers"]:
-                provider_name = provider_information["name"]
+            for provider_name, provider_information in instance_information["regions_and_providers"][
+                "providers"
+            ].items():
                 memory = provider_information.get("memory", -1)
                 vcpu = provider_information.get("vcpu", -1)
 

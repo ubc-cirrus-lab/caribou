@@ -24,7 +24,7 @@ class TopologicalSolver(Solver):
             raise Exception("There are no leaf nodes in the DAG")
 
         # Where its in (instance placements, cost, carbon, runtime)
-        deployments: dict[int, list[tuple[dict[str, str], float, float, float]]] = {}
+        deployments: dict[int, list[tuple[dict[str, str], tuple(float, float, float), tuple(float, float, float)]]] = {}
         for current_instance_index in topological_order:
             # Instance flow related information
             prerequisites_indices: list[int] = prerequisites_dictionary[current_instance_index]

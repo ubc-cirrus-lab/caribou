@@ -46,7 +46,7 @@ class Solver(ABC):
     def _filter_regions(self, regions: list[dict], regions_and_providers: dict) -> list[dict]:
         # Take in a list of regions, then apply filters to remove regions that do not satisfy the constraints
         # First filter out regions that are not in the provider list
-        provider_names = [provider["name"] for provider in regions_and_providers["providers"]]
+        provider_names = [provider for provider in regions_and_providers["providers"].keys()]
         regions = [region for region in regions if region["provider"] in provider_names]
 
         # Then if the user set a allowed_regions, only permit those regions and return
@@ -87,9 +87,12 @@ class Solver(ABC):
     def _fail_hard_resource_constraints(
         self, constraints: Optional[dict], cost: float, runtime: float, carbon: float
     ) -> bool:
+        print("\n\n", constraints, cost, runtime, carbon)
         if constraints is None or "hard_resource_constraints" not in constraints:
             return False
         hard_resource_constraints = constraints["hard_resource_constraints"]
+
+        print("\n\n", cost, hard_resource_constraints["cost"]["value"])
         return (
             "cost" in hard_resource_constraints
             and cost > hard_resource_constraints["cost"]["value"]
