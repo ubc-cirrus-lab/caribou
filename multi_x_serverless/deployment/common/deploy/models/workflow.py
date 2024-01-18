@@ -103,7 +103,7 @@ class Workflow(Resource):
         workflow_config = WorkflowConfig(workflow_description)
         return workflow_config
 
-    def __get_entry_point_instance_name(self) -> str:
+    def _get_entry_point_instance_name(self) -> str:
         """
         Returns the name of the instance that is the entry point of the workflow.
         """
@@ -112,14 +112,42 @@ class Workflow(Resource):
                 return instance.name
         raise RuntimeError("No entry point instance found, this should not happen")
 
-    def __get_workflow_placement(self, resource_values: dict[str, list[Any]]) -> dict[str, list[dict[str, str]]]:
-        print(resource_values)
-        return {}
+    def _get_workflow_placement(self, resource_values: dict[str, list[Any]]) -> dict[str, dict[str, Any]]:
+        function_instance_to_identifier = self._get_function_instance_to_identifier(resource_values)
 
-    def __extend_stage_area_placement(
+        workflow_placement = {}
+        for instance in self._functions:
+            workflow_placement[instance.name] = {
+                "identifier": function_instance_to_identifier[instance.name],
+                "provider_region": self._config.home_regions[0],  # TODO (#68): Make multi-home region workflows work
+            }
+
+        return workflow_placement
+
+    def _extend_stage_area_placement(
         self, resource_values: dict[str, list[Any]], staging_area_placement: dict[str, Any]
-    ) -> dict[str, list[dict[str, str]]]:
-        raise NotImplementedError
+    ) -> dict[str, dict[str, Any]]:
+        function_instance_to_identifier = self._get_function_instance_to_identifier(resource_values)
+
+        for key in staging_area_placement.keys():
+            staging_area_placement[key]["identifier"] = function_instance_to_identifier[key]
+
+        return staging_area_placement
+
+    def _get_function_instance_to_identifier(self, resource_values: dict[str, list[Any]]) -> dict[str, str]:
+        function_resource_to_identifiers = {
+            function_resource_description["name"]: function_resource_description["function_identifier"]
+            for function_resource_description in resource_values["function"]
+        }
+
+        function_instance_to_identifier = {
+            function_instance.function_resource_name: function_resource_to_identifiers[
+                function_instance.function_resource_name
+            ]
+            for function_instance in self._functions
+        }
+
+        return function_instance_to_identifier
 
     def get_workflow_placement_decision(self, resource_values: dict[str, list[Any]]) -> dict[str, Any]:
         """
@@ -128,8 +156,8 @@ class Workflow(Resource):
         result: dict[str, Any] = {}
 
         result["instances"] = self.get_instance_description().instances
-        result["current_instance_name"] = self.__get_entry_point_instance_name()
-        result["workflow_placement"] = self.__get_workflow_placement(resource_values)
+        result["current_instance_name"] = self._get_entry_point_instance_name()
+        result["workflow_placement"] = self._get_workflow_placement(resource_values)
         return result
 
     def get_workflow_placement_decision_extend_staging(
@@ -141,6 +169,6 @@ class Workflow(Resource):
         result: dict[str, Any] = {}
 
         result["instances"] = self.get_instance_description().instances
-        result["current_instance_name"] = self.__get_entry_point_instance_name()
-        result["workflow_placement"] = self.__extend_stage_area_placement(resource_values, staging_area_placement)
+        result["current_instance_name"] = self._get_entry_point_instance_name()
+        result["workflow_placement"] = self._extend_stage_area_placement(resource_values, staging_area_placement)
         return result

@@ -29,7 +29,7 @@ class AWSDeployInstructions(DeployInstructions):
                 RecordResourceVariable(
                     resource_type="sns_topic",
                     resource_name=f"{name}_{self._region}_sns_topic",
-                    name="topic_arn",
+                    name="topic_identifier",
                     variable_name=sns_topic_arn_varname,
                 ),
             ]
@@ -61,7 +61,7 @@ class AWSDeployInstructions(DeployInstructions):
                     RecordResourceVariable(
                         resource_type="iam_role",
                         resource_name=f"{name}_{self._region}_iam_role",
-                        name="role_arn",
+                        name="role_identifier",
                         variable_name=iam_role_varname,
                     ),
                 ]
@@ -81,7 +81,7 @@ class AWSDeployInstructions(DeployInstructions):
                     RecordResourceVariable(
                         resource_type="iam_role",
                         resource_name=f"{name}_{self._region}_iam_role",
-                        name="role_arn",
+                        name="role_identifier",
                         variable_name=iam_role_varname,
                     ),
                 ]
@@ -109,8 +109,8 @@ class AWSDeployInstructions(DeployInstructions):
                     ),
                     RecordResourceVariable(
                         resource_type="function",
-                        resource_name=f"{name}_{self._region}_function",
-                        name="function_arn",
+                        resource_name=name,
+                        name="function_identifier",
                         variable_name=function_varname,
                     ),
                 ]
@@ -134,8 +134,8 @@ class AWSDeployInstructions(DeployInstructions):
                     ),
                     RecordResourceVariable(
                         resource_type="function",
-                        resource_name=f"{name}_{self._region}_function",
-                        name="function_arn",
+                        resource_name=name,
+                        name="function_identifier",
                         variable_name=function_varname,
                     ),
                 ]
@@ -155,7 +155,7 @@ class AWSDeployInstructions(DeployInstructions):
                 RecordResourceVariable(
                     resource_type="sns_topic",
                     resource_name=f"{name}_{self._region}_sns_subscription",
-                    name="topic_arn",
+                    name="topic_identifier",
                     variable_name=subscription_varname,
                 ),
                 APICall(

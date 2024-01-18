@@ -14,7 +14,7 @@ create_table() {
 }
 
 # List of table names
-table_names=($(grep '_TABLE' "$SCRIPT_DIR/../common/constants.py" | cut -d'=' -f2 | tr -d ' "' | tr -d "'"))
+table_names=($(grep '_TABLE' "$SCRIPT_DIR/../../common/constants.py" | cut -d'=' -f2 | tr -d ' "' | tr -d "'"))
 
 # Loop through the table names and create each table
 for table_name in "${table_names[@]}"; do
