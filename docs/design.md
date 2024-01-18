@@ -14,6 +14,7 @@ In this document we will discuss the design decisions that have been made for th
 3. [Merge Node](#merge-node)
     1. [Implementation](#implementation)
 4. [Workflow Placement Decision](#workflow-placement-decision)
+    1. [Component Interaction Order](#component-interaction-order)
 5. [References](#references)
 
 ##  Dataflow DAG Model
@@ -271,6 +272,20 @@ Different parts of this dictionary are provided by different components of the s
 - The `current_instance_name` is initially set by the solver as the name of the entry point function.
   It is then updated by the function instances to identify the successor function instance.
 - The `instances` is set by the solver and contains the information about the workflow DAG.
+
+### Component Interaction Order
+
+The following is the order in which the different components interact with each other with regards to the workflow placement decision:
+
+1. The deployment client uploads an initial version of the workflow placement decision to the distributed key-value store.
+2. The solver update checker is informed of a new workflow to be solved.
+3. The solver update checker triggers the solver to solve the workflow.
+4. The solver updates the workflow placement decision with the current placement of the function instances in a staging distributed key-value store.
+5. The deployment client checks the staging distributed key-value store for updates to the workflow placement decision and re-deploys function instances if necessary.
+6. The deployment client uploads the updated workflow placement decision to the distributed key-value store.
+
+During a workflow execution, the initial function instance will download the workflow placement decision from the distributed key-value store and add the `run_id`.
+Subsequent functions will receive the workflow placement decision from the previous function instance which updated the `current_instance_name` to the name of the current function instance.
 
 ##  References
 
