@@ -1,8 +1,8 @@
 import json
 from typing import Any
 
-from multi_x_serverless.deployment.common.constants import ROUTING_DECISION_TABLE
-from multi_x_serverless.deployment.common.deploy.models.endpoints import Endpoints
+from multi_x_serverless.common.constants import WORKFLOW_PLACEMENT_DECISION_TABLE
+from multi_x_serverless.common.models.endpoints import Endpoints
 from multi_x_serverless.deployment.common.factories.remote_client_factory import RemoteClientFactory
 
 
@@ -12,16 +12,16 @@ class Client:
         self._endpoints = Endpoints()
 
     def run(self, input_data: dict) -> None:
-        result = self._endpoints.get_solver_routing_decision_client().get_value_from_table(
-            ROUTING_DECISION_TABLE, self._workflow_name
+        result = self._endpoints.get_solver_workflow_placement_decision_client().get_value_from_table(
+            WORKFLOW_PLACEMENT_DECISION_TABLE, self._workflow_name
         )
 
         if result is None:
-            raise RuntimeError("No routing decision found for workflow")
+            raise RuntimeError("No workflow placement decision found for workflow")
 
-        routing_decision = json.loads(result)
+        workflow_placement_decision = json.loads(result)
 
-        provider, region, identifier = self.__get_initial_node_routing_decision(routing_decision)
+        provider, region, identifier = self.__get_initial_node_workflow_placement_decision(workflow_placement_decision)
 
         json_payload = json.dumps(input_data)
 
@@ -34,8 +34,8 @@ class Client:
             expected_counter=-1,
         )
 
-    def __get_initial_node_routing_decision(self, routing_decision: dict[str, Any]) -> tuple[str, str, str]:
-        initial_instance_name = routing_decision["current_instance_name"]
-        provider_region = routing_decision["routing_placement"][initial_instance_name]["provider_region"]
-        identifier = routing_decision["routing_placement"][initial_instance_name]["identifier"]
+    def __get_initial_node_workflow_placement_decision(self, workflow_placement_decision: dict[str, Any]) -> tuple[str, str, str]:
+        initial_instance_name = workflow_placement_decision["current_instance_name"]
+        provider_region = workflow_placement_decision["workflow_placement"][initial_instance_name]["provider_region"]
+        identifier = workflow_placement_decision["workflow_placement"][initial_instance_name]["identifier"]
         return provider_region["provider"], provider_region["region"], identifier
