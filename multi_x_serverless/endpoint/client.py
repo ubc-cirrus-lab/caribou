@@ -34,7 +34,9 @@ class Client:
             expected_counter=-1,
         )
 
-    def __get_initial_node_workflow_placement_decision(self, workflow_placement_decision: dict[str, Any]) -> tuple[str, str, str]:
+    def __get_initial_node_workflow_placement_decision(
+        self, workflow_placement_decision: dict[str, Any]
+    ) -> tuple[str, str, str]:
         initial_instance_name = workflow_placement_decision["current_instance_name"]
         provider_region = workflow_placement_decision["workflow_placement"][initial_instance_name]["provider_region"]
         identifier = workflow_placement_decision["workflow_placement"][initial_instance_name]["identifier"]
