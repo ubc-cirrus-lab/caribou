@@ -47,3 +47,7 @@ class WorkflowConfig:
     @property
     def constraints(self) -> dict:
         return self._lookup("constraints")
+    
+    @property
+    def start_hops(self) -> list[dict]:
+        return self._lookup("start_hops")
