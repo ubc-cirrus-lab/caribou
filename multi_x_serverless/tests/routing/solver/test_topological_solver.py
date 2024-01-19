@@ -124,18 +124,6 @@ class TestTopologicalSolver(unittest.TestCase):
             }
         }
 
-#     constraints:
-#   hard_resource_constraints: # None for none
-#     cost:
-#       type: "absolute" # Absolute value as 'absolute' (in USD) or Percentage from deployment at home regions as 'percentage' (In fractions such as 1.1)
-#       value: COST_CONSTRAINT
-#     runtime:
-#       type: "absolute"
-#       value: RUNTIME_CONSTRAINT
-#     carbon:
-#       type: "absolute"
-#       value: CARBON_CONSTRAINT
-        
         solver = TopologicalSolver(self.workflow_config)
         solver._input_manager = self.input_manager
 
@@ -245,48 +233,8 @@ class TestTopologicalSolver(unittest.TestCase):
 
         print(deployments[0])
         print(deployments)
-
-    #     expected_deployments = [
-    #         ({"function1": "region1", "function2": "region1"}, 13, 22, 4),
-    #         ({"function1": "region2", "function2": "region2"}, 23, 5, 14),
-    #         ({"function1": "region3", "function2": "region3"}, 6, 15, 24),
-    #     ]
-
-    #     deployments = solver._solve(regions)
-
-    #     self.assertEqual(deployments, expected_deployments)
-
-    # def test_solve_simple(self):
-    #     self.workflow_config.functions = ["function1", "function2"]
-    #     self.workflow_config.instances = [
-    #         {"instance_name": "node1", "succeeding_instances": ["node2"], "preceding_instances": []},
-    #         {"instance_name": "node2", "succeeding_instances": [], "preceding_instances": ["node1"]},
-    #     ]
-    #     solver = TopologicalSolver(self.workflow_config)
-    #     regions = np.array(["region1", "region2", "region3"])
-    #     data_sources = {"carbon": Mock(), "cost": Mock(), "runtime": Mock()}
-    #     matrices = {
-    #         "cost": (np.array([[4, 5], [7, 8], [1, 2]]), np.array([[4, 5, 6], [7, 8, 9], [1, 2, 3]])),
-    #         "runtime": (np.array([[7, 8], [1, 2], [4, 5]]), np.array([[7, 8, 9], [1, 2, 3], [4, 5, 6]])),
-    #         "carbon": (np.array([[1, 2], [4, 5], [7, 8]]), np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])),
-    #     }
-
-    #     for data_source, (execution_matrix, transmission_matrix) in matrices.items():
-    #         data_sources[data_source].get_execution_matrix.return_value = execution_matrix
-    #         data_sources[data_source].get_transmission_matrix.return_value = transmission_matrix
-
-    #     solver._data_sources = data_sources
-
-    #     expected_deployments = [
-    #         ({"function1": "region1", "function2": "region1"}, 13, 22, 4),
-    #         ({"function1": "region2", "function2": "region2"}, 23, 5, 14),
-    #         ({"function1": "region3", "function2": "region3"}, 6, 15, 24),
-    #     ]
-
-    #     deployments = solver._solve(regions)
-
-    #     self.assertEqual(deployments, expected_deployments)
-
+    
+    
     # def test_solve_complex(self):
     #     self.workflow_config.workflow_id = "1simple_line"
     #     self.workflow_config.home_regions = ([{"provider": "aws", "region": "eu-central-1"}],)
