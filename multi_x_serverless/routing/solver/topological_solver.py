@@ -92,7 +92,9 @@ class TopologicalSolver(Solver):
                             original_carbon,
                             original_runtime,
                         ), previous_instance_index in combination:
-                            from_region_index = original_deployment_placement.get(previous_instance_index, None)
+                            from_region_index = original_deployment_placement.get(
+                                previous_instance_index, None
+                            )  # Prev should always be either in the dag or be home region
 
                             # Calculate transmission and execution cost/carbon/runtime from previous deployment region to this deployment region
                             # First calculate transmission cost/carbon/runtime from previous deployment region to this deployment region
