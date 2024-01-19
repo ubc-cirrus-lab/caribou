@@ -230,11 +230,9 @@ class TestTopologicalSolver(unittest.TestCase):
 
         print("Final deployment length:", deployment_length)
 
-
         print(deployments[0])
         print(deployments)
-    
-    
+
     # def test_solve_complex(self):
     #     self.workflow_config.workflow_id = "1simple_line"
     #     self.workflow_config.home_regions = ([{"provider": "aws", "region": "eu-central-1"}],)

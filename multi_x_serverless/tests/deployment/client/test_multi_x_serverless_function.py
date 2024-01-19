@@ -16,13 +16,13 @@ class TestMultiXServerlessFunction(unittest.TestCase):
         entry_point = True
         providers = [{"name": "aws", "config": {"timeout": 60, "memory": 128}}]
         regions_and_providers = {
-            "only_regions": [
+            "allowed_regions": [
                 {
                     "provider": "aws",
                     "region": "us-east-1",
                 }
             ],
-            "forbidden_regions": [
+            "disallowed_regions": [
                 {
                     "provider": "aws",
                     "region": "us-east-2",

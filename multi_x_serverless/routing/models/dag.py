@@ -1,4 +1,5 @@
 from collections import deque
+from typing import Any
 
 import numpy as np
 
@@ -47,14 +48,14 @@ class DAG(Indexer):
         return result
 
     def get_preceeding_dict(self) -> dict[int, list[int]]:
-        # Initialize an empty preceeding dictionary
+        # Initialize an empty prerequisites dictionary
         preceeding: dict[int, list[int]] = {}
 
-        # Iterate through each row in the adjacency matrix to find preceeding for each node
+        # Iterate through each row in the adjacency matrix to find prerequisites for each node
         for i, row in enumerate(self._adj_matrix):
             preceeding[i] = []
 
-            # Find nodes that have incoming edges to the current node (preceeding)
+            # Find nodes that have incoming edges to the current node (prerequisites)
             for j, val in enumerate(row):
                 if val == 1:
                     preceeding[i].append(j)
@@ -90,14 +91,6 @@ class DAG(Indexer):
 
     def get_adj_matrix(self) -> np.ndarray:
         return self._adj_matrix
-
-    def values_to_indices(self, instances: np.ndarray) -> np.ndarray:
-        return np.array([self._value_indices[instance] for instance in instances])
-
-    def indicies_to_values(self, indices: np.ndarray) -> np.ndarray:
-        # Can be optimized
-        reverse_mapping = {index: instance for instance, index in self._value_indices.items()}
-        return np.array([reverse_mapping.get(index) for index in indices])
 
     @property
     def num_nodes(self) -> int:

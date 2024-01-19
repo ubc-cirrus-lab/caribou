@@ -2,34 +2,33 @@ from typing import Any
 
 from multi_x_serverless.deployment.client import MultiXServerlessWorkflow
 
-workflow = MultiXServerlessWorkflow("{{ workflow_name }}")
+workflow = MultiXServerlessWorkflow(name="{{ workflow_name }}", version="0.0.1")
 
 
 @workflow.serverless_function(
     name="First-Function",
     entry_point=True,
     regions_and_providers={
-        "only_regions": [
+        "allowed_regions": [
             {
                 "provider": "aws",
                 "region": "us-east-1",
             }
         ],
-        "forbidden_regions": [
+        "disallowed_regions": [
             {
                 "provider": "aws",
                 "region": "us-east-2",
             }
         ],
-        "providers": [
-            {
-                "name": "aws",
+        "providers": {
+            "aws": {
                 "config": {
                     "timeout": 60,
                     "memory": 128,
                 },
-            }
-        ],
+            },
+        },
     },
     environment_variables=[{"key": "example_key", "value": "example_value"}],
 )

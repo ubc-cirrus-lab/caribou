@@ -1,4 +1,5 @@
 workflow_name: "{{ workflow_name }}"
+workflow_version: "0.0.1"
 environment_variables:
   - key: "ENV_VAR_1"
     value: "value_1"
@@ -27,14 +28,14 @@ constraints:
     - runtime
     - carbon
 regions_and_providers: # Either the user specify only allowed regions (which will override everything else)
-  only_regions:
+  allowed_regions:
     - provider: "aws"
       region: "us-east-1"
-  forbidden_regions:
+  disallowed_regions:
     - provider: "aws"
       region: "us-east-2"
   providers:
-    - name: "aws"
+    aws:
       config:
         timeout: 60
         memory: 128
