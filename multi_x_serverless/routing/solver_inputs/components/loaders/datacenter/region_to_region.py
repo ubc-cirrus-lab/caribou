@@ -9,6 +9,9 @@ class DataCenterRegionToRegionLoader(Loader):
 
         # TODO (#35): Load data from database, convert to proper format and store in self._data
 
+        # TODO (#35): When loading we need to pay attention that JSON keys are strings and not tuples
+        # The tuples have to be converted from the strings in the JSON string loaded from the table
+
         # Template of the loaded data - Also in docs
         # Key for this data is the (from region, to region)
         self._data = {

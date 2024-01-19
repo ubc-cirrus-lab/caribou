@@ -2,3 +2,4 @@ WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE = "workflow_placement_solver_stagin
 SOLVER_UPDATE_CHECKER_RESOURCE_TABLE = "solver_update_checker_resources_table"
 DEPLOYMENT_MANAGER_RESOURCE_TABLE = "deployment_manager_resources_table"
 WORKFLOW_PLACEMENT_DECISION_TABLE = "workflow_placement_decision_table"
+DATA_COLLECTOR_DATA_TABLE = "data_collector_data_table"

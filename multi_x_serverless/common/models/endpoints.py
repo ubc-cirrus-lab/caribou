@@ -21,6 +21,11 @@ class Endpoints:
             Provider.AWS.value, self._solver_routing_decision_region
         )
 
+        self._data_collector_region = "us-west-2"
+        self._data_collector_client = RemoteClientFactory.get_remote_client(
+            Provider.AWS.value, self._data_collector_region
+        )
+
     def get_deployment_manager_client(self) -> RemoteClient:
         return self._deployment_manager_client
 
@@ -29,3 +34,6 @@ class Endpoints:
 
     def get_solver_workflow_placement_decision_client(self) -> RemoteClient:
         return self._solver_routing_decision_client
+
+    def get_data_collector_client(self) -> RemoteClient:
+        return self._data_collector_client
