@@ -77,15 +77,27 @@ class InputManager:
 
         return True  # At this point we have successfully setup the input manager
 
-    def get_execution_value(self, desired_calculator: str, instance_index: int, region_index: int) -> float:
-        return self._get_input_component_manager(desired_calculator).get_execution_value(instance_index, region_index)
+    def get_execution_value(
+        self,
+        desired_calculator: str,
+        instance_index: int,
+        region_index: int,
+        consider_probabilistic_invocations: bool = False,
+    ) -> float:
+        return self._get_input_component_manager(desired_calculator).get_execution_value(
+            instance_index, region_index, consider_probabilistic_invocations
+        )
 
-    def get_execution_cost_carbon_runtime(self, instance_index: int, region_index: int) -> list[float]:
+    def get_execution_cost_carbon_runtime(
+        self, instance_index: int, region_index: int, consider_probabilistic_invocations: bool = False
+    ) -> list[float]:
         results = []
         calculators = ["Cost", "Carbon", "Runtime"]
         for calculator in calculators:
             results.append(
-                self._get_input_component_manager(calculator).get_execution_value(instance_index, region_index)
+                self._get_input_component_manager(calculator).get_execution_value(
+                    instance_index, region_index, consider_probabilistic_invocations
+                )
             )
         return results
 
@@ -96,20 +108,34 @@ class InputManager:
         to_instance_index: int,
         from_region_index: int,
         to_region_index: int,
+        consider_probabilistic_invocations: bool = False,
     ) -> float:
         return self._get_input_component_manager(desired_calculator).get_transmission_value(
-            from_instance_index, to_instance_index, from_region_index, to_region_index
+            from_instance_index,
+            to_instance_index,
+            from_region_index,
+            to_region_index,
+            consider_probabilistic_invocations,
         )
 
     def get_transmission_cost_carbon_runtime(
-        self, from_instance_index: int, to_instance_index: int, from_region_index: int, to_region_index: int
+        self,
+        from_instance_index: int,
+        to_instance_index: int,
+        from_region_index: int,
+        to_region_index: int,
+        consider_probabilistic_invocations: bool = False,
     ) -> list[float]:
         results = []
         calculators = ["Cost", "Carbon", "Runtime"]
         for calculator in calculators:
             results.append(
                 self._get_input_component_manager(calculator).get_transmission_value(
-                    from_instance_index, to_instance_index, from_region_index, to_region_index
+                    from_instance_index,
+                    to_instance_index,
+                    from_region_index,
+                    to_region_index,
+                    consider_probabilistic_invocations,
                 )
             )
         return results
