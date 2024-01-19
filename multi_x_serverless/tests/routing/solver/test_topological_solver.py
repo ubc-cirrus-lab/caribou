@@ -56,7 +56,9 @@ class TestTopologicalSolver(unittest.TestCase):
         """
         This is a test for a straight line of 3 nodes. Where each node go to the next node with no split or merge nodes.
         """
-        self.workflow_config.functions = ["f1", "f2", "f3"]
+        self.workflow_config.home_regions = [{"provider": "aws", "region": "eu-central-1"}]
+        self.workflow_config.functions = [{"f1": ["i1"]}, {"f2": ["i2"]}, {"f3": ["i3"]}]
+        self.workflow_config.regions_and_providers = {"providers": {"p1": None, "p2": None}}
         self.workflow_config.instances = [
             {
                 "instance_name": "i1",
@@ -66,10 +68,7 @@ class TestTopologicalSolver(unittest.TestCase):
                 "regions_and_providers": {
                     "allowed_regions": None,
                     "disallowed_regions": None,
-                    "providers": {
-                        "p1": {"config": {"timeout": 60, "memory": 128}},
-                        "p2": {"config": {"timeout": 60, "memory": 128}},
-                    },
+                    "providers": {"p1": None, "p2": None},
                 },
             },
             {
@@ -80,11 +79,8 @@ class TestTopologicalSolver(unittest.TestCase):
                 "regions_and_providers": {
                     "allowed_regions": None,
                     "disallowed_regions": None,
-                    "providers": {
-                        "p1": {"config": {"timeout": 60, "memory": 128}},
-                        "p2": {"config": {"timeout": 60, "memory": 128}},
-                    },
-                },
+                    "providers": {"p1": None, "p2": None},
+                }
             },
             {
                 "instance_name": "i3",
@@ -94,19 +90,10 @@ class TestTopologicalSolver(unittest.TestCase):
                 "regions_and_providers": {
                     "allowed_regions": None,
                     "disallowed_regions": None,
-                    "providers": {
-                        "p1": {"config": {"timeout": 60, "memory": 128}},
-                        "p2": {"config": {"timeout": 60, "memory": 128}},
-                    },
+                    "providers": {"p1": None, "p2": None},
                 },
             },
         ]
-        self.workflow_config.regions_and_providers = {
-            "providers": {
-                "p1": {"config": {"timeout": 60, "memory": 128}},
-                "p2": {"config": {"timeout": 60, "memory": 128}},
-            },
-        }
 
         self.workflow_config.constraints = {
             "hard_resource_constraints": {
@@ -235,17 +222,9 @@ class TestTopologicalSolver(unittest.TestCase):
         print(deployments)
 
     def test_solve_complex(self):
-        self.workflow_config.workflow_id = "1simple_line"
-        self.workflow_config.home_regions = ([{"provider": "aws", "region": "eu-central-1"}],)
+        self.workflow_config.home_regions = [{"provider": "aws", "region": "eu-central-1"}]
         self.workflow_config.functions = [{"f1": ["i1"]}, {"f2": ["i2"]}, {"f3": ["i3"]}]
-        self.workflow_config.regions_and_providers = {
-            "allowed_regions": None,
-            "disallowed_regions": None,
-            "providers": {
-                "p1": None,
-                "p2": None,
-            },
-        }
+        self.workflow_config.regions_and_providers = {"providers": {"p1": None, "p2": None}}
         self.workflow_config.instances = [
             {
                 "instance_name": "i1",
@@ -290,7 +269,6 @@ class TestTopologicalSolver(unittest.TestCase):
             {
                 "instance_name": "i5",
                 "succeeding_instances": [],
-                "preceding_instances": ["i1"],
                 "preceding_instances": [],
                 "regions_and_providers": {  # This should be the same as start hop (As its leaf node)
                     "allowed_regions": [{"provider": "p1", "region": "r1"}],
@@ -301,7 +279,6 @@ class TestTopologicalSolver(unittest.TestCase):
             {
                 "instance_name": "i6",
                 "succeeding_instances": [],
-                "preceding_instances": ["i4"],
                 "preceding_instances": [],
                 "regions_and_providers": {  # This should be the same as start hop (As its leaf node)
                     "allowed_regions": [{"provider": "p1", "region": "r1"}],
