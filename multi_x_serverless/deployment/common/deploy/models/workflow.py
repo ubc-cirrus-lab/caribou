@@ -129,8 +129,8 @@ class Workflow(Resource):
     ) -> dict[str, dict[str, Any]]:
         function_instance_to_identifier = self._get_function_instance_to_identifier(resource_values)
 
-        for key in staging_area_placement.keys():
-            staging_area_placement[key]["identifier"] = function_instance_to_identifier[key]
+        for key in staging_area_placement["workflow_placement"].keys():
+            staging_area_placement["workflow_placement"][key]["identifier"] = function_instance_to_identifier[key]
 
         return staging_area_placement
 
@@ -166,9 +166,7 @@ class Workflow(Resource):
         """
         The desired output format is explained in the `docs/design.md` file under `Workflow Placement Decision`.
         """
-        result: dict[str, Any] = {}
-
-        result["instances"] = self.get_instance_description().instances
-        result["current_instance_name"] = self._get_entry_point_instance_name()
-        result["workflow_placement"] = self._extend_stage_area_placement(resource_values, staging_area_placement)
-        return result
+        staging_area_placement["instances"] = self.get_instance_description().instances
+        staging_area_placement["current_instance_name"] = self._get_entry_point_instance_name()
+        self._extend_stage_area_placement(resource_values, staging_area_placement)
+        return staging_area_placement

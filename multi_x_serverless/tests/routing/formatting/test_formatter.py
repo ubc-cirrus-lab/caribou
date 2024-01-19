@@ -12,8 +12,10 @@ class TestFormatter(unittest.TestCase):
         index_to_region_provider_name = {0: ("provider1", "region1"), 1: ("provider2", "region2")}
 
         expected_output = {
-            "instance1": {"provider": "provider2", "region": "region2"},
-            "instance2": {"provider": "provider1", "region": "region1"},
+            "workflow_placement": {
+                "instance1": {"provider_region": {"provider": "provider2", "region": "region2"}},
+                "instance2": {"provider_region": {"provider": "provider1", "region": "region1"}},
+            },
         }
 
         output = self.formatter.format(results, index_to_instance_name, index_to_region_provider_name)

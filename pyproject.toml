@@ -86,6 +86,7 @@ ignore_missing_imports = true
 pretty = true
 exclude = [
     "multi_x_serverless/tests",
+    "multi_x_serverless/routing/legacy"
     ]
 
 [tool.isort]

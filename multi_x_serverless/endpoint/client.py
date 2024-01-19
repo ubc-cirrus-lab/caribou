@@ -1,10 +1,9 @@
-from multi_x_serverless.deployment.common.deploy.models.endpoints import Endpoints
-from multi_x_serverless.deployment.common.constants import ROUTING_DECISION_TABLE
-from multi_x_serverless.deployment.common.factories.remote_client_factory import RemoteClientFactory
-
+import json
 from typing import Any
 
-import json
+from multi_x_serverless.deployment.common.constants import ROUTING_DECISION_TABLE
+from multi_x_serverless.deployment.common.deploy.models.endpoints import Endpoints
+from multi_x_serverless.deployment.common.factories.remote_client_factory import RemoteClientFactory
 
 
 class Client:
@@ -35,10 +34,8 @@ class Client:
             expected_counter=-1,
         )
 
-    def __get_initial_node_routing_decision(self, routing_decision: dict[str, Any]) -> tuple[str, str]:
+    def __get_initial_node_routing_decision(self, routing_decision: dict[str, Any]) -> tuple[str, str, str]:
         initial_instance_name = routing_decision["current_instance_name"]
         provider_region = routing_decision["routing_placement"][initial_instance_name]["provider_region"]
-        provider = provider_region["provider"]
-        region = provider_region["region"]
         identifier = routing_decision["routing_placement"][initial_instance_name]["identifier"]
-        return provider, region, identifier
+        return provider_region["provider"], provider_region["region"], identifier

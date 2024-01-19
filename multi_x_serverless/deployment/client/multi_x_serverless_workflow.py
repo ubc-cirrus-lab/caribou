@@ -106,7 +106,9 @@ class MultiXServerlessWorkflow:
         payload_wrapper["workflow_placement_decision"] = successor_workflow_placement_decision_dictionary
         json_payload = json.dumps(payload_wrapper)
 
-        provider, region, identifier = self.get_successor_workflow_placement_decision(successor_instance_name, workflow_placement_decision)
+        provider, region, identifier = self.get_successor_workflow_placement_decision(
+            successor_instance_name, workflow_placement_decision
+        )
 
         merge = successor_instance_name.split(":", maxsplit=2)[1] == "merge"
 
