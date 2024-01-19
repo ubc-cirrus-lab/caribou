@@ -22,9 +22,7 @@ class TestSolver(unittest.TestCase):
                 "regions_and_providers": {
                     "allowed_regions": None,
                     "disallowed_regions": None,
-                    "providers": {
-                        "aws": None
-                    },
+                    "providers": {"aws": None},
                 },
             },
             {
@@ -34,18 +32,14 @@ class TestSolver(unittest.TestCase):
                 "regions_and_providers": {
                     "allowed_regions": None,
                     "disallowed_regions": None,
-                    "providers": {
-                        "aws": None
-                    },
+                    "providers": {"aws": None},
                 },
             },
         ]
         self.workflow_config.regions_and_providers = {
             "allowed_regions": None,
             "disallowed_regions": None,
-            "providers": {
-                "aws": None
-            },
+            "providers": {"aws": None},
         }
         self.workflow_config.workflow_id = "workflow_id"
         self.solver = SolverSubclass(self.workflow_config)
