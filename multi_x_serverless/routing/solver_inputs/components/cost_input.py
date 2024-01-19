@@ -27,7 +27,7 @@ class CostInput(Input):
             compute_cost: float = data_source_manager.get_region_data("compute_cost", region_index)
 
             for instance_index in instances_indicies:
-                execution_time: float = runtime_input.get_execution_value(instance_index, region_index)
+                execution_time: float = runtime_input.get_execution_value(instance_index, region_index, False)
 
                 # Compute information aquisition
                 provider_configuration: dict[str, dict[str, float]] = dict(
@@ -72,7 +72,8 @@ class CostInput(Input):
                 self._data_transfer_size_matrix[from_instance_index][to_instance_index] = data_transfer_size
 
     def get_transmission_value(
-        self, from_instance_index: int, to_instance_index: int, from_region_index: int, to_region_index: int
+        self, from_instance_index: int, to_instance_index: int, from_region_index: int, to_region_index: int,
+        consider_probabilistic_invocations: bool
     ) -> float:
         # Handle special cases of from and to nothing (Basically start at 0, end at 0)
         if from_region_index is None:

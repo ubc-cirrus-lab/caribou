@@ -12,8 +12,7 @@ class WorkflowInstanceLoader(Loader):
         # Template of the loaded data - Also in docs
         # Key for this data is the instance name
         self._data = {
-            "execution_time": {"i1": 5},  # Execution time value in seconds",
-            "probability": {"i1": 0.95},  # Probability of instance being called in fractions
+            "execution_time": {"i1": 5},  # Execution time value in seconds"
         }
 
         return False  # Not implemented

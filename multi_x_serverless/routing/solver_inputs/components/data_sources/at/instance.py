@@ -27,7 +27,6 @@ class InstanceSource(Source):
             self._data[instance_index] = {
                 # Data Collector information - Past invocation information (from historical data)
                 "execution_time": loaded_data.get("execution_time", {}).get(instance, -1),
-                "probability": loaded_data.get("probability", {}).get(instance, -1),
                 # Other properties
                 ## Need to consider different configurations of different providers defined at the instance configuration level
                 "provider_configurations": provider_configurations[instance],

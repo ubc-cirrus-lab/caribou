@@ -13,6 +13,7 @@ class WorkflowInstanceFromToLoader(Loader):
         # Key for this data is the (from instance name, to instance name)
         self._data = {
             "data_transfer_size": {("i1", "i2"): 0.4},  # Data transfer size in GB
+            "probability": {("i1", "i2"): 0.95},  # Probability of instance being called in fractions
         }
 
         return False  #  Not yet implemented
