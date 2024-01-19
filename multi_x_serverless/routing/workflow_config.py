@@ -49,5 +49,10 @@ class WorkflowConfig:
         return self._lookup("constraints")
     
     @property
-    def start_hops(self) -> list[dict]:
-        return self._lookup("start_hops")
+    def start_hops(self) -> dict:
+        # TODO (#68): Allow for multiple start hops / home regions
+        start_hops = self._lookup("start_hops")
+        if start_hops is None or len(start_hops) == 0:
+            return []
+        else:
+            return start_hops[0]
