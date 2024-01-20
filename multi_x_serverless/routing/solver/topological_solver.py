@@ -30,9 +30,6 @@ class TopologicalSolver(Solver):
         else:
             raise Exception("There are no leaf nodes in the DAG")
 
-        # Here is the format of the final deployment options
-        final_deployments: list[tuple[dict, float, float, float]] = []
-
         # Where its in format of {instance_index: 
         # [(deployment decisions (and cost and latency at that instance node), 
         # cumulative worse case cost/co2/runtime, probabilitic case runtime)]}
@@ -93,58 +90,59 @@ class TopologicalSolver(Solver):
                         current_instance_index: (to_region_index, (wc_cost, wc_carbon), (pc_cost, pc_carbon)),
                     }, 
                     (wc_cost, wc_carbon, wc_runtime), pc_runtime))
-            elif (number_of_previous_instances == 1):
-                print("One previous instance")
-                # In this case there is only one previous instance
-                # So we can just copy the previous deployment
-                previous_instance_index = prerequisites_indices[0]
-                previous_deployments = deployments[previous_instance_index]
-                for previous_deployment in previous_deployments:
-                    previous_instance_placements, previous_wc_ccr, previous_pc_runtime = previous_deployment
+            # elif (number_of_previous_instances == 1):
+            #     print("One previous instance")
+            #     # In this case there is only one previous instance
+            #     # So we can just copy the previous deployment
+            #     previous_instance_index = prerequisites_indices[0]
+            #     previous_deployments = deployments[previous_instance_index]
+            #     for previous_deployment in previous_deployments:
+            #         previous_instance_placements, previous_wc_ccr, previous_pc_runtime = previous_deployment
 
-                    from_region_index = previous_instance_placements[previous_instance_index][0]
-                    for to_region_index in permitted_regions_indices:
-                        # Calculate the carbon/cost/runtime for transmission and execution
-                        # For worse case (Using tail latency)
-                        wc_t_cost, wc_t_carbon, wc_t_runtime = self._input_manager.get_transmission_cost_carbon_runtime(
-                            previous_instance_index, current_instance_index, from_region_index, to_region_index)
+            #         from_region_index = previous_instance_placements[previous_instance_index][0]
+            #         for to_region_index in permitted_regions_indices:
+            #             # Calculate the carbon/cost/runtime for transmission and execution
+            #             # For worse case (Using tail latency)
+            #             wc_t_cost, wc_t_carbon, wc_t_runtime = self._input_manager.get_transmission_cost_carbon_runtime(
+            #                 previous_instance_index, current_instance_index, from_region_index, to_region_index)
 
-                        wc_e_cost, wc_e_carbon, wc_e_runtime = self._input_manager.get_execution_cost_carbon_runtime(
-                            current_instance_index, to_region_index)
+            #             wc_e_cost, wc_e_carbon, wc_e_runtime = self._input_manager.get_execution_cost_carbon_runtime(
+            #                 current_instance_index, to_region_index)
                         
-                        # Calculate the carbon/cost/runtime for transmission and execution
-                        # For porbabilistic case (Using average latency and factor in invocation probability)
-                        pc_t_cost, pc_t_carbon, pc_t_runtime = self._input_manager.get_transmission_cost_carbon_runtime(
-                            previous_instance_index, current_instance_index, from_region_index, to_region_index, True)
+            #             # Calculate the carbon/cost/runtime for transmission and execution
+            #             # For porbabilistic case (Using average latency and factor in invocation probability)
+            #             pc_t_cost, pc_t_carbon, pc_t_runtime = self._input_manager.get_transmission_cost_carbon_runtime(
+            #                 previous_instance_index, current_instance_index, from_region_index, to_region_index, True)
                         
-                        pc_e_cost, pc_e_carbon, pc_e_runtime = self._input_manager.get_execution_cost_carbon_runtime(
-                            current_instance_index, to_region_index, True)
+            #             pc_e_cost, pc_e_carbon, pc_e_runtime = self._input_manager.get_execution_cost_carbon_runtime(
+            #                 current_instance_index, to_region_index, True)
 
-                        wc_cost_current = wc_t_cost + wc_e_cost
-                        wc_carbon_current = wc_t_carbon + wc_e_carbon
-                        wc_runtime_current = wc_t_runtime + wc_e_runtime
+            #             wc_cost_current = wc_t_cost + wc_e_cost
+            #             wc_carbon_current = wc_t_carbon + wc_e_carbon
+            #             wc_runtime_current = wc_t_runtime + wc_e_runtime
 
-                        pc_cost_current = pc_t_cost + pc_e_cost
-                        pc_carbon_current = pc_t_carbon + pc_e_carbon
-                        pc_runtime_current = pc_t_runtime + pc_e_runtime
+            #             pc_cost_current = pc_t_cost + pc_e_cost
+            #             pc_carbon_current = pc_t_carbon + pc_e_carbon
+            #             pc_runtime_current = pc_t_runtime + pc_e_runtime
 
-                        # Total Values
-                        wc_cost_total = previous_wc_ccr[0] + wc_cost_current
-                        wc_carbon_total = previous_wc_ccr[1] + wc_carbon_current
-                        wc_runtime_total = previous_wc_ccr[2] + wc_runtime_current
+            #             # Total Values
+            #             wc_cost_total = previous_wc_ccr[0] + wc_cost_current
+            #             wc_carbon_total = previous_wc_ccr[1] + wc_carbon_current
+            #             wc_runtime_total = previous_wc_ccr[2] + wc_runtime_current
 
-                        pc_runtime_total = previous_pc_runtime + pc_runtime_current
+            #             pc_runtime_total = previous_pc_runtime + pc_runtime_current
 
-                        # Using copy method
-                        new_instance_placements = previous_instance_placements.copy()
-                        new_instance_placements[current_instance_index] = (to_region_index, (wc_cost_current, wc_carbon_current), (pc_cost_current, pc_carbon_current))
+            #             # Using copy method
+            #             new_instance_placements = previous_instance_placements.copy()
+            #             new_instance_placements[current_instance_index] = (to_region_index, (wc_cost_current, wc_carbon_current), (pc_cost_current, pc_carbon_current))
                         
 
-                        current_deployments.append((new_instance_placements, 
-                            (wc_cost_total, wc_carbon_total, wc_runtime_total), pc_runtime_total))
+            #             current_deployments.append((new_instance_placements, 
+            #                 (wc_cost_total, wc_carbon_total, wc_runtime_total), pc_runtime_total))
                         
-                        # print("New addition:", (wc_cost_total, wc_carbon_total, wc_runtime_total), pc_runtime_total)
-            elif (number_of_previous_instances > 1):
+            #             # print("New addition:", (wc_cost_total, wc_carbon_total, wc_runtime_total), pc_runtime_total)
+            # elif (number_of_previous_instances > 1):
+            else:
                 print("Multiple previous instances")
                 # Here we need an special handling of the case where there are multiple previous instances
                 
@@ -173,72 +171,131 @@ class TopologicalSolver(Solver):
                         deployment_groups[common_keys][pred_index_counter].append((previous_deployment, previous_instance_index))
 
                     pred_index_counter += 1
-                
-                for common_keys, deployment_group in deployment_groups.items():
-                    print("\n\ncommon_keys:", common_keys)
-                    for combination in itertools.product(*deployment_group):
-                        print("combination:", combination)
-                        # For each combination of deployments, merge them together
-                        list_of_dicts = []
-                        combined_placements = {}
-                        max_wc_runtime = 0
-                        max_pc_runtime = 0
-                        for (
-                            original_deployment_placement,
-                            wc_ccr,
-                            previous_pc_runtime,
-                        ), previous_instance_index in combination:
-                            from_region_index = original_deployment_placement.get(
-                                previous_instance_index, None)[0]  # Prev should always be either in the dag or be home region
-                            
-                            previous_wc_runtime = wc_ccr[2]
+                if current_instance_index == -1:  # If this is the virtual end node
+                    for common_keys, deployment_group in deployment_groups.items():
+                        # Here is the format of the final deployment options
+                        # In the future this will be using the average conditional dag results
+                        # For now we just use the worse case (Until we implement conditional dag support)
+                        final_deployments: list[tuple[dict, float, float, float]] = []
+                        for combination in itertools.product(*deployment_group):
+                            # For each combination of deployments, merge them together
+                            list_of_dicts = [] # Debug code
 
-                            print(original_deployment_placement, wc_ccr, pc_runtime, previous_instance_index)
-                            
-                            for to_region_index in permitted_regions_indices:
-                                # Calculate the carbon/cost/runtime for transmission and execution
-                                # For worse case (Using tail latency)
-                                wc_t_cost, wc_t_carbon, wc_t_runtime = self._input_manager.get_transmission_cost_carbon_runtime(
-                                    previous_instance_index, current_instance_index, from_region_index, to_region_index)
-
-                                wc_e_cost, wc_e_carbon, wc_e_runtime = self._input_manager.get_execution_cost_carbon_runtime(
-                                    current_instance_index, to_region_index)
+                            combined_placements = {}
+                            max_wc_runtime = 0
+                            max_pc_runtime = 0
+                            for (original_deployment_placement, wc_ccr, previous_pc_runtime), previous_instance_index in combination:
+                                from_region_index = original_deployment_placement.get(
+                                    previous_instance_index, None)[0]  # Prev should always be either in the dag or be home region
                                 
-                                # Calculate the carbon/cost/runtime for transmission and execution
-                                # For porbabilistic case (Using average latency and factor in invocation probability)
-                                pc_t_cost, pc_t_carbon, pc_t_runtime = self._input_manager.get_transmission_cost_carbon_runtime(
-                                    previous_instance_index, current_instance_index, from_region_index, to_region_index, True)
-                                
-                                pc_e_cost, pc_e_carbon, pc_e_runtime = self._input_manager.get_execution_cost_carbon_runtime(
-                                    current_instance_index, to_region_index, True)
-                                
-                                wc_runtime_current = wc_t_runtime + wc_e_runtime
-                                pc_runtime_current = pc_t_runtime + pc_e_runtime
+                                previous_wc_runtime = wc_ccr[2]
 
-                                # Total Valuesd
-                                wc_runtime_total = previous_wc_runtime + wc_runtime_current
-
-                                pc_runtime_total = previous_pc_runtime + pc_runtime_current
-
-                                # Using copy method
-                                new_instance_placements = previous_instance_placements.copy()
-                                new_instance_placements[current_instance_index] = (to_region_index, (wc_cost_current, wc_carbon_current), (pc_cost_current, pc_carbon_current))
+                                list_of_dicts.append(original_deployment_placement) # For debug
 
                                 # Merge the deployments information together
                                 combined_placements = combined_placements | original_deployment_placement
 
-                                original_deployment_placement
                                 max_wc_runtime = max(
-                                    max_wc_runtime, wc_runtime_total
+                                    max_wc_runtime, previous_wc_runtime
                                 )
 
                                 max_pc_runtime = max(
-                                    max_pc_runtime, pc_runtime_total
+                                    max_pc_runtime, previous_pc_runtime
                                 )
 
+                            # We need to now recalculate the cost and carbon for the combined placements
+                            # As this is a potential merge node, here we also need a clean placemnet dict for results
+                            wc_cost, wc_carbon, pc_cost, pc_carbon, clean_combined_placments = self._calculate_wc_pc_cost_carbon_cl_placements(combined_placements)
+                            
+                            
+                            if not self._fail_hard_resource_constraints(
+                                self._workflow_config.constraints, wc_cost, wc_carbon, max_wc_runtime
+                            ):
+                                # For now we use worse case, but when proability is implemented we will use that instead
+                                final_deployments.append((clean_combined_placments, wc_cost, wc_carbon, max_wc_runtime))
 
-                            current_deployments.append((new_instance_placements, 
-                                (wc_cost_total, wc_carbon_total, wc_runtime_total), pc_runtime_total))
+                    del deployments # Clear all memory
+
+                    return final_deployments
+                else:
+                    for to_region_index in permitted_regions_indices:
+                        for common_keys, deployment_group in deployment_groups.items():
+                            # print("\n\ncommon_keys:", common_keys)
+                            for combination in itertools.product(*deployment_group):
+                                # print("combination:", combination)
+                                # For each combination of deployments, merge them together
+                                list_of_dicts = [] # Debug code
+                                combined_placements = {}
+                                max_wc_runtime = 0
+                                max_pc_runtime = 0
+                                
+                                wc_cost_total = wc_carbon_total = wc_runtime_total = 0
+                                pc_runtime_total = 0
+
+                                # Calcualte the cost, carbon and runtime of execuion (Just execution here as its a shared value)
+                                wc_e_cost, wc_e_carbon, wc_e_runtime = self._input_manager.get_execution_cost_carbon_runtime(
+                                    current_instance_index, to_region_index)
+
+                                pc_e_cost, pc_e_carbon, pc_e_runtime = self._input_manager.get_execution_cost_carbon_runtime(
+                                    current_instance_index, to_region_index, True)
+                                
+                                # Transmission is is how much it cost to get from EVERY previous instance to this instance
+                                # So we need to calculate the transmission cost for each previous instance
+                                current_cumulative_wc_t_cost = current_cumulative_wc_t_carbon = current_cumulative_wc_t_runtime = 0
+                                current_cumulative_pc_t_cost = current_cumulative_pc_t_carbon = current_cumulative_pc_t_runtime = 0
+                                for (original_deployment_placement, wc_ccr, previous_pc_runtime), previous_instance_index in combination:
+                                    from_region_index = original_deployment_placement.get(
+                                        previous_instance_index, None)[0]  # Prev should always be either in the dag or be home region
+                                    previous_wc_runtime = wc_ccr[2]
+
+                                    # Calculate the carbon/cost/runtime for transmission
+                                    # For worse case (Using tail latency)
+                                    wc_t_cost, wc_t_carbon, wc_t_runtime = self._input_manager.get_transmission_cost_carbon_runtime(
+                                        previous_instance_index, current_instance_index, from_region_index, to_region_index)
+                                    
+                                    # For porbabilistic case (Using average latency and factor in invocation probability)
+                                    pc_t_cost, pc_t_carbon, pc_t_runtime = self._input_manager.get_transmission_cost_carbon_runtime(
+                                        previous_instance_index, current_instance_index, from_region_index, to_region_index, True)
+                                    
+
+                                    wc_cost_current = wc_t_cost + wc_e_cost
+                                    wc_carbon_current = wc_t_carbon + wc_e_carbon
+                                    wc_runtime_current = wc_t_runtime + wc_e_runtime
+
+                                    pc_cost_current = pc_t_cost + pc_e_cost
+                                    pc_carbon_current = pc_t_carbon + pc_e_carbon
+                                    pc_runtime_current = pc_t_runtime + pc_e_runtime
+
+                                    # Total Values
+                                    wc_cost_total = wc_ccr[0] + wc_cost_current
+                                    wc_carbon_total = wc_ccr[1] + wc_carbon_current
+                                    wc_runtime_total = wc_ccr[2] + wc_runtime_current
+
+                                    pc_runtime_total = previous_pc_runtime + pc_runtime_current
+
+                                    # Merge the deployments information together
+                                    list_of_dicts.append(original_deployment_placement) # For debug
+                                    combined_placements = combined_placements | original_deployment_placement
+
+                            
+                                    max_wc_runtime = max(
+                                        max_wc_runtime, wc_runtime_total
+                                    )
+
+                                    max_pc_runtime = max(
+                                        max_pc_runtime, pc_runtime_total
+                                    )
+
+                                # Check number of common keys
+                                combined_placements[current_instance_index] = (to_region_index, 
+                                                                                (wc_cost_current, wc_carbon_current), 
+                                                                                (pc_cost_current, pc_carbon_current))
+                                
+                                if not self._fail_hard_resource_constraints(
+                                    self._workflow_config.constraints, wc_cost_total, wc_carbon_total, max_wc_runtime
+                                ):
+                                    current_deployments.append((combined_placements, 
+                                        (wc_cost_total, wc_carbon_total, max_wc_runtime), max_pc_runtime))
 
                 # return []
                         # have_different_values_for_common_keys(list_of_dicts)
@@ -369,7 +426,7 @@ class TopologicalSolver(Solver):
 
         return list(common_elements)
     
-    def have_different_values_for_common_keys(list_of_dicts):
+    def _have_different_values_for_common_keys(list_of_dicts):
         common_key_values = {}
 
         # Iterate through the dictionaries and update common_key_values
@@ -382,3 +439,19 @@ class TopologicalSolver(Solver):
                     common_key_values[key] = value
 
         return False  # No different values found for any common key
+    
+    def _calculate_wc_pc_cost_carbon_cl_placements(self, instance_placement_data: dict[int, tuple[int, tuple[float, float], tuple[float, float]]]) -> tuple[float, float, float, float, dict[int, int]]:
+        wc_cost = wc_carbon = 0
+        pc_cost = pc_carbon = 0
+        clean_placement_dict = {}
+
+        for instance_index, (region_index, (wc_cost_instance, wc_carbon_instance), (pc_cost_instance, pc_carbon_instance)) in instance_placement_data.items():
+            wc_cost += wc_cost_instance
+            wc_carbon += wc_carbon_instance
+
+            pc_cost += pc_cost_instance
+            pc_carbon += pc_carbon_instance
+
+            clean_placement_dict[instance_index] = region_index
+
+        return wc_cost, wc_carbon, pc_cost, pc_carbon, clean_placement_dict

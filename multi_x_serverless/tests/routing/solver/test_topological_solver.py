@@ -658,7 +658,7 @@ class TestTopologicalSolver(unittest.TestCase):
         print("\nComplex DAG solver results:")
         deployment_length = len(deployments)
         print("Final deployment length:", deployment_length)
-        print(deployments[0])
+        # print(deployments[0])
         # self.assertEqual(deployments, expected_deployments)
 
 
