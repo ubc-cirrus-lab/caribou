@@ -48,14 +48,14 @@ class DAG(Indexer):
         return result
 
     def get_preceeding_dict(self) -> dict[int, list[int]]:
-        # Initialize an empty prerequisites dictionary
+        # Initialize an empty successors dictionary
         preceeding: dict[int, list[int]] = {}
 
-        # Iterate through each row in the adjacency matrix to find prerequisites for each node
+        # Iterate through each row in the adjacency matrix to find successors for each node
         for i, row in enumerate(self._adj_matrix):
             preceeding[i] = []
 
-            # Find nodes that have incoming edges to the current node (prerequisites)
+            # Find nodes that is the outgoing edge of the current node (successors)
             for j, val in enumerate(row):
                 if val == 1:
                     preceeding[i].append(j)
