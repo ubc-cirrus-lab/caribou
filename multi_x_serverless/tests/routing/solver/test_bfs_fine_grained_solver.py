@@ -11,7 +11,6 @@ from unittest.mock import Mock, patch
 
 class TestBFSFineGrainedSolver(unittest.TestCase):
     execution_matrix: list[list[int]]
-    instance_factor_matrix: list[list[int]]
     transmission_matrix: list[list[int]]
 
     def setUp(self):
@@ -37,16 +36,13 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
         self.input_manager.get_transmission_cost_carbon_runtime.side_effect = (
             lambda previous_instance_index, current_instance_index, from_region_index, to_region_index, using_probabilitic=False: (
                 (
-                    self.instance_factor_matrix[previous_instance_index][current_instance_index]
-                    * self.transmission_matrix[from_region_index][to_region_index]
+                    self.transmission_matrix[from_region_index][to_region_index]
                 ),
                 (
-                    self.instance_factor_matrix[previous_instance_index][current_instance_index]
-                    * self.transmission_matrix[from_region_index][to_region_index] * 2
+                    self.transmission_matrix[from_region_index][to_region_index] * 2
                 ),
                 (
-                    self.instance_factor_matrix[previous_instance_index][current_instance_index]
-                    * self.transmission_matrix[from_region_index][to_region_index]
+                    self.transmission_matrix[from_region_index][to_region_index]
                 ),
             )
             if from_region_index is not None and previous_instance_index is not None
@@ -87,11 +83,6 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
         # For simplicity, we just say that cost just this value, co2 is this value * 2, and rt is also just this value
         self.execution_matrix = [
                 [1, 2],
-            ]
-
-        # # Lets simplfy this to be a factor of instance from to (row = from, col = to)
-        self.instance_factor_matrix = [ # Lets simplfy this to be a factor of instance from to (row = from, col = to)
-                [1],
             ]
 
         # Simplify it to 1 array as it might be easier to understand (So say cos/co2/rt have same base values)
@@ -158,11 +149,6 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
         self.execution_matrix = [
                 [1, 2],
                 [4, 3],
-            ]
-
-        # # Lets simplfy this to be a factor of instance from to (row = from, col = to)
-        self.instance_factor_matrix = [ # Lets simplfy this to be a factor of instance from to (row = from, col = to)
-                [1, 1],
             ]
 
         # Simplify it to 1 array as it might be easier to understand (So say cos/co2/rt have same base values)
@@ -234,7 +220,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                 "regions_and_providers": {
                     "allowed_regions": None,
                     "disallowed_regions": None,
-                    "providers": {"p1": None, "p2": None},
+                    "providers": {"p1": None},
                 },
             },
         ]
@@ -250,12 +236,6 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                 [1.0, 2.0],
                 [6.0, 5.0],
                 [1.5, 2.5],
-            ]
-
-        # # Lets simplfy this to be a factor of instance from to (row = from instance, col = to instance)
-        self.instance_factor_matrix = [ # Lets simplfy this to be a factor of instance from to (row = from, col = to)
-                [1, 1, 1],
-                [1, 1, 1],
             ]
 
         # Simplify it to 1 array as it might be easier to understand (So say cos/co2/rt have same base values)
@@ -279,11 +259,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
             ({0: 0, 1: 0, 2: 0}, 10.5, 21.0, 10.5), 
             ({0: 1, 1: 0, 2: 0}, 13.5, 27.0, 13.5), 
             ({0: 0, 1: 1, 2: 0}, 12.5, 25.0, 12.5), 
-            ({0: 1, 1: 1, 2: 0}, 15.5, 31.0, 15.5), 
-            ({0: 0, 1: 0, 2: 1}, 12.5, 25.0, 12.5), 
-            ({0: 1, 1: 0, 2: 1}, 15.5, 31.0, 15.5), 
-            ({0: 0, 1: 1, 2: 1}, 14.5, 29.0, 14.5), 
-            ({0: 1, 1: 1, 2: 1}, 17.5, 35.0, 17.5)]
+            ({0: 1, 1: 1, 2: 0}, 15.5, 31.0, 15.5)]
 
         self.assertEqual(deployments, expected_deployments)
 
@@ -331,7 +307,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                 "regions_and_providers": {
                     "allowed_regions": None,
                     "disallowed_regions": None,
-                    "providers": {"p1": None, "p2": None},
+                    "providers": {"p1": None},
                 },
             },
         ]
@@ -347,12 +323,6 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                 [1.0, 2.0],
                 [6.0, 5.0],
                 [1.5, 2.5],
-            ]
-
-        # # Lets simplfy this to be a factor of instance from to (row = from instance, col = to instance)
-        self.instance_factor_matrix = [ # Lets simplfy this to be a factor of instance from to (row = from, col = to)
-                [1, 1, 1],
-                [1, 1, 1],
             ]
 
         # Simplify it to 1 array as it might be easier to understand (So say cos/co2/rt have same base values)
@@ -374,22 +344,11 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
         # This is the expected deployments
         expected_deployments = [
             ({0: 0, 1: 0, 2: 0}, 10.5, 21.0, 8.0), 
-            ({0: 0, 1: 0, 2: 1}, 12.5, 25.0, 8.0), 
             ({0: 0, 1: 1, 2: 0}, 10.5, 21.0, 8.0), 
-            ({0: 0, 1: 1, 2: 1}, 12.5, 25.0, 8.0), 
             ({0: 1, 1: 0, 2: 0}, 15.5, 31.0, 11.0), 
-            ({0: 1, 1: 0, 2: 1}, 17.5, 35.0, 11.0), 
-            ({0: 1, 1: 1, 2: 0}, 15.5, 31.0, 11.0), 
-            ({0: 1, 1: 1, 2: 1}, 17.5, 35.0, 11.0)]
+            ({0: 1, 1: 1, 2: 0}, 15.5, 31.0, 11.0)]
 
         self.assertEqual(deployments, expected_deployments)
-
-        # print("\nSimple straight line DAG solver results:")
-        # deployment_length = len(deployments)
-
-        # print("Final deployment length:", deployment_length)
-
-        # print(deployments)
 
     def test_solver_simple_3_node_split(self):
         """
@@ -417,7 +376,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                 "regions_and_providers": {
                     "allowed_regions": None,
                     "disallowed_regions": None,
-                    "providers": {"p1": None, "p2": None},
+                    "providers": {"p2": None},
                 },
             },
             {
@@ -428,7 +387,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                 "regions_and_providers": {
                     "allowed_regions": None,
                     "disallowed_regions": None,
-                    "providers": {"p1": None, "p2": None},
+                    "providers": {"p1": None,},
                 },
             },
             {
@@ -458,12 +417,6 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                 [0.5, 1.5],
             ]
 
-        # # Lets simplfy this to be a factor of instance from to (row = from instance, col = to instance)
-        self.instance_factor_matrix = [ # Lets simplfy this to be a factor of instance from to (row = from, col = to)
-                [1, 1, 1, 1],
-                [1, 1, 1, 1],
-            ]
-
         # Simplify it to 1 array as it might be easier to understand (So say cos/co2/rt have same base values)
         # previous_instance_index, current_instance_index, from_region_index, to_region_index
         # Here we only consider the from to regions
@@ -482,22 +435,10 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
 
         # This is the expected deployments
         expected_deployments = [
-            ({0: 0, 1: 0, 2: 0, 3: 0}, 12.0, 24.0, 8.0), 
-            ({0: 0, 1: 0, 2: 0, 3: 1}, 14.0, 28.0, 8.0), 
-            ({0: 0, 1: 0, 2: 1, 3: 0}, 14.0, 28.0, 8.0), 
-            ({0: 0, 1: 0, 2: 1, 3: 1}, 16.0, 32.0, 8.0), 
             ({0: 0, 1: 1, 2: 0, 3: 0}, 12.0, 24.0, 8.0), 
             ({0: 0, 1: 1, 2: 0, 3: 1}, 14.0, 28.0, 8.0), 
-            ({0: 0, 1: 1, 2: 1, 3: 0}, 14.0, 28.0, 8.0), 
-            ({0: 0, 1: 1, 2: 1, 3: 1}, 16.0, 32.0, 8.0), 
-            ({0: 1, 1: 0, 2: 0, 3: 0}, 19.0, 38.0, 11.0), 
-            ({0: 1, 1: 0, 2: 0, 3: 1}, 21.0, 42.0, 11.0), 
-            ({0: 1, 1: 0, 2: 1, 3: 0}, 21.0, 42.0, 11.0), 
-            ({0: 1, 1: 0, 2: 1, 3: 1}, 23.0, 46.0, 11.0), 
             ({0: 1, 1: 1, 2: 0, 3: 0}, 19.0, 38.0, 11.0), 
-            ({0: 1, 1: 1, 2: 0, 3: 1}, 21.0, 42.0, 11.0), 
-            ({0: 1, 1: 1, 2: 1, 3: 0}, 21.0, 42.0, 11.0), 
-            ({0: 1, 1: 1, 2: 1, 3: 1}, 23.0, 46.0, 11.0)]
+            ({0: 1, 1: 1, 2: 0, 3: 1}, 21.0, 42.0, 11.0)]
 
         self.assertEqual(deployments, expected_deployments)
 
@@ -534,7 +475,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                 "regions_and_providers": {
                     "allowed_regions": None,
                     "disallowed_regions": None,
-                    "providers": {"p1": None, "p2": None},
+                    "providers": {"p1": None},
                 },
             },
             {
@@ -545,7 +486,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                 "regions_and_providers": {
                     "allowed_regions": None,
                     "disallowed_regions": None,
-                    "providers": {"p1": None, "p2": None},
+                    "providers": {"p2": None},
                 },
             },
             {
@@ -575,14 +516,6 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                 [0.5, 1.5],
             ]
 
-        # # Lets simplfy this to be a factor of instance from to (row = from instance, col = to instance)
-        self.instance_factor_matrix = [ # Lets simplfy this to be a factor of instance from to (row = from, col = to)
-                [1, 1, 1, 1],
-                [1, 1, 1, 1],
-                [1, 1, 1, 1],
-                [1, 1, 1, 1],
-            ]
-
         # Simplify it to 1 array as it might be easier to understand (So say cos/co2/rt have same base values)
         # previous_instance_index, current_instance_index, from_region_index, to_region_index
         # Here we only consider the from to regions
@@ -601,22 +534,10 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
 
         # This is the expected deployments
         expected_deployments = [
-            ({0: 0, 1: 0, 2: 0, 3: 0}, 13.0, 26.0, 9.5), 
             ({0: 0, 1: 0, 2: 1, 3: 0}, 17.0, 34.0, 9.5), 
-            ({0: 0, 1: 1, 2: 0, 3: 0}, 15.0, 30.0, 11.5), 
-            ({0: 0, 1: 1, 2: 1, 3: 0}, 19.0, 38.0, 11.5), 
-            ({0: 1, 1: 0, 2: 0, 3: 0}, 18.0, 36.0, 12.5), 
             ({0: 1, 1: 0, 2: 1, 3: 0}, 22.0, 44.0, 12.5), 
-            ({0: 1, 1: 1, 2: 0, 3: 0}, 20.0, 40.0, 14.5), 
-            ({0: 1, 1: 1, 2: 1, 3: 0}, 24.0, 48.0, 14.5), 
-            ({0: 0, 1: 0, 2: 0, 3: 1}, 16.0, 32.0, 11.5), 
             ({0: 0, 1: 0, 2: 1, 3: 1}, 20.0, 40.0, 11.5), 
-            ({0: 0, 1: 1, 2: 0, 3: 1}, 18.0, 36.0, 13.5), 
-            ({0: 0, 1: 1, 2: 1, 3: 1}, 22.0, 44.0, 13.5), 
-            ({0: 1, 1: 0, 2: 0, 3: 1}, 21.0, 42.0, 14.5), 
-            ({0: 1, 1: 0, 2: 1, 3: 1}, 25.0, 50.0, 14.5), 
-            ({0: 1, 1: 1, 2: 0, 3: 1}, 23.0, 46.0, 16.5), 
-            ({0: 1, 1: 1, 2: 1, 3: 1}, 27.0, 54.0, 16.5)]
+            ({0: 1, 1: 0, 2: 1, 3: 1}, 25.0, 50.0, 14.5)]
 
         self.assertEqual(deployments, expected_deployments)
 
@@ -704,14 +625,6 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                 [1.5, 2.5],
                 [0.5, 1.5],
                 [2.5, 3.5],
-            ]
-
-        # # Lets simplfy this to be a factor of instance from to (row = from instance, col = to instance)
-        self.instance_factor_matrix = [ # Lets simplfy this to be a factor of instance from to (row = from, col = to)
-                [1, 1, 1, 1],
-                [1, 1, 1, 1],
-                [1, 1, 1, 1],
-                [1, 1, 1, 1],
             ]
 
         # Simplify it to 1 array as it might be easier to understand (So say cos/co2/rt have same base values)
@@ -835,16 +748,6 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                 [0.5, 1.5],
                 [2.5, 3.5],
                 [0.25, 0.5],
-            ]
-
-        # # Lets simplfy this to be a factor of instance from to (row = from instance, col = to instance)
-        self.instance_factor_matrix = [ # Lets simplfy this to be a factor of instance from to (row = from, col = to)
-                [1, 1, 1, 1, 1, 1],
-                [1, 1, 1, 1, 1, 1],
-                [1, 1, 1, 1, 1, 1],
-                [1, 1, 1, 1, 1, 1],
-                [1, 1, 1, 1, 1, 1],
-                [1, 1, 1, 1, 1, 1],
             ]
 
         # Simplify it to 1 array as it might be easier to understand (So say cos/co2/rt have same base values)
