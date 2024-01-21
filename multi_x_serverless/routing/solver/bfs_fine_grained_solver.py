@@ -66,20 +66,22 @@ class BFSFineGrainedSolver(Solver):
                 for to_region_index in permitted_regions_indices:
                     # Calculate the carbon/cost/runtime for transmission and execution
                     # For worse case (Using tail latency)
-                    wc_t_cost, wc_t_carbon, wc_t_runtime = self._input_manager.get_transmission_cost_carbon_runtime(
-                        None, current_instance_index, from_region_index, to_region_index
-                    )
+                    wc_t_cost = wc_t_carbon = wc_t_runtime = 0.0
+                    # wc_t_cost, wc_t_carbon, wc_t_runtime = self._input_manager.get_transmission_cost_carbon_runtime( # Do not consider start hop for now
+                    #     None, current_instance_index, from_region_index, to_region_index
+                    # )
 
                     wc_e_cost, wc_e_carbon, wc_e_runtime = self._input_manager.get_execution_cost_carbon_runtime(
                         current_instance_index, to_region_index
                     )
 
-                    # Calculate the carbon/cost/runtime for transmission and execution
+                    # Calculate the carbon/cost/runtime for transmission and execution # Do not consider start hop for now
                     # For porbabilistic case (Using average latency and factor in invocation probability)
-                    pc_t_cost, pc_t_carbon, pc_t_runtime = self._input_manager.get_transmission_cost_carbon_runtime(
-                        None, current_instance_index, from_region_index, to_region_index, True
-                    )
-
+                    pc_t_cost = pc_t_carbon = pc_t_runtime = 0.0
+                    # pc_t_cost, pc_t_carbon, pc_t_runtime = self._input_manager.get_transmission_cost_carbon_runtime(
+                    #     None, current_instance_index, from_region_index, to_region_index, True
+                    # )
+                    
                     pc_e_cost, pc_e_carbon, pc_e_runtime = self._input_manager.get_execution_cost_carbon_runtime(
                         current_instance_index, to_region_index, True
                     )

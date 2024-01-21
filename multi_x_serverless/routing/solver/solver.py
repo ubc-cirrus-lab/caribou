@@ -15,27 +15,30 @@ from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
 
 class Solver(ABC):
-    def __init__(self, workflow_config: WorkflowConfig) -> None:
+    def __init__(self, workflow_config: WorkflowConfig, all_available_regions: list[dict] = None, instantiate_input_manager: bool = True) -> None:
         self._workflow_config = workflow_config
 
         # Declare the input manager
         self._input_manager = InputManager(workflow_config)
 
         # Get all regions allowed for the workflow
-        self.worklow_level_permitted_regions = self._filter_regions_global(self._input_manager.get_all_regions())
+        if not all_available_regions:
+            all_available_regions = self._input_manager.get_all_regions()
+
+        self.worklow_level_permitted_regions = self._filter_regions_global(all_available_regions)
 
         # Set up the instance indexer (DAG) and region indexer
         self._dag = self.get_dag_representation()
         self._region_indexer = Region(self.worklow_level_permitted_regions)
+
+        if instantiate_input_manager:
+            self._instantiate_input_manager()
 
         # Setup the ranker for final ranking of solutions
         self._ranker = Ranker(workflow_config)
 
         # Setup the formatter for formatting final output
         self._formatter = Formatter()
-
-        # Initiate input_manager
-        self._instantiate_input_manager()
 
         self._endpoints = Endpoints()
 
