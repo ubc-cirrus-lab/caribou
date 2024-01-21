@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import Mock, patch
 import numpy as np
 
-from multi_x_serverless.routing.solver.topological_solver import TopologicalSolver
+from multi_x_serverless.routing.solver.bfs_fine_grained_solver import BFSFineGrainedSolver
 from multi_x_serverless.routing.solver_inputs.input_manager import InputManager
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
 from multi_x_serverless.routing.models.region import Region
@@ -10,7 +10,7 @@ import unittest
 from unittest.mock import Mock, patch
 
 
-class TestTopologicalSolver(unittest.TestCase):
+class TestBFSFineGrainedSolver(unittest.TestCase):
     execution_matrices: dict[str, np.ndarray]
     transmission_matrices: dict[str, tuple[np.ndarray, np.ndarray]]
 
@@ -21,7 +21,7 @@ class TestTopologicalSolver(unittest.TestCase):
         # Mock input manager
         self.input_manager = Mock(spec=InputManager)
         self.input_manager.get_execution_cost_carbon_runtime.side_effect = (
-            lambda current_instance_index, to_region_index, using_probabilitic = False: (
+            lambda current_instance_index, to_region_index, using_probabilitic=False: (
                 self.execution_matrices["cost"][current_instance_index][to_region_index],
                 self.execution_matrices["carbon"][current_instance_index][to_region_index],
                 self.execution_matrices["runtime"][current_instance_index][to_region_index],
@@ -29,7 +29,7 @@ class TestTopologicalSolver(unittest.TestCase):
         )
 
         self.input_manager.get_transmission_cost_carbon_runtime.side_effect = (
-            lambda previous_instance_index, current_instance_index, from_region_index, to_region_index, using_probabilitic = False: (
+            lambda previous_instance_index, current_instance_index, from_region_index, to_region_index, using_probabilitic=False: (
                 (
                     self.transmission_matrices["cost"][0][previous_instance_index][current_instance_index]
                     * self.transmission_matrices["cost"][1][from_region_index][to_region_index]
@@ -52,8 +52,26 @@ class TestTopologicalSolver(unittest.TestCase):
         self.nothing_input_manager.get_execution_cost_carbon_runtime.return_value = (0, 0, 0)
         self.nothing_input_manager.get_transmission_cost_carbon_runtime.return_value = (0, 0, 0)
 
+    def test_solver_simple_1_node(self):
+        """
+        This is the most simple test for a single node DAG.
+        """
+        self.workflow_config.instances = [
+            {
+                "instance_name": "i1",
+                "function_name": "f1",
+                "succeeding_instances": ["i2"],
+                "preceding_instances": [],
+                "regions_and_providers": {
+                    "allowed_regions": None,
+                    "disallowed_regions": None,
+                    "providers": {"p1": None, "p2": None},
+                },
+            },
+        ]
+
     def test_solver_simple_3_node_line(self):
-        return
+        # return
         """
         This is a test for a straight line of 3 nodes. Where each node go to the next node with no split or merge nodes.
         """
@@ -81,7 +99,7 @@ class TestTopologicalSolver(unittest.TestCase):
                     "allowed_regions": None,
                     "disallowed_regions": None,
                     "providers": {"p1": None, "p2": None},
-                }
+                },
             },
             {
                 "instance_name": "i3",
@@ -96,24 +114,24 @@ class TestTopologicalSolver(unittest.TestCase):
             },
         ]
 
-        self.workflow_config.constraints = {
-            "hard_resource_constraints": {
-                "cost": {
-                    "type": "absolute",
-                    "value": 150,
-                },
-                "runtime": {
-                    "type": "absolute",
-                    "value": 300,
-                },
-                "carbon": {
-                    "type": "absolute",
-                    "value": 300,
-                },
-            }
-        }
+        # self.workflow_config.constraints = {
+        #     "hard_resource_constraints": {
+        #         "cost": {
+        #             "type": "absolute",
+        #             "value": 150,
+        #         },
+        #         "runtime": {
+        #             "type": "absolute",
+        #             "value": 300,
+        #         },
+        #         "carbon": {
+        #             "type": "absolute",
+        #             "value": 300,
+        #         },
+        #     }
+        # }
 
-        solver = TopologicalSolver(self.workflow_config)
+        solver = BFSFineGrainedSolver(self.workflow_config)
         solver._input_manager = self.input_manager
 
         # Value matricies
@@ -214,6 +232,11 @@ class TestTopologicalSolver(unittest.TestCase):
         # solver._data_sources = data_sources
         deployments = solver._solve(regions)
 
+        # deployments = solver._formatter.format(
+        #     deployments, solver._dag.indicies_to_values(), solver._region_indexer.indicies_to_values()
+        # )
+
+        print(deployments)
         print("\nSimple straight line DAG solver results:")
         deployment_length = len(deployments)
 
@@ -251,7 +274,7 @@ class TestTopologicalSolver(unittest.TestCase):
                     "allowed_regions": None,
                     "disallowed_regions": None,
                     "providers": {"p1": None, "p2": None},
-                }
+                },
             },
             {
                 "instance_name": "i3",
@@ -283,7 +306,7 @@ class TestTopologicalSolver(unittest.TestCase):
             }
         }
 
-        solver = TopologicalSolver(self.workflow_config)
+        solver = BFSFineGrainedSolver(self.workflow_config)
         solver._input_manager = self.input_manager
 
         # Value matricies
@@ -393,7 +416,7 @@ class TestTopologicalSolver(unittest.TestCase):
         print(deployments)
 
     def test_solver_simple_3_node_split(self):
-        # return 
+        return
         """
         This is a test for tree like dag with 1 parent node with 2 child leaf nodes
         """
@@ -421,7 +444,7 @@ class TestTopologicalSolver(unittest.TestCase):
                     "allowed_regions": None,
                     "disallowed_regions": None,
                     "providers": {"p1": None, "p2": None},
-                }
+                },
             },
             {
                 "instance_name": "i3",
@@ -464,7 +487,7 @@ class TestTopologicalSolver(unittest.TestCase):
         #     }
         # }
 
-        solver = TopologicalSolver(self.workflow_config)
+        solver = BFSFineGrainedSolver(self.workflow_config)
         solver._input_manager = self.input_manager
 
         # Value matricies
@@ -574,7 +597,7 @@ class TestTopologicalSolver(unittest.TestCase):
         print(deployments)
 
     def test_solve_complex(self):
-        return 
+        return
         self.workflow_config.home_regions = [{"provider": "p1", "region": "r1"}]
         self.workflow_config.functions = [{"f1": ["i1"]}, {"f2": ["i2"]}, {"f3": ["i3"]}]
         self.workflow_config.regions_and_providers = {"providers": {"p1": None, "p2": None}}
@@ -641,7 +664,7 @@ class TestTopologicalSolver(unittest.TestCase):
             },
         ]
 
-        solver = TopologicalSolver(self.workflow_config)
+        solver = BFSFineGrainedSolver(self.workflow_config)
         solver._input_manager = self.nothing_input_manager
 
         solver._region_indexer._value_indices = {("p1", "r1"): 0, ("p1", "r2"): 1, ("p2", "r3"): 2, ("p3", "r4"): 3}
@@ -658,7 +681,7 @@ class TestTopologicalSolver(unittest.TestCase):
         print("\nComplex DAG solver results:")
         deployment_length = len(deployments)
         print("Final deployment length:", deployment_length)
-        # print(deployments[0])
+        print(deployments[0])
         # self.assertEqual(deployments, expected_deployments)
 
 
