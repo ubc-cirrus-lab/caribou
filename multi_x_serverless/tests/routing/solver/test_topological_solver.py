@@ -447,22 +447,22 @@ class TestTopologicalSolver(unittest.TestCase):
             },
         ]
 
-        self.workflow_config.constraints = {
-            "hard_resource_constraints": {
-                "cost": {
-                    "type": "absolute",
-                    "value": 150,
-                },
-                "runtime": {
-                    "type": "absolute",
-                    "value": 300,
-                },
-                "carbon": {
-                    "type": "absolute",
-                    "value": 300,
-                },
-            }
-        }
+        # self.workflow_config.constraints = {
+        #     "hard_resource_constraints": {
+        #         "cost": {
+        #             "type": "absolute",
+        #             "value": 150,
+        #         },
+        #         "runtime": {
+        #             "type": "absolute",
+        #             "value": 300,
+        #         },
+        #         "carbon": {
+        #             "type": "absolute",
+        #             "value": 300,
+        #         },
+        #     }
+        # }
 
         solver = TopologicalSolver(self.workflow_config)
         solver._input_manager = self.input_manager

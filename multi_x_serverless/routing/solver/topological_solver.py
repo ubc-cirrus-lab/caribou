@@ -37,7 +37,7 @@ class TopologicalSolver(Solver):
             tuple[dict[str, (str, tuple[float, float], tuple[float, float])], 
             tuple[float, float, float], float]]] = {}
         for current_instance_index in topological_order:
-            print("Current Instance Index:", current_instance_index)
+            # print("Current Instance Index:", current_instance_index)
 
             # Instance flow related information
             prerequisites_indices: list[int] = prerequisites_dictionary[current_instance_index]
@@ -143,7 +143,7 @@ class TopologicalSolver(Solver):
             #             # print("New addition:", (wc_cost_total, wc_carbon_total, wc_runtime_total), pc_runtime_total)
             # elif (number_of_previous_instances > 1):
             else:
-                print("Multiple previous instances")
+                # print("Multiple previous instances")
                 # Here we need an special handling of the case where there are multiple previous instances
                 
                 # First we need to find the common keys between the previous instances
@@ -213,9 +213,13 @@ class TopologicalSolver(Solver):
                             ):
                                 # For now we use worse case, but when proability is implemented we will use that instead
                                 final_deployments.append((clean_combined_placments, wc_cost, wc_carbon, max_wc_runtime))
+                    # print("Final Deployments:", deployments)
+
+                    # for index, deployment in deployments.items():
+                    #     print("Deployment:", index, deployment)
 
                     del deployments # Clear all memory
-
+                    
                     return final_deployments
                 else:
                     for to_region_index in permitted_regions_indices:
@@ -241,8 +245,12 @@ class TopologicalSolver(Solver):
                                 
                                 # Transmission is is how much it cost to get from EVERY previous instance to this instance
                                 # So we need to calculate the transmission cost for each previous instance
-                                current_cumulative_wc_t_cost = current_cumulative_wc_t_carbon = current_cumulative_wc_t_runtime = 0
-                                current_cumulative_pc_t_cost = current_cumulative_pc_t_carbon = current_cumulative_pc_t_runtime = 0
+                                current_cumulative_wc_t_cost = current_cumulative_wc_t_carbon = 0
+                                current_cumulative_pc_t_cost = current_cumulative_pc_t_carbon = 0
+
+                                # This is the current max runtime from transition for all combinations of
+                                # Previous instances to current region
+                                current_max_wc_t_runtime = current_max_pc_t_runtime = 0
                                 for (original_deployment_placement, wc_ccr, previous_pc_runtime), previous_instance_index in combination:
                                     from_region_index = original_deployment_placement.get(
                                         previous_instance_index, None)[0]  # Prev should always be either in the dag or be home region
@@ -253,17 +261,23 @@ class TopologicalSolver(Solver):
                                     wc_t_cost, wc_t_carbon, wc_t_runtime = self._input_manager.get_transmission_cost_carbon_runtime(
                                         previous_instance_index, current_instance_index, from_region_index, to_region_index)
                                     
+                                    current_cumulative_wc_t_cost += wc_t_cost
+                                    current_cumulative_wc_t_carbon += wc_t_carbon
+
                                     # For porbabilistic case (Using average latency and factor in invocation probability)
                                     pc_t_cost, pc_t_carbon, pc_t_runtime = self._input_manager.get_transmission_cost_carbon_runtime(
                                         previous_instance_index, current_instance_index, from_region_index, to_region_index, True)
                                     
+                                    current_cumulative_pc_t_cost += pc_t_cost
+                                    current_cumulative_pc_t_carbon += pc_t_carbon
 
+                                    # Get current total cost, carbon and runtime
                                     wc_cost_current = wc_t_cost + wc_e_cost
                                     wc_carbon_current = wc_t_carbon + wc_e_carbon
                                     wc_runtime_current = wc_t_runtime + wc_e_runtime
 
-                                    pc_cost_current = pc_t_cost + pc_e_cost
-                                    pc_carbon_current = pc_t_carbon + pc_e_carbon
+                                    # pc_cost_current = pc_t_cost + pc_e_cost
+                                    # pc_carbon_current = pc_t_carbon + pc_e_carbon
                                     pc_runtime_current = pc_t_runtime + pc_e_runtime
 
                                     # Total Values
@@ -286,11 +300,30 @@ class TopologicalSolver(Solver):
                                         max_pc_runtime, pc_runtime_total
                                     )
 
-                                # Check number of common keys
-                                combined_placements[current_instance_index] = (to_region_index, 
-                                                                                (wc_cost_current, wc_carbon_current), 
-                                                                                (pc_cost_current, pc_carbon_current))
+                                    current_max_wc_t_runtime = max(
+                                        current_max_wc_t_runtime, wc_t_runtime
+                                    )
+
+                                    current_max_pc_t_runtime = max(
+                                        current_max_pc_t_runtime, pc_t_runtime
+                                    )
                                 
+                                # Get the current total cost and carbon for this specific transition (runtime doesnt matter for this)
+                                current_instance_wc_cost = current_cumulative_wc_t_cost + wc_e_cost
+                                current_instance_wc_carbon = current_cumulative_wc_t_carbon + wc_e_carbon
+
+                                current_instance_pc_cost = current_cumulative_pc_t_cost + pc_e_cost
+                                current_instance_pc_carbon = current_cumulative_pc_t_carbon + pc_e_carbon
+
+                                # Append current key to combined placements
+                                combined_placements[current_instance_index] = (to_region_index, 
+                                                                                (current_instance_wc_cost, current_instance_wc_carbon), 
+                                                                                (current_instance_pc_cost, current_instance_pc_carbon))
+                                
+
+                                # If this is a merge node, we need to calculate cost and carboned differently
+                                wc_cost_total, wc_carbon_total, pc_cost_total, pc_carbon_total, _ = self._calculate_wc_pc_cost_carbon_cl_placements(combined_placements)
+
                                 if not self._fail_hard_resource_constraints(
                                     self._workflow_config.constraints, wc_cost_total, wc_carbon_total, max_wc_runtime
                                 ):
@@ -412,7 +445,7 @@ class TopologicalSolver(Solver):
                     del deployments[previous_instance_index]
                 # Need to consider to clear memory if there are multiple successors as well (only if it is no longer needed)
         
-        print(deployments[-1])
+        # print(deployments[-1])
         return final_deployments
     
     def _find_common_elements(self, list_of_sets: list[set[int]]) -> list[int]:
