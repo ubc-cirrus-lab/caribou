@@ -245,6 +245,9 @@ class BFSFineGrainedSolver(Solver):
                                 final_deployments.append((clean_combined_placments, wc_cost, wc_carbon, max_wc_runtime))
                                 # print("Pass checks")
                                 # print(len(final_deployments))
+
+                            # print("Any different keys:", self._have_different_values_for_common_keys(list_of_dicts))
+                            # return []
                     # print("Final Deployments:", final_deployments)
 
                     # for index, deployment in deployments.items():
@@ -388,6 +391,8 @@ class BFSFineGrainedSolver(Solver):
                                     _,
                                 ) = self._calculate_wc_pc_cost_carbon_cl_placements(combined_placements)
 
+                                # print("Any different keys:", self._have_different_values_for_common_keys(list_of_dicts))
+
                                 if not self._fail_hard_resource_constraints(
                                     self._workflow_config.constraints, wc_cost_total, wc_carbon_total, max_wc_runtime
                                 ):
@@ -530,7 +535,7 @@ class BFSFineGrainedSolver(Solver):
 
         return list(common_elements)
 
-    def _have_different_values_for_common_keys(list_of_dicts):
+    def _have_different_values_for_common_keys(self, list_of_dicts):
         common_key_values = {}
 
         # Iterate through the dictionaries and update common_key_values
