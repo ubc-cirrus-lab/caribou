@@ -1,6 +1,6 @@
 import json
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 
@@ -15,7 +15,12 @@ from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
 
 class Solver(ABC):
-    def __init__(self, workflow_config: WorkflowConfig, all_available_regions: list[dict] = None, instantiate_input_manager: bool = True) -> None:
+    def __init__(
+        self,
+        workflow_config: WorkflowConfig,
+        all_available_regions: Union[list[dict], None] = None,
+        instantiate_input_manager: bool = True,
+    ) -> None:
         self._workflow_config = workflow_config
 
         # Declare the input manager

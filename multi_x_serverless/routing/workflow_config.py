@@ -33,6 +33,10 @@ class WorkflowConfig:
         return np.array(functions)
 
     @property
+    def home_regions(self) -> list[dict]:
+        return self._lookup("home_regions")
+
+    @property
     def regions_and_providers(self) -> dict:
         return self._lookup("regions_and_providers")
 

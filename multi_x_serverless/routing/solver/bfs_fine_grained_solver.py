@@ -35,7 +35,11 @@ class BFSFineGrainedSolver(Solver):
         # cumulative worse case cost/co2/runtime, probabilitic case runtime)]}
         deployments: dict[
             int,
-            list[tuple[dict[str, (str, tuple[float, float], tuple[float, float])], tuple[float, float, float], float]],
+            list[
+                tuple[
+                    dict[int, tuple[int, tuple[float, float], tuple[float, float]]], tuple[float, float, float], float
+                ]
+            ],
         ] = {}
         for current_instance_index in topological_order:
             # print("Current Instance Index:", current_instance_index)
@@ -56,7 +60,9 @@ class BFSFineGrainedSolver(Solver):
 
             # List of sets of previous calculated instances
             current_deployments: list[
-                tuple[dict[str, (str, tuple[float, float], tuple[float, float])], tuple[float, float, float], float]
+                tuple[
+                    dict[int, tuple[int, tuple[float, float], tuple[float, float]]], tuple[float, float, float], float
+                ]
             ] = []
             number_of_previous_instances = len(prerequisites_indices)
             if number_of_previous_instances == 0:
@@ -65,14 +71,14 @@ class BFSFineGrainedSolver(Solver):
                 for to_region_index in permitted_regions_indices:
                     # Calculate the carbon/cost/runtime for transmission and execution
                     # For worse case (Using tail latency)
-                    wc_t_cost = wc_t_carbon = wc_t_runtime = 0.0 # Do not consider start hop for now
+                    wc_t_cost = wc_t_carbon = wc_t_runtime = 0.0  # Do not consider start hop for now
                     wc_e_cost, wc_e_carbon, wc_e_runtime = self._input_manager.get_execution_cost_carbon_runtime(
                         current_instance_index, to_region_index
                     )
 
                     # Calculate the carbon/cost/runtime for transmission and execution # Do not consider start hop for now
                     # For porbabilistic case (Using average latency and factor in invocation probability)
-                    pc_t_cost = pc_t_carbon = pc_t_runtime = 0.0 # Do not consider start hop for now
+                    pc_t_cost = pc_t_carbon = pc_t_runtime = 0.0  # Do not consider start hop for now
                     pc_e_cost, pc_e_carbon, pc_e_runtime = self._input_manager.get_execution_cost_carbon_runtime(
                         current_instance_index, to_region_index, True
                     )
@@ -107,7 +113,7 @@ class BFSFineGrainedSolver(Solver):
                 common_past_instance_keys = self._find_common_elements(predecessor_previous_instances)
 
                 # Now we can group the previous deployments by the common keys
-                deployment_groups: dict[frozenset[int, int], list[list]] = {}
+                deployment_groups: dict[frozenset[tuple[int, int]], list[list]] = {}
                 pred_index_counter = 0
                 for previous_instance_index in prerequisites_indices:
                     for previous_deployment in deployments[previous_instance_index]:
@@ -138,9 +144,9 @@ class BFSFineGrainedSolver(Solver):
                             # For each combination of deployments, merge them together
                             list_of_dicts = []  # Debug code
 
-                            combined_placements = {}
-                            max_wc_runtime = 0
-                            max_pc_runtime = 0
+                            combined_placements: dict = {}
+                            max_wc_runtime = 0.0
+                            max_pc_runtime = 0.0
                             for (
                                 original_deployment_placement,
                                 wc_ccr,
@@ -178,7 +184,7 @@ class BFSFineGrainedSolver(Solver):
                                 final_deployments.append((clean_combined_placments, wc_cost, wc_carbon, max_wc_runtime))
 
                             # print("Any different keys:", self._have_different_values_for_common_keys(list_of_dicts))
-                                
+
                     del deployments  # Clear all memory
 
                     return final_deployments
@@ -191,11 +197,11 @@ class BFSFineGrainedSolver(Solver):
                                 # For each combination of deployments, merge them together
                                 list_of_dicts = []  # Debug code
                                 combined_placements = {}
-                                max_wc_runtime = 0
-                                max_pc_runtime = 0
+                                max_wc_runtime = 0.0
+                                max_pc_runtime = 0.0
 
-                                wc_cost_total = wc_carbon_total = wc_runtime_total = 0
-                                pc_runtime_total = 0
+                                wc_cost_total = wc_carbon_total = wc_runtime_total = 0.0
+                                pc_runtime_total = 0.0
 
                                 # Calcualte the cost, carbon and runtime of execuion (Just execution here as its a shared value)
                                 (
@@ -216,12 +222,12 @@ class BFSFineGrainedSolver(Solver):
 
                                 # Transmission is is how much it cost to get from EVERY previous instance to this instance
                                 # So we need to calculate the transmission cost for each previous instance
-                                current_cumulative_wc_t_cost = current_cumulative_wc_t_carbon = 0
-                                current_cumulative_pc_t_cost = current_cumulative_pc_t_carbon = 0
+                                current_cumulative_wc_t_cost = current_cumulative_wc_t_carbon = 0.0
+                                current_cumulative_pc_t_cost = current_cumulative_pc_t_carbon = 0.0
 
                                 # This is the current max runtime from transition for all combinations of
                                 # Previous instances to current region
-                                current_max_wc_t_runtime = current_max_pc_t_runtime = 0
+                                current_max_wc_t_runtime = current_max_pc_t_runtime = 0.0
                                 for (
                                     original_deployment_placement,
                                     wc_ccr,
@@ -364,8 +370,8 @@ class BFSFineGrainedSolver(Solver):
 
         return list(common_elements)
 
-    def _have_different_values_for_common_keys(self, list_of_dicts):
-        common_key_values = {}
+    def _have_different_values_for_common_keys(self, list_of_dicts: list[dict]) -> bool:
+        common_key_values: dict = {}
 
         # Iterate through the dictionaries and update common_key_values
         for current_dict in list_of_dicts:
@@ -381,8 +387,8 @@ class BFSFineGrainedSolver(Solver):
     def _calculate_wc_pc_cost_carbon_cl_placements(
         self, instance_placement_data: dict[int, tuple[int, tuple[float, float], tuple[float, float]]]
     ) -> tuple[float, float, float, float, dict[int, int]]:
-        wc_cost = wc_carbon = 0
-        pc_cost = pc_carbon = 0
+        wc_cost = wc_carbon = 0.0
+        pc_cost = pc_carbon = 0.0
         clean_placement_dict = {}
 
         for instance_index, (
