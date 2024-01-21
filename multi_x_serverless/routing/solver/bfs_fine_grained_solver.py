@@ -60,28 +60,19 @@ class BFSFineGrainedSolver(Solver):
             ] = []
             number_of_previous_instances = len(prerequisites_indices)
             if number_of_previous_instances == 0:
-                # print("No previous instances")
                 # This is the start node
                 from_region_index = home_region_index
                 for to_region_index in permitted_regions_indices:
                     # Calculate the carbon/cost/runtime for transmission and execution
                     # For worse case (Using tail latency)
-                    wc_t_cost = wc_t_carbon = wc_t_runtime = 0.0
-                    # wc_t_cost, wc_t_carbon, wc_t_runtime = self._input_manager.get_transmission_cost_carbon_runtime( # Do not consider start hop for now
-                    #     None, current_instance_index, from_region_index, to_region_index
-                    # )
-
+                    wc_t_cost = wc_t_carbon = wc_t_runtime = 0.0 # Do not consider start hop for now
                     wc_e_cost, wc_e_carbon, wc_e_runtime = self._input_manager.get_execution_cost_carbon_runtime(
                         current_instance_index, to_region_index
                     )
 
                     # Calculate the carbon/cost/runtime for transmission and execution # Do not consider start hop for now
                     # For porbabilistic case (Using average latency and factor in invocation probability)
-                    pc_t_cost = pc_t_carbon = pc_t_runtime = 0.0
-                    # pc_t_cost, pc_t_carbon, pc_t_runtime = self._input_manager.get_transmission_cost_carbon_runtime(
-                    #     None, current_instance_index, from_region_index, to_region_index, True
-                    # )
-                    
+                    pc_t_cost = pc_t_carbon = pc_t_runtime = 0.0 # Do not consider start hop for now
                     pc_e_cost, pc_e_carbon, pc_e_runtime = self._input_manager.get_execution_cost_carbon_runtime(
                         current_instance_index, to_region_index, True
                     )
@@ -103,59 +94,7 @@ class BFSFineGrainedSolver(Solver):
                             pc_runtime,
                         )
                     )
-            # elif (number_of_previous_instances == 1):
-            #     print("One previous instance")
-            #     # In this case there is only one previous instance
-            #     # So we can just copy the previous deployment
-            #     previous_instance_index = prerequisites_indices[0]
-            #     previous_deployments = deployments[previous_instance_index]
-            #     for previous_deployment in previous_deployments:
-            #         previous_instance_placements, previous_wc_ccr, previous_pc_runtime = previous_deployment
-
-            #         from_region_index = previous_instance_placements[previous_instance_index][0]
-            #         for to_region_index in permitted_regions_indices:
-            #             # Calculate the carbon/cost/runtime for transmission and execution
-            #             # For worse case (Using tail latency)
-            #             wc_t_cost, wc_t_carbon, wc_t_runtime = self._input_manager.get_transmission_cost_carbon_runtime(
-            #                 previous_instance_index, current_instance_index, from_region_index, to_region_index)
-
-            #             wc_e_cost, wc_e_carbon, wc_e_runtime = self._input_manager.get_execution_cost_carbon_runtime(
-            #                 current_instance_index, to_region_index)
-
-            #             # Calculate the carbon/cost/runtime for transmission and execution
-            #             # For porbabilistic case (Using average latency and factor in invocation probability)
-            #             pc_t_cost, pc_t_carbon, pc_t_runtime = self._input_manager.get_transmission_cost_carbon_runtime(
-            #                 previous_instance_index, current_instance_index, from_region_index, to_region_index, True)
-
-            #             pc_e_cost, pc_e_carbon, pc_e_runtime = self._input_manager.get_execution_cost_carbon_runtime(
-            #                 current_instance_index, to_region_index, True)
-
-            #             wc_cost_current = wc_t_cost + wc_e_cost
-            #             wc_carbon_current = wc_t_carbon + wc_e_carbon
-            #             wc_runtime_current = wc_t_runtime + wc_e_runtime
-
-            #             pc_cost_current = pc_t_cost + pc_e_cost
-            #             pc_carbon_current = pc_t_carbon + pc_e_carbon
-            #             pc_runtime_current = pc_t_runtime + pc_e_runtime
-
-            #             # Total Values
-            #             wc_cost_total = previous_wc_ccr[0] + wc_cost_current
-            #             wc_carbon_total = previous_wc_ccr[1] + wc_carbon_current
-            #             wc_runtime_total = previous_wc_ccr[2] + wc_runtime_current
-
-            #             pc_runtime_total = previous_pc_runtime + pc_runtime_current
-
-            #             # Using copy method
-            #             new_instance_placements = previous_instance_placements.copy()
-            #             new_instance_placements[current_instance_index] = (to_region_index, (wc_cost_current, wc_carbon_current), (pc_cost_current, pc_carbon_current))
-
-            #             current_deployments.append((new_instance_placements,
-            #                 (wc_cost_total, wc_carbon_total, wc_runtime_total), pc_runtime_total))
-
-            #             # print("New addition:", (wc_cost_total, wc_carbon_total, wc_runtime_total), pc_runtime_total)
-            # elif (number_of_previous_instances > 1):
             else:
-                # print("Multiple previous instances")
                 # Here we need an special handling of the case where there are multiple previous instances
 
                 # First we need to find the common keys between the previous instances
@@ -190,16 +129,12 @@ class BFSFineGrainedSolver(Solver):
 
                     pred_index_counter += 1
                 if current_instance_index == -1:  # If this is the virtual end node
-                    # print(deployment_groups.items())
-                    # return []
                     final_deployments: list[tuple[dict, float, float, float]] = []
                     for common_keys, deployment_group in deployment_groups.items():
-                        # print("deployment_group:", deployment_group)
                         # Here is the format of the final deployment options
                         # In the future this will be using the average conditional dag results
                         # For now we just use the worse case (Until we implement conditional dag support)
                         for combination in itertools.product(*deployment_group):
-                            # print("combination:", combination)
                             # For each combination of deployments, merge them together
                             list_of_dicts = []  # Debug code
 
@@ -236,23 +171,14 @@ class BFSFineGrainedSolver(Solver):
                                 clean_combined_placments,
                             ) = self._calculate_wc_pc_cost_carbon_cl_placements(combined_placements)
 
-                            # print("Reach checks")
                             if not self._fail_hard_resource_constraints(
                                 self._workflow_config.constraints, wc_cost, wc_carbon, max_wc_runtime
                             ):
                                 # For now we use worse case, but when proability is implemented we will use that instead
-                                # print("Before length:", len(final_deployments))
                                 final_deployments.append((clean_combined_placments, wc_cost, wc_carbon, max_wc_runtime))
-                                # print("Pass checks")
-                                # print(len(final_deployments))
 
                             # print("Any different keys:", self._have_different_values_for_common_keys(list_of_dicts))
-                            # return []
-                    # print("Final Deployments:", final_deployments)
-
-                    # for index, deployment in deployments.items():
-                    #     print("Deployment:", index, deployment)
-
+                                
                     del deployments  # Clear all memory
 
                     return final_deployments
@@ -403,103 +329,6 @@ class BFSFineGrainedSolver(Solver):
                                             max_pc_runtime,
                                         )
                                     )
-
-                # return []
-                # have_different_values_for_common_keys(list_of_dicts)
-                # print("deployment_group:", deployment_group)
-                # prin
-                # return []
-
-            #     previous_deployments: list[
-            #         list[tuple[dict[int, list[
-            #         tuple[dict[str, (str, tuple[float, float], tuple[float, float])],
-            #         tuple[float, float, float], tuple[float, float, float]]]],
-            #         int, set[int]]]
-            #         ] = []
-
-            # for previous_instance_index in prerequisites_indices:
-            #     previous_deployment = []
-            #     for deployment in deployments[previous_instance_index]:
-            #         previous_deployment.append((deployment, previous_instance_index))
-            #         prev_options_length += 1
-
-            #     previous_deployments.append(previous_deployment)
-
-            # if (
-            #     len(previous_deployments) == 0
-            # ):  # If there is no previous deployment, this is the start node and thus we initialise the first tuple.
-            #     previous_deployments.append([(({}, (0, 0, 0), (0, 0, 0)), -1, set())])
-
-            # combined_deployments: list[tuple[dict[str, str], tuple[float, float, float], tuple[float, float, float]]] = []
-            # if current_instance_index == -1:  # If this is the virtual end node
-            #     for combination in itertools.product(*previous_deployments):
-            #         # For each combination of deployments, merge them together
-            #         combined_placements: dict = {}
-            #         sum_cost = sum_carbon = max_latency = 0
-            #         for (
-            #             original_deployment_placement,
-            #             original_cost,
-            #             original_carbon,
-            #             original_runtime,
-            #         ), previous_instance_index in combination:
-            #             # Merge the deployments information together
-            #             combined_placements = combined_placements | original_deployment_placement
-            #             sum_cost += original_cost
-            #             sum_carbon += original_carbon
-            #             max_latency = max(max_latency, original_runtime)
-            #         if not self._fail_hard_resource_constraints(
-            #             self._workflow_config.constraints, sum_cost, max_latency, sum_carbon
-            #         ):
-            #             combined_deployments.append((combined_placements, sum_cost, sum_carbon, max_latency))
-            # else:
-            # for to_region_index in permitted_regions_indices:
-            #     for combination in itertools.product(*previous_deployments):
-            #         # For each combination of deployments, merge them together
-            #         combined_placements = {}
-            #         sum_cost = sum_carbon = max_latency = 0
-            #         for (
-            #             original_deployment_placement,
-            #             original_cost,
-            #             original_carbon,
-            #             original_runtime,
-            #         ), previous_instance_index in combination:
-            #             from_region_index = original_deployment_placement.get(
-            #                 previous_instance_index, None
-            #             )  # Prev should always be either in the dag or be home region
-
-            #             # Calculate transmission and execution cost/carbon/runtime from previous deployment region to this deployment region
-            #             # First calculate transmission cost/carbon/runtime from previous deployment region to this deployment region
-            #             (
-            #                 transmission_cost,
-            #                 transmission_carbon,
-            #                 transmission_runtime,
-            #             ) = self._input_manager.get_transmission_cost_carbon_runtime(
-            #                 previous_instance_index, current_instance_index, from_region_index, to_region_index
-            #             )
-
-            #             # Then calculate execution cost/carbon/runtime for this deployment region
-            #             (
-            #                 execution_cost,
-            #                 execution_carbon,
-            #                 execution_runtime,
-            #             ) = self._input_manager.get_execution_cost_carbon_runtime(
-            #                 current_instance_index, to_region_index
-            #             )
-
-            #             # Merge the deployments information together
-            #             combined_placements = combined_placements | original_deployment_placement
-            #             sum_cost += original_cost + transmission_cost + execution_cost
-            #             sum_carbon += original_cost + transmission_carbon + execution_carbon
-            #             max_latency = max(
-            #                 max_latency, (original_runtime + transmission_runtime + execution_runtime)
-            #             )
-
-            #             combined_placements[current_instance_index] = to_region_index
-
-            #         if not self._fail_hard_resource_constraints(
-            #             self._workflow_config.constraints, sum_cost, max_latency, sum_carbon
-            #         ):
-            #             combined_deployments.append((combined_placements, sum_cost, sum_carbon, max_latency))
 
             deployments[current_instance_index] = current_deployments
             processed_node_indicies.add(current_instance_index)
