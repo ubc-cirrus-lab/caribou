@@ -49,7 +49,7 @@ class RemoteClient(ABC):
 
             # Unpack message as we should only store the client data and not our added metadata, the added metadata is
             # still sent to the function using the messaging service upon calling
-            # (so the routing information is still forwarded)
+            # (so the workflow placement information is still forwarded)
             message_dictionary = json.loads(message)
             if "payload" not in message_dictionary:
                 raise RuntimeError("Payload must be specified for merge")

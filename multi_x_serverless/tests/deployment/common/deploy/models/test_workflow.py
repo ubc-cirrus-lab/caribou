@@ -120,10 +120,12 @@ class TestWorkflow(unittest.TestCase):
                 {"name": "function_instance_2", "function_identifier": "identifier_2"},
             ]
         }
-        staging_area_placement = {"function_instance_1": {}, "function_instance_2": {}}
+        staging_area_placement = {"workflow_placement": {"function_instance_1": {}, "function_instance_2": {}}}
         expected_output = {
-            "function_instance_1": {"identifier": "identifier_1"},
-            "function_instance_2": {"identifier": "identifier_2"},
+            "workflow_placement": {
+                "function_instance_1": {"identifier": "identifier_1"},
+                "function_instance_2": {"identifier": "identifier_2"},
+            }
         }
         self.assertEqual(
             self.workflow._extend_stage_area_placement(resource_values, staging_area_placement),
@@ -166,7 +168,7 @@ class TestWorkflow(unittest.TestCase):
                 {"name": "function_instance_2", "function_identifier": "identifier_2"},
             ]
         }
-        staging_area_placement = {"function_instance_1": {}, "function_instance_2": {}}
+        staging_area_placement = {"workflow_placement": {"function_instance_1": {}, "function_instance_2": {}}}
         self.workflow.get_instance_description = Mock(return_value=Mock(instances=["instance_1", "instance_2"]))
         self.workflow._Workflow__get_entry_point_instance_name = Mock(return_value="entry_point_instance")
         expected_output = {
