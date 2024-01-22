@@ -332,18 +332,42 @@ class TestStochasticHeuristicDescentSolver(unittest.TestCase):
         solver._max_iterations = 5
         solver._learning_rate = 0.01
         solver._workflow_config = Mock()
-        solver._workflow_config.constraints = {'constraint1': 'value1'}
-        solver._topological_order = ['instance1', 'instance2']
+        solver._workflow_config.constraints = {"constraint1": "value1"}
+        solver._topological_order = ["instance1", "instance2"]
         solver._adjacency_indexes = ([0, 1], [1, 0])
         solver._permitted_region_indices_cache = {0: [0, 1], 1: [0, 1]}
         solver._positive_regions = set()
         solver._bias_probability = 0.5
-        with patch.object(solver, '_init_deployment', return_value=({0: 0, 1: 0}, (1.0, 2.0), (3.0, 4.0), (5.0, 6.0), (np.zeros((3, 2)), np.zeros((3, 2))), (np.zeros((3, 2, 2)), np.zeros((3, 2, 2))))):
-            with patch.object(solver, '_fail_hard_resource_constraints', return_value=False):
-                with patch.object(solver, 'select_random_instance_and_region', side_effect=[(0, 1), (1, 0), (0, 1), (1, 0), (0, 1)]):
-                    with patch.object(solver, '_is_improvement', return_value=(True, (7.0, 8.0), (9.0, 10.0), (11.0, 12.0), (np.ones((3, 2)), np.ones((3, 2))), (np.ones((3, 2, 2)), np.ones((3, 2, 2))))):
-                        with patch.object(solver, '_record_successful_change'):
-                            result = solver._solve([{'region1': 'value1'}, {'region2': 'value2'}])
+        with patch.object(
+            solver,
+            "_init_deployment",
+            return_value=(
+                {0: 0, 1: 0},
+                (1.0, 2.0),
+                (3.0, 4.0),
+                (5.0, 6.0),
+                (np.zeros((3, 2)), np.zeros((3, 2))),
+                (np.zeros((3, 2, 2)), np.zeros((3, 2, 2))),
+            ),
+        ):
+            with patch.object(solver, "_fail_hard_resource_constraints", return_value=False):
+                with patch.object(
+                    solver, "select_random_instance_and_region", side_effect=[(0, 1), (1, 0), (0, 1), (1, 0), (0, 1)]
+                ):
+                    with patch.object(
+                        solver,
+                        "_is_improvement",
+                        return_value=(
+                            True,
+                            (7.0, 8.0),
+                            (9.0, 10.0),
+                            (11.0, 12.0),
+                            (np.ones((3, 2)), np.ones((3, 2))),
+                            (np.ones((3, 2, 2)), np.ones((3, 2, 2))),
+                        ),
+                    ):
+                        with patch.object(solver, "_record_successful_change"):
+                            result = solver._solve([{"region1": "value1"}, {"region2": "value2"}])
 
         print(result)
         assert result == [({0: 0, 1: 0}, 1.0, 3.0, 5.0), ({0: 1, 1: 0}, 7.0, 9.0, 11.0)]

@@ -57,7 +57,7 @@ class StochasticHeuristicDescentSolver(Solver):
             for _ in range(num_instances_to_update):
                 selected_instance, new_region = self.select_random_instance_and_region(current_deployment[0], regions)
 
-                if selected_instance is None or new_region is None:
+                if selected_instance == -1 or new_region == -1:
                     continue
 
                 (
@@ -217,9 +217,9 @@ class StochasticHeuristicDescentSolver(Solver):
         if new_region != previous_deployment[instance]:
             return instance, new_region
 
-        return None, None
+        return -1, -1
 
-    def _get_permitted_region_indices(self, regions: list[dict], instance) -> list[int]:
+    def _get_permitted_region_indices(self, regions: list[dict], instance: int) -> list[int]:
         if instance in self._permitted_region_indices_cache:
             return self._permitted_region_indices_cache[instance]
 
