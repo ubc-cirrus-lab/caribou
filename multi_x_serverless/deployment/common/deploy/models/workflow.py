@@ -1,4 +1,4 @@
-from typing import Any, Sequence
+from typing import Any, Sequence, Optional
 
 from multi_x_serverless.deployment.common.config.config import Config
 from multi_x_serverless.deployment.common.deploy.models.deployment_package import DeploymentPackage
@@ -73,23 +73,27 @@ class Workflow(Resource):
         if self._config is None:
             raise RuntimeError("Error in workflow config creation, given config is None, this should not happen")
         workflow_description = {
-            "instances": [function_instance.to_json() for function_instance in self._functions],
+            "instances": self._get_instances(),
             "start_hops": self._config.home_regions,
             # TODO (#27): Implement and incorporate Free Tier considerations into data_sources
             "estimated_invocations_per_month": self._config.estimated_invocations_per_month,
             "constraints": self._config.constraints,
             "regions_and_providers": self._config.regions_and_providers,
         }
+
+        workflow_config = WorkflowConfig(workflow_description)
+        return workflow_config
+
+    def _get_instances(self) -> list[dict]:
+        instances = [function_instance.to_json() for function_instance in self._functions]
+
         finished_instances = []
-        if not isinstance(workflow_description["instances"], list):
-            raise RuntimeError("Error in workflow config creation, this should not happen")
-        for instance in workflow_description["instances"]:
+        for instance in instances:
             if not isinstance(instance, dict):
                 raise RuntimeError("Error in workflow config creation, this should not happen")
             instance["succeeding_instances"] = []
             if "regions_and_providers" not in instance:
                 instance["regions_and_providers"] = self._config.regions_and_providers
-            # TODO (#22): Add function specific environment variables, similar to providers
             for edge in self._edges:
                 if edge[0] == instance["instance_name"]:
                     instance["succeeding_instances"].append(edge[1])
@@ -97,11 +101,31 @@ class Workflow(Resource):
             for edge in self._edges:
                 if edge[1] == instance["instance_name"]:
                     instance["preceding_instances"].append(edge[0])
+            paths_to_merge = self._find_all_paths_to_merge(instance["instance_name"])
+            if paths_to_merge:
+                instance["dependent_merge_predecessors"] = [path[:-1] for path in paths_to_merge]
             finished_instances.append(instance)
-        workflow_description["instances"] = finished_instances
 
-        workflow_config = WorkflowConfig(workflow_description)
-        return workflow_config
+        return finished_instances
+
+    def _find_all_paths_to_merge(self, start_instance: str, visited=None, path=None) -> list[list[str]]:
+        if visited is None:
+            visited = set()
+        if path is None:
+            path = []
+        visited.add(start_instance)
+        path.append(start_instance)
+        paths = []
+        for edge in self._edges:
+            if edge[0] == start_instance:
+                next_instance = edge[1]
+                if next_instance.split(":")[1] == "merge":
+                    paths.append(list(path))
+                elif next_instance not in visited:
+                    paths.extend(self._find_all_paths_to_merge(next_instance, visited, path))
+        path.pop()
+        visited.remove(start_instance)
+        return paths
 
     def _get_entry_point_instance_name(self) -> str:
         """
@@ -155,7 +179,7 @@ class Workflow(Resource):
         """
         result: dict[str, Any] = {}
 
-        result["instances"] = self.get_instance_description().instances
+        result["instances"] = self._get_instances()
         result["current_instance_name"] = self._get_entry_point_instance_name()
         result["workflow_placement"] = self._get_workflow_placement(resource_values)
         return result
@@ -166,7 +190,7 @@ class Workflow(Resource):
         """
         The desired output format is explained in the `docs/design.md` file under `Workflow Placement Decision`.
         """
-        staging_area_placement["instances"] = self.get_instance_description().instances
+        staging_area_placement["instances"] = self._get_instances()
         staging_area_placement["current_instance_name"] = self._get_entry_point_instance_name()
         self._extend_stage_area_placement(resource_values, staging_area_placement)
         return staging_area_placement
