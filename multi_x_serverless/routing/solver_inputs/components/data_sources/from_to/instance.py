@@ -25,6 +25,7 @@ class InstanceToInstanceSource(Source):
 
                 self._data[from_instance_index][to_instance_index] = {
                     # Data Collector information
+                    "probability": loaded_data.get("probability", {}).get((from_instance, to_instance), -1),
                     "data_transfer_size": loaded_data.get("data_transfer_size", {}).get(
                         (from_instance, to_instance), -1
                     ),

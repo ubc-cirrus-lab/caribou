@@ -16,11 +16,18 @@ class Input(ABC):
 
     @abstractmethod
     def get_transmission_value(
-        self, from_instance_index: int, to_instance_index: int, from_region_index: int, to_region_index: int
+        self,
+        from_instance_index: int,
+        to_instance_index: int,
+        from_region_index: int,
+        to_region_index: int,
+        consider_probabilistic_invocations: bool,
     ) -> float:
         raise NotImplementedError
 
-    def get_execution_value(self, instance_index: int, region_index: int) -> float:
+    def get_execution_value(
+        self, instance_index: int, region_index: int, consider_probabilistic_invocations: bool
+    ) -> float:
         if self._execution_matrix is not None:
             return float(self._execution_matrix[region_index][instance_index])
         else:
