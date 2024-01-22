@@ -36,6 +36,38 @@ class RegionAndProviders(BaseModel):
         return values
 
 
+class Constraint(BaseModel):
+    value: float = Field(..., title="The value of the constraint")
+    type: str = Field(..., title="The type of the constraint")
+
+    @model_validator(mode="after")
+    def validate_config(cls: Any, values: Any) -> Any:  # pylint: disable=no-self-argument, unused-argument
+        if values.type not in ["absolute", "relative"]:
+            raise ValueError(f"Constraint type {values.type} is not supported")
+
+
+class Constraints(BaseModel):
+    hard_resource_constraints: Dict[str, Optional[Constraint]] = Field(..., title="Hard resource constraints")
+    soft_resource_constraints: Dict[str, Optional[Constraint]] = Field(..., title="Soft resource constraints")
+    priority_order: List[str] = Field(..., title="Order of priorities for the constraints")
+
+    @model_validator(mode="after")
+    def validate_config(cls: Any, values: Any) -> Any:  # pylint: disable=no-self-argument, unused-argument
+        possible_constraints = ["cost", "runtime", "carbon"]
+        for value in values.priority_order:
+            if value not in possible_constraints:
+                raise ValueError(f"Priority order value {value} is not supported")
+
+        for constraint in values.hard_resource_constraints.keys():
+            if constraint not in possible_constraints:
+                raise ValueError(f"Hard resource constraint {constraint} is not supported")
+
+        for constraint in values.soft_resource_constraints.keys():
+            if constraint not in possible_constraints:
+                raise ValueError(f"Soft resource constraint {constraint} is not supported")
+        return values
+
+
 class ConfigSchema(BaseModel):
     workflow_name: str = Field(..., title="The name of the workflow")
     workflow_version: str = Field(..., title="The version of the workflow")
@@ -43,3 +75,4 @@ class ConfigSchema(BaseModel):
     iam_policy_file: str = Field(..., title="The IAM policy file")
     home_regions: List[ProviderRegion] = Field(..., title="List of home regions")
     regions_and_providers: RegionAndProviders = Field(..., title="List of regions and providers")
+    constraints: Constraints = Field(..., title="Constraints")

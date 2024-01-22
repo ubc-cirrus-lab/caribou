@@ -158,9 +158,9 @@ class TestDeployer(unittest.TestCase):
         deployer = Deployer(config, workflow_builder, deployment_packager, executor)
 
         workflow = Mock(spec=Workflow)
-        workflow_description = Mock()
-        workflow_description.to_json = Mock(return_value="test_workflow_description")
-        workflow.get_instance_description = Mock(return_value=workflow_description)
+        workflow_config = Mock()
+        workflow_config.to_json = Mock(return_value="test_workflow_description")
+        workflow.get_workflow_config = Mock(return_value=workflow_config)
 
         with patch.object(AWSRemoteClient, "set_value_in_table") as set_value_in_table:
             deployer._upload_workflow_to_solver_update_checker(workflow, "test_workflow_id")

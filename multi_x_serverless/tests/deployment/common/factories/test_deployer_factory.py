@@ -36,6 +36,11 @@ class TestDeployerFactory(unittest.TestCase):
                     }
                 }
             },
+            "constraints": {
+                "hard_resource_constraints": {"cost": {"value": 100, "type": "absolute"}},
+                "soft_resource_constraints": {"carbon": {"value": 0.1, "type": "relative"}},
+                "priority_order": ["cost", "runtime", "carbon"],
+            },
         }
         mock_load_workflow_app.return_value = "test"
         factory = DeployerFactory("project_dir")
@@ -57,6 +62,11 @@ class TestDeployerFactory(unittest.TestCase):
                             "config": {"memory": 128, "timeout": 10},
                         }
                     }
+                },
+                "constraints": {
+                    "hard_resource_constraints": {"cost": {"value": 100, "type": "absolute"}},
+                    "soft_resource_constraints": {"carbon": {"value": 0.1, "type": "relative"}},
+                    "priority_order": ["cost", "runtime", "carbon"],
                 },
             }
         )
