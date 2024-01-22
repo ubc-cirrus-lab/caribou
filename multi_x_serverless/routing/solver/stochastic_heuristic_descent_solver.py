@@ -16,6 +16,7 @@ class StochasticHeuristicDescentSolver(Solver):
         self._topological_order = self._dag.topological_sort()
         adjacency_matrix = self._dag.get_adj_matrix()
         self._adjacency_indexes = np.where(adjacency_matrix == 1)
+        self._permitted_region_indices_cache: dict[int, list[int]] = {}
 
         if len(self._topological_order) == 0:
             raise Exception("The DAG has no nodes")
@@ -25,14 +26,23 @@ class StochasticHeuristicDescentSolver(Solver):
         current_deployment = self._init_deployment()
 
         for _ in range(self._max_iterations):
-            num_instances_to_update = int(len(current_deployment[0]) * self._learning_rate)
+            num_instances_to_update = int(len(current_deployment[0]) * self._learning_rate) + 1
 
             # Check if the current deployment is valid
-            if not self._fail_hard_resource_constraints(
-                self._workflow_config.constraints,
-                current_deployment[1][1],
-                current_deployment[2][1],
-                current_deployment[3][1],
+            if (
+                not self._fail_hard_resource_constraints(
+                    self._workflow_config.constraints,
+                    current_deployment[1][1],
+                    current_deployment[2][1],
+                    current_deployment[3][1],
+                )
+                and (
+                    current_deployment[0].copy(),
+                    current_deployment[1][0],
+                    current_deployment[2][0],
+                    current_deployment[3][0],
+                )
+                not in average_case_deployments
             ):
                 average_case_deployments.append(
                     (
@@ -47,6 +57,9 @@ class StochasticHeuristicDescentSolver(Solver):
             for _ in range(num_instances_to_update):
                 selected_instance, new_region = self.select_random_instance_and_region(current_deployment[0], regions)
 
+                if selected_instance is None or new_region is None:
+                    continue
+
                 (
                     is_improvement,
                     cost_tuple,
@@ -57,7 +70,7 @@ class StochasticHeuristicDescentSolver(Solver):
                 ) = self._is_improvement(current_deployment, selected_instance, new_region)
                 if is_improvement:
                     current_deployment[0][selected_instance] = new_region
-                    self._record_successful_change(selected_instance, new_region)
+                    self._record_successful_change(new_region)
                     current_deployment = (
                         current_deployment[0],
                         cost_tuple,
@@ -116,8 +129,8 @@ class StochasticHeuristicDescentSolver(Solver):
         for i, j in zip(self._adjacency_indexes[0], self._adjacency_indexes[1]):
             (
                 tail_transmission_cost,
-                tail_transmission_runtime,
                 tail_transmission_carbon,
+                tail_transmission_runtime,
             ) = self._input_manager.get_transmission_cost_carbon_runtime(i, j, home_region_index, home_region_index)
 
             tail_edge_weights[0, i, j] = tail_transmission_cost
@@ -126,8 +139,8 @@ class StochasticHeuristicDescentSolver(Solver):
 
             (
                 average_transmission_cost,
-                average_transmission_runtime,
                 average_transmission_carbon,
+                average_transmission_runtime,
             ) = self._input_manager.get_transmission_cost_carbon_runtime(
                 i, j, home_region_index, home_region_index, consider_probabilistic_invocations=True
             )
@@ -191,10 +204,24 @@ class StochasticHeuristicDescentSolver(Solver):
         self, previous_deployment: dict[int, int], regions: list[dict]
     ) -> tuple[int, int]:
         instance = random.choice(list(previous_deployment.keys()))
+
+        permitted_regions_indices = self._get_permitted_region_indices(regions, instance)
+
         if random.random() < self._bias_probability:
             new_region = random.choice(list(self._positive_regions))
-            if new_region != previous_deployment[instance]:
+            if new_region != previous_deployment[instance] and new_region in permitted_regions_indices:
                 return instance, new_region
+
+        new_region = random.choice(permitted_regions_indices)
+
+        if new_region != previous_deployment[instance]:
+            return instance, new_region
+
+        return None, None
+
+    def _get_permitted_region_indices(self, regions: list[dict], instance) -> list[int]:
+        if instance in self._permitted_region_indices_cache:
+            return self._permitted_region_indices_cache[instance]
 
         permitted_regions: list[dict[(str, str)]] = self._filter_regions_instance(regions, instance)
         if len(permitted_regions) == 0:  # Should never happen in a valid DAG
@@ -204,9 +231,8 @@ class StochasticHeuristicDescentSolver(Solver):
         permitted_regions_indices = [
             all_regions_indices[(region["provider"], region["region"])] for region in permitted_regions
         ]
-
-        new_region = random.choice(permitted_regions_indices)
-        return instance, new_region
+        self._permitted_region_indices_cache[instance] = permitted_regions_indices
+        return permitted_regions_indices
 
     def _calculate_updated_costs_of_deployment(
         self,
@@ -262,8 +288,8 @@ class StochasticHeuristicDescentSolver(Solver):
 
             (
                 average_transmission_cost,
-                average_transmission_runtime,
                 average_transmission_carbon,
+                average_transmission_runtime,
             ) = self._input_manager.get_transmission_cost_carbon_runtime(
                 i, j, from_region, to_region, consider_probabilistic_invocations=True
             )
@@ -274,8 +300,8 @@ class StochasticHeuristicDescentSolver(Solver):
 
             (
                 tail_transmission_cost,
-                tail_transmission_runtime,
                 tail_transmission_carbon,
+                tail_transmission_runtime,
             ) = self._input_manager.get_transmission_cost_carbon_runtime(i, j, from_region, to_region)
 
             new_tail_edge_weights[0, i, j] = tail_transmission_cost
@@ -358,7 +384,7 @@ class StochasticHeuristicDescentSolver(Solver):
             (new_average_edge_weights, new_tail_edge_weights),
         )
 
-    def _record_successful_change(self, instance: int, new_region: int) -> None:
+    def _record_successful_change(self, new_region: int) -> None:
         if new_region not in self._positive_regions:
             self._positive_regions.add(new_region)
 
