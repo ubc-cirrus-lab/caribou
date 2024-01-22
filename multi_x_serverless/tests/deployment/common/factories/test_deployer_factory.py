@@ -114,7 +114,8 @@ class TestDeployerFactory(unittest.TestCase):
                 },
                 "allowed_regions": [{"provider": "aws", "region": "eu-central-1"}],
                 "disallowed_regions": [{"provider": "aws", "region": "eu-central-2"}],
-            }
+            },
+            "home_regions": [{"provider": "aws", "region": "eu-central-1"}],
         }
         # This should not raise any exceptions
         factory._DeployerFactory__validate_allowed_and_disallowed_regions_and_providers(project_config)
@@ -316,6 +317,22 @@ class TestDeployerFactory(unittest.TestCase):
         with self.assertRaises(RuntimeError, msg="Region eu-central-1 cannot be both allowed and disallowed"):
             factory._DeployerFactory__validate_allowed_and_disallowed_regions_and_providers(project_config)
 
+        # Test with home region in disallowed regions
+        project_config = {
+            "regions_and_providers": {
+                "providers": {
+                    "aws": {
+                        "config": {"memory": 128, "timeout": 10},
+                    }
+                },
+                "disallowed_regions": [{"provider": "aws", "region": "eu-central-1"}],
+                "allowed_regions": [{"provider": "aws", "region": "eu-central-2"}],
+            },
+            "home_regions": [{"provider": "aws", "region": "eu-central-1"}],
+        }
+        with self.assertRaises(RuntimeError, msg="Region eu-central-1 cannot be both home and disallowed"):
+            factory._DeployerFactory__validate_allowed_and_disallowed_regions_and_providers(project_config)
+
         # Test with a valid project_config
         project_config = {
             "regions_and_providers": {
@@ -328,7 +345,8 @@ class TestDeployerFactory(unittest.TestCase):
                     }
                 },
                 "disallowed_regions": [{"provider": "aws", "region": "eu-central-1"}],
-            }
+            },
+            "home_regions": [{"provider": "aws", "region": "eu-central-2"}],
         }
 
         # This should not raise any exceptions
