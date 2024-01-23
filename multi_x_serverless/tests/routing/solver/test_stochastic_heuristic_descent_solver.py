@@ -281,9 +281,10 @@ class TestStochasticHeuristicDescentSolver(unittest.TestCase):
         assert tail_carbon == 3660.0
 
     def test_init_deployment(self):
-        solver = StochasticHeuristicDescentSolver(self.workflow_config)
+        solver = StochasticHeuristicDescentSolver(self.workflow_config, [{"provider": "p1", "region": "r1"}])
+
         solver._workflow_config = Mock()
-        solver._workflow_config.start_hops = "start_hops"
+        solver._workflow_config.start_hops = {"provider": "p1", "region": "r1"}
         solver._workflow_config.instances = [{"instance_name": "instance1"}, {"instance_name": "instance2"}]
         solver._region_indexer = Mock()
         solver._region_indexer.value_to_index.side_effect = [0, 1]

@@ -623,7 +623,6 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
             {"provider": "p1", "region": "r1"},
             {"provider": "p2", "region": "r2"},
         ]
-
         solver = BFSFineGrainedSolver(self.workflow_config, regions, False)
         solver._input_manager = self.input_manager
 
