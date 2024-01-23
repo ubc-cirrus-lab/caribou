@@ -107,8 +107,6 @@ class Workflow(Resource):
             finished_instances.append(new_instance)
         workflow_description["instances"] = finished_instances
 
-        print(self._config.constraints)
-        print(workflow_description)
 
         workflow_config = WorkflowConfig(workflow_description)
         return workflow_config

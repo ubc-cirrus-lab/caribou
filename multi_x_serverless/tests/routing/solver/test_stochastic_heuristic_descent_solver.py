@@ -369,5 +369,4 @@ class TestStochasticHeuristicDescentSolver(unittest.TestCase):
                         with patch.object(solver, "_record_successful_change"):
                             result = solver._solve([{"region1": "value1"}, {"region2": "value2"}])
 
-        print(result)
         assert result == [({0: 0, 1: 0}, 1.0, 3.0, 5.0), ({0: 1, 1: 0}, 7.0, 9.0, 11.0)]
