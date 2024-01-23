@@ -65,6 +65,41 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
         self.nothing_input_manager.get_execution_cost_carbon_runtime.return_value = (0, 0, 0)
         self.nothing_input_manager.get_transmission_cost_carbon_runtime.return_value = (0, 0, 0)
 
+    def test_find_common_elements(self):
+        self.workflow_config.regions_and_providers = {"providers": {}}
+        self.workflow_config.instances = []
+        regions = []
+        solver = BFSFineGrainedSolver(self.workflow_config, regions, False)
+
+        # Test case 1: empty list_of_sets
+        result = solver._find_common_elements([])
+        self.assertEqual(result, [])
+
+        # Test case 2: non-empty list_of_sets
+        result = solver._find_common_elements([{1, 2, 3}, {2, 3, 4}, {3, 4, 5}])
+        self.assertEqual(result, [3])
+
+    def test_calculate_wc_pc_cost_carbon_cl_placements(self):
+        self.workflow_config.regions_and_providers = {"providers": {}}
+        self.workflow_config.instances = []
+        regions = []
+
+        solver = BFSFineGrainedSolver(self.workflow_config, regions, False)
+
+        # Test case 1: empty instance_placement_data
+        result = solver._calculate_wc_pc_cost_carbon_cl_placements({})
+        self.assertEqual(result, (0.0, 0.0, 0.0, 0.0, {}))
+
+        # Test case 2: non-empty instance_placement_data
+        instance_placement_data = {
+            1: (0, (10.0, 20.0), (5.0, 15.0)),
+            2: (1, (15.0, 25.0), (8.0, 18.0)),
+            3: (2, (20.0, 30.0), (10.0, 20.0)),
+        }
+        result = solver._calculate_wc_pc_cost_carbon_cl_placements(instance_placement_data)
+        expected_result = (45.0, 75.0, 23.0, 53.0, {1: 0, 2: 1, 3: 2})
+        self.assertEqual(result, expected_result)
+
     def test_solver_simple_1_node(self):
         """
         This is the most simple test for a single node DAG.
@@ -96,7 +131,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
         deployments = solver._solve(regions)
 
         # This is the expected deployments
-        expected_deployments = [({0: 0}, 5.0, 10.0, 5.0), ({0: 1}, 7.0, 14.0, 7.0)] # Verified
+        expected_deployments = [({0: 0}, 5.0, 10.0, 5.0), ({0: 1}, 7.0, 14.0, 7.0)]  # Verified
 
         self.assertEqual(deployments, expected_deployments)
 
@@ -143,11 +178,11 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
 
         # This is the expected deployments
         expected_deployments = [
-            ({0: 0, 1: 0}, 12.0, 24.0, 12.0), # Verified
-            ({0: 1, 1: 0}, 16.0, 32.0, 16.0), # Verified
-            ({0: 0, 1: 1}, 14.0, 28.0, 14.0), # Verified
-            ({0: 1, 1: 1}, 15.0, 30.0, 15.0), # Verified
-            ]
+            ({0: 0, 1: 0}, 12.0, 24.0, 12.0),  # Verified
+            ({0: 1, 1: 0}, 16.0, 32.0, 16.0),  # Verified
+            ({0: 0, 1: 1}, 14.0, 28.0, 14.0),  # Verified
+            ({0: 1, 1: 1}, 15.0, 30.0, 15.0),  # Verified
+        ]
 
         self.assertEqual(deployments, expected_deployments)
 
@@ -205,11 +240,11 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
 
         # This is the expected deployments
         expected_deployments = [
-            ({0: 0, 1: 0, 2: 0}, 21.0, 42.0, 21.0), # Verified
-            ({0: 1, 1: 0, 2: 0}, 25.0, 50.0, 25.0), # Verified
-            ({0: 0, 1: 1, 2: 0}, 25.0, 50.0, 25.0), # Verified
-            ({0: 1, 1: 1, 2: 0}, 26.0, 52.0, 26.0), # Verified
-            ]
+            ({0: 0, 1: 0, 2: 0}, 21.0, 42.0, 21.0),  # Verified
+            ({0: 1, 1: 0, 2: 0}, 25.0, 50.0, 25.0),  # Verified
+            ({0: 0, 1: 1, 2: 0}, 25.0, 50.0, 25.0),  # Verified
+            ({0: 1, 1: 1, 2: 0}, 26.0, 52.0, 26.0),  # Verified
+        ]
 
         self.assertEqual(deployments, expected_deployments)
 
@@ -260,7 +295,6 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
             {"provider": "p2", "region": "r2"},
         ]
 
-
         solver = BFSFineGrainedSolver(self.workflow_config, regions, False)
         solver._input_manager = self.input_manager
 
@@ -268,12 +302,12 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
 
         # This is the expected deployments
         expected_deployments = [
-            ({0: 0, 1: 0, 2: 0}, 21.0, 42.0, 14.0), # Verified
-            ({0: 0, 1: 1, 2: 0}, 23.0, 46.0, 14.0), # Verified
-            ({0: 1, 1: 0, 2: 0}, 27.0, 54.0, 18.0), # Verified
-            ({0: 1, 1: 1, 2: 0}, 26.0, 52.0, 18.0), # Verified
-            ]
-        
+            ({0: 0, 1: 0, 2: 0}, 21.0, 42.0, 14.0),  # Verified
+            ({0: 0, 1: 1, 2: 0}, 23.0, 46.0, 14.0),  # Verified
+            ({0: 1, 1: 0, 2: 0}, 27.0, 54.0, 18.0),  # Verified
+            ({0: 1, 1: 1, 2: 0}, 26.0, 52.0, 18.0),  # Verified
+        ]
+
         self.assertEqual(deployments, expected_deployments)
 
     def test_solver_simple_3_node_split(self):
@@ -345,14 +379,13 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
 
         # This is the expected deployments
         expected_deployments = [
-            ({0: 0, 1: 0, 2: 0, 3: 0}, 32.0, 64.0, 16.0), # Verified
-            ({0: 0, 1: 0, 2: 0, 3: 1}, 34.0, 68.0, 18.0), # Verified
-            ({0: 1, 1: 0, 2: 0, 3: 0}, 40.0, 80.0, 20.0), # Verified
-            ({0: 1, 1: 0, 2: 0, 3: 1}, 39.0, 78.0, 19.0), # Verified
+            ({0: 0, 1: 0, 2: 0, 3: 0}, 32.0, 64.0, 16.0),  # Verified
+            ({0: 0, 1: 0, 2: 0, 3: 1}, 34.0, 68.0, 18.0),  # Verified
+            ({0: 1, 1: 0, 2: 0, 3: 0}, 40.0, 80.0, 20.0),  # Verified
+            ({0: 1, 1: 0, 2: 0, 3: 1}, 39.0, 78.0, 19.0),  # Verified
         ]
 
         self.assertEqual(deployments, expected_deployments)
-
 
     def test_solver_simple_2_node_join(self):
         """
@@ -419,14 +452,13 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
 
         # This is the expected deployments
         expected_deployments = [
-            ({0: 0, 1: 0, 2: 0, 3: 0}, 32.0, 64.0, 25.0), # Verified
-            ({0: 1, 1: 0, 2: 0, 3: 0}, 38.0, 76.0, 29.0), # Verified
-            ({0: 0, 1: 0, 2: 0, 3: 1}, 35.0, 70.0, 27.0), # Verified
-            ({0: 1, 1: 0, 2: 0, 3: 1}, 41.0, 82.0, 31.0), # Verified
-            ]
+            ({0: 0, 1: 0, 2: 0, 3: 0}, 32.0, 64.0, 25.0),  # Verified
+            ({0: 1, 1: 0, 2: 0, 3: 0}, 38.0, 76.0, 29.0),  # Verified
+            ({0: 0, 1: 0, 2: 0, 3: 1}, 35.0, 70.0, 27.0),  # Verified
+            ({0: 1, 1: 0, 2: 0, 3: 1}, 41.0, 82.0, 31.0),  # Verified
+        ]
 
         self.assertEqual(deployments, expected_deployments)
-
 
     def test_solver_complex_2_leaf(self):
         """
@@ -504,11 +536,11 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
 
         # This is the expected deployments
         expected_deployments = [
-            ({0: 0, 1: 0, 2: 0, 3: 0, 4: 0}, 45.0, 90.0, 27.0), # Verified
-            ({0: 0, 1: 0, 2: 0, 3: 0, 4: 1}, 47.0, 94.0, 29.0), # Verified
-            ({0: 1, 1: 0, 2: 0, 3: 0, 4: 0}, 51.0, 102.0, 31.0), # Verified
-            ({0: 1, 1: 0, 2: 0, 3: 0, 4: 1}, 53.0, 106.0, 33.0), # Verified
-            ]
+            ({0: 0, 1: 0, 2: 0, 3: 0, 4: 0}, 45.0, 90.0, 27.0),  # Verified
+            ({0: 0, 1: 0, 2: 0, 3: 0, 4: 1}, 47.0, 94.0, 29.0),  # Verified
+            ({0: 1, 1: 0, 2: 0, 3: 0, 4: 0}, 51.0, 102.0, 31.0),  # Verified
+            ({0: 1, 1: 0, 2: 0, 3: 0, 4: 1}, 53.0, 106.0, 33.0),  # Verified
+        ]
 
         self.assertEqual(deployments, expected_deployments)
 
@@ -599,11 +631,11 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
 
         # This is the expected deployments
         expected_deployments = [
-            ({0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0}, 60.0, 120.0, 42.0), # Verified
-            ({0: 1, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0}, 66.0, 132.0, 46.0), # Verified
-            ({0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 1}, 63.0, 126.0, 44.0), # Verified
-            ({0: 1, 1: 0, 2: 0, 3: 0, 4: 0, 5: 1}, 69.0, 138.0, 48.0), # Verified
-            ]
+            ({0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0}, 60.0, 120.0, 42.0),  # Verified
+            ({0: 1, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0}, 66.0, 132.0, 46.0),  # Verified
+            ({0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 1}, 63.0, 126.0, 44.0),  # Verified
+            ({0: 1, 1: 0, 2: 0, 3: 0, 4: 0, 5: 1}, 69.0, 138.0, 48.0),  # Verified
+        ]
 
         self.assertEqual(deployments, expected_deployments)
 

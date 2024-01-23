@@ -52,6 +52,40 @@ class TestSolver(unittest.TestCase):
         self.assertEqual(len(dag.nodes), len(self.workflow_config.instances))
         mock_add_edge.assert_called_once_with("node1", "node2")
 
+    def test_filter_regions(self):
+        regions = [{"provider": "provider1"}, {"provider": "provider2"}]
+        regions_and_providers = {
+            "providers": {"provider1": {}},
+            "allowed_regions": [{"provider": "provider1"}],
+            "disallowed_regions": [{"provider": "provider2"}],
+        }
+        filtered_regions = self.solver._filter_regions(regions, regions_and_providers)
+        self.assertEqual(filtered_regions, [{"provider": "provider1"}])
+
+    def test_filter_regions_global(self):
+        self.workflow_config.regions_and_providers = {
+            "providers": {"provider1": {}},
+            "allowed_regions": [{"provider": "provider1"}],
+            "disallowed_regions": [{"provider": "provider2"}],
+        }
+        regions = [{"provider": "provider1"}, {"provider": "provider2"}]
+        filtered_regions = self.solver._filter_regions_global(regions)
+        self.assertEqual(filtered_regions, [{"provider": "provider1"}])
+
+    def test_filter_regions_instance(self):
+        self.workflow_config.instances = [
+            {
+                "regions_and_providers": {
+                    "providers": {"provider1": {}},
+                    "allowed_regions": [{"provider": "provider1"}],
+                    "disallowed_regions": [{"provider": "provider2"}],
+                }
+            }
+        ]
+        regions = [{"provider": "provider1"}, {"provider": "provider2"}]
+        filtered_regions = self.solver._filter_regions_instance(regions, 0)
+        self.assertEqual(filtered_regions, [{"provider": "provider1"}])
+
 
 if __name__ == "__main__":
     unittest.main()

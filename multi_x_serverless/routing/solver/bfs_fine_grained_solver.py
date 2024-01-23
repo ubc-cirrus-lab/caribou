@@ -42,8 +42,6 @@ class BFSFineGrainedSolver(Solver):
             ],
         ] = {}
         for current_instance_index in topological_order:
-            # print("\nCurrent Instance Index:", current_instance_index)
-
             # Instance flow related information
             prerequisites_indices: list[int] = prerequisites_dictionary[current_instance_index]
 
@@ -82,7 +80,6 @@ class BFSFineGrainedSolver(Solver):
                     pc_e_cost, pc_e_carbon, pc_e_runtime = self._input_manager.get_execution_cost_carbon_runtime(
                         current_instance_index, to_region_index, True
                     )
-
 
                     # Start hop considerations
                     (
@@ -133,14 +130,10 @@ class BFSFineGrainedSolver(Solver):
                 # This is just so we can compare the previous deployments
                 predecessor_previous_instances: list[set[int]] = []
                 for previous_instance_index in prerequisites_indices:
-                    # print("Set:", set(deployments[previous_instance_index][0][0].keys()))
-                    # print(deployments[previous_instance_index][0][0])
                     predecessor_previous_instances.append(set(deployments[previous_instance_index][0][0].keys()))
 
                 # Find the common keys between the previous instances
                 common_past_instance_keys = self._find_common_elements(predecessor_previous_instances)
-                # print("common_past_instance_keys:", common_past_instance_keys)
-                # print(predecessor_previous_instances)
 
                 # Now we can group the previous deployments by the common keys
                 deployment_groups: dict[frozenset[tuple[int, int]], list[list]] = {}
@@ -167,8 +160,6 @@ class BFSFineGrainedSolver(Solver):
                 if current_instance_index == -1:  # If this is the virtual end node
                     final_deployments: list[tuple[dict, float, float, float]] = []
                     for common_keys, deployment_group in deployment_groups.items():
-                        # print("\n\ncommon_keys:", common_keys)
-                        # print(deployment_group)
                         # Here is the format of the final deployment options
                         # In the future this will be using the average conditional dag results
                         # For now we just use the worse case (Until we implement conditional dag support)
@@ -215,17 +206,13 @@ class BFSFineGrainedSolver(Solver):
                                 # For now we use worse case, but when proability is implemented we will use that instead
                                 final_deployments.append((clean_combined_placments, wc_cost, wc_carbon, max_wc_runtime))
 
-                            # print("Any different keys:", self._have_different_values_for_common_keys(list_of_dicts))
-
                     del deployments  # Clear all memory
 
                     return final_deployments
                 else:
                     for to_region_index in permitted_regions_indices:
                         for common_keys, deployment_group in deployment_groups.items():
-                            # print("\n\ncommon_keys:", common_keys)
                             for combination in itertools.product(*deployment_group):
-                                # print("combination:", combination)
                                 # For each combination of deployments, merge them together
                                 list_of_dicts = []  # Debug code
                                 combined_placements = {}
@@ -271,8 +258,6 @@ class BFSFineGrainedSolver(Solver):
                                         0
                                     ]  # Prev should always be either in the dag or be home region
                                     previous_wc_runtime = wc_ccr[2]
-
-                                    # print("original_deployment_placement:", original_deployment_placement)
 
                                     # Calculate the carbon/cost/runtime for transmission
                                     # For worse case (Using tail latency)
@@ -334,9 +319,6 @@ class BFSFineGrainedSolver(Solver):
 
                                     current_max_pc_t_runtime = max(current_max_pc_t_runtime, pc_t_runtime)
 
-                                # print("combined_placements:", combined_placements)
-
-
                                 # Get the current total cost and carbon for this specific transition (runtime doesnt matter for this)
                                 current_instance_wc_cost = current_cumulative_wc_t_cost + wc_e_cost
                                 current_instance_wc_carbon = current_cumulative_wc_t_carbon + wc_e_carbon
@@ -359,8 +341,6 @@ class BFSFineGrainedSolver(Solver):
                                     pc_carbon_total,
                                     _,
                                 ) = self._calculate_wc_pc_cost_carbon_cl_placements(combined_placements)
-
-                                # print("Any different keys:", self._have_different_values_for_common_keys(list_of_dicts))
 
                                 if not self._fail_hard_resource_constraints(
                                     self._workflow_config.constraints, wc_cost_total, wc_carbon_total, max_wc_runtime
@@ -406,20 +386,6 @@ class BFSFineGrainedSolver(Solver):
             common_elements.intersection_update(s)
 
         return list(common_elements)
-
-    def _have_different_values_for_common_keys(self, list_of_dicts: list[dict]) -> bool:
-        common_key_values: dict = {}
-
-        # Iterate through the dictionaries and update common_key_values
-        for current_dict in list_of_dicts:
-            for key, value in current_dict.items():
-                if key in common_key_values:
-                    if common_key_values[key] != value:
-                        return True  # Different values found for a common key
-                else:
-                    common_key_values[key] = value
-
-        return False  # No different values found for any common key
 
     def _calculate_wc_pc_cost_carbon_cl_placements(
         self, instance_placement_data: dict[int, tuple[int, tuple[float, float], tuple[float, float]]]
