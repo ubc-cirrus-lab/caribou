@@ -178,6 +178,8 @@ class Workflow(Resource):
             for function_resource_description in resource_values["function"]
         }
 
+        print(resource_values)
+
         function_instance_to_identifier = {
             function_instance.name: function_resource_to_identifiers[function_instance.function_resource_name]
             for function_instance in self._functions
