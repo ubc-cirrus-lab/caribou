@@ -23,11 +23,11 @@ class SolverBenchmark:
 
         self.get_execution_cost_carbon_runtime_return_values = [
             (random.randint(0, 10), random.uniform(0, 1), random.uniform(0, 1))
-            for _ in range(num_regions**total_nodes)
+            for _ in range(num_regions**total_nodes*total_nodes)
         ]
         self.get_transmission_cost_carbon_runtime_return_values = [
             (random.randint(0, 10), random.uniform(0, 1), random.uniform(0, 1))
-            for _ in range(num_regions**total_nodes)
+            for _ in range(num_regions**total_nodes*total_nodes)
         ]
 
     def run_benchmark(self, solver_class=None):
