@@ -18,15 +18,14 @@ class TestStochasticHeuristicDescentSolver(unittest.TestCase):
                 "regions_and_providers": {
                     "allowed_regions": None,
                     "disallowed_regions": None,
-                    "providers": [
-                        {
-                            "name": "aws",
+                    "providers": {
+                        "aws": {
                             "config": {
                                 "timeout": 60,
                                 "memory": 128,
                             },
-                        }
-                    ],
+                        },
+                    },
                 },
             },
             {
@@ -36,30 +35,28 @@ class TestStochasticHeuristicDescentSolver(unittest.TestCase):
                 "regions_and_providers": {
                     "allowed_regions": None,
                     "disallowed_regions": None,
-                    "providers": [
-                        {
-                            "name": "aws",
+                    "providers": {
+                        "aws": {
                             "config": {
                                 "timeout": 60,
                                 "memory": 128,
                             },
-                        }
-                    ],
+                        },
+                    },
                 },
             },
         ]
         self.workflow_config.regions_and_providers = {
             "allowed_regions": None,
             "disallowed_regions": None,
-            "providers": [
-                {
-                    "name": "aws",
+            "providers": {
+                "aws": {
                     "config": {
                         "timeout": 60,
                         "memory": 128,
                     },
-                }
-            ],
+                },
+            },
         }
         self.workflow_config.workflow_id = "workflow_id"
 
@@ -370,3 +367,7 @@ class TestStochasticHeuristicDescentSolver(unittest.TestCase):
                             result = solver._solve([{"region1": "value1"}, {"region2": "value2"}])
 
         assert result == [({0: 0, 1: 0}, 1.0, 3.0, 5.0), ({0: 1, 1: 0}, 7.0, 9.0, 11.0)]
+
+
+if __name__ == "__main__":
+    unittest.main()
