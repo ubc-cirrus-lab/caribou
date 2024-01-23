@@ -70,6 +70,7 @@ class WorkflowBuilder:
                     providers=providers,
                 )
             )
+            function.name = function_deployment_name
             function_name_to_function[function.handler] = function
             if function.entry_point and not entry_point:
                 entry_point = function
