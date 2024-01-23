@@ -11,11 +11,15 @@ In this document we will discuss the design decisions that have been made for th
       2. [Connection to Physical Representation](#connection-to-physical-representation)
    3. [Discussion](#discussion)
 2. [Source Code Annotation](#source-code-annotation)
-3. [Merge Node](#merge-node)
+3. [Synchronization Node](#synchronization-node)
     1. [Implementation](#implementation)
 4. [Workflow Placement Decision](#workflow-placement-decision)
     1. [Component Interaction Order](#component-interaction-order)
-5. [References](#references)
+5. [Solvers](#solvers)
+    1. [Coarse Grained](#coarse-grained)
+    2. [Stochastic Heuristic Descent](#stochastic-heuristic-descent)
+    3. [Brute Force](#brute-force)
+6. [References](#references)
 
 ##  Dataflow DAG Model
 
@@ -46,7 +50,7 @@ The logical representation consists of a set of nodes and a set of edges, where 
 It has no incoming edges.
 - Intermediate node: An intermediate node is a node that is called by another node.
 It has exactly one incoming edge.
-- Merge node: A merge node is a node that is called by multiple other nodes.
+- Synchronization node: A synchronization node is a node that is called by multiple other nodes.
 It one or more incoming edges.
 
 The types of nodes are known at deployment time from static code analysis and are not changed during the execution of the workflow.
@@ -66,7 +70,7 @@ The naming scheme of the nodes is as follows:
 - Initial node: `<function_name>:entry_point:0`
 - Intermediate node: `<function_name>:<predecessor_function_name>_<predecessor_index>_<successor_of_predecessor_index>:<index_in_dag>`
   Where `<predecessor_function_name>` is the name of the predecessor function, `<predecessor_index>` is the index of the predecessor function in the dag, `<successor_of_predecessor_index>` is the index of the successor of the predecessor function (when a function calls multiple times the same function, this index is used to distinguish between the different calls), and `<index_in_dag>` is the index of the node in the dag in a topological order of dataflow.
-- Merge node: `<function_name>:merge:<index_in_dag>`
+- Synchronization node: `<function_name>:sync:<index_in_dag>`
 
 This naming scheme is used to uniquely identify a node in the logical representation.
 The scheme has the implication that colons cannot be allowed in the function names.
@@ -82,7 +86,7 @@ Thus we also speak of a _pyhsical node_ and its _logical instances_.
 There are two exceptions with regards to physical nodes in the logical representation:
 
 - The initial node is present only once in the logical representation.
-- A merge node is present only once in the logical representation.
+- A synchronization node is present only once in the logical representation.
 
 ###  Discussion
 
@@ -183,8 +187,6 @@ The payload is optional and can be omitted if the function does not require any 
 - Additionally, there is the option of conditionally calling a function.
 This is done with the following annotation:
 
-**TODO (#11): Implement conditional function invocation**
-
 ```python
 workflow.invoke_serverless_function(second_function, payload, condition)
 ```
@@ -192,34 +194,43 @@ workflow.invoke_serverless_function(second_function, payload, condition)
 The condition is a boolean expression that is evaluated at runtime.
 If the condition evaluates to true, the function is called, otherwise it is not called.
 
-- Finally, there is the option of merging multiple predecessor calls at a merge node.
-The responses from the predecessor calls are then passed to the merge node as a list of responses.
+- Finally, there is the option of synchronizing multiple predecessor calls at a synchronization node.
+The responses from the predecessor calls are then passed to the synchronization node as a list of responses.
 This is done with the following annotation:
 
 ```python
 responses: list[Any] = workflow.get_predecessor_data()
 ```
 
-Using this annotation within a function has an important implication with regards to when the entire function is being executed. The entire function is only executed once all predecessor calls have been completed and the data has been merged. This is important to keep in mind when designing the workflow. Any code within the function preceding the annotation is also executed only once all predecessor calls have been completed and the data has been merged.
+Using this annotation within a function has an important implication with regards to when the entire function is being executed.
+The entire function is only executed once all predecessor calls have been completed and the data has been synchronized.
+This is important to keep in mind when designing the workflow.
+Any code within the function preceding the annotation is also executed only once all predecessor calls have been completed and the data has been synchronized.
 
-## Merge Node
+## Synchronization Node
 
-The merge nodes have a special semantic.
-The definition of a merge node is that, compared to all other nodes, there are one or more predecessor nodes that call the merge node.
-The merge node will receive the payload (responses) from all predecessor nodes and can then handle the responses according to the user defined logic.
-This logic has an important implication for the logical representation of the DAG as it means that since the physical representation does not define on what specific predecessors we are waiting on the merge node waits for all predecessors and thus there can only be one logical instance of a merge node in the logical representation.
-Hence also the slightly different naming scheme of the merge nodes (see also the section on [Logical Node Naming Scheme](#logical-node-naming-scheme)).
+The synchronization nodes have a special semantic.
+The definition of a synchronization node is that, compared to all other nodes, there are one or more predecessor nodes that call the synchronization node.
+The synchronization node will receive the payload (responses) from all predecessor nodes and can then handle the responses according to the user defined logic.
+This logic has an important implication for the logical representation of the DAG as it means that since the physical representation does not define on what specific predecessors we are waiting on the synchronization node waits for all predecessors and thus there can only be one logical instance of a synchronization node in the logical representation.
+Hence also the slightly different naming scheme of the synchronization nodes (see also the section on [Logical Node Naming Scheme](#logical-node-naming-scheme)).
 
 ### Implementation
 
-The logic of the merge node is implemented as follows:
+The logic of the synchronization node is implemented as follows:
 
-1. When a predecessor calls a merge node, the predecessor will add its response to a list of responses in a distributed key-value store in the region of the merge node.
-2. The predecessor will then atomically increment a counter in the distributed key-value store.
-3. The new value of the counter is then checked against the number of predecessors of the merge node.
-4. If the counter is equal to the number of predecessors, the merge node will be called. Otherwise, the predecessor will not call the merge node. This ensures that the merge node is only called when all predecessors have called the merge node.
+1. When a predecessor calls a synchronization node, the predecessor will add its response to a list of responses in a distributed key-value store in the region of the synchronization node.
+2. The predecessor will then atomically add its name to the list of predecessors that have called the synchronization node.
+3. The new length of the list is then checked against the number of predecessors of the synchronization node.
+4. If the counter is equal to the number of predecessors, the synchronization node will be called. Otherwise, the predecessor will not call the synchronization node.
+This ensures that the synchronization node is only called when all predecessors have called the synchronization node.
 
-As previously mentioned, the code in the merge node is only executed once all predecessors have written their responses to the distributed key-value store and the counter has been incremented to the number of predecessors, i.e., the merge node is only called once all predecessors have called the merge node.
+A special consideration is made with regards to conditional calls to successors.
+If a conditional call results in the predecessor not calling a successor, the predecessor knows whether any successor of the function not called would have called the synchronization node.
+If this is the case, the predecessor will add the name of the corresponding successor to the list of predecessors that have called the synchronization node.
+This ensures that the synchronization node is called even if some of the predecessors do not call the synchronization node due to conditional calls.
+
+As previously mentioned, the code in the synchronization node is only executed once all predecessors have written their responses to the distributed key-value store and the counter has been incremented to the number of predecessors, i.e., the synchronization node is only called once all predecessors have called the synchronization node.
 
 ## Workflow Placement Decision
 
@@ -275,6 +286,8 @@ Different parts of this dictionary are provided by different components of the s
 
 ### Component Interaction Order
 
+![Component Interaction Order](./img/component_interaction_overview.png)
+
 The following is the order in which the different components interact with each other with regards to the workflow placement decision:
 
 1. The deployment client uploads an initial version of the workflow placement decision to the distributed key-value store.
@@ -286,6 +299,60 @@ The following is the order in which the different components interact with each 
 
 During a workflow execution, the initial function instance will download the workflow placement decision from the distributed key-value store and add the `run_id`.
 Subsequent functions will receive the workflow placement decision from the previous function instance which updated the `current_instance_name` to the name of the current function instance.
+
+## Solvers
+
+The solvers are responsible for determining the optimal placement of the function instances across the available regions.
+
+### Coarse Grained
+
+TODO (#86)
+
+### Stochastic Heuristic Descent
+
+The Stochastic Heuristic Descent solver is a heuristic optimization algorithm that utilizes a stochastic approach to explore different deployment configurations.
+It employs a heuristic method for quick and efficient problem-solving.
+The solver is not guaranteed to find the optimal solution, nor to be exhaustive in its search.
+The solver optimizes for multiple objectives including cost, runtime, and carbon footprint.
+It ensures that solutions adhere to specified resource constraints.
+Similar to the other solvers it uses worst-case estimates with regards to conditional calls (all conditional calls are assumed to be true) and the tail latency for the function runtimes and the network latencies to filter for hard constraints.
+The solver is implemented as a hill-climbing algorithm with a stochastic approach.
+
+#### Key Features
+
+- **Stochastic Approach**: Utilizes random selections and probability to explore different deployment configurations.
+- **Heuristic Optimization**: Employs heuristic methods for quick and efficient problem-solving.
+- **Multi-objective Focus**: Optimizes for multiple objectives including cost, runtime, and carbon footprint.
+- **Resource Constraint Compliance**: Ensures that solutions adhere to specified resource constraints.
+
+#### Workflow
+
+1. **Initialization**:
+   - Sets up critical parameters like learning rate and maximum iterations.
+   - Initializes the deployment configuration with initial region assignments.
+
+2. **Iteration Loop**:
+   - Iteratively updates a subset of instances based on the learning rate.
+   - Randomly selects new region assignments for each instance and evaluates potential improvements.
+
+3. **Evaluation of Deployment**:
+   - Checks if the current deployment configuration meets the specified hard resource constraints.
+   - Ensures the uniqueness of the deployment to avoid redundant solutions.
+
+4. **Result Compilation**:
+   - Upon completion of the iterations, compiles a list of valid and unique average case deployments.
+   - These deployments represent the optimized configurations discovered by the solver.
+
+#### Specialities
+
+- **Adaptive Learning Rate**: Dynamically adjusts the number of instances to update in each iteration.
+- **Bias Towards Positive Regions**: Incorporates a bias towards regions that have previously resulted in improvements.
+- **Topology-Aware Optimizations**: Leverages the topological structure of the distributed system for more efficient optimization.
+- **Multi-Dimensional Evaluation**: Simultaneously considers multiple factors (cost, runtime, carbon footprint) in optimization.
+
+### Brute Force
+
+TODO (#87)
 
 ##  References
 
