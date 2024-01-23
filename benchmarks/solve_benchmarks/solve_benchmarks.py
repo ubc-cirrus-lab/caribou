@@ -11,6 +11,7 @@ from multi_x_serverless.routing.solver_inputs.input_manager import InputManager
 
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
+
 class SolverBenchmark:
     def __init__(self, total_nodes=10, merge_nodes=2, num_regions=2):
         self.default_solver_class = BFSFineGrainedSolver
@@ -20,29 +21,42 @@ class SolverBenchmark:
 
         self._config, self._regions = self._generate_config()
 
-    def run_benchmark(self, solver_class = None):
+        self.get_execution_cost_carbon_runtime_return_values = [
+            (random.randint(0, 10), random.uniform(0, 1), random.uniform(0, 1))
+            for _ in range(num_regions**total_nodes)
+        ]
+        self.get_transmission_cost_carbon_runtime_return_values = [
+            (random.randint(0, 10), random.uniform(0, 1), random.uniform(0, 1))
+            for _ in range(num_regions**total_nodes)
+        ]
+
+    def run_benchmark(self, solver_class=None):
         if not solver_class:
             solver_class = self.default_solver_class
 
         # Create a WorkflowConfig instance and set its properties using the generated config
         workflow_config = Mock(spec=WorkflowConfig)
-        workflow_config.start_hops = self._config['start_hops']
-        workflow_config.regions_and_providers = self._config['regions_and_providers']
-        workflow_config.instances = self._config['instances']
-        workflow_config.constraints = self._config['constraints']
+        workflow_config.start_hops = self._config["start_hops"]
+        workflow_config.regions_and_providers = self._config["regions_and_providers"]
+        workflow_config.instances = self._config["instances"]
+        workflow_config.constraints = self._config["constraints"]
 
         # Create a solver instance and run the benchmark
         solver = solver_class(workflow_config, self._regions, False)
-        
-        # Do nothing mock input manager
-        nothing_input_manager = Mock(spec=InputManager)
-        nothing_input_manager.get_execution_cost_carbon_runtime.return_value = (random.randint(0, 10), random.uniform(0, 1), random.uniform(0, 1))
-        nothing_input_manager.get_transmission_cost_carbon_runtime.return_value = (random.randint(0, 10), random.uniform(0, 1), random.uniform(0, 1))
-        solver._input_manager = nothing_input_manager
+
+        # Mock input manager
+        mock_input_manager = Mock(spec=InputManager)
+        mock_input_manager.get_execution_cost_carbon_runtime.side_effect = (
+            self.get_execution_cost_carbon_runtime_return_values
+        )
+        mock_input_manager.get_transmission_cost_carbon_runtime.side_effect = (
+            self.get_transmission_cost_carbon_runtime_return_values
+        )
+        solver._input_manager = mock_input_manager
 
         # Time solving function
         start_time = time.time()
-        deployments = solver._solve(self._regions) 
+        deployments = solver._solve(self._regions)
         end_time = time.time()
 
         print(f"Time taken to solve: {end_time - start_time} seconds")
@@ -50,10 +64,10 @@ class SolverBenchmark:
 
     def get_dag_representation(self):
         return self._dag
-    
+
     def get_config(self):
         return self._config
-    
+
     def get_regions(self):
         return self._regions
 
@@ -62,8 +76,8 @@ class SolverBenchmark:
 
         # Generate regions
         regions = [{"provider": f"p1", "region": f"r{i+1}"} for i in range(self._num_regions)]
-        config['start_hops'] = regions[0]
-        config['regions_and_providers'] = {"providers": {f"p1": None }}
+        config["start_hops"] = regions[0]
+        config["regions_and_providers"] = {"providers": {f"p1": None}}
 
         # Generate instances
         instances = []
@@ -81,9 +95,9 @@ class SolverBenchmark:
             }
             instances.append(instance)
 
-        config['instances'] = instances
+        config["instances"] = instances
 
-        config['constraints'] = None
+        config["constraints"] = None
 
         return config, regions
 
@@ -109,23 +123,26 @@ class SolverBenchmark:
     def visualize_dag(self):
         pos = nx.spring_layout(self._dag)
         nx.draw(self._dag, pos, with_labels=True)
-        
+
         # Get the directory of the current script
         dir_path = os.path.dirname(os.path.realpath(__file__))
         # Create a new directory for the image
-        os.makedirs(os.path.join(dir_path, 'images'), exist_ok=True)
+        os.makedirs(os.path.join(dir_path, "images"), exist_ok=True)
         # Save the image in the new directory
-        plt.savefig(os.path.join(dir_path, 'images', 'dag.png'))
+        plt.savefig(os.path.join(dir_path, "images", "dag.png"))
+
 
 # Benchmarking parameters
-total_nodes=7
-merge_nodes=3
-num_regions=3
+total_nodes = 7
+merge_nodes = 3
+num_regions = 3
 
 solverBenchmark = SolverBenchmark(total_nodes=total_nodes, merge_nodes=merge_nodes, num_regions=num_regions)
 
 print("Running benchmark for BFSFineGrainedSolver")
 solverBenchmark.run_benchmark(BFSFineGrainedSolver)
+
+solverBenchmark.run_benchmark(StochasticHeuristicDescentSolver)
 
 # print("Running benchmark for StochasticHeuristicDescentSolver")
 # solverBenchmark.run_benchmark(StochasticHeuristicDescentSolver)

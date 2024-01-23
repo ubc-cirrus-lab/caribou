@@ -15,8 +15,8 @@ class StochasticHeuristicDescentSolver(Solver):
         instantiate_input_manager: bool = True,
     ) -> None:
         super().__init__(workflow_config, all_available_regions, instantiate_input_manager)
-        self._max_iterations = len(self._worklow_level_permitted_regions) * 5
-        self._learning_rate = 0.01
+        self._max_iterations = len(self._worklow_level_permitted_regions) * 100
+        self._learning_rate = 0.1
         self._positive_regions: set[int] = set()
         self._bias_probability = 0.5
         self._topological_order = self._dag.topological_sort()
@@ -99,7 +99,7 @@ class StochasticHeuristicDescentSolver(Solver):
         tuple[np.ndarray, np.ndarray],
     ]:
         deployment: dict[int, int] = {}
-        home_region_index = self._region_indexer.value_to_index(self._workflow_config.start_hops)
+        home_region_index = self._region_indexer.value_to_index(self._provider_region_dict_to_tuple(self._workflow_config.start_hops))
         average_node_weights = np.empty((3, len(self._topological_order)))
         tail_node_weights = np.empty((3, len(self._topological_order)))
 
@@ -197,6 +197,9 @@ class StochasticHeuristicDescentSolver(Solver):
             (average_carbon, tail_carbon),
         )
 
+    def _provider_region_dict_to_tuple(self, provider_region_dict: dict[str, str]) -> tuple[str, str]:
+        return (provider_region_dict["provider"], provider_region_dict["region"])
+
     def _calculate_cost_of_deployment_case(
         self, node_weights: np.ndarray, edge_weights: np.ndarray
     ) -> tuple[float, float, float]:
@@ -213,7 +216,7 @@ class StochasticHeuristicDescentSolver(Solver):
 
         permitted_regions_indices = self._get_permitted_region_indices(regions, instance)
 
-        if random.random() < self._bias_probability:
+        if random.random() < self._bias_probability and len(self._positive_regions) > 0:
             new_region = random.choice(list(self._positive_regions))
             if new_region != previous_deployment[instance] and new_region in permitted_regions_indices:
                 return instance, new_region
