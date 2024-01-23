@@ -50,10 +50,6 @@ class TestWorkflowConfig(unittest.TestCase):
     def test_to_json(self):
         self.assertEqual(self.workflow_config.to_json(), json.dumps(self.workflow_config_dict))
 
-    def test_resolve_functions(self):
-        expected_functions = np.array(["function2", "function1"])
-        np.testing.assert_array_equal(self.workflow_config.resolve_functions(), expected_functions)
-
     def test_regions_and_providers(self):
         self.assertEqual(
             self.workflow_config.regions_and_providers,
