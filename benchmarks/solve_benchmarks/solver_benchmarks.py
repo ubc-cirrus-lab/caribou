@@ -13,9 +13,10 @@ from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
 
 class SolverBenchmark:
-    def __init__(self, total_nodes=10, merge_nodes=2, num_regions=2):
+    def __init__(self, total_nodes=10, merge_nodes=2, num_regions=2, seed=None):
         self.default_solver_class = BFSFineGrainedSolver
 
+        self._seed = seed
         self._dag = self._generate_dag(total_nodes, merge_nodes)
         self._num_regions = num_regions
 
@@ -102,6 +103,9 @@ class SolverBenchmark:
         return config, regions
 
     def _generate_dag(self, total_nodes, merge_nodes):
+        if self._seed is not None:
+            random.seed(self._seed)
+    
         G = nx.DiGraph()
         G.add_node(0)  # Add root node
 
@@ -133,16 +137,15 @@ class SolverBenchmark:
 
 
 # Benchmarking parameters
-total_nodes = 7
+total_nodes = 9
 merge_nodes = 3
 num_regions = 3
+seed = 0
 
-solverBenchmark = SolverBenchmark(total_nodes=total_nodes, merge_nodes=merge_nodes, num_regions=num_regions)
+solverBenchmark = SolverBenchmark(total_nodes=total_nodes, merge_nodes=merge_nodes, num_regions=num_regions, seed=seed)
 
-print("Running benchmark for BFSFineGrainedSolver")
+print("BFSFineGrainedSolver:")
 solverBenchmark.run_benchmark(BFSFineGrainedSolver)
 
+print("\nStochasticHeuristicDescentSolver:")
 solverBenchmark.run_benchmark(StochasticHeuristicDescentSolver)
-
-# print("Running benchmark for StochasticHeuristicDescentSolver")
-# solverBenchmark.run_benchmark(StochasticHeuristicDescentSolver)

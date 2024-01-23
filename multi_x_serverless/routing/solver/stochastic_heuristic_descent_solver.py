@@ -99,7 +99,9 @@ class StochasticHeuristicDescentSolver(Solver):
         tuple[np.ndarray, np.ndarray],
     ]:
         deployment: dict[int, int] = {}
-        home_region_index = self._region_indexer.value_to_index(self._provider_region_dict_to_tuple(self._workflow_config.start_hops))
+        home_region_index = self._region_indexer.value_to_index(
+            self._provider_region_dict_to_tuple(self._workflow_config.start_hops)
+        )
         average_node_weights = np.empty((3, len(self._topological_order)))
         tail_node_weights = np.empty((3, len(self._topological_order)))
 
