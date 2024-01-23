@@ -235,8 +235,9 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
                 identifier="test_identifier",
                 workflow_instance_id="123",
                 sync=False,
-                function_name=None,
+                function_name="test_func_1::",
                 expected_counter=-1,
+                current_instance_name="test_func",
             )
 
             # Check if the response from invoke_serverless_function is correct
@@ -294,8 +295,9 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
                 identifier="test_identifier",
                 workflow_instance_id="123",
                 sync=True,
-                function_name="sync_func",
+                function_name="sync_func:sync:",
                 expected_counter=1,
+                current_instance_name="test_func",
             )
 
             # Check if the response from invoke_serverless_function is correct
@@ -368,8 +370,9 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
                 identifier="test_identifier",
                 workflow_instance_id="123",
                 sync=True,
-                function_name="sync_func",
+                function_name="sync_func:sync:",
                 expected_counter=2,
+                current_instance_name="test_func",
             )
 
             # Check if the response from invoke_serverless_function is correct
@@ -415,8 +418,9 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
                 identifier="test_identifier",
                 workflow_instance_id="123",
                 sync=False,
-                function_name=None,
+                function_name="test_func_1::",
                 expected_counter=-1,
+                current_instance_name="test_func",
             )
 
             # Check if the response from invoke_serverless_function is correct
@@ -462,7 +466,7 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
                     {"instance_name": "test_func", "succeeding_instances": ["test_func_1::"]},
                 ],
             },
-            "test_func",
+            "test_func_1::",
         )
 
     def test_invoke_serverless_function_json_argument(self):
@@ -501,12 +505,13 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
 
             # Check if invoke_serverless_function was called with the correct arguments
             mock_factory_class.get_remote_client("aws", "region").invoke_function.assert_called_once_with(
-                message=r'{"payload": "{\"key\": \"value\"}", "workflow_placement_decision": {"run_id": "123", "workflow_placement": {"test_func": {"provider_region": {"provider": "aws", "region": "region"}, "identifier": "test_identifier"}, "test_func_1::": {"provider_region": {"provider": "aws", "region": "region"}, "identifier": "test_identifier"}}, "current_instance_name": "test_func_1::", "instances": [{"instance_name": "some_instance", "succeeding_instances": ["test_func_1::"]}, {"instance_name": "test_func", "succeeding_instances": ["test_func_1::"]}]}}',
+                message='{"payload": "{\\"key\\": \\"value\\"}", "workflow_placement_decision": {"run_id": "123", "workflow_placement": {"test_func": {"provider_region": {"provider": "aws", "region": "region"}, "identifier": "test_identifier"}, "test_func_1::": {"provider_region": {"provider": "aws", "region": "region"}, "identifier": "test_identifier"}}, "current_instance_name": "test_func_1::", "instances": [{"instance_name": "some_instance", "succeeding_instances": ["test_func_1::"]}, {"instance_name": "test_func", "succeeding_instances": ["test_func_1::"]}]}}',
                 identifier="test_identifier",
                 workflow_instance_id="123",
                 sync=False,
-                function_name=None,
+                function_name="test_func_1::",
                 expected_counter=-1,
+                current_instance_name="test_func",
             )
 
             # Check if the response from invoke_serverless_function is correct

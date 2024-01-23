@@ -109,10 +109,14 @@ class Workflow(Resource):
             new_instance["succeeding_instances"] = succeeding_instances
             new_instance["preceding_instances"] = preceding_instances
 
-            paths_to_sync_nodes = self._find_all_paths_to_any_sync_node(instance["instance_name"])
-            if paths_to_sync_nodes:
-                new_instance["dependent_sync_predecessors"] = [path[:-2] for path in paths_to_sync_nodes]
+            if len(instance["instance_name"].split(":")) != 3:
+                raise RuntimeError("Error in workflow config creation, this should not happen")
 
+            paths_to_sync_nodes = self._find_all_paths_to_any_sync_node(instance["instance_name"])
+            predecessors_to_sync_nodes_and_sync_nodes = []
+            if paths_to_sync_nodes:
+                predecessors_to_sync_nodes_and_sync_nodes = [path[:-2] for path in paths_to_sync_nodes]
+            new_instance["dependent_sync_predecessors"] = predecessors_to_sync_nodes_and_sync_nodes
             finished_instances.append(new_instance)
         return finished_instances
 
@@ -124,17 +128,16 @@ class Workflow(Resource):
         if path is None:
             path = []
         visited.add(start_instance)
-        path.append(start_instance)
-        paths = []
+        path = path + [start_instance]
+        paths: list[list[str]] = []
         for edge in self._edges:
             if edge[0] == start_instance:
                 next_instance = edge[1]
                 if next_instance.split(":")[1] == "sync":
-                    path.append(next_instance)
-                    paths.append(list(path))
+                    path = path + [next_instance]
+                    paths.append(path)
                 elif next_instance not in visited:
-                    paths.extend(self._find_all_paths_to_any_sync_node(next_instance, visited, path))
-        path.pop()
+                    paths.extend(self._find_all_paths_to_any_sync_node(next_instance, visited, list(path)))
         visited.remove(start_instance)
         return paths
 
@@ -176,9 +179,7 @@ class Workflow(Resource):
         }
 
         function_instance_to_identifier = {
-            function_instance.function_resource_name: function_resource_to_identifiers[
-                function_instance.function_resource_name
-            ]
+            function_instance.name: function_resource_to_identifiers[function_instance.function_resource_name]
             for function_instance in self._functions
         }
 

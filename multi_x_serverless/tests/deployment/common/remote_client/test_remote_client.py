@@ -51,17 +51,24 @@ class TestRemoteClient(unittest.TestCase):
         def get_key_present_in_table(self, table_name: str, key: str) -> bool:
             pass
 
+        def set_predecessor_reached(self, predecessor_name: str, sync_node_name: str, workflow_instance_id: str) -> int:
+            pass
+
     def test_invoke_function(self):
         client = self.MockRemoteClient()
         client.send_message_to_messaging_service = Mock()
-        client.increment_counter = Mock(return_value=1)
+        client.set_predecessor_reached = Mock(return_value=1)
         client.upload_predecessor_data_at_sync_node = Mock()
 
         message = json.dumps({"payload": "test"})
-        client.invoke_function(message, "identifier", "workflow_instance_id", True, "function_name", 1)
+        client.invoke_function(
+            message, "identifier", "workflow_instance_id", True, "sync_node_name", 1, "function_name"
+        )
 
         client.send_message_to_messaging_service.assert_called_once_with("identifier", message)
-        client.increment_counter.assert_called_once_with("function_name", "workflow_instance_id")
+        client.set_predecessor_reached.assert_called_once_with(
+            "function_name", "sync_node_name", "workflow_instance_id"
+        )
         client.upload_predecessor_data_at_sync_node.assert_called_once_with(
-            "function_name", "workflow_instance_id", json.dumps("test")
+            "sync_node_name", "workflow_instance_id", '"test"'
         )

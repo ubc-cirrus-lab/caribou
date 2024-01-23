@@ -308,24 +308,6 @@ class TestAWSRemoteClient(unittest.TestCase):
         self.assertFalse(self.aws_client.lambda_function_exists(resource))
 
     @patch.object(AWSRemoteClient, "_client")
-    def test_increment_counter(self, mock_client):
-        function_name = "test_function"
-        workflow_instance_id = "test_workflow_instance_id"
-        mock_client.return_value.update_item.return_value = {"Attributes": {"counter_value": {"N": "1"}}}
-
-        result = self.aws_client.increment_counter(function_name, workflow_instance_id)
-
-        mock_client.assert_called_with("dynamodb")
-        mock_client.return_value.update_item.assert_called_once_with(
-            TableName="counters",
-            Key={"id": {"S": f"{function_name}:{workflow_instance_id}"}},
-            UpdateExpression="SET counter_value = counter_value + :val",
-            ExpressionAttributeValues={":val": 1},
-            ReturnValues="UPDATED_NEW",
-        )
-        self.assertEqual(result, 1)
-
-    @patch.object(AWSRemoteClient, "_client")
     def test_upload_message_for_sync(self, mock_client):
         function_name = "test_function"
         workflow_instance_id = "test_workflow_instance_id"
