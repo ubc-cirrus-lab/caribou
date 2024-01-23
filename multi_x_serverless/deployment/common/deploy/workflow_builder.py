@@ -70,6 +70,7 @@ class WorkflowBuilder:
                     providers=providers,
                 )
             )
+            function.name = function_deployment_name
             function_name_to_function[function.handler] = function
             if function.entry_point and not entry_point:
                 entry_point = function
@@ -117,7 +118,7 @@ class WorkflowBuilder:
             function_instance_name = (
                 f"{multi_x_serverless_function.name}:{predecessor_instance_name_for_instance}_{predecessor_index}_{successor_of_predecessor_index}:{index_in_dag}"  # pylint: disable=line-too-long
                 if not multi_x_serverless_function.is_waiting_for_predecessors()
-                else f"{multi_x_serverless_function.name}:merge:{index_in_dag}"
+                else f"{multi_x_serverless_function.name}:sync:{index_in_dag}"
             )
 
             index_in_dag += 1

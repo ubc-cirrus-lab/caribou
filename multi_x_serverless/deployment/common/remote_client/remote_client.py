@@ -37,26 +37,29 @@ class RemoteClient(ABC):
         message: str,
         identifier: str,
         workflow_instance_id: str,
-        merge: bool = False,
+        sync: bool = False,
         function_name: Optional[str] = None,
         expected_counter: int = -1,
+        current_instance_name: Optional[str] = None,
     ) -> None:
-        if merge:
+        if sync:
             if function_name is None:
-                raise RuntimeError("Function name must be specified for merge")
+                raise RuntimeError("Function name must be specified for synchronization node")
             if expected_counter == -1:
-                raise RuntimeError("Expected counter must be specified for merge")
+                raise RuntimeError("Expected counter must be specified for synchronization node")
+            if current_instance_name is None:
+                raise RuntimeError("Current instance name must be specified for synchronization node")
 
             # Unpack message as we should only store the client data and not our added metadata, the added metadata is
             # still sent to the function using the messaging service upon calling
             # (so the workflow placement information is still forwarded)
             message_dictionary = json.loads(message)
             if "payload" not in message_dictionary:
-                raise RuntimeError("Payload must be specified for merge")
+                payload = ""
             payload = message_dictionary["payload"]
             json_payload = json.dumps(payload)
-            self.upload_message_for_merge(function_name, workflow_instance_id, json_payload)
-            counter = self.increment_counter(function_name, workflow_instance_id)
+            self.upload_predecessor_data_at_sync_node(function_name, workflow_instance_id, json_payload)
+            counter = self.set_predecessor_reached(current_instance_name, function_name, workflow_instance_id)
 
             if counter != expected_counter:
                 return
@@ -64,6 +67,10 @@ class RemoteClient(ABC):
             self.send_message_to_messaging_service(identifier, message)
         except Exception as e:
             raise RuntimeError("Could not invoke function through SNS") from e
+
+    @abstractmethod
+    def set_predecessor_reached(self, predecessor_name: str, sync_node_name: str, workflow_instance_id: str) -> int:
+        raise NotImplementedError()
 
     @abstractmethod
     def send_message_to_messaging_service(self, identifier: str, message: str) -> None:
@@ -74,11 +81,7 @@ class RemoteClient(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def increment_counter(self, function_name: str, workflow_instance_id: str) -> int:
-        raise NotImplementedError()
-
-    @abstractmethod
-    def upload_message_for_merge(self, function_name: str, workflow_instance_id: str, message: str) -> None:
+    def upload_predecessor_data_at_sync_node(self, function_name: str, workflow_instance_id: str, message: str) -> None:
         raise NotImplementedError()
 
     @abstractmethod

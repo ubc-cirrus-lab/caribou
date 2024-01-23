@@ -5,6 +5,7 @@ from typing import Any
 from boto3.session import Session
 from botocore.exceptions import ClientError
 
+from multi_x_serverless.common.constants import SYNC_MESSAGES_TABLE, SYNC_PREDECESSOR_COUNTER_TABLE
 from multi_x_serverless.deployment.common.deploy.models.resource import Resource
 from multi_x_serverless.deployment.common.remote_client.remote_client import RemoteClient
 
@@ -53,25 +54,25 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
             return False
         return function is not None
 
-    def increment_counter(self, function_name: str, workflow_instance_id: str) -> int:
+    def set_predecessor_reached(self, predecessor_name: str, sync_node_name: str, workflow_instance_id: str) -> int:
         client = self._client("dynamodb")
-        counter_id = f"{function_name}:{workflow_instance_id}"
-        # Atomic counter update
         response = client.update_item(
-            TableName="counters",
-            Key={"id": {"S": counter_id}},
-            UpdateExpression="SET counter_value = counter_value + :val",
-            ExpressionAttributeValues={":val": 1},
+            TableName=SYNC_PREDECESSOR_COUNTER_TABLE,
+            Key={"workflow_instance_id": {"S": workflow_instance_id}},
+            UpdateExpression="SET #s = list_append(if_not_exists(#s, :empty_list), :new_predecessor)",
+            ExpressionAttributeNames={"#s": sync_node_name},
+            ExpressionAttributeValues={":new_predecessor": {"L": [{"S": predecessor_name}]}, ":empty_list": {"L": []}},
             ReturnValues="UPDATED_NEW",
         )
-        return int(response["Attributes"]["counter_value"]["N"])
 
-    def upload_message_for_merge(self, function_name: str, workflow_instance_id: str, message: str) -> None:
+        return len(response["Attributes"][sync_node_name]["L"])
+
+    def upload_predecessor_data_at_sync_node(self, function_name: str, workflow_instance_id: str, message: str) -> None:
         client = self._client("dynamodb")
-        merge_id = f"{function_name}:{workflow_instance_id}"
+        sync_node_id = f"{function_name}:{workflow_instance_id}"
         response = client.update_item(
-            TableName="merge_messages",
-            Key={"id": {"S": merge_id}},
+            TableName=SYNC_MESSAGES_TABLE,
+            Key={"id": {"S": sync_node_id}},
             ExpressionAttributeNames={
                 "#M": "message",
             },
@@ -86,10 +87,10 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         self, current_instance_name: str, workflow_instance_id: str  # pylint: disable=unused-argument
     ) -> list[str]:
         client = self._client("dynamodb")
-        merge_id = f"{current_instance_name}:{workflow_instance_id}"
+        sync_node_id = f"{current_instance_name}:{workflow_instance_id}"
         response = client.get_item(
-            TableName="merge_messages",
-            Key={"id": {"S": merge_id}},
+            TableName=SYNC_MESSAGES_TABLE,
+            Key={"id": {"S": sync_node_id}},
         )
         if "Item" not in response:
             return []

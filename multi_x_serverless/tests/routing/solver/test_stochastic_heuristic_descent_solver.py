@@ -4,6 +4,7 @@ import numpy as np
 
 from unittest.mock import Mock, patch
 from multi_x_serverless.routing.solver.stochastic_heuristic_descent_solver import StochasticHeuristicDescentSolver
+from multi_x_serverless.routing.solver.solver import Solver
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
 
@@ -63,7 +64,11 @@ class TestStochasticHeuristicDescentSolver(unittest.TestCase):
         }
         self.workflow_config.workflow_id = "workflow_id"
 
-    def test_record_successful_change(self):
+    @patch("multi_x_serverless.routing.solver.solver.InputManager", new_callable=Mock)
+    def test_record_successful_change(self, mock_input_manager):
+        mock_input_manager_instance = Mock()
+        mock_input_manager.return_value = mock_input_manager_instance
+        mock_input_manager_instance.get_all_regions.return_value = [{"provider": "provider1", "region": "region1"}]
         solver = StochasticHeuristicDescentSolver(self.workflow_config)
         solver._record_successful_change(1)
         assert 1 in solver._positive_regions
@@ -76,7 +81,11 @@ class TestStochasticHeuristicDescentSolver(unittest.TestCase):
         assert 2 in solver._positive_regions
         assert len(solver._positive_regions) == 2
 
-    def test_most_expensive_path(self):
+    @patch("multi_x_serverless.routing.solver.solver.InputManager", new_callable=Mock)
+    def test_most_expensive_path(self, mock_input_manager):
+        mock_input_manager_instance = Mock()
+        mock_input_manager.return_value = mock_input_manager_instance
+        mock_input_manager_instance.get_all_regions.return_value = [{"provider": "provider1", "region": "region1"}]
         solver = StochasticHeuristicDescentSolver(self.workflow_config)
         solver._topological_order = [0, 1, 2]
         edge_weights = np.array([[0, 1, 0], [0, 0, 1], [0, 0, 0]])
@@ -84,7 +93,11 @@ class TestStochasticHeuristicDescentSolver(unittest.TestCase):
         max_cost = solver._most_expensive_path(edge_weights, node_weights)
         assert max_cost == 8
 
-    def test_is_improvement(self):
+    @patch("multi_x_serverless.routing.solver.solver.InputManager", new_callable=Mock)
+    def test_is_improvement(self, mock_input_manager):
+        mock_input_manager_instance = Mock()
+        mock_input_manager.return_value = mock_input_manager_instance
+        mock_input_manager_instance.get_all_regions.return_value = [{"provider": "provider1", "region": "region1"}]
         solver = StochasticHeuristicDescentSolver(self.workflow_config)
         deployment = (
             {0: 0},
@@ -147,7 +160,11 @@ class TestStochasticHeuristicDescentSolver(unittest.TestCase):
             )
             assert result == expected_result
 
-    def test_calculate_updated_costs_of_deployment(self):
+    @patch("multi_x_serverless.routing.solver.solver.InputManager", new_callable=Mock)
+    def test_calculate_updated_costs_of_deployment(self, mock_input_manager):
+        mock_input_manager_instance = Mock()
+        mock_input_manager.return_value = mock_input_manager_instance
+        mock_input_manager_instance.get_all_regions.return_value = [{"provider": "provider1", "region": "region1"}]
         solver = StochasticHeuristicDescentSolver(self.workflow_config)
         solver._adjacency_indexes = (np.array([0, 1, 0]), np.array([1, 0, 0]))
 
@@ -210,7 +227,11 @@ class TestStochasticHeuristicDescentSolver(unittest.TestCase):
         assert np.all(new_average_edge_weights[2] == np.array([[6.0, 6.0, 1.0], [6.0, 1.0, 1.0], [1.0, 1.0, 1.0]]))
         assert np.all(new_tail_edge_weights[2] == np.array([[6.0, 6.0, 1.0], [6.0, 1.0, 1.0], [1.0, 1.0, 1.0]]))
 
-    def test_select_random_instance_and_region(self):
+    @patch("multi_x_serverless.routing.solver.solver.InputManager", new_callable=Mock)
+    def test_select_random_instance_and_region(self, mock_input_manager):
+        mock_input_manager_instance = Mock()
+        mock_input_manager.return_value = mock_input_manager_instance
+        mock_input_manager_instance.get_all_regions.return_value = [{"provider": "provider1", "region": "region1"}]
         solver = StochasticHeuristicDescentSolver(self.workflow_config)
         solver._bias_probability = 0.5
         solver._positive_regions = [1]
@@ -239,7 +260,11 @@ class TestStochasticHeuristicDescentSolver(unittest.TestCase):
         assert instance == 0
         assert new_region == 0 or new_region == 1
 
-    def test_calculate_cost_of_deployment_case(self):
+    @patch("multi_x_serverless.routing.solver.solver.InputManager", new_callable=Mock)
+    def test_calculate_cost_of_deployment_case(self, mock_input_manager):
+        mock_input_manager_instance = Mock()
+        mock_input_manager.return_value = mock_input_manager_instance
+        mock_input_manager_instance.get_all_regions.return_value = [{"provider": "provider1", "region": "region1"}]
         solver = StochasticHeuristicDescentSolver(self.workflow_config)
         node_weights = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]])
         edge_weights = np.array(
@@ -257,7 +282,11 @@ class TestStochasticHeuristicDescentSolver(unittest.TestCase):
         assert runtime == 150.0
         assert carbon == 85.0
 
-    def test_calculate_cost_of_deployment(self):
+    @patch("multi_x_serverless.routing.solver.solver.InputManager", new_callable=Mock)
+    def test_calculate_cost_of_deployment(self, mock_input_manager):
+        mock_input_manager_instance = Mock()
+        mock_input_manager.return_value = mock_input_manager_instance
+        mock_input_manager_instance.get_all_regions.return_value = [{"provider": "provider1", "region": "region1"}]
         solver = StochasticHeuristicDescentSolver(self.workflow_config)
         average_node_weights = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]])
         tail_node_weights = np.array([[10.0, 20.0, 30.0], [40.0, 50.0, 60.0], [70.0, 80.0, 90.0]])
@@ -283,7 +312,11 @@ class TestStochasticHeuristicDescentSolver(unittest.TestCase):
         assert tail_runtime == 1500.0
         assert tail_carbon == 3660.0
 
-    def test_init_deployment(self):
+    @patch("multi_x_serverless.routing.solver.solver.InputManager", new_callable=Mock)
+    def test_init_deployment(self, mock_input_manager):
+        mock_input_manager_instance = Mock()
+        mock_input_manager.return_value = mock_input_manager_instance
+        mock_input_manager_instance.get_all_regions.return_value = [{"provider": "provider1", "region": "region1"}]
         solver = StochasticHeuristicDescentSolver(self.workflow_config)
         solver._workflow_config = Mock()
         solver._workflow_config.start_hops = "start_hops"
@@ -327,7 +360,11 @@ class TestStochasticHeuristicDescentSolver(unittest.TestCase):
             result[5][1], np.array([[[0.0, 13.0], [19.0, 0.0]], [[0.0, 15.0], [21.0, 0.0]], [[0.0, 14.0], [20.0, 0.0]]])
         )
 
-    def test_solve(self):
+    @patch("multi_x_serverless.routing.solver.solver.InputManager", new_callable=Mock)
+    def test_solve(self, mock_input_manager):
+        mock_input_manager_instance = Mock()
+        mock_input_manager.return_value = mock_input_manager_instance
+        mock_input_manager_instance.get_all_regions.return_value = [{"provider": "provider1", "region": "region1"}]
         solver = StochasticHeuristicDescentSolver(self.workflow_config)
         solver._max_iterations = 5
         solver._learning_rate = 0.01
@@ -370,3 +407,7 @@ class TestStochasticHeuristicDescentSolver(unittest.TestCase):
                             result = solver._solve([{"region1": "value1"}, {"region2": "value2"}])
 
         assert result == [({0: 0, 1: 0}, 1.0, 3.0, 5.0), ({0: 1, 1: 0}, 7.0, 9.0, 11.0)]
+
+
+if __name__ == "__main__":
+    unittest.main()

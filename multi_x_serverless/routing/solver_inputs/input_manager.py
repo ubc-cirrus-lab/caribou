@@ -54,6 +54,8 @@ class InputManager:
         success = self._loader_manager.setup(regions, workflow_id)
         if not success:
             # return False
+            # TODO (#35): Handle this error
+            # raise RuntimeError("One or more loaders failed to aquire data from the database.")
             print("One or more loaders failed to aquire data from the database.")
 
         # Get the retrieved information (From database or cache)
