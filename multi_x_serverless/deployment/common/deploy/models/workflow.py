@@ -1,4 +1,4 @@
-from typing import Any, Sequence, Optional
+from typing import Any, Optional, Sequence
 
 from multi_x_serverless.deployment.common.config.config import Config
 from multi_x_serverless.deployment.common.deploy.models.deployment_package import DeploymentPackage
@@ -101,14 +101,16 @@ class Workflow(Resource):
             for edge in self._edges:
                 if edge[1] == instance["instance_name"]:
                     instance["preceding_instances"].append(edge[0])
-            paths_to_merge = self._find_all_paths_to_merge(instance["instance_name"])
-            if paths_to_merge:
-                instance["dependent_merge_predecessors"] = [path[:-1] for path in paths_to_merge]
+            paths_to_sync_nodes = self._find_all_paths_to_any_sync_node(instance["instance_name"])
+            if paths_to_sync_nodes:
+                instance["dependent_sync_predecessors"] = [path[:-2] for path in paths_to_sync_nodes]
             finished_instances.append(instance)
 
         return finished_instances
 
-    def _find_all_paths_to_merge(self, start_instance: str, visited=None, path=None) -> list[list[str]]:
+    def _find_all_paths_to_any_sync_node(
+        self, start_instance: str, visited: Optional[set[str]] = None, path: Optional[list[str]] = None
+    ) -> list[list[str]]:
         if visited is None:
             visited = set()
         if path is None:
@@ -119,10 +121,11 @@ class Workflow(Resource):
         for edge in self._edges:
             if edge[0] == start_instance:
                 next_instance = edge[1]
-                if next_instance.split(":")[1] == "merge":
+                if next_instance.split(":")[1] == "sync":
+                    path.append(next_instance)
                     paths.append(list(path))
                 elif next_instance not in visited:
-                    paths.extend(self._find_all_paths_to_merge(next_instance, visited, path))
+                    paths.extend(self._find_all_paths_to_any_sync_node(next_instance, visited, path))
         path.pop()
         visited.remove(start_instance)
         return paths

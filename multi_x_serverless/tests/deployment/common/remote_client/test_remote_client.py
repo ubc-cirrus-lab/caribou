@@ -28,7 +28,7 @@ class TestRemoteClient(unittest.TestCase):
         def increment_counter(self, function_name, workflow_instance_id):
             return 1
 
-        def upload_message_for_merge(self, function_name, workflow_instance_id, message):
+        def upload_predecessor_data_at_sync_node(self, function_name, workflow_instance_id, message):
             pass
 
         def set_value_in_table(self, table_name, key, value):
@@ -55,13 +55,13 @@ class TestRemoteClient(unittest.TestCase):
         client = self.MockRemoteClient()
         client.send_message_to_messaging_service = Mock()
         client.increment_counter = Mock(return_value=1)
-        client.upload_message_for_merge = Mock()
+        client.upload_predecessor_data_at_sync_node = Mock()
 
         message = json.dumps({"payload": "test"})
         client.invoke_function(message, "identifier", "workflow_instance_id", True, "function_name", 1)
 
         client.send_message_to_messaging_service.assert_called_once_with("identifier", message)
         client.increment_counter.assert_called_once_with("function_name", "workflow_instance_id")
-        client.upload_message_for_merge.assert_called_once_with(
+        client.upload_predecessor_data_at_sync_node.assert_called_once_with(
             "function_name", "workflow_instance_id", json.dumps("test")
         )

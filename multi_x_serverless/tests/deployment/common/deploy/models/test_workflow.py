@@ -184,6 +184,47 @@ class TestWorkflow(unittest.TestCase):
             expected_output,
         )
 
+    def test_find_all_paths_to_any_sync_node(self):
+        self.workflow._edges = [
+            ("node1:test:1", "node2:test2:2"),
+            ("node2:test2:2", "node3:test3:3"),
+            ("node3:test3:3", "node3:sync:4"),
+            ("node1:test:1", "node3:sync:4"),
+        ]
+
+        expected_paths = [
+            ["node1:test:1", "node2:test2:2", "node3:test3:3", "node3:sync:4"],
+            ["node1:test:1", "node3:sync:4"],
+        ]
+        actual_paths = self.workflow._find_all_paths_to_any_sync_node("node1:test:1")
+        self.assertEqual(actual_paths, expected_paths)
+
+    def test_find_all_paths_to_any_sync_node_no_sync_node(self):
+        self.workflow._edges = [
+            ("node1:test:1", "node2:test2:2"),
+            ("node2:test2:2", "node3:test3:3"),
+            ("node3:test3:3", "node3:sync:4"),
+        ]
+
+        expected_paths = [["node1:test:1", "node2:test2:2", "node3:test3:3", "node3:sync:4"]]
+        actual_paths = self.workflow._find_all_paths_to_any_sync_node("node1:test:1")
+        self.assertEqual(actual_paths, expected_paths)
+
+        expected_paths = [["node2:test2:2", "node3:test3:3", "node3:sync:4"]]
+        actual_paths = self.workflow._find_all_paths_to_any_sync_node("node2:test2:2")
+        self.assertEqual(actual_paths, expected_paths)
+
+    def test_find_all_paths_to_any_sync_node_no_paths(self):
+        self.workflow._edges = [
+            ("node1:test:1", "node2:test2:2"),
+            ("node2:test2:2", "node3:test3:3"),
+            ("node3:test3:3", "node3:sync:4"),
+        ]
+
+        expected_paths = []
+        actual_paths = self.workflow._find_all_paths_to_any_sync_node("node3:sync:4")
+        self.assertEqual(actual_paths, expected_paths)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -63,7 +63,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "Multiple entry points defined"):
             self.builder.build_workflow(self.config, [])
 
-    def test_build_workflow_merge_case_self_cycle(self):
+    def test_build_workflow_sync_case_self_cycle(self):
         # Create mock functions
         function1 = Mock(spec=MultiXServerlessFunction)
         function1.entry_point = True
@@ -79,7 +79,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         function2.handler = "function2"
         function2.regions_and_providers = {"providers": {}}
         function2.environment_variables = []
-        function2.is_waiting_for_predecessors = Mock(return_value=True)  # This is a merge function
+        function2.is_waiting_for_predecessors = Mock(return_value=True)
 
         # Mock the workflow app to return the successors of function1
         self.config.workflow_app.get_successors = Mock(return_value=[function2])
@@ -94,7 +94,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         ):
             self.builder.build_workflow(self.config, [])
 
-    def test_build_workflow_merge_case_multiple_incoming(self):
+    def test_build_workflow_sync_case_multiple_incoming(self):
         # Create mock functions
         function1 = Mock(spec=MultiXServerlessFunction)
         function1.entry_point = True
@@ -110,7 +110,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         function2.handler = "function2"
         function2.regions_and_providers = {"providers": {}}
         function2.environment_variables = []
-        function2.is_waiting_for_predecessors = Mock(return_value=True)  # This is a merge function
+        function2.is_waiting_for_predecessors = Mock(return_value=True)
 
         # Mock the workflow app to return the successors of function1
         # The first two calls are for the dfs, the next two for the actual successors
@@ -185,7 +185,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         ):
             self.builder.build_workflow(self.config, [])
 
-    def test_build_workflow_merge_working(self):
+    def test_build_workflow_sync_working(self):
         # Create mock functions
         function1 = Mock(spec=MultiXServerlessFunction)
         function1.entry_point = True
@@ -201,7 +201,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         function2.handler = "function2"
         function2.regions_and_providers = {"providers": {}}
         function2.environment_variables = []
-        function2.is_waiting_for_predecessors = Mock(return_value=True)  # This is a merge function
+        function2.is_waiting_for_predecessors = Mock(return_value=True)
 
         # Mock the workflow app to return the successors of function1
 
@@ -230,7 +230,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         function2.handler = "function2"
         function2.regions_and_providers = {"providers": {}}
         function2.environment_variables = []
-        function2.is_waiting_for_predecessors = Mock(return_value=False)  # This is a merge function
+        function2.is_waiting_for_predecessors = Mock(return_value=False)
 
         # Mock the workflow app to return the successors of function1
 
@@ -247,7 +247,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         ):
             self.builder.build_workflow(self.config, [])
 
-    def test_build_workflow_merge_cycle(self):
+    def test_build_workflow_sync_cycle(self):
         # Create mock functions
         function1 = Mock(spec=MultiXServerlessFunction)
         function1.entry_point = True

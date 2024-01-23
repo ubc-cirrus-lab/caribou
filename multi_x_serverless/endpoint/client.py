@@ -29,9 +29,6 @@ class Client:
             message=json_payload,
             identifier=identifier,
             workflow_instance_id="0",
-            merge=False,
-            function_name=None,
-            expected_counter=-1,
         )
 
     def __get_initial_node_workflow_placement_decision(

@@ -75,7 +75,7 @@ class MultiXServerlessWorkflow:
         self,
         function: Callable[..., Any],
         payload: Optional[dict | Any] = None,
-        conditional: bool = True,  # pylint: disable=unused-argument
+        conditional: bool = True,
     ) -> None:
         """
         Invoke a serverless function which is part of this workflow.
@@ -94,9 +94,21 @@ class MultiXServerlessWorkflow:
 
         workflow_placement_decision = self.get_workflow_placement_decision(wrapper_frame)
 
+        current_instance_name = workflow_placement_decision["current_instance_name"]
+
         successor_instance_name, successor_workflow_placement_decision_dictionary = self.get_successor_instance_name(
             function, workflow_placement_decision, wrapper_frame, function_frame
         )
+
+        if not conditional:
+            # We don't call the function if it is conditional and the condition is not met.
+
+            # We still need to increment the successor index, because the next function might not be conditional.
+            self._successor_index += 1
+
+            # However, for the sync nodes we still need to inform the platform that the function has finished.
+            self._inform_sync_node_of_conditional_non_execution(workflow_placement_decision, successor_instance_name)
+            return
 
         # Wrap the payload and add the workflow_placement decision
         payload_wrapper = {}
@@ -110,25 +122,67 @@ class MultiXServerlessWorkflow:
             successor_instance_name, workflow_placement_decision
         )
 
-        merge = successor_instance_name.split(":", maxsplit=2)[1] == "merge"
+        is_successor_sync_node = successor_instance_name.split(":", maxsplit=2)[1] == "sync"
 
         expected_counter = -1
-        function_name = None
-        if merge:
+        if is_successor_sync_node:
             for instance in workflow_placement_decision["instances"]:
                 if instance["instance_name"] == successor_instance_name:
                     expected_counter = len(instance["preceding_instances"])
                     break
-            function_name = successor_instance_name.split(":", maxsplit=1)[0]
 
         RemoteClientFactory.get_remote_client(provider, region).invoke_function(
             message=json_payload,
             identifier=identifier,
             workflow_instance_id=workflow_placement_decision["run_id"],
-            merge=merge,
-            function_name=function_name,
+            sync=is_successor_sync_node,
+            function_name=successor_instance_name,
             expected_counter=expected_counter,
+            current_instance_name=current_instance_name,
         )
+
+    def _inform_sync_node_of_conditional_non_execution(
+        self, workflow_placement_decision: dict[str, Any], successor_instance_name: str
+    ) -> None:
+        for instance in workflow_placement_decision["instances"]:
+            if instance["instance_name"] == successor_instance_name and "dependent_sync_predecessors" in instance:
+                for predecessor_and_sync in instance["dependent_sync_predecessors"]:
+                    predecessor = predecessor_and_sync[0]
+                    sync_node = predecessor_and_sync[1]
+
+                    provider, region, identifier = self.get_successor_workflow_placement_decision(
+                        sync_node, workflow_placement_decision
+                    )
+
+                    expected_counter = -1
+                    for instance in workflow_placement_decision["instances"]:
+                        if instance["instance_name"] == sync_node:
+                            expected_counter = len(instance["preceding_instances"])
+                            break
+
+                    counter = RemoteClientFactory.get_remote_client(provider, region).set_predecessor_reached(
+                        predecessor_name=predecessor,
+                        sync_node_name=sync_node,
+                        workflow_instance_id=workflow_placement_decision["run_id"],
+                    )
+
+                    if counter == expected_counter:
+                        successor_workflow_placement_decision = (
+                            self.get_successor_workflow_placement_decision_dictionary(
+                                workflow_placement_decision, sync_node
+                            )
+                        )
+                        payload_wrapper = {}
+                        payload_wrapper["workflow_placement_decision"] = successor_workflow_placement_decision
+                        json_payload = json.dumps(payload_wrapper)
+
+                        RemoteClientFactory.get_remote_client(provider, region).invoke_function(
+                            message=json_payload,
+                            identifier=identifier,
+                            workflow_instance_id=workflow_placement_decision["run_id"],
+                            sync=False,
+                        )
+                break
 
     def get_successor_workflow_placement_decision(
         self, successor_instance_name: str, workflow_placement_decision: dict[str, Any]
@@ -202,7 +256,7 @@ class MultiXServerlessWorkflow:
                 # name and has the correct index
                 for successor_instance in successor_instances:
                     if successor_instance.startswith(successor_function_name):
-                        if successor_instance.split(":", maxsplit=2)[1] == "merge":
+                        if successor_instance.split(":", maxsplit=2)[1] == "sync":
                             return successor_instance
                         if successor_instance.split(":", maxsplit=2)[1].split("_")[-1] == str(self._successor_index):
                             self._successor_index += 1
@@ -241,7 +295,7 @@ class MultiXServerlessWorkflow:
         """
         Get the data returned by the predecessor functions.
 
-        This method is only invoked if the merge function was
+        This method is only invoked if the sync function was
         called which means all predecessor functions have finished.
         """
         (
@@ -275,12 +329,12 @@ class MultiXServerlessWorkflow:
 
         if "current_instance_name" not in workflow_placement_decision:
             raise RuntimeError(
-                "Could not get current instance name, is this the entry point? Entry point cannot be merge function"
+                "Could not get current instance name, is this the entry point? Entry point cannot be sync function"
             )
 
         if "run_id" not in workflow_placement_decision:
             raise RuntimeError(
-                "Could not get workflow instance id, is this the entry point? Entry point cannot be merge function"
+                "Could not get workflow instance id, is this the entry point? Entry point cannot be sync function"
             )
 
         current_instance_name = workflow_placement_decision["current_instance_name"]
@@ -392,7 +446,7 @@ class MultiXServerlessWorkflow:
                     wrapper.workflow_placement_decision = self.get_workflow_placement_decision_from_platform()  # type: ignore  # pylint: disable=line-too-long
                     # This is the first function to be called, so we need to generate a run id
                     # This run id will be used to identify the workflow instance
-                    # For example for the merge function, we need to know which workflow instance to merge
+                    # For example for the synchronization function, we need to know which workflow instance to sync
                     wrapper.workflow_placement_decision["run_id"] = uuid.uuid4().hex  # type: ignore
                     if len(args) == 0:
                         return func()

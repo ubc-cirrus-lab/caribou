@@ -158,7 +158,7 @@ def first_model(event: dict[str, Any]) -> dict[str, Any]:
         "results": results,
     }
 
-    workflow.invoke_serverless_function(merge_function, payload)
+    workflow.invoke_serverless_function(sync_function, payload)
 
     return {"status": 200}
 
@@ -221,13 +221,13 @@ def second_model(event: dict[str, Any]) -> dict[str, Any]:
         "results": results,
     }
 
-    workflow.invoke_serverless_function(merge_function, payload)
+    workflow.invoke_serverless_function(sync_function, payload)
 
     return {"status": 200}
 
 
 @workflow.serverless_function(name="MergeFunction")
-def merge_function(event: dict[str, Any]) -> dict[str, Any]:
+def sync_function(event: dict[str, Any]) -> dict[str, Any]:
     results = workflow.get_predecessor_data(event)
 
     model_names = []

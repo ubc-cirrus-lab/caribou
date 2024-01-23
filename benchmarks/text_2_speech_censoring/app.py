@@ -100,7 +100,7 @@ def profanity(event: dict[str, Any]) -> dict[str, Any]:
         "indexes": extracted_indexes,
     }
 
-    workflow.invoke_serverless_function(merge_function, payload)
+    workflow.invoke_serverless_function(sync_function, payload)
     return {"status": 200}
 
 
@@ -187,12 +187,12 @@ def compression(event: dict[str, Any]) -> dict[str, Any]:
         "file_name": file_name,
     }
 
-    workflow.invoke_serverless_function(merge_function, payload)
+    workflow.invoke_serverless_function(sync_function, payload)
     return {"status": 200}
 
 
 @workflow.serverless_function(name="MergeFunction")
-def merge_function(event: dict[str, Any]) -> dict[str, Any]:
+def sync_function(event: dict[str, Any]) -> dict[str, Any]:
     results = workflow.get_predecessor_data(event)
 
     for result in results:
