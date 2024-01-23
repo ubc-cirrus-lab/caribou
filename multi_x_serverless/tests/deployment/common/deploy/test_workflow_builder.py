@@ -90,7 +90,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         # Call build_workflow
         with self.assertRaisesRegex(
             RuntimeError,
-            "Cycle detected: function2 is being visited again",
+            "Cycle detected: test_workflow-0_0_1-function2 is being visited again",
         ):
             self.builder.build_workflow(self.config, [])
 
@@ -181,7 +181,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         # Call build_workflow
         with self.assertRaisesRegex(
             RuntimeError,
-            "Cycle detected: function1 is being visited again",
+            "Cycle detected: test_workflow-0_0_1-function1 is being visited again",
         ):
             self.builder.build_workflow(self.config, [])
 
@@ -243,7 +243,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         # Call build_workflow and assert the specific error message
         with self.assertRaisesRegex(
             RuntimeError,
-            "Cycle detected: function1 is being visited again",
+            "Cycle detected: test_workflow-0_0_1-function1 is being visited again",
         ):
             self.builder.build_workflow(self.config, [])
 
