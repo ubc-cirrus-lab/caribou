@@ -150,38 +150,15 @@ class MultiXServerlessWorkflow:
                     predecessor = predecessor_and_sync[0]
                     sync_node = predecessor_and_sync[1]
 
-                    provider, region, identifier = self.get_successor_workflow_placement_decision(
+                    provider, region, _ = self.get_successor_workflow_placement_decision(
                         sync_node, workflow_placement_decision
                     )
 
-                    expected_counter = -1
-                    for instance in workflow_placement_decision["instances"]:
-                        if instance["instance_name"] == sync_node:
-                            expected_counter = len(instance["preceding_instances"])
-                            break
-
-                    counter = RemoteClientFactory.get_remote_client(provider, region).set_predecessor_reached(
+                    RemoteClientFactory.get_remote_client(provider, region).set_predecessor_reached(
                         predecessor_name=predecessor,
                         sync_node_name=sync_node,
                         workflow_instance_id=workflow_placement_decision["run_id"],
                     )
-
-                    if counter == expected_counter:
-                        successor_workflow_placement_decision = (
-                            self.get_successor_workflow_placement_decision_dictionary(
-                                workflow_placement_decision, sync_node
-                            )
-                        )
-                        payload_wrapper = {}
-                        payload_wrapper["workflow_placement_decision"] = successor_workflow_placement_decision
-                        json_payload = json.dumps(payload_wrapper)
-
-                        RemoteClientFactory.get_remote_client(provider, region).invoke_function(
-                            message=json_payload,
-                            identifier=identifier,
-                            workflow_instance_id=workflow_placement_decision["run_id"],
-                            sync=False,
-                        )
                 break
 
     def get_successor_workflow_placement_decision(
