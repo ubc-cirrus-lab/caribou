@@ -143,6 +143,7 @@ num_regions = 3
 seed = 0
 
 solverBenchmark = SolverBenchmark(total_nodes=total_nodes, merge_nodes=merge_nodes, num_regions=num_regions, seed=seed)
+solverBenchmark.visualize_dag()
 
 print("BFSFineGrainedSolver:")
 solverBenchmark.run_benchmark(BFSFineGrainedSolver)
