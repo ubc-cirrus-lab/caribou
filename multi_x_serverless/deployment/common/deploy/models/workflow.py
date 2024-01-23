@@ -69,10 +69,13 @@ class Workflow(Resource):
             deployed_regions[function.name] = self._config.home_regions
         return deployed_regions
 
-    def get_instance_description(self) -> WorkflowConfig:
+    def get_workflow_config(self) -> WorkflowConfig:
         if self._config is None:
             raise RuntimeError("Error in workflow config creation, given config is None, this should not happen")
         workflow_description = {
+            "workflow_name": self.name,
+            "workflow_version": self.version,
+            "workflow_id": f"{self.name}-{self.version}",
             "instances": self._get_instances(),
             "start_hops": self._config.home_regions,
             # TODO (#27): Implement and incorporate Free Tier considerations into data_sources
@@ -91,21 +94,26 @@ class Workflow(Resource):
         for instance in instances:
             if not isinstance(instance, dict):
                 raise RuntimeError("Error in workflow config creation, this should not happen")
-            instance["succeeding_instances"] = []
+
+            new_instance: dict[str, Any] = {}
+            new_instance.update(instance)
             if "regions_and_providers" not in instance:
-                instance["regions_and_providers"] = self._config.regions_and_providers
+                new_instance["regions_and_providers"] = self._config.regions_and_providers
+            preceding_instances = []
+            succeeding_instances = []
             for edge in self._edges:
                 if edge[0] == instance["instance_name"]:
-                    instance["succeeding_instances"].append(edge[1])
-            instance["preceding_instances"] = []
-            for edge in self._edges:
+                    succeeding_instances.append(edge[1])
                 if edge[1] == instance["instance_name"]:
-                    instance["preceding_instances"].append(edge[0])
+                    preceding_instances.append(edge[0])
+            new_instance["succeeding_instances"] = succeeding_instances
+            new_instance["preceding_instances"] = preceding_instances
+
             paths_to_sync_nodes = self._find_all_paths_to_any_sync_node(instance["instance_name"])
             if paths_to_sync_nodes:
-                instance["dependent_sync_predecessors"] = [path[:-2] for path in paths_to_sync_nodes]
-            finished_instances.append(instance)
+                new_instance["dependent_sync_predecessors"] = [path[:-2] for path in paths_to_sync_nodes]
 
+            finished_instances.append(new_instance)
         return finished_instances
 
     def _find_all_paths_to_any_sync_node(

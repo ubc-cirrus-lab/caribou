@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Optional
 
 
 @dataclass
@@ -9,7 +9,7 @@ class FunctionInstance:
     regions_and_providers: Optional[dict]
     function_resource_name: str
 
-    def to_json(self) -> dict:
+    def to_json(self) -> dict[str, Any]:
         """
         Get the JSON representation of this function.
         """

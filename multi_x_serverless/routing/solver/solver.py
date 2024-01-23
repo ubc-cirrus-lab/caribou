@@ -22,11 +22,11 @@ class Solver(ABC):
         self._input_manager = InputManager(workflow_config)
 
         # Get all regions allowed for the workflow
-        self.worklow_level_permitted_regions = self._filter_regions_global(self._input_manager.get_all_regions())
+        self._worklow_level_permitted_regions = self._filter_regions_global(self._input_manager.get_all_regions())
 
         # Set up the instance indexer (DAG) and region indexer
         self._dag = self.get_dag_representation()
-        self._region_indexer = Region(self.worklow_level_permitted_regions)
+        self._region_indexer = Region(self._worklow_level_permitted_regions)
 
         # Setup the ranker for final ranking of solutions
         self._ranker = Ranker(workflow_config)
@@ -40,7 +40,7 @@ class Solver(ABC):
         self._endpoints = Endpoints()
 
     def solve(self) -> None:
-        solved_results = self._solve(self.worklow_level_permitted_regions)
+        solved_results = self._solve(self._worklow_level_permitted_regions)
         ranked_results = self.rank_solved_results(solved_results)
         selected_result = self._select_result(ranked_results)
         formatted_result = self._formatter.format(
