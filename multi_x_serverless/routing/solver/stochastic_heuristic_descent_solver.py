@@ -1,4 +1,5 @@
 import random
+from typing import Union
 
 import numpy as np
 
@@ -7,8 +8,13 @@ from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
 
 class StochasticHeuristicDescentSolver(Solver):
-    def __init__(self, workflow_config: WorkflowConfig) -> None:
-        super().__init__(workflow_config)
+    def __init__(
+        self,
+        workflow_config: WorkflowConfig,
+        all_available_regions: Union[list[dict], None] = None,
+        instantiate_input_manager: bool = True,
+    ) -> None:
+        super().__init__(workflow_config, all_available_regions, instantiate_input_manager)
         self._max_iterations = len(self._worklow_level_permitted_regions) * 5
         self._learning_rate = 0.01
         self._positive_regions: set[int] = set()

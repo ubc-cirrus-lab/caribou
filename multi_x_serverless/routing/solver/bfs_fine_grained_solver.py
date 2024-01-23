@@ -42,6 +42,8 @@ class BFSFineGrainedSolver(Solver):
             ],
         ] = {}
         for current_instance_index in topological_order:
+            # print("\nCurrent Instance Index:", current_instance_index)
+
             # Instance flow related information
             prerequisites_indices: list[int] = prerequisites_dictionary[current_instance_index]
 
