@@ -303,6 +303,10 @@ Subsequent functions will receive the workflow placement decision from the previ
 ## Solvers
 
 The solvers are responsible for determining the optimal placement of the function instances across the available regions.
+Every solver must create valid and unique deployments.
+A valid deployment is one that satisfies the hard constraints of the workflow in terms of resource requirements for the worst-case runtime (tail).
+The provided constraints will then be valid as quality of service (QoS) requirements for the average-case runtime.
+Prioritisation of the deployments is based on the average-case runtime.
 
 ### Coarse Grained
 
