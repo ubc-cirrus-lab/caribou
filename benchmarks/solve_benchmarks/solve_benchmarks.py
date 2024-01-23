@@ -26,7 +26,7 @@ class SolverBenchmark:
 
         # Create a WorkflowConfig instance and set its properties using the generated config
         workflow_config = Mock(spec=WorkflowConfig)
-        workflow_config.home_regions = self._config['home_regions']
+        workflow_config.start_hops = self._config['start_hops']
         workflow_config.regions_and_providers = self._config['regions_and_providers']
         workflow_config.instances = self._config['instances']
         workflow_config.constraints = self._config['constraints']
@@ -36,8 +36,8 @@ class SolverBenchmark:
         
         # Do nothing mock input manager
         nothing_input_manager = Mock(spec=InputManager)
-        nothing_input_manager.get_execution_cost_carbon_runtime.return_value = (0, 0, 0)
-        nothing_input_manager.get_transmission_cost_carbon_runtime.return_value = (0, 0, 0)
+        nothing_input_manager.get_execution_cost_carbon_runtime.return_value = (random.randint(0, 10), random.uniform(0, 1), random.uniform(0, 1))
+        nothing_input_manager.get_transmission_cost_carbon_runtime.return_value = (random.randint(0, 10), random.uniform(0, 1), random.uniform(0, 1))
         solver._input_manager = nothing_input_manager
 
         # Time solving function
@@ -62,7 +62,7 @@ class SolverBenchmark:
 
         # Generate regions
         regions = [{"provider": f"p1", "region": f"r{i+1}"} for i in range(self._num_regions)]
-        config['home_regions'] = [regions[0]]
+        config['start_hops'] = regions[0]
         config['regions_and_providers'] = {"providers": {f"p1": None }}
 
         # Generate instances
@@ -127,5 +127,5 @@ solverBenchmark = SolverBenchmark(total_nodes=total_nodes, merge_nodes=merge_nod
 print("Running benchmark for BFSFineGrainedSolver")
 solverBenchmark.run_benchmark(BFSFineGrainedSolver)
 
-print("Running benchmark for StochasticHeuristicDescentSolver")
-solverBenchmark.run_benchmark(StochasticHeuristicDescentSolver)
+# print("Running benchmark for StochasticHeuristicDescentSolver")
+# solverBenchmark.run_benchmark(StochasticHeuristicDescentSolver)

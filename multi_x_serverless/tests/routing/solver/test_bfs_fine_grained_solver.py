@@ -104,7 +104,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
         """
         This is the most simple test for a single node DAG.
         """
-        self.workflow_config.home_regions = [{"provider": "p1", "region": "r1"}]
+        self.workflow_config.start_hops = {"provider": "p1", "region": "r1"}
         self.workflow_config.regions_and_providers = {"providers": {"p1": None, "p2": None}}
         self.workflow_config.instances = [
             {
@@ -139,7 +139,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
         """
         This is a simple test with 2 instances, all in a straight line.
         """
-        self.workflow_config.home_regions = [{"provider": "p1", "region": "r1"}]
+        self.workflow_config.start_hops = {"provider": "p1", "region": "r1"}
         self.workflow_config.regions_and_providers = {"providers": {"p1": None, "p2": None}}
         self.workflow_config.instances = [
             {
@@ -190,7 +190,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
         """
         This is a simple test with 3 instances, all in a straight line.
         """
-        self.workflow_config.home_regions = [{"provider": "p1", "region": "r1"}]
+        self.workflow_config.start_hops = {"provider": "p1", "region": "r1"}
         self.workflow_config.regions_and_providers = {"providers": {"p1": None, "p2": None}}
         self.workflow_config.instances = [
             {
@@ -252,7 +252,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
         """
         This is a simple test with 3 instances, 1 parent, and 2 leaf nodes
         """
-        self.workflow_config.home_regions = [{"provider": "p1", "region": "r1"}]
+        self.workflow_config.start_hops = {"provider": "p1", "region": "r1"}
         self.workflow_config.regions_and_providers = {"providers": {"p1": None, "p2": None}}
         self.workflow_config.instances = [
             {
@@ -314,7 +314,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
         """
         This is a simple test with 4 instances, 1 parent, and 3 leaf nodes
         """
-        self.workflow_config.home_regions = [{"provider": "p1", "region": "r1"}]
+        self.workflow_config.start_hops = {"provider": "p1", "region": "r1"}
         self.workflow_config.regions_and_providers = {"providers": {"p1": None, "p2": None}}
         self.workflow_config.instances = [
             {
@@ -391,7 +391,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
         """
         This is a simple test with 4 instances, 1 parent, and 2 nodes from that parent, and a final join node.
         """
-        self.workflow_config.home_regions = [{"provider": "p1", "region": "r1"}]
+        self.workflow_config.start_hops = {"provider": "p1", "region": "r1"}
         self.workflow_config.regions_and_providers = {"providers": {"p1": None, "p2": None}}
         self.workflow_config.instances = [
             {
@@ -464,7 +464,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
         """
         This is a test with 5 instances, there are 2 leafs, one of which is a direct join node.
         """
-        self.workflow_config.home_regions = [{"provider": "p1", "region": "r1"}]
+        self.workflow_config.start_hops = {"provider": "p1", "region": "r1"}
         self.workflow_config.regions_and_providers = {"providers": {"p1": None, "p2": None}}
         self.workflow_config.instances = [
             {
@@ -548,7 +548,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
         """
         This is a test with 6 instances, there are 1 final end node.
         """
-        self.workflow_config.home_regions = [{"provider": "p1", "region": "r1"}]
+        self.workflow_config.start_hops = {"provider": "p1", "region": "r1"}
         self.workflow_config.regions_and_providers = {"providers": {"p1": None, "p2": None}}
         self.workflow_config.instances = [
             {

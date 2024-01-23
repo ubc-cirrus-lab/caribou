@@ -15,7 +15,7 @@ class BFSFineGrainedSolver(Solver):
 
         # Get the home region index -> this is the region that the workflow starts from
         # For now the current implementation only supports one home region
-        home_region = self._workflow_config.home_regions[0]
+        home_region = self._workflow_config.start_hops
         home_region_index = self._region_indexer.get_value_indices()[(home_region["provider"], home_region["region"])]
 
         # Add virtual leaf nodes to the DAG
