@@ -16,7 +16,7 @@ class TestWorkflow(unittest.TestCase):
     def setUp(self):
         self.test_dir = tempfile.mkdtemp()
         self.config = Config({}, self.test_dir)
-        self.config.project_config["home_regions"] = ["region"]
+        self.config.project_config["home_regions"] = [{"provider": "aws", "region": "region"}]
         self.function = Mock(spec=Function)
         self.function_instance = Mock(spec=FunctionInstance)
         self.function_instance.name = "function_instance_1"
@@ -33,6 +33,7 @@ class TestWorkflow(unittest.TestCase):
             [("function_instance_1", "function_instance_2")],
             self.config,
         )
+        self.maxDiff = None
 
     def tearDown(self):
         shutil.rmtree(self.test_dir)
@@ -57,11 +58,18 @@ class TestWorkflow(unittest.TestCase):
         self.assertEqual(self.workflow.get_deployment_packages(), [DeploymentPackage("package_name")])
 
     def test_get_instance_description(self):
-        self.config = Mock(spec=Config)
-        self.config.home_regions = ["region"]
-        self.config.estimated_invocations_per_month = 1000
-        self.config.constraints = {"constraint": "value"}
-        self.config.regions_and_providers = {"region": "provider"}
+        self.config.project_config["constraints"] = {
+            "hard_resource_constraints": {"cost": {"value": 100, "type": "absolute"}},
+            "soft_resource_constraints": {"carbon": {"value": 0.1, "type": "relative"}},
+            "priority_order": ["cost", "runtime", "carbon"],
+        }
+        self.config.project_config["regions_and_providers"] = {
+            "providers": {
+                "aws": {
+                    "config": {"memory": 128, "timeout": 10},
+                }
+            }
+        }
         self.function_instance.to_json.return_value = {
             "function_name": "function_instance_1",
             "instance_name": "function_instance_1",
@@ -70,7 +78,7 @@ class TestWorkflow(unittest.TestCase):
             "function_name": "function_instance_2",
             "instance_name": "function_instance_2",
         }
-        workflow_config = self.workflow.get_instance_description()
+        workflow_config = self.workflow.get_workflow_config()
         self.assertIsInstance(workflow_config, WorkflowConfig)
         self.assertEqual(
             workflow_config._workflow_config["instances"][0]["succeeding_instances"], ["function_instance_2"]
@@ -80,7 +88,7 @@ class TestWorkflow(unittest.TestCase):
     def test_get_instance_description_error_no_config(self):
         self.workflow._config = None
         with self.assertRaises(RuntimeError) as context:
-            self.workflow.get_instance_description()
+            self.workflow.get_workflow_config()
         self.assertEqual(
             str(context.exception), "Error in workflow config creation, given config is None, this should not happen"
         )
@@ -88,13 +96,13 @@ class TestWorkflow(unittest.TestCase):
     def test_get_instance_description_error_instances_not_list(self):
         self.function_instance.to_json.return_value = "not a dict"
         with self.assertRaises(RuntimeError) as context:
-            self.workflow.get_instance_description()
+            self.workflow.get_workflow_config()
         self.assertEqual(str(context.exception), "Error in workflow config creation, this should not happen")
 
     def test_get_instance_description_error_instance_not_dict(self):
         self.function_instance.to_json.return_value = ["not a dict"]
         with self.assertRaises(RuntimeError) as context:
-            self.workflow.get_instance_description()
+            self.workflow.get_workflow_config()
         self.assertEqual(str(context.exception), "Error in workflow config creation, this should not happen")
 
     def test__get_entry_point_instance_name(self):
@@ -108,8 +116,14 @@ class TestWorkflow(unittest.TestCase):
             ]
         }
         expected_output = {
-            "function_instance_1": {"identifier": "identifier_1", "provider_region": "region"},
-            "function_instance_2": {"identifier": "identifier_2", "provider_region": "region"},
+            "function_instance_1": {
+                "identifier": "identifier_1",
+                "provider_region": {"provider": "aws", "region": "region"},
+            },
+            "function_instance_2": {
+                "identifier": "identifier_2",
+                "provider_region": {"provider": "aws", "region": "region"},
+            },
         }
         self.assertEqual(self.workflow._get_workflow_placement(resource_values), expected_output)
 
@@ -120,10 +134,12 @@ class TestWorkflow(unittest.TestCase):
                 {"name": "function_instance_2", "function_identifier": "identifier_2"},
             ]
         }
-        staging_area_placement = {"function_instance_1": {}, "function_instance_2": {}}
+        staging_area_placement = {"workflow_placement": {"function_instance_1": {}, "function_instance_2": {}}}
         expected_output = {
-            "function_instance_1": {"identifier": "identifier_1"},
-            "function_instance_2": {"identifier": "identifier_2"},
+            "workflow_placement": {
+                "function_instance_1": {"identifier": "identifier_1"},
+                "function_instance_2": {"identifier": "identifier_2"},
+            }
         }
         self.assertEqual(
             self.workflow._extend_stage_area_placement(resource_values, staging_area_placement),
@@ -147,14 +163,20 @@ class TestWorkflow(unittest.TestCase):
                 {"name": "function_instance_2", "function_identifier": "identifier_2"},
             ]
         }
-        self.workflow.get_instance_description = Mock(return_value=Mock(instances=["instance_1", "instance_2"]))
+        self.workflow.get_workflow_config = Mock(return_value=Mock(instances=["instance_1", "instance_2"]))
         self.workflow._Workflow__get_entry_point_instance_name = Mock(return_value="entry_point_instance")
         expected_output = {
             "instances": ["instance_1", "instance_2"],
             "current_instance_name": "function_instance_1",
             "workflow_placement": {
-                "function_instance_1": {"identifier": "identifier_1", "provider_region": "region"},
-                "function_instance_2": {"identifier": "identifier_2", "provider_region": "region"},
+                "function_instance_1": {
+                    "identifier": "identifier_1",
+                    "provider_region": {"provider": "aws", "region": "region"},
+                },
+                "function_instance_2": {
+                    "identifier": "identifier_2",
+                    "provider_region": {"provider": "aws", "region": "region"},
+                },
             },
         }
         self.assertEqual(self.workflow.get_workflow_placement_decision(resource_values), expected_output)
@@ -166,8 +188,8 @@ class TestWorkflow(unittest.TestCase):
                 {"name": "function_instance_2", "function_identifier": "identifier_2"},
             ]
         }
-        staging_area_placement = {"function_instance_1": {}, "function_instance_2": {}}
-        self.workflow.get_instance_description = Mock(return_value=Mock(instances=["instance_1", "instance_2"]))
+        staging_area_placement = {"workflow_placement": {"function_instance_1": {}, "function_instance_2": {}}}
+        self.workflow.get_workflow_config = Mock(return_value=Mock(instances=["instance_1", "instance_2"]))
         self.workflow._Workflow__get_entry_point_instance_name = Mock(return_value="entry_point_instance")
         expected_output = {
             "instances": ["instance_1", "instance_2"],

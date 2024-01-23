@@ -161,7 +161,7 @@ class Deployer:
         self._config.set_workflow_id(workflow_id)
 
     def _upload_workflow_to_solver_update_checker(self, workflow: Workflow, workflow_id: str) -> None:
-        workflow_config = workflow.get_instance_description().to_json()
+        workflow_config = workflow.get_workflow_config().to_json()
 
         payload = {
             "workflow_id": workflow_id,

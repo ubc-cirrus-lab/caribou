@@ -24,7 +24,7 @@ class DAG(Indexer):
         in_degree = np.sum(self._adj_matrix, axis=0)
         queue: deque[int] = deque()
 
-        for i, node in enumerate(self._nodes):
+        for i, _ in enumerate(self._nodes):
             if in_degree[i] == 0:
                 queue.append(i)
 

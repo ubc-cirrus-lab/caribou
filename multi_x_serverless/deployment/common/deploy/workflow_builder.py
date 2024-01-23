@@ -10,12 +10,13 @@ from multi_x_serverless.deployment.common.deploy.models.function import Function
 from multi_x_serverless.deployment.common.deploy.models.function_instance import FunctionInstance
 from multi_x_serverless.deployment.common.deploy.models.iam_role import IAMRole
 from multi_x_serverless.deployment.common.deploy.models.workflow import Workflow
+from multi_x_serverless.deployment.common.provider import Provider as ProviderEnum
 
 
 class WorkflowBuilder:
-    def build_workflow(
+    def build_workflow(  # pylint: disable=too-many-branches
         self, config: Config, regions: list[dict[str, str]]
-    ) -> Workflow:  # pylint: disable=too-many-locals
+    ) -> Workflow:
         resources: list[Function] = []
 
         # A workflow consists of two parts:
@@ -45,6 +46,12 @@ class WorkflowBuilder:
                 )
             else:
                 providers = config.regions_and_providers["providers"]
+            home_region_providers = [provider_region["provider"] for provider_region in config.home_regions]
+            for provider in home_region_providers:
+                if provider not in providers:
+                    raise RuntimeError(
+                        f"Home region provider {provider} is not defined in providers for function {function.name}"
+                    )
             self._verify_providers(providers)
 
             merged_env_vars = self.merge_environment_variables(
@@ -89,9 +96,9 @@ class WorkflowBuilder:
         predecessor_instance = FunctionInstance(
             name=f"{entry_point.name}:entry_point:{index_in_dag}",
             entry_point=entry_point.entry_point,
-            regions_and_providers=entry_point.regions_and_providers
-            if entry_point.regions_and_providers
-            else config.regions_and_providers,
+            regions_and_providers=self._merge_and_verify_regions_and_providers(
+                entry_point.regions_and_providers, config
+            ),
             function_resource_name=entry_point.name,
         )
         index_in_dag += 1
@@ -120,9 +127,9 @@ class WorkflowBuilder:
                 function_instances[function_instance_name] = FunctionInstance(
                     name=function_instance_name,
                     entry_point=multi_x_serverless_function.entry_point,
-                    regions_and_providers=multi_x_serverless_function.regions_and_providers
-                    if multi_x_serverless_function.regions_and_providers
-                    else config.regions_and_providers,
+                    regions_and_providers=self._merge_and_verify_regions_and_providers(
+                        multi_x_serverless_function.regions_and_providers, config
+                    ),
                     function_resource_name=multi_x_serverless_function.name,
                 )
                 for successor_of_predecessor_i, successor in enumerate(
@@ -141,6 +148,61 @@ class WorkflowBuilder:
             config=config,
             version=config.workflow_version,
         )
+
+    def _merge_and_verify_regions_and_providers(  # pylint: disable=too-many-branches
+        self, regions_and_providers: Optional[dict[str, Any]], config: Config
+    ) -> dict[str, Any]:
+        result_regions_and_providers = config.regions_and_providers.copy()
+        if regions_and_providers:
+            if "providers" in regions_and_providers:
+                result_regions_and_providers["providers"] = regions_and_providers["providers"]
+            possible_providers = [provider.value for provider in ProviderEnum]
+            defined_providers = [
+                provider_name
+                for provider_name in result_regions_and_providers["providers"].keys()
+                if provider_name in possible_providers
+            ]
+            allowed_regions_collection = set()
+            if "allowed_regions" in regions_and_providers:
+                result_regions_and_providers["allowed_regions"] = regions_and_providers["allowed_regions"]
+                allowed_regions = regions_and_providers["allowed_regions"]
+                if not allowed_regions:
+                    allowed_regions = []
+                if allowed_regions and not isinstance(allowed_regions, list):
+                    raise RuntimeError("allowed_regions must be a list")
+                for provider_region in allowed_regions:
+                    if "provider" not in provider_region or "region" not in provider_region:
+                        raise RuntimeError(f"Region {provider_region} must have both provider and region defined")
+                    allowed_regions_collection.add(f"{provider_region['provider']}-{provider_region['region']}")
+                    if not isinstance(provider_region, dict):
+                        raise RuntimeError("allowed_regions must be a list of strings")
+                    provider = provider_region["provider"]
+                    if provider not in [provider.value for provider in ProviderEnum]:
+                        raise RuntimeError(f"Provider {provider} is not supported")
+                    if provider not in defined_providers:
+                        raise RuntimeError(f"Provider {provider} is not defined in providers")
+            if "disallowed_regions" in regions_and_providers:
+                result_regions_and_providers["disallowed_regions"] = regions_and_providers["disallowed_regions"]
+                disallowed_regions = regions_and_providers["disallowed_regions"]
+                if not disallowed_regions:
+                    disallowed_regions = []
+                if disallowed_regions and not isinstance(disallowed_regions, list):
+                    raise RuntimeError("disallowed_regions must be a list")
+                for provider_region in disallowed_regions:
+                    if "provider" not in provider_region or "region" not in provider_region:
+                        raise RuntimeError(f"Region {provider_region} must have both provider and region defined")
+                    if f"{provider_region['provider']}-{provider_region['region']}" in allowed_regions_collection:
+                        raise RuntimeError(f"Region {provider_region} cannot be both allowed and disallowed")
+                    if not isinstance(provider_region, dict):
+                        raise RuntimeError("disallowed_regions must be a list of strings")
+                    provider = provider_region["provider"]
+                    if provider not in [provider.value for provider in ProviderEnum]:
+                        raise RuntimeError(f"Provider {provider} is not supported")
+                    if provider not in defined_providers:
+                        raise RuntimeError(f"Provider {provider} is not defined in providers")
+                    if provider_region in config.home_regions:
+                        raise RuntimeError(f"Region {provider_region} cannot be both home and disallowed")
+        return result_regions_and_providers
 
     def _get_function_name(self, config: Config, function: MultiXServerlessFunction) -> str:
         # A function name is of the form <workflow_name>-<workflow_version>-<function_name>

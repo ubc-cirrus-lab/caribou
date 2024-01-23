@@ -13,9 +13,13 @@ class Formatter:
         """
         # The results are already formatted, so just return them
         return {
-            index_to_instance_name[key]: {
-                "provider": index_to_region_provider_name[value][0],
-                "region": index_to_region_provider_name[value][1],
+            "workflow_placement": {
+                index_to_instance_name[key]: {
+                    "provider_region": {
+                        "provider": index_to_region_provider_name[value][0],
+                        "region": index_to_region_provider_name[value][1],
+                    }
+                }
+                for key, value in results[0].items()
             }
-            for key, value in results[0].items()
         }

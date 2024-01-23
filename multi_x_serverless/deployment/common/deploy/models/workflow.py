@@ -69,10 +69,13 @@ class Workflow(Resource):
             deployed_regions[function.name] = self._config.home_regions
         return deployed_regions
 
-    def get_instance_description(self) -> WorkflowConfig:
+    def get_workflow_config(self) -> WorkflowConfig:
         if self._config is None:
             raise RuntimeError("Error in workflow config creation, given config is None, this should not happen")
         workflow_description = {
+            "workflow_name": self.name,
+            "workflow_version": self.version,
+            "workflow_id": f"{self.name}-{self.version}",
             "instances": [function_instance.to_json() for function_instance in self._functions],
             "start_hops": self._config.home_regions,
             # TODO (#27): Implement and incorporate Free Tier considerations into data_sources
@@ -86,18 +89,22 @@ class Workflow(Resource):
         for instance in workflow_description["instances"]:
             if not isinstance(instance, dict):
                 raise RuntimeError("Error in workflow config creation, this should not happen")
-            instance["succeeding_instances"] = []
+
+            new_instance: dict[str, Any] = {}
             if "regions_and_providers" not in instance:
-                instance["regions_and_providers"] = self._config.regions_and_providers
-            # TODO (#22): Add function specific environment variables, similar to providers
+                new_instance["regions_and_providers"] = self._config.regions_and_providers
+            preceding_instances = []
+            succeeding_instances = []
             for edge in self._edges:
                 if edge[0] == instance["instance_name"]:
-                    instance["succeeding_instances"].append(edge[1])
-            instance["preceding_instances"] = []
-            for edge in self._edges:
+                    succeeding_instances.append(edge[1])
                 if edge[1] == instance["instance_name"]:
-                    instance["preceding_instances"].append(edge[0])
-            finished_instances.append(instance)
+                    preceding_instances.append(edge[0])
+
+            new_instance["succeeding_instances"] = succeeding_instances
+            new_instance["preceding_instances"] = preceding_instances
+            new_instance.update(instance)
+            finished_instances.append(new_instance)
         workflow_description["instances"] = finished_instances
 
         workflow_config = WorkflowConfig(workflow_description)
@@ -129,8 +136,8 @@ class Workflow(Resource):
     ) -> dict[str, dict[str, Any]]:
         function_instance_to_identifier = self._get_function_instance_to_identifier(resource_values)
 
-        for key in staging_area_placement.keys():
-            staging_area_placement[key]["identifier"] = function_instance_to_identifier[key]
+        for key in staging_area_placement["workflow_placement"].keys():
+            staging_area_placement["workflow_placement"][key]["identifier"] = function_instance_to_identifier[key]
 
         return staging_area_placement
 
@@ -155,7 +162,7 @@ class Workflow(Resource):
         """
         result: dict[str, Any] = {}
 
-        result["instances"] = self.get_instance_description().instances
+        result["instances"] = self.get_workflow_config().instances
         result["current_instance_name"] = self._get_entry_point_instance_name()
         result["workflow_placement"] = self._get_workflow_placement(resource_values)
         return result
@@ -166,9 +173,7 @@ class Workflow(Resource):
         """
         The desired output format is explained in the `docs/design.md` file under `Workflow Placement Decision`.
         """
-        result: dict[str, Any] = {}
-
-        result["instances"] = self.get_instance_description().instances
-        result["current_instance_name"] = self._get_entry_point_instance_name()
-        result["workflow_placement"] = self._extend_stage_area_placement(resource_values, staging_area_placement)
-        return result
+        staging_area_placement["instances"] = self.get_workflow_config().instances
+        staging_area_placement["current_instance_name"] = self._get_entry_point_instance_name()
+        self._extend_stage_area_placement(resource_values, staging_area_placement)
+        return staging_area_placement
