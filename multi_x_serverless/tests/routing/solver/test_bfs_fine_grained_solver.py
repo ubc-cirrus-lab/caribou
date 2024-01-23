@@ -18,6 +18,28 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
         self.workflow_config = Mock(spec=WorkflowConfig)
         self.workflow_config.constraints = None
 
+        # Say this is the value of deploying an instance at a region (row = from, col = to) # row = instance_index, column = region_index
+        # For simplicity, we just say that cost just this value, co2 is this value * 2, and rt is also just this value
+        self.execution_matrix = [
+            [5.0, 6.0],
+            [7.0, 8.0],
+            [9.0, 10.0],
+            [11.0, 12.0],
+            [13.0, 14.0],
+            [15.0, 16.0],
+        ]
+
+        # Simplify it to 1 array as it might be easier to understand (So say cos/co2/rt have same base values)
+        # previous_instance_index, current_instance_index, from_region_index, to_region_index
+        # Here we only consider the from to regions
+        # But we just use a factor and then simply use from to of regions here
+        # Say this is the value of from a region to a region (row = from, col = to)
+        # For simplicity, we just say that cost just this value, co2 is this value * 2, and rt is also just this value
+        self.transmission_matrix = [
+            [0, 1],
+            [2, 0],
+        ]
+
         # Mock input manager
         self.input_manager = Mock(spec=InputManager)
         self.input_manager.get_execution_cost_carbon_runtime.side_effect = (
@@ -68,29 +90,13 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
             {"provider": "p2", "region": "r2"},
         ]
 
-        # Say this is the value of deploying an instance at a region (row = from, col = to) # row = instance_index, column = region_index
-        # For simplicity, we just say that cost just this value, co2 is this value * 2, and rt is also just this value
-        self.execution_matrix = [
-            [1, 2],
-        ]
-
-        # Simplify it to 1 array as it might be easier to understand (So say cos/co2/rt have same base values)
-        # previous_instance_index, current_instance_index, from_region_index, to_region_index
-        # But we just use a factor and then simply use from to of regions here
-        # Say this is the value of from a region to a region (row = from, col = to)
-        # For simplicity, we just say that cost just this value, co2 is this value * 2, and rt is also just this value
-        self.transmission_matrix = [
-            [1, 1],
-            [1, 1],
-        ]
-
         solver = BFSFineGrainedSolver(self.workflow_config, regions, False)
         solver._input_manager = self.input_manager
 
         deployments = solver._solve(regions)
 
         # This is the expected deployments
-        expected_deployments = [({0: 0}, 1.0, 2.0, 1.0), ({0: 1}, 2.0, 4.0, 2.0)]
+        expected_deployments = [({0: 0}, 5.0, 10.0, 5.0), ({0: 1}, 7.0, 14.0, 7.0)] # Verified
 
         self.assertEqual(deployments, expected_deployments)
 
@@ -130,24 +136,6 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
             {"provider": "p2", "region": "r2"},
         ]
 
-        # Say this is the value of deploying an instance at a region (row = from, col = to) # row = instance_index, column = region_index
-        # For simplicity, we just say that cost just this value, co2 is this value * 2, and rt is also just this value
-        self.execution_matrix = [
-            [1, 2],
-            [4, 3],
-        ]
-
-        # Simplify it to 1 array as it might be easier to understand (So say cos/co2/rt have same base values)
-        # previous_instance_index, current_instance_index, from_region_index, to_region_index
-        # Here we only consider the from to regions
-        # But we just use a factor and then simply use from to of regions here
-        # Say this is the value of from a region to a region (row = from, col = to)
-        # For simplicity, we just say that cost just this value, co2 is this value * 2, and rt is also just this value
-        self.transmission_matrix = [
-            [1, 2],
-            [3, 4],
-        ]
-
         solver = BFSFineGrainedSolver(self.workflow_config, regions, False)
         solver._input_manager = self.input_manager
 
@@ -155,20 +143,13 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
 
         # This is the expected deployments
         expected_deployments = [
-            ({0: 0, 1: 0}, 6.0, 12.0, 6.0),
-            ({0: 1, 1: 0}, 9.0, 18.0, 9.0),
-            ({0: 0, 1: 1}, 6.0, 12.0, 6.0),
-            ({0: 1, 1: 1}, 9.0, 18.0, 9.0),
-        ]
+            ({0: 0, 1: 0}, 12.0, 24.0, 12.0), # Verified
+            ({0: 1, 1: 0}, 16.0, 32.0, 16.0), # Verified
+            ({0: 0, 1: 1}, 14.0, 28.0, 14.0), # Verified
+            ({0: 1, 1: 1}, 15.0, 30.0, 15.0), # Verified
+            ]
 
         self.assertEqual(deployments, expected_deployments)
-
-        # print("\nSimple straight line DAG solver results:")
-        # deployment_length = len(deployments)
-
-        # print("Final deployment length:", deployment_length)
-
-        # print(deployments)
 
     def test_solver_simple_3_node_line(self):
         """
@@ -217,25 +198,6 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
             {"provider": "p2", "region": "r2"},
         ]
 
-        # Say this is the value of deploying an instance at a region (row = from, col = to) # row = instance_index, column = region_index
-        # For simplicity, we just say that cost just this value, co2 is this value * 2, and rt is also just this value
-        self.execution_matrix = [
-            [1.0, 2.0],
-            [6.0, 5.0],
-            [1.5, 2.5],
-        ]
-
-        # Simplify it to 1 array as it might be easier to understand (So say cos/co2/rt have same base values)
-        # previous_instance_index, current_instance_index, from_region_index, to_region_index
-        # Here we only consider the from to regions
-        # But we just use a factor and then simply use from to of regions here
-        # Say this is the value of from a region to a region (row = from, col = to)
-        # For simplicity, we just say that cost just this value, co2 is this value * 2, and rt is also just this value
-        self.transmission_matrix = [
-            [1, 2],
-            [3, 4],
-        ]
-
         solver = BFSFineGrainedSolver(self.workflow_config, regions, False)
         solver._input_manager = self.input_manager
 
@@ -243,20 +205,13 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
 
         # This is the expected deployments
         expected_deployments = [
-            ({0: 0, 1: 0, 2: 0}, 10.5, 21.0, 10.5),
-            ({0: 1, 1: 0, 2: 0}, 13.5, 27.0, 13.5),
-            ({0: 0, 1: 1, 2: 0}, 12.5, 25.0, 12.5),
-            ({0: 1, 1: 1, 2: 0}, 15.5, 31.0, 15.5),
-        ]
+            ({0: 0, 1: 0, 2: 0}, 21.0, 42.0, 21.0), # Verified
+            ({0: 1, 1: 0, 2: 0}, 25.0, 50.0, 25.0), # Verified
+            ({0: 0, 1: 1, 2: 0}, 25.0, 50.0, 25.0), # Verified
+            ({0: 1, 1: 1, 2: 0}, 26.0, 52.0, 26.0), # Verified
+            ]
 
         self.assertEqual(deployments, expected_deployments)
-
-        # print("\nSimple straight line DAG solver results:")
-        # deployment_length = len(deployments)
-
-        # print("Final deployment length:", deployment_length)
-
-        # print(deployments)
 
     def test_solver_simple_2_node_split(self):
         """
@@ -305,24 +260,6 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
             {"provider": "p2", "region": "r2"},
         ]
 
-        # Say this is the value of deploying an instance at a region (row = from, col = to) # row = instance_index, column = region_index
-        # For simplicity, we just say that cost just this value, co2 is this value * 2, and rt is also just this value
-        self.execution_matrix = [
-            [1.0, 2.0],
-            [6.0, 5.0],
-            [1.5, 2.5],
-        ]
-
-        # Simplify it to 1 array as it might be easier to understand (So say cos/co2/rt have same base values)
-        # previous_instance_index, current_instance_index, from_region_index, to_region_index
-        # Here we only consider the from to regions
-        # But we just use a factor and then simply use from to of regions here
-        # Say this is the value of from a region to a region (row = from, col = to)
-        # For simplicity, we just say that cost just this value, co2 is this value * 2, and rt is also just this value
-        self.transmission_matrix = [
-            [1, 2],
-            [3, 4],
-        ]
 
         solver = BFSFineGrainedSolver(self.workflow_config, regions, False)
         solver._input_manager = self.input_manager
@@ -331,12 +268,12 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
 
         # This is the expected deployments
         expected_deployments = [
-            ({0: 0, 1: 0, 2: 0}, 10.5, 21.0, 8.0),
-            ({0: 0, 1: 1, 2: 0}, 10.5, 21.0, 8.0),
-            ({0: 1, 1: 0, 2: 0}, 15.5, 31.0, 11.0),
-            ({0: 1, 1: 1, 2: 0}, 15.5, 31.0, 11.0),
-        ]
-
+            ({0: 0, 1: 0, 2: 0}, 21.0, 42.0, 14.0), # Verified
+            ({0: 0, 1: 1, 2: 0}, 23.0, 46.0, 14.0), # Verified
+            ({0: 1, 1: 0, 2: 0}, 27.0, 54.0, 18.0), # Verified
+            ({0: 1, 1: 1, 2: 0}, 26.0, 52.0, 18.0), # Verified
+            ]
+        
         self.assertEqual(deployments, expected_deployments)
 
     def test_solver_simple_3_node_split(self):
@@ -365,7 +302,9 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                 "regions_and_providers": {
                     "allowed_regions": None,
                     "disallowed_regions": None,
-                    "providers": {"p2": None},
+                    "providers": {
+                        "p1": None,
+                    },
                 },
             },
             {
@@ -399,26 +338,6 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
             {"provider": "p2", "region": "r2"},
         ]
 
-        # Say this is the value of deploying an instance at a region (row = from, col = to) # row = instance_index, column = region_index
-        # For simplicity, we just say that cost just this value, co2 is this value * 2, and rt is also just this value
-        self.execution_matrix = [
-            [1.0, 2.0],
-            [6.0, 5.0],
-            [1.5, 2.5],
-            [0.5, 1.5],
-        ]
-
-        # Simplify it to 1 array as it might be easier to understand (So say cos/co2/rt have same base values)
-        # previous_instance_index, current_instance_index, from_region_index, to_region_index
-        # Here we only consider the from to regions
-        # But we just use a factor and then simply use from to of regions here
-        # Say this is the value of from a region to a region (row = from, col = to)
-        # For simplicity, we just say that cost just this value, co2 is this value * 2, and rt is also just this value
-        self.transmission_matrix = [
-            [1, 2],
-            [3, 4],
-        ]
-
         solver = BFSFineGrainedSolver(self.workflow_config, regions, False)
         solver._input_manager = self.input_manager
 
@@ -426,20 +345,14 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
 
         # This is the expected deployments
         expected_deployments = [
-            ({0: 0, 1: 1, 2: 0, 3: 0}, 12.0, 24.0, 8.0),
-            ({0: 0, 1: 1, 2: 0, 3: 1}, 14.0, 28.0, 8.0),
-            ({0: 1, 1: 1, 2: 0, 3: 0}, 19.0, 38.0, 11.0),
-            ({0: 1, 1: 1, 2: 0, 3: 1}, 21.0, 42.0, 11.0),
+            ({0: 0, 1: 0, 2: 0, 3: 0}, 32.0, 64.0, 16.0), # Verified
+            ({0: 0, 1: 0, 2: 0, 3: 1}, 34.0, 68.0, 18.0), # Verified
+            ({0: 1, 1: 0, 2: 0, 3: 0}, 40.0, 80.0, 20.0), # Verified
+            ({0: 1, 1: 0, 2: 0, 3: 1}, 39.0, 78.0, 19.0), # Verified
         ]
 
         self.assertEqual(deployments, expected_deployments)
 
-        # print("\nSimple straight line DAG solver results:")
-        # deployment_length = len(deployments)
-
-        # print("Final deployment length:", deployment_length)
-
-        # print(deployments)
 
     def test_solver_simple_2_node_join(self):
         """
@@ -478,7 +391,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                 "regions_and_providers": {
                     "allowed_regions": None,
                     "disallowed_regions": None,
-                    "providers": {"p2": None},
+                    "providers": {"p1": None},
                 },
             },
             {
@@ -499,26 +412,6 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
             {"provider": "p2", "region": "r2"},
         ]
 
-        # Say this is the value of deploying an instance at a region (row = from, col = to) # row = instance_index, column = region_index
-        # For simplicity, we just say that cost just this value, co2 is this value * 2, and rt is also just this value
-        self.execution_matrix = [
-            [1.0, 2.0],
-            [6.0, 5.0],
-            [1.5, 2.5],
-            [0.5, 1.5],
-        ]
-
-        # Simplify it to 1 array as it might be easier to understand (So say cos/co2/rt have same base values)
-        # previous_instance_index, current_instance_index, from_region_index, to_region_index
-        # Here we only consider the from to regions
-        # But we just use a factor and then simply use from to of regions here
-        # Say this is the value of from a region to a region (row = from, col = to)
-        # For simplicity, we just say that cost just this value, co2 is this value * 2, and rt is also just this value
-        self.transmission_matrix = [
-            [1, 2],
-            [3, 4],
-        ]
-
         solver = BFSFineGrainedSolver(self.workflow_config, regions, False)
         solver._input_manager = self.input_manager
 
@@ -526,20 +419,14 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
 
         # This is the expected deployments
         expected_deployments = [
-            ({0: 0, 1: 0, 2: 1, 3: 0}, 17.0, 34.0, 9.5),
-            ({0: 1, 1: 0, 2: 1, 3: 0}, 22.0, 44.0, 12.5),
-            ({0: 0, 1: 0, 2: 1, 3: 1}, 20.0, 40.0, 11.5),
-            ({0: 1, 1: 0, 2: 1, 3: 1}, 25.0, 50.0, 14.5),
-        ]
+            ({0: 0, 1: 0, 2: 0, 3: 0}, 32.0, 64.0, 25.0), # Verified
+            ({0: 1, 1: 0, 2: 0, 3: 0}, 38.0, 76.0, 29.0), # Verified
+            ({0: 0, 1: 0, 2: 0, 3: 1}, 35.0, 70.0, 27.0), # Verified
+            ({0: 1, 1: 0, 2: 0, 3: 1}, 41.0, 82.0, 31.0), # Verified
+            ]
 
         self.assertEqual(deployments, expected_deployments)
 
-        # print("\nSimple straight line DAG solver results:")
-        # deployment_length = len(deployments)
-
-        # print("Final deployment length:", deployment_length)
-
-        # print(deployments)
 
     def test_solver_complex_2_leaf(self):
         """
@@ -567,18 +454,18 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                 "regions_and_providers": {
                     "allowed_regions": None,
                     "disallowed_regions": None,
-                    "providers": {"p2": None},
+                    "providers": {"p1": None},
                 },
             },
             {
                 "instance_name": "i3",
                 "function_name": "f3",
-                "succeeding_instances": ["i4"],
+                "succeeding_instances": ["i4", "i5"],
                 "preceding_instances": ["i1"],
                 "regions_and_providers": {
                     "allowed_regions": None,
                     "disallowed_regions": None,
-                    "providers": {"p1": None, "p2": None},
+                    "providers": {"p1": None},
                 },
             },
             {
@@ -600,7 +487,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                 "regions_and_providers": {
                     "allowed_regions": None,
                     "disallowed_regions": None,
-                    "providers": {"p1": None},
+                    "providers": {"p1": None, "p2": None},
                 },
             },
         ]
@@ -610,27 +497,6 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
             {"provider": "p2", "region": "r2"},
         ]
 
-        # Say this is the value of deploying an instance at a region (row = from, col = to) # row = instance_index, column = region_index
-        # For simplicity, we just say that cost just this value, co2 is this value * 2, and rt is also just this value
-        self.execution_matrix = [
-            [1.0, 2.0],
-            [3.0, 4.0],
-            [1.5, 2.5],
-            [0.5, 1.5],
-            [2.5, 3.5],
-        ]
-
-        # Simplify it to 1 array as it might be easier to understand (So say cos/co2/rt have same base values)
-        # previous_instance_index, current_instance_index, from_region_index, to_region_index
-        # Here we only consider the from to regions
-        # But we just use a factor and then simply use from to of regions here
-        # Say this is the value of from a region to a region (row = from, col = to)
-        # For simplicity, we just say that cost just this value, co2 is this value * 2, and rt is also just this value
-        self.transmission_matrix = [
-            [1, 2],
-            [3, 4],
-        ]
-
         solver = BFSFineGrainedSolver(self.workflow_config, regions, False)
         solver._input_manager = self.input_manager
 
@@ -638,20 +504,13 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
 
         # This is the expected deployments
         expected_deployments = [
-            ({0: 0, 1: 1, 2: 0, 3: 0, 4: 0}, 16.5, 33.0, 10.5),
-            ({0: 0, 1: 1, 2: 1, 3: 0, 4: 0}, 20.5, 41.0, 10.5),
-            ({0: 1, 1: 1, 2: 0, 3: 0, 4: 0}, 21.5, 43.0, 13.5),
-            ({0: 1, 1: 1, 2: 1, 3: 0, 4: 0}, 25.5, 51.0, 13.5),
-        ]
+            ({0: 0, 1: 0, 2: 0, 3: 0, 4: 0}, 45.0, 90.0, 27.0), # Verified
+            ({0: 0, 1: 0, 2: 0, 3: 0, 4: 1}, 47.0, 94.0, 29.0), # Verified
+            ({0: 1, 1: 0, 2: 0, 3: 0, 4: 0}, 51.0, 102.0, 31.0), # Verified
+            ({0: 1, 1: 0, 2: 0, 3: 0, 4: 1}, 53.0, 106.0, 33.0), # Verified
+            ]
 
         self.assertEqual(deployments, expected_deployments)
-
-        # print("\nSimple straight line DAG solver results:")
-        # deployment_length = len(deployments)
-
-        # print("Final deployment length:", deployment_length)
-
-        # print(deployments)
 
     def test_solver_complex_final_merge(self):
         """
@@ -679,18 +538,18 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                 "regions_and_providers": {
                     "allowed_regions": None,
                     "disallowed_regions": None,
-                    "providers": {"p2": None},
+                    "providers": {"p1": None},
                 },
             },
             {
                 "instance_name": "i3",
                 "function_name": "f3",
-                "succeeding_instances": ["i4"],
+                "succeeding_instances": ["i4", "i5"],
                 "preceding_instances": ["i1"],
                 "regions_and_providers": {
                     "allowed_regions": None,
                     "disallowed_regions": None,
-                    "providers": {"p1": None, "p2": None},
+                    "providers": {"p1": None},
                 },
             },
             {
@@ -723,7 +582,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                 "regions_and_providers": {
                     "allowed_regions": None,
                     "disallowed_regions": None,
-                    "providers": {"p2": None},
+                    "providers": {"p1": None, "p2": None},
                 },
             },
         ]
@@ -733,28 +592,6 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
             {"provider": "p2", "region": "r2"},
         ]
 
-        # Say this is the value of deploying an instance at a region (row = from, col = to) # row = instance_index, column = region_index
-        # For simplicity, we just say that cost just this value, co2 is this value * 2, and rt is also just this value
-        self.execution_matrix = [
-            [1.0, 2.0],
-            [3.0, 4.0],
-            [1.5, 2.5],
-            [0.5, 1.5],
-            [2.5, 3.5],
-            [0.25, 0.5],
-        ]
-
-        # Simplify it to 1 array as it might be easier to understand (So say cos/co2/rt have same base values)
-        # previous_instance_index, current_instance_index, from_region_index, to_region_index
-        # Here we only consider the from to regions
-        # But we just use a factor and then simply use from to of regions here
-        # Say this is the value of from a region to a region (row = from, col = to)
-        # For simplicity, we just say that cost just this value, co2 is this value * 2, and rt is also just this value
-        self.transmission_matrix = [
-            [1, 2],
-            [3, 4],
-        ]
-
         solver = BFSFineGrainedSolver(self.workflow_config, regions, False)
         solver._input_manager = self.input_manager
 
@@ -762,20 +599,13 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
 
         # This is the expected deployments
         expected_deployments = [
-            ({0: 0, 1: 1, 2: 0, 3: 0, 4: 0, 5: 1}, 21.0, 42.0, 13.0),
-            ({0: 0, 1: 1, 2: 1, 3: 0, 4: 0, 5: 1}, 25.0, 50.0, 13.0),
-            ({0: 1, 1: 1, 2: 0, 3: 0, 4: 0, 5: 1}, 26.0, 52.0, 16.0),
-            ({0: 1, 1: 1, 2: 1, 3: 0, 4: 0, 5: 1}, 30.0, 60.0, 16.0),
-        ]
+            ({0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0}, 60.0, 120.0, 42.0), # Verified
+            ({0: 1, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0}, 66.0, 132.0, 46.0), # Verified
+            ({0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 1}, 63.0, 126.0, 44.0), # Verified
+            ({0: 1, 1: 0, 2: 0, 3: 0, 4: 0, 5: 1}, 69.0, 138.0, 48.0), # Verified
+            ]
 
         self.assertEqual(deployments, expected_deployments)
-
-        # print("\nSimple straight line DAG solver results:")
-        # deployment_length = len(deployments)
-
-        # print("Final deployment length:", deployment_length)
-
-        # print(deployments)
 
 
 if __name__ == "__main__":
