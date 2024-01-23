@@ -15,7 +15,11 @@ In this document we will discuss the design decisions that have been made for th
     1. [Implementation](#implementation)
 4. [Workflow Placement Decision](#workflow-placement-decision)
     1. [Component Interaction Order](#component-interaction-order)
-5. [References](#references)
+5. [Solvers](#solvers)
+    1. [Coarse Grained](#coarse-grained)
+    2. [Stochastic Heuristic Descent](#stochastic-heuristic-descent)
+    3. [Brute Force](#brute-force)
+6. [References](#references)
 
 ##  Dataflow DAG Model
 
@@ -183,8 +187,6 @@ The payload is optional and can be omitted if the function does not require any 
 - Additionally, there is the option of conditionally calling a function.
 This is done with the following annotation:
 
-**TODO (#11): Implement conditional function invocation**
-
 ```python
 workflow.invoke_serverless_function(second_function, payload, condition)
 ```
@@ -284,6 +286,8 @@ Different parts of this dictionary are provided by different components of the s
 
 ### Component Interaction Order
 
+![Component Interaction Order](./img/component_interaction_overview.png)
+
 The following is the order in which the different components interact with each other with regards to the workflow placement decision:
 
 1. The deployment client uploads an initial version of the workflow placement decision to the distributed key-value store.
@@ -295,6 +299,64 @@ The following is the order in which the different components interact with each 
 
 During a workflow execution, the initial function instance will download the workflow placement decision from the distributed key-value store and add the `run_id`.
 Subsequent functions will receive the workflow placement decision from the previous function instance which updated the `current_instance_name` to the name of the current function instance.
+
+## Solvers
+
+The solvers are responsible for determining the optimal placement of the function instances across the available regions.
+Every solver must create valid and unique deployments.
+A valid deployment is one that satisfies the hard constraints of the workflow in terms of resource requirements for the worst-case runtime (tail).
+The provided constraints will then be valid as quality of service (QoS) requirements for the average-case runtime.
+Prioritisation of the deployments is based on the average-case runtime.
+
+### Coarse Grained
+
+TODO (#86)
+
+### Stochastic Heuristic Descent
+
+The Stochastic Heuristic Descent solver is a heuristic optimization algorithm that utilizes a stochastic approach to explore different deployment configurations.
+It employs a heuristic method for quick and efficient problem-solving.
+The solver is not guaranteed to find the optimal solution, nor to be exhaustive in its search.
+The solver optimizes for multiple objectives including cost, runtime, and carbon footprint.
+It ensures that solutions adhere to specified resource constraints.
+Similar to the other solvers it uses worst-case estimates with regards to conditional calls (all conditional calls are assumed to be true) and the tail latency for the function runtimes and the network latencies to filter for hard constraints.
+The solver is implemented as a hill-climbing algorithm with a stochastic approach.
+
+#### Key Features
+
+- **Stochastic Approach**: Utilizes random selections and probability to explore different deployment configurations.
+- **Heuristic Optimization**: Employs heuristic methods for quick and efficient problem-solving.
+- **Multi-objective Focus**: Optimizes for multiple objectives including cost, runtime, and carbon footprint.
+- **Resource Constraint Compliance**: Ensures that solutions adhere to specified resource constraints.
+
+#### Workflow
+
+1. **Initialization**:
+   - Sets up critical parameters like learning rate and maximum iterations.
+   - Initializes the deployment configuration with initial region assignments.
+
+2. **Iteration Loop**:
+   - Iteratively updates a subset of instances based on the learning rate.
+   - Randomly selects new region assignments for each instance and evaluates potential improvements.
+
+3. **Evaluation of Deployment**:
+   - Checks if the current deployment configuration meets the specified hard resource constraints.
+   - Ensures the uniqueness of the deployment to avoid redundant solutions.
+
+4. **Result Compilation**:
+   - Upon completion of the iterations, compiles a list of valid and unique average case deployments.
+   - These deployments represent the optimized configurations discovered by the solver.
+
+#### Specialities
+
+- **Adaptive Learning Rate**: Dynamically adjusts the number of instances to update in each iteration.
+- **Bias Towards Positive Regions**: Incorporates a bias towards regions that have previously resulted in improvements.
+- **Topology-Aware Optimizations**: Leverages the topological structure of the distributed system for more efficient optimization.
+- **Multi-Dimensional Evaluation**: Simultaneously considers multiple factors (cost, runtime, carbon footprint) in optimization.
+
+### Brute Force
+
+TODO (#87)
 
 ##  References
 
