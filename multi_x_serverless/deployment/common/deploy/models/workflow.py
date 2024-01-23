@@ -1,4 +1,4 @@
-from typing import Any, Sequence
+from typing import Any, Optional, Sequence
 
 from multi_x_serverless.deployment.common.config.config import Config
 from multi_x_serverless.deployment.common.deploy.models.deployment_package import DeploymentPackage
@@ -76,21 +76,27 @@ class Workflow(Resource):
             "workflow_name": self.name,
             "workflow_version": self.version,
             "workflow_id": f"{self.name}-{self.version}",
-            "instances": [function_instance.to_json() for function_instance in self._functions],
+            "instances": self._get_instances(),
             "start_hops": self._config.home_regions,
             # TODO (#27): Implement and incorporate Free Tier considerations into data_sources
             "estimated_invocations_per_month": self._config.estimated_invocations_per_month,
             "constraints": self._config.constraints,
             "regions_and_providers": self._config.regions_and_providers,
         }
+
+        workflow_config = WorkflowConfig(workflow_description)
+        return workflow_config
+
+    def _get_instances(self) -> list[dict]:
+        instances = [function_instance.to_json() for function_instance in self._functions]
+
         finished_instances = []
-        if not isinstance(workflow_description["instances"], list):
-            raise RuntimeError("Error in workflow config creation, this should not happen")
-        for instance in workflow_description["instances"]:
+        for instance in instances:
             if not isinstance(instance, dict):
                 raise RuntimeError("Error in workflow config creation, this should not happen")
 
             new_instance: dict[str, Any] = {}
+            new_instance.update(instance)
             if "regions_and_providers" not in instance:
                 new_instance["regions_and_providers"] = self._config.regions_and_providers
             preceding_instances = []
@@ -100,15 +106,40 @@ class Workflow(Resource):
                     succeeding_instances.append(edge[1])
                 if edge[1] == instance["instance_name"]:
                     preceding_instances.append(edge[0])
-
             new_instance["succeeding_instances"] = succeeding_instances
             new_instance["preceding_instances"] = preceding_instances
-            new_instance.update(instance)
-            finished_instances.append(new_instance)
-        workflow_description["instances"] = finished_instances
 
-        workflow_config = WorkflowConfig(workflow_description)
-        return workflow_config
+            if len(instance["instance_name"].split(":")) != 3:
+                raise RuntimeError("Error in workflow config creation, this should not happen")
+
+            paths_to_sync_nodes = self._find_all_paths_to_any_sync_node(instance["instance_name"])
+            predecessors_to_sync_nodes_and_sync_nodes = []
+            if paths_to_sync_nodes:
+                predecessors_to_sync_nodes_and_sync_nodes = [path[:-2] for path in paths_to_sync_nodes]
+            new_instance["dependent_sync_predecessors"] = predecessors_to_sync_nodes_and_sync_nodes
+            finished_instances.append(new_instance)
+        return finished_instances
+
+    def _find_all_paths_to_any_sync_node(
+        self, start_instance: str, visited: Optional[set[str]] = None, path: Optional[list[str]] = None
+    ) -> list[list[str]]:
+        if visited is None:
+            visited = set()
+        if path is None:
+            path = []
+        visited.add(start_instance)
+        path = path + [start_instance]
+        paths: list[list[str]] = []
+        for edge in self._edges:
+            if edge[0] == start_instance:
+                next_instance = edge[1]
+                if next_instance.split(":")[1] == "sync":
+                    path = path + [next_instance]
+                    paths.append(path)
+                elif next_instance not in visited:
+                    paths.extend(self._find_all_paths_to_any_sync_node(next_instance, visited, list(path)))
+        visited.remove(start_instance)
+        return paths
 
     def _get_entry_point_instance_name(self) -> str:
         """
@@ -148,9 +179,7 @@ class Workflow(Resource):
         }
 
         function_instance_to_identifier = {
-            function_instance.function_resource_name: function_resource_to_identifiers[
-                function_instance.function_resource_name
-            ]
+            function_instance.name: function_resource_to_identifiers[function_instance.function_resource_name]
             for function_instance in self._functions
         }
 
@@ -162,7 +191,7 @@ class Workflow(Resource):
         """
         result: dict[str, Any] = {}
 
-        result["instances"] = self.get_workflow_config().instances
+        result["instances"] = self._get_instances()
         result["current_instance_name"] = self._get_entry_point_instance_name()
         result["workflow_placement"] = self._get_workflow_placement(resource_values)
         return result
@@ -173,7 +202,7 @@ class Workflow(Resource):
         """
         The desired output format is explained in the `docs/design.md` file under `Workflow Placement Decision`.
         """
-        staging_area_placement["instances"] = self.get_workflow_config().instances
+        staging_area_placement["instances"] = self._get_instances()
         staging_area_placement["current_instance_name"] = self._get_entry_point_instance_name()
         self._extend_stage_area_placement(resource_values, staging_area_placement)
         return staging_area_placement

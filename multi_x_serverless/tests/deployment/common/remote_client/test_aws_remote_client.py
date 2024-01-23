@@ -9,6 +9,8 @@ import json
 from botocore.exceptions import ClientError
 from unittest.mock import call
 
+from multi_x_serverless.common.constants import SYNC_MESSAGES_TABLE
+
 
 class TestAWSRemoteClient(unittest.TestCase):
     @patch("boto3.session.Session")
@@ -306,34 +308,16 @@ class TestAWSRemoteClient(unittest.TestCase):
         self.assertFalse(self.aws_client.lambda_function_exists(resource))
 
     @patch.object(AWSRemoteClient, "_client")
-    def test_increment_counter(self, mock_client):
-        function_name = "test_function"
-        workflow_instance_id = "test_workflow_instance_id"
-        mock_client.return_value.update_item.return_value = {"Attributes": {"counter_value": {"N": "1"}}}
-
-        result = self.aws_client.increment_counter(function_name, workflow_instance_id)
-
-        mock_client.assert_called_with("dynamodb")
-        mock_client.return_value.update_item.assert_called_once_with(
-            TableName="counters",
-            Key={"id": {"S": f"{function_name}:{workflow_instance_id}"}},
-            UpdateExpression="SET counter_value = counter_value + :val",
-            ExpressionAttributeValues={":val": 1},
-            ReturnValues="UPDATED_NEW",
-        )
-        self.assertEqual(result, 1)
-
-    @patch.object(AWSRemoteClient, "_client")
-    def test_upload_message_for_merge(self, mock_client):
+    def test_upload_message_for_sync(self, mock_client):
         function_name = "test_function"
         workflow_instance_id = "test_workflow_instance_id"
         message = "test_message"
 
-        self.aws_client.upload_message_for_merge(function_name, workflow_instance_id, message)
+        self.aws_client.upload_predecessor_data_at_sync_node(function_name, workflow_instance_id, message)
 
         mock_client.assert_called_with("dynamodb")
         mock_client.return_value.update_item.assert_called_once_with(
-            TableName="merge_messages",
+            TableName=SYNC_MESSAGES_TABLE,
             Key={"id": {"S": f"{function_name}:{workflow_instance_id}"}},
             ExpressionAttributeNames={"#M": "message"},
             ExpressionAttributeValues={":m": {"SS": [message]}},
@@ -350,7 +334,7 @@ class TestAWSRemoteClient(unittest.TestCase):
 
         mock_client.assert_called_with("dynamodb")
         mock_client.return_value.get_item.assert_called_once_with(
-            TableName="merge_messages",
+            TableName=SYNC_MESSAGES_TABLE,
             Key={"id": {"S": f"{current_instance_name}:{workflow_instance_id}"}},
         )
         self.assertEqual(result, ["test_message"])

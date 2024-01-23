@@ -57,7 +57,7 @@ It has no incoming edges.
 - Intermediate node: An intermediate node is a node that is called by another node.
 It has exactly one incoming edge.
 - Synchronization node: A synchronization node is a node that is called by multiple other nodes.
-It one or more incoming edges.
+It has one or more incoming edges.
 
 The types of nodes are known at deployment time from static code analysis and are not changed during the execution of the workflow.
 Likweise, the edges are known at deployment time and are not changed during the execution of the workflow.
