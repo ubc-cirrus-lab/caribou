@@ -1,5 +1,3 @@
-import numpy as np
-
 from multi_x_serverless.routing.solver_inputs.components.calculators.calculator import Calculator
 
 
