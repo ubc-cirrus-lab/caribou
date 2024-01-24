@@ -3,6 +3,7 @@ import time
 from unittest.mock import Mock
 import networkx as nx
 import matplotlib.pyplot as plt
+import numpy as np
 import random
 from multi_x_serverless.routing.models.region import Region
 from multi_x_serverless.routing.solver.bfs_fine_grained_solver import BFSFineGrainedSolver
@@ -10,28 +11,32 @@ from multi_x_serverless.routing.solver.stochastic_heuristic_descent_solver impor
 from multi_x_serverless.routing.solver_inputs.input_manager import InputManager
 
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
+import json
 
 
 class SolverBenchmark:
-    def __init__(self, total_nodes=10, merge_nodes=2, num_regions=2, seed=None):
+    def __init__(self, total_nodes=10, sync_nodes=2, num_regions=2, seed=None):
         self.default_solver_class = BFSFineGrainedSolver
 
         self._seed = seed
-        self._dag = self._generate_dag(total_nodes, merge_nodes)
+        self._dag = self._generate_dag(total_nodes, sync_nodes)
         self._num_regions = num_regions
+        self._sync_nodes = sync_nodes
 
         self._config, self._regions = self._generate_config()
+        self.reset_random()
 
-        self.get_execution_cost_carbon_runtime_return_values = [
-            (random.randint(0, 10), random.uniform(0, 1), random.uniform(0, 1))
-            for _ in range(num_regions**total_nodes*total_nodes)
-        ]
-        self.get_transmission_cost_carbon_runtime_return_values = [
-            (random.randint(0, 10), random.uniform(0, 1), random.uniform(0, 1))
-            for _ in range(num_regions**total_nodes*total_nodes)
-        ]
+    def reset_random(self):
+        self._random = np.random.RandomState(self._seed)
 
-    def run_benchmark(self, solver_class=None):
+    def mock_get_execution_cost_carbon_runtime(self, *args, **kwargs):
+        return (self._random.randint(1, 100), self._random.randint(1, 100), self._random.randint(1, 100))
+
+    def mock_get_transmission_cost_carbon_runtime(self, *args, **kwargs):
+        return (self._random.randint(1, 100), self._random.randint(1, 100), self._random.randint(1, 100))
+
+    def run_benchmark(self, solver_class=None, number_of_runs=10) -> dict:
+        self.reset_random()
         if not solver_class:
             solver_class = self.default_solver_class
 
@@ -47,21 +52,45 @@ class SolverBenchmark:
 
         # Mock input manager
         mock_input_manager = Mock(spec=InputManager)
-        mock_input_manager.get_execution_cost_carbon_runtime.side_effect = (
-            self.get_execution_cost_carbon_runtime_return_values
-        )
+        mock_input_manager.get_execution_cost_carbon_runtime.side_effect = self.mock_get_execution_cost_carbon_runtime
         mock_input_manager.get_transmission_cost_carbon_runtime.side_effect = (
-            self.get_transmission_cost_carbon_runtime_return_values
+            self.mock_get_transmission_cost_carbon_runtime
         )
         solver._input_manager = mock_input_manager
 
         # Time solving function
-        start_time = time.time()
-        deployments = solver._solve(self._regions)
-        end_time = time.time()
+        runtimes = []
+        best_costs = []
+        best_runtimes = []
+        best_carbons = []
+        number_of_final_results = []
+        for _ in range(number_of_runs):
+            start_time = time.time()
+            deployments = solver._solve(self._regions)
+            end_time = time.time()
 
-        print(f"Time taken to solve: {end_time - start_time} seconds")
-        print(f"Number of final results: {len(deployments)}")
+            best_cost = max([deployment[1] for deployment in deployments])
+            best_runtime = max([deployment[2] for deployment in deployments])
+            best_carbon = max([deployment[3] for deployment in deployments])
+
+            runtimes.append(end_time - start_time)
+            best_costs.append(best_cost)
+            best_runtimes.append(best_runtime)
+            best_carbons.append(best_carbon)
+            number_of_final_results.append(len(deployments))
+
+        result_dict = {
+            "solver": solver_class.__name__,
+            "runtime": sum(runtimes) / len(runtimes),
+            "number of final results": sum(number_of_final_results) / len(number_of_final_results),
+            "best cost": sum(best_costs) / len(best_costs),
+            "best runtime": sum(best_runtimes) / len(best_runtimes),
+            "best carbon": sum(best_carbons) / len(best_carbons),
+            "number of regions": self._num_regions,
+            "number of instances": len(self._dag.nodes),
+            "number of sync nodes": self._sync_nodes,
+        }
+        return result_dict
 
     def get_dag_representation(self):
         return self._dag
@@ -105,7 +134,7 @@ class SolverBenchmark:
     def _generate_dag(self, total_nodes, merge_nodes):
         if self._seed is not None:
             random.seed(self._seed)
-    
+
         G = nx.DiGraph()
         G.add_node(0)  # Add root node
 
@@ -136,17 +165,33 @@ class SolverBenchmark:
         plt.savefig(os.path.join(dir_path, "images", "dag.png"))
 
 
-# Benchmarking parameters
-total_nodes = 9
-merge_nodes = 3
-num_regions = 3
-seed = 0
+seed = 10
 
-solverBenchmark = SolverBenchmark(total_nodes=total_nodes, merge_nodes=merge_nodes, num_regions=num_regions, seed=seed)
-solverBenchmark.visualize_dag()
+results = []
 
-print("BFSFineGrainedSolver:")
-solverBenchmark.run_benchmark(BFSFineGrainedSolver)
+for total_nodes in range(2, 10):
+    for sync_nodes in range(1, 4):
+        for num_regions in range(2, 6):
+            print(f"Running benchmark with {total_nodes} nodes, {sync_nodes} sync nodes and {num_regions} regions")
+            solverBenchmark = SolverBenchmark(
+                total_nodes=total_nodes, sync_nodes=sync_nodes, num_regions=num_regions, seed=seed
+            )
+            results.append(solverBenchmark.run_benchmark(BFSFineGrainedSolver))
+            results.append(solverBenchmark.run_benchmark(StochasticHeuristicDescentSolver))
 
-print("\nStochasticHeuristicDescentSolver:")
-solverBenchmark.run_benchmark(StochasticHeuristicDescentSolver)
+per_solver_results = {}
+
+for result in results:
+    solver = result["solver"]
+    if solver not in per_solver_results:
+        per_solver_results[solver] = []
+    per_solver_results[solver].append(result)
+
+results_json = json.dumps(per_solver_results)
+
+# Get the directory of the current script
+dir_path = os.path.dirname(os.path.realpath(__file__))
+
+# Store the results in a file
+with open(os.path.join(dir_path, "results.json"), "w") as f:
+    f.write(results_json)
