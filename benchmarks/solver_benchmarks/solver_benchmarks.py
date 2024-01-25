@@ -288,9 +288,11 @@ print("Validation successful")
 print("Running benchmarks")
 results = []
 
-for total_nodes in range(2, 9):
-    for sync_nodes in range(1, 4):
-        for num_regions in range(2, 6):
+for total_nodes in range(3, 10):
+    for sync_nodes in range(1, 5):
+        if sync_nodes > total_nodes - 1:
+            continue
+        for num_regions in range(4, 10):
             print(f"Running benchmark with {total_nodes} nodes, {sync_nodes} sync nodes and {num_regions} regions")
             solverBenchmark = SolverBenchmark(
                 total_nodes=total_nodes, sync_nodes=sync_nodes, num_regions=num_regions, seed=seed

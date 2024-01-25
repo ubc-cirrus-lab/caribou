@@ -1,29 +1,59 @@
 import matplotlib.pyplot as plt
+from collections import defaultdict
 import json
 import sys
-from matplotlib import cm
-
+from matplotlib import colormaps
+import os
 
 
 def plot_single(ax1, ax2, data, x_key, y_left_key, y_right_key):
-    colormap = cm.get_cmap('viridis')
+    colormap = colormaps["viridis"]
     num_solvers = len(data)
     width = 0.35
     handles, labels = [], []
 
     for i, (solver, solver_data) in enumerate(data.items()):
         color = colormap(i / num_solvers)
-        x_values = [d[x_key] for d in solver_data]
+        x_values = sorted([d[x_key] for d in solver_data])
         ax1.set_xlabel(x_key)
-        ax1.set_ylabel(y_left_key, color=color)
-        bars = ax1.bar([x - width/2 + i*width/num_solvers for x in x_values], [d[y_left_key] for d in solver_data], width/num_solvers, color=color, label=solver)
-        ax1.tick_params(axis="y", labelcolor=color)
+        ax1.set_ylabel(y_left_key)
+        bars = ax1.bar(
+            [x - width / 2 + i * width / num_solvers for x in x_values],
+            [d[y_left_key] for d in solver_data],
+            width / num_solvers,
+            color=color,
+            label=solver,
+        )
+        ax1.tick_params(axis="y")
         handles.append(bars[0])
         labels.append(solver)
 
-    ax1.set_xticks(x_values)
+        ax2.set_ylabel(y_right_key)
+        ax2_boxplot_data = defaultdict(list)
+
+        for d in solver_data:
+            ax2_boxplot_data[d[x_key]].append(d[y_right_key])
+
+        boxplot_data = list(ax2_boxplot_data.values())
+
+        x_values = list(set(x_values))
+
+        positions = sorted(list(set([x - width / 2 + i * width / num_solvers for x in x_values])))
+
+        ax2.boxplot(boxplot_data, positions=positions, widths=width / num_solvers, patch_artist=True,
+                    boxprops=dict(facecolor=color, color=color),
+                    capprops=dict(color=color),
+                    whiskerprops=dict(color=color),
+                    flierprops=dict(color=color, markeredgecolor=color),
+                    showfliers=False,
+                    )
+
+    positions = [((x - width / 2 + (i + 0.5) * width / num_solvers) - width / 2) for x in x_values]
+    ax2.set_xticks(positions)
+    ax2.set_xticklabels(x_values)
+    ax2.set_yscale("log")
     fig = ax1.get_figure()
-    fig.legend(handles, labels)
+    fig.legend(handles, labels, loc='upper right')
 
 def plot_row(fig, axs, data, x_key, y_keys):
     for i, y_key in enumerate(y_keys):
@@ -43,8 +73,10 @@ def plot_all(data):
             x_keys[i],
             y_keys,
         )
-    fig.tight_layout()
-    plt.savefig("pots/solver_benchmark.png")
+    fig.tight_layout(rect=[0, 0, 1, 0.97])  # Adjust layout to make room for legend
+    # get this file location
+    current_path = os.path.dirname(os.path.realpath(__file__))
+    plt.savefig(os.path.join(current_path, "plots", "solver_benchmark.png"))
 
 
 def read_data(path_to_data):
