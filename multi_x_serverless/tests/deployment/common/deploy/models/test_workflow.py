@@ -112,9 +112,9 @@ class TestWorkflow(unittest.TestCase):
 
     def test_get_workflow_placement(self):
         resource_values = {
-            "function": [
-                {"name": "function_resource_1", "function_identifier": "identifier_1"},
-                {"name": "function_resource_2", "function_identifier": "identifier_2"},
+            "sns_topic": [
+                {"name": "function_resource_1", "topic_identifier": "identifier_1"},
+                {"name": "function_resource_2", "topic_identifier": "identifier_2"},
             ]
         }
         expected_output = {
@@ -131,9 +131,9 @@ class TestWorkflow(unittest.TestCase):
 
     def test_extend_stage_area_placement(self):
         resource_values = {
-            "function": [
-                {"name": "function_resource_1", "function_identifier": "identifier_1"},
-                {"name": "function_resource_2", "function_identifier": "identifier_2"},
+            "sns_topic": [
+                {"name": "function_resource_1", "topic_identifier": "identifier_1"},
+                {"name": "function_resource_2", "topic_identifier": "identifier_2"},
             ]
         }
         staging_area_placement = {"workflow_placement": {"function_instance_1::": {}, "function_instance_2::": {}}}
@@ -150,9 +150,9 @@ class TestWorkflow(unittest.TestCase):
 
     def test_get_function_instance_to_identifier(self):
         resource_values = {
-            "function": [
-                {"name": "function_resource_1", "function_identifier": "identifier_1"},
-                {"name": "function_resource_2", "function_identifier": "identifier_2"},
+            "sns_topic": [
+                {"name": "function_resource_1", "topic_identifier": "identifier_1"},
+                {"name": "function_resource_2", "topic_identifier": "identifier_2"},
             ]
         }
         expected_output = {"function_instance_1::": "identifier_1", "function_instance_2::": "identifier_2"}
@@ -160,9 +160,9 @@ class TestWorkflow(unittest.TestCase):
 
     def test_get_workflow_placement_decision(self):
         resource_values = {
-            "function": [
-                {"name": "function_resource_1", "function_identifier": "identifier_1"},
-                {"name": "function_resource_2", "function_identifier": "identifier_2"},
+            "sns_topic": [
+                {"name": "function_resource_1", "topic_identifier": "identifier_1"},
+                {"name": "function_resource_2", "topic_identifier": "identifier_2"},
             ]
         }
         self.workflow.get_workflow_config = Mock(return_value=Mock(instances=["instance_1", "instance_2"]))
@@ -200,9 +200,9 @@ class TestWorkflow(unittest.TestCase):
 
     def test_get_workflow_placement_decision_extend_staging(self):
         resource_values = {
-            "function": [
-                {"name": "function_resource_1", "function_identifier": "identifier_1"},
-                {"name": "function_resource_2", "function_identifier": "identifier_2"},
+            "sns_topic": [
+                {"name": "function_resource_1", "topic_identifier": "identifier_1"},
+                {"name": "function_resource_2", "topic_identifier": "identifier_2"},
             ]
         }
         staging_area_placement = {
