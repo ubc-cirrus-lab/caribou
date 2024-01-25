@@ -28,7 +28,7 @@ class AWSDeployInstructions(DeployInstructions):
                 self.get_sns_topic_instruction_for_region(sns_topic_arn_varname, name),
                 RecordResourceVariable(
                     resource_type="sns_topic",
-                    resource_name=f"{name}_{self._region}_sns_topic",
+                    resource_name=name,
                     name="topic_identifier",
                     variable_name=sns_topic_arn_varname,
                 ),
