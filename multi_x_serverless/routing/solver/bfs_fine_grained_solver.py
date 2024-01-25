@@ -71,14 +71,12 @@ class BFSFineGrainedSolver(Solver):
                 for to_region_index in permitted_regions_indices:
                     # Calculate the carbon/cost/runtime for transmission and execution
                     # For worse case (Using tail latency)
-                    # wc_t_cost = wc_t_carbon = wc_t_runtime = 0.0  # Do not consider start hop for now
                     wc_e_cost, wc_e_carbon, wc_e_runtime = self._input_manager.get_execution_cost_carbon_runtime(
                         current_instance_index, to_region_index
                     )
 
                     # Calculate the carbon/cost/runtime for transmission and execution # Do not consider start hop for now
                     # For porbabilistic case (Using average latency and factor in invocation probability)
-                    # pc_t_cost = pc_t_carbon = pc_t_runtime = 0.0  # Do not consider start hop for now
                     pc_e_cost, pc_e_carbon, pc_e_runtime = self._input_manager.get_execution_cost_carbon_runtime(
                         current_instance_index, to_region_index, True
                     )
@@ -335,14 +333,17 @@ class BFSFineGrainedSolver(Solver):
                                     (current_instance_pc_cost, current_instance_pc_carbon),
                                 )
 
-                                # If this is a merge node, we need to calculate cost and carboned differently
-                                (
-                                    wc_cost_total,
-                                    wc_carbon_total,
-                                    pc_cost_total,
-                                    pc_carbon_total,
-                                    _,
-                                ) = self._calculate_wc_pc_cost_carbon_cl_placements(combined_placements)
+                                # Recalculate the wc cost carbon only if current values failed.
+                                if self._fail_hard_resource_constraints(
+                                    self._workflow_config.constraints, wc_cost_total, wc_carbon_total, max_wc_runtime
+                                ):
+                                    (
+                                        wc_cost_total,
+                                        wc_carbon_total,
+                                        pc_cost_total,
+                                        pc_carbon_total,
+                                        _,
+                                    ) = self._calculate_wc_pc_cost_carbon_cl_placements(combined_placements)
 
                                 if not self._fail_hard_resource_constraints(
                                     self._workflow_config.constraints, wc_cost_total, wc_carbon_total, max_wc_runtime
