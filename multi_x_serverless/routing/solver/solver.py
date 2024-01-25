@@ -18,7 +18,7 @@ class Solver(ABC):
     def __init__(
         self,
         workflow_config: WorkflowConfig,
-        all_available_regions: Union[list[dict], None] = None,
+        all_available_regions: Optional[list[dict]] = None,
         input_manager: Optional[InputManager] = None,
     ) -> None:
         self._workflow_config = workflow_config

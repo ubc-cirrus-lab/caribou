@@ -201,7 +201,7 @@ class BFSFineGrainedSolver(Solver):
                             ):
                                 # For now we use worse case, but when proability is implemented we will use that instead
                                 # Note to keep consistency with the other solvers, we save in cost, runtime, then carbon
-                                final_deployments.append((clean_combined_placments, wc_cost, max_wc_runtime, wc_carbon))
+                                final_deployments.append((clean_combined_placments, pc_cost, max_pc_runtime, pc_carbon))
 
                     del deployments  # Clear all memory
 

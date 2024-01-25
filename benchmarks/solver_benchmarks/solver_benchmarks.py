@@ -47,7 +47,7 @@ class SolverBenchmark:
             cost_value = math.sin(current_instance_index + to_region_index) + 1
             runtime_value = math.cos(current_instance_index + to_region_index) + 2
             carbon_value = math.sin(current_instance_index - to_region_index) + 1
-            if consider_probabilistic_invocations:
+            if not consider_probabilistic_invocations:
                 cost_value *= 2
                 runtime_value *= 2
                 carbon_value *= 2
@@ -80,7 +80,7 @@ class SolverBenchmark:
                 carbon_value = (
                     math.sin(previous_instance_index - current_instance_index + from_region_index - to_region_index) + 1
                 )
-                if consider_probabilistic_invocations:
+                if not consider_probabilistic_invocations:
                     cost_value *= 2
                     runtime_value *= 2
                     carbon_value *= 2

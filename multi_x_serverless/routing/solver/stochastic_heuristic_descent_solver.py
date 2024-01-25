@@ -1,9 +1,10 @@
 import random
-from typing import Union
+from typing import Optional, Union
 
 import numpy as np
 
 from multi_x_serverless.routing.solver.solver import Solver
+from multi_x_serverless.routing.solver_inputs.input_manager import InputManager
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
 
@@ -12,9 +13,9 @@ class StochasticHeuristicDescentSolver(Solver):
         self,
         workflow_config: WorkflowConfig,
         all_available_regions: Union[list[dict], None] = None,
-        instantiate_input_manager: bool = True,
+        input_manager: Optional[InputManager] = None,
     ) -> None:
-        super().__init__(workflow_config, all_available_regions, instantiate_input_manager)
+        super().__init__(workflow_config, all_available_regions, input_manager)
         self._max_iterations = len(self._worklow_level_permitted_regions) * 100
         self._learning_rate = 0.1
         self._positive_regions: set[int] = set()
@@ -105,7 +106,11 @@ class StochasticHeuristicDescentSolver(Solver):
                 home_region_transmission_carbon,
                 home_region_transmission_runtime,
             ) = self._input_manager.get_transmission_cost_carbon_runtime(
-                self._first_instance_index, self._first_instance_index, self._home_region_index, region_index, True
+                self._first_instance_index,
+                self._first_instance_index,
+                self._home_region_index,
+                region_index,
+                consider_probabilistic_invocations=True,
             )
             home_region_transmissions_average[0, region_index] = home_region_transmission_costs
             home_region_transmissions_average[1, region_index] = home_region_transmission_runtime
