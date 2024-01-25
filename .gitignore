@@ -90,10 +90,10 @@ plotting/plots/*.png
 testing
 
 # Solver benchmarks dag image files
-benchmarks/solver_benchmarks/images/*.png
+benchmarks/solver_benchmarks/images/
 
 # Benchmark images
 solver_benchmark.png
 
 # Benchmark results
-benchmarks/solver_benchmarks/results.json
+benchmarks/solver_benchmarks/results/

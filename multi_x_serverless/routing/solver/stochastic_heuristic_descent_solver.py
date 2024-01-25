@@ -23,11 +23,16 @@ class StochasticHeuristicDescentSolver(Solver):
         adjacency_matrix = self._dag.get_adj_matrix()
         self._adjacency_indexes = np.where(adjacency_matrix == 1)
         self._permitted_region_indices_cache: dict[int, list[int]] = {}
+        self._home_region_index = self._region_indexer.value_to_index(
+            self._provider_region_dict_to_tuple(self._workflow_config.start_hops)
+        )
+        self._first_instance_index = self._topological_order[0]
 
         if len(self._topological_order) == 0:
             raise Exception("The DAG has no nodes")
 
     def _solve(self, regions: list[dict]) -> list[tuple[dict[int, int], float, float, float]]:
+        self._init_home_region_transmission_costs(regions)
         average_case_deployments: list[tuple[dict[int, int], float, float, float]] = []
         current_deployment = self._init_deployment()
 
@@ -88,6 +93,39 @@ class StochasticHeuristicDescentSolver(Solver):
 
         return average_case_deployments
 
+    def _init_home_region_transmission_costs(self, regions: list[dict]) -> None:
+        home_region_transmissions_average = np.zeros((3, len(self._region_indexer.get_value_indices())))
+        home_region_transmissions_tail = np.zeros((3, len(self._region_indexer.get_value_indices())))
+
+        valid_region_indices_for_start_hop = self._get_permitted_region_indices(regions, self._first_instance_index)
+
+        for region_index in valid_region_indices_for_start_hop:
+            (
+                home_region_transmission_costs,
+                home_region_transmission_carbon,
+                home_region_transmission_runtime,
+            ) = self._input_manager.get_transmission_cost_carbon_runtime(
+                self._first_instance_index, self._first_instance_index, self._home_region_index, region_index, True
+            )
+            home_region_transmissions_average[0, region_index] = home_region_transmission_costs
+            home_region_transmissions_average[1, region_index] = home_region_transmission_runtime
+            home_region_transmissions_average[2, region_index] = home_region_transmission_carbon
+
+            (
+                home_region_transmission_costs,
+                home_region_transmission_carbon,
+                home_region_transmission_runtime,
+            ) = self._input_manager.get_transmission_cost_carbon_runtime(
+                self._first_instance_index, self._first_instance_index, self._home_region_index, region_index
+            )
+
+            home_region_transmissions_tail[0, region_index] = home_region_transmission_costs
+            home_region_transmissions_tail[1, region_index] = home_region_transmission_runtime
+            home_region_transmissions_tail[2, region_index] = home_region_transmission_carbon
+
+        self._home_region_transmission_costs_average = home_region_transmissions_average
+        self._home_region_transmission_costs_tail = home_region_transmissions_tail
+
     def _init_deployment(
         self,
     ) -> tuple[
@@ -99,9 +137,6 @@ class StochasticHeuristicDescentSolver(Solver):
         tuple[np.ndarray, np.ndarray],
     ]:
         deployment: dict[int, int] = {}
-        home_region_index = self._region_indexer.value_to_index(
-            self._provider_region_dict_to_tuple(self._workflow_config.start_hops)
-        )
         average_node_weights = np.empty((3, len(self._topological_order)))
         tail_node_weights = np.empty((3, len(self._topological_order)))
 
@@ -110,13 +145,13 @@ class StochasticHeuristicDescentSolver(Solver):
 
         for instance in self._workflow_config.instances:
             instance_index = self._dag.value_to_index(instance["instance_name"])
-            deployment[instance_index] = home_region_index
+            deployment[instance_index] = self._home_region_index
 
             (
                 tail_execution_cost,
                 tail_execution_carbon,
                 tail_execution_runtime,
-            ) = self._input_manager.get_execution_cost_carbon_runtime(instance_index, home_region_index)
+            ) = self._input_manager.get_execution_cost_carbon_runtime(instance_index, self._home_region_index)
 
             tail_node_weights[0, instance_index] = tail_execution_cost
             tail_node_weights[1, instance_index] = tail_execution_runtime
@@ -127,7 +162,7 @@ class StochasticHeuristicDescentSolver(Solver):
                 average_execution_carbon,
                 average_execution_runtime,
             ) = self._input_manager.get_execution_cost_carbon_runtime(
-                instance_index, home_region_index, consider_probabilistic_invocations=True
+                instance_index, self._home_region_index, consider_probabilistic_invocations=True
             )
 
             average_node_weights[0, instance_index] = average_execution_cost
@@ -139,7 +174,9 @@ class StochasticHeuristicDescentSolver(Solver):
                 tail_transmission_cost,
                 tail_transmission_carbon,
                 tail_transmission_runtime,
-            ) = self._input_manager.get_transmission_cost_carbon_runtime(i, j, home_region_index, home_region_index)
+            ) = self._input_manager.get_transmission_cost_carbon_runtime(
+                i, j, self._home_region_index, self._home_region_index
+            )
 
             tail_edge_weights[0, i, j] = tail_transmission_cost
             tail_edge_weights[1, i, j] = tail_transmission_runtime
@@ -150,7 +187,7 @@ class StochasticHeuristicDescentSolver(Solver):
                 average_transmission_carbon,
                 average_transmission_runtime,
             ) = self._input_manager.get_transmission_cost_carbon_runtime(
-                i, j, home_region_index, home_region_index, consider_probabilistic_invocations=True
+                i, j, self._home_region_index, self._home_region_index, consider_probabilistic_invocations=True
             )
 
             average_edge_weights[0, i, j] = average_transmission_cost
@@ -162,7 +199,7 @@ class StochasticHeuristicDescentSolver(Solver):
             (average_runtime, tail_runtime),
             (average_carbon, tail_carbon),
         ) = self._calculate_cost_of_deployment(
-            average_node_weights, tail_node_weights, average_edge_weights, tail_edge_weights
+            average_node_weights, tail_node_weights, average_edge_weights, tail_edge_weights, deployment
         )
 
         return (
@@ -180,18 +217,19 @@ class StochasticHeuristicDescentSolver(Solver):
         tail_node_weights: np.ndarray,
         average_edge_weights: np.ndarray,
         tail_edge_weights: np.ndarray,
+        deployment: dict[int, int],
     ) -> tuple[tuple[float, float], tuple[float, float], tuple[float, float]]:
         (
             average_cost,
             average_runtime,
             average_carbon,
-        ) = self._calculate_cost_of_deployment_case(average_node_weights, average_edge_weights)
+        ) = self._calculate_cost_of_deployment_case(average_node_weights, average_edge_weights, deployment)
 
         (
             tail_cost,
             tail_runtime,
             tail_carbon,
-        ) = self._calculate_cost_of_deployment_case(tail_node_weights, tail_edge_weights)
+        ) = self._calculate_cost_of_deployment_case(tail_node_weights, tail_edge_weights, deployment)
 
         return (
             (average_cost, tail_cost),
@@ -203,11 +241,24 @@ class StochasticHeuristicDescentSolver(Solver):
         return (provider_region_dict["provider"], provider_region_dict["region"])
 
     def _calculate_cost_of_deployment_case(
-        self, node_weights: np.ndarray, edge_weights: np.ndarray
+        self, node_weights: np.ndarray, edge_weights: np.ndarray, deployment: dict[int, int], average: bool = True
     ) -> tuple[float, float, float]:
-        cost = np.sum(node_weights[0]) + np.sum(edge_weights[0])  # type: ignore
-        runtime = self._most_expensive_path(edge_weights[1], node_weights[1])
-        carbon = np.sum(node_weights[2]) + np.sum(edge_weights[2])  # type: ignore
+        initial_node_region = deployment[self._first_instance_index]
+        start_hop_transmission_cost = 0
+        start_hop_transmission_runtime = 0
+        start_hop_transmission_carbon = 0
+        if average:
+            start_hop_transmission_cost = self._home_region_transmission_costs_average[0, initial_node_region]
+            start_hop_transmission_runtime = self._home_region_transmission_costs_average[1, initial_node_region]
+            start_hop_transmission_carbon = self._home_region_transmission_costs_average[2, initial_node_region]
+        else:
+            start_hop_transmission_cost = self._home_region_transmission_costs_tail[0, initial_node_region]
+            start_hop_transmission_runtime = self._home_region_transmission_costs_tail[1, initial_node_region]
+            start_hop_transmission_carbon = self._home_region_transmission_costs_tail[2, initial_node_region]
+
+        cost = np.sum(node_weights[0]) + np.sum(edge_weights[0]) + start_hop_transmission_cost  # type: ignore
+        runtime = self._most_expensive_path(edge_weights[1], node_weights[1]) + start_hop_transmission_runtime  # type: ignore
+        carbon = np.sum(node_weights[2]) + np.sum(edge_weights[2]) + start_hop_transmission_carbon  # type: ignore
 
         return cost, runtime, carbon
 
@@ -319,12 +370,23 @@ class StochasticHeuristicDescentSolver(Solver):
             new_tail_edge_weights[1, i, j] = tail_transmission_runtime
             new_tail_edge_weights[2, i, j] = tail_transmission_carbon
 
+        # We only need the deployment if the selected instance is the first instance
+        if selected_instance == self._first_instance_index:
+            new_deployments = previous_deployment[0].copy()
+            new_deployments[selected_instance] = new_region
+        else:
+            new_deployments = previous_deployment[0]
+
         (
             (average_cost, tail_cost),
             (average_runtime, tail_runtime),
             (average_carbon, tail_carbon),
         ) = self._calculate_cost_of_deployment(
-            new_average_node_weights, new_tail_node_weights, new_average_edge_weights, new_tail_edge_weights
+            new_average_node_weights,
+            new_tail_node_weights,
+            new_average_edge_weights,
+            new_tail_edge_weights,
+            new_deployments,
         )
         return (
             (average_cost, tail_cost),

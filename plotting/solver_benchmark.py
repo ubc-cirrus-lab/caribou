@@ -44,7 +44,7 @@ def plot_all(data):
             y_keys,
         )
     fig.tight_layout()
-    plt.savefig("solver_benchmark.png")
+    plt.savefig("pots/solver_benchmark.png")
 
 
 def read_data(path_to_data):
