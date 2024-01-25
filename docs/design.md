@@ -1,4 +1,4 @@
-#  Design Document
+#  Design Document
 
 In this document we will discuss the design decisions that have been made for the project.
 
@@ -21,7 +21,7 @@ In this document we will discuss the design decisions that have been made for th
     3. [Brute Force](#brute-force)
 6. [References](#references)
 
-##  Dataflow DAG Model
+##  Dataflow DAG Model
 
 Each workflow has two representations in our model.
 We distinguish between the physical and the logical representation of a workflow.
@@ -38,7 +38,7 @@ $P_f = \{n_1, n_2, ..., n_n\}$
 
 This representation is quite simple in our case as the source code for each function is the same, the full workflow folder, however, the handler name (the function name within the package) is different.
 
-###  Logical Representation
+###  Logical Representation
 
 Our logical representation is, similar to a dataflow DAG [1], the representation of the data flow between the physical instances of our functions.
 The dataflow DAG in our case represents calls from functions to other functions with specific input data (thus the name dataflow).
@@ -88,7 +88,7 @@ There are two exceptions with regards to physical nodes in the logical represent
 - The initial node is present only once in the logical representation.
 - A synchronization node is present only once in the logical representation.
 
-###  Discussion
+###  Discussion
 
 These representations gave been chosen because they are simple and easy to understand.
 The logical representation is a DAG, which is a well known data structure and easy to work with.
@@ -357,6 +357,7 @@ The solver is implemented as a hill-climbing algorithm with a stochastic approac
 ### Brute Force
 
 TODO (#87)
+
 
 ##  References
 

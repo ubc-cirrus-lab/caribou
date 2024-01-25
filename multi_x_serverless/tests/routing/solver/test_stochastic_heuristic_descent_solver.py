@@ -19,15 +19,14 @@ class TestStochasticHeuristicDescentSolver(unittest.TestCase):
                 "regions_and_providers": {
                     "allowed_regions": None,
                     "disallowed_regions": None,
-                    "providers": [
-                        {
-                            "name": "aws",
+                    "providers": {
+                        "provider1": {
                             "config": {
                                 "timeout": 60,
                                 "memory": 128,
                             },
-                        }
-                    ],
+                        },
+                    },
                 },
             },
             {
@@ -37,31 +36,31 @@ class TestStochasticHeuristicDescentSolver(unittest.TestCase):
                 "regions_and_providers": {
                     "allowed_regions": None,
                     "disallowed_regions": None,
-                    "providers": [
-                        {
-                            "name": "aws",
+                    "providers": {
+                        "provider1": {
                             "config": {
                                 "timeout": 60,
                                 "memory": 128,
                             },
-                        }
-                    ],
+                        },
+                    },
                 },
             },
         ]
         self.workflow_config.regions_and_providers = {
             "allowed_regions": None,
             "disallowed_regions": None,
-            "providers": [
-                {
-                    "name": "aws",
+            "providers": {
+                "provider1": {
                     "config": {
                         "timeout": 60,
                         "memory": 128,
                     },
-                }
-            ],
+                },
+            },
         }
+        self.workflow_config.constraints = {}
+        self.workflow_config.start_hops = {"provider": "provider1", "region": "region1"}
         self.workflow_config.workflow_id = "workflow_id"
 
     @patch("multi_x_serverless.routing.solver.solver.InputManager", new_callable=Mock)
@@ -275,12 +274,15 @@ class TestStochasticHeuristicDescentSolver(unittest.TestCase):
             ]
         )
 
-        with patch.object(solver, "_most_expensive_path", return_value=150.0):
-            cost, runtime, carbon = solver._calculate_cost_of_deployment_case(node_weights, edge_weights)
+        solver._home_region_transmission_costs_average = np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]])
+        solver._home_region_transmission_costs_tail = np.array([[10.0, 20.0], [30.0, 40.0], [50.0, 60.0]])
 
-        assert cost == 51.0
-        assert runtime == 150.0
-        assert carbon == 85.0
+        with patch.object(solver, "_most_expensive_path", return_value=150.0):
+            cost, runtime, carbon = solver._calculate_cost_of_deployment_case(node_weights, edge_weights, {0: 0})
+
+        self.assertEqual(cost, 52.0)
+        self.assertEqual(runtime, 153.0)
+        self.assertEqual(carbon, 90.0)
 
     @patch("multi_x_serverless.routing.solver.solver.InputManager", new_callable=Mock)
     def test_calculate_cost_of_deployment(self, mock_input_manager):
@@ -293,6 +295,9 @@ class TestStochasticHeuristicDescentSolver(unittest.TestCase):
         average_edge_weights = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]])
         tail_edge_weights = np.array([[10.0, 20.0, 30.0], [40.0, 50.0, 60.0], [70.0, 80.0, 90.0]])
 
+        solver._home_region_transmission_costs_average = np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]])
+        solver._home_region_transmission_costs_tail = np.array([[10.0, 20.0], [30.0, 40.0], [50.0, 60.0]])
+
         with patch.object(
             solver, "_calculate_cost_of_deployment_case", side_effect=[(66.0, 150.0, 366.0), (660.0, 1500.0, 3660.0)]
         ):
@@ -301,25 +306,27 @@ class TestStochasticHeuristicDescentSolver(unittest.TestCase):
                 (average_runtime, tail_runtime),
                 (average_carbon, tail_carbon),
             ) = solver._calculate_cost_of_deployment(
-                average_node_weights, tail_node_weights, average_edge_weights, tail_edge_weights
+                average_node_weights, tail_node_weights, average_edge_weights, tail_edge_weights, {0: 0}
             )
 
-        assert average_cost == 66.0
-        assert average_runtime == 150.0
-        assert average_carbon == 366.0
+        self.assertEqual(average_cost, 66.0)
+        self.assertEqual(average_runtime, 150.0)
+        self.assertEqual(average_carbon, 366.0)
 
-        assert tail_cost == 660.0
-        assert tail_runtime == 1500.0
-        assert tail_carbon == 3660.0
+        self.assertEqual(tail_cost, 660.0)
+        self.assertEqual(tail_runtime, 1500.0)
+        self.assertEqual(tail_carbon, 3660.0)
 
     @patch("multi_x_serverless.routing.solver.solver.InputManager", new_callable=Mock)
     def test_init_deployment(self, mock_input_manager):
         mock_input_manager_instance = Mock()
         mock_input_manager.return_value = mock_input_manager_instance
         mock_input_manager_instance.get_all_regions.return_value = [{"provider": "provider1", "region": "region1"}]
-        solver = StochasticHeuristicDescentSolver(self.workflow_config)
+        solver = StochasticHeuristicDescentSolver(
+            self.workflow_config, [{"provider": "provider1", "region": "region1"}]
+        )
         solver._workflow_config = Mock()
-        solver._workflow_config.start_hops = "start_hops"
+        solver._workflow_config.start_hops = {"provider": "p1", "region": "r1"}
         solver._workflow_config.instances = [{"instance_name": "instance1"}, {"instance_name": "instance2"}]
         solver._region_indexer = Mock()
         solver._region_indexer.value_to_index.side_effect = [0, 1]
@@ -404,7 +411,13 @@ class TestStochasticHeuristicDescentSolver(unittest.TestCase):
                         ),
                     ):
                         with patch.object(solver, "_record_successful_change"):
-                            result = solver._solve([{"region1": "value1"}, {"region2": "value2"}])
+                            with patch.object(solver, "_init_home_region_transmission_costs"):
+                                result = solver._solve(
+                                    [
+                                        {"provider": "provider1", "region": "region1"},
+                                        {"provider": "provider1", "region": "region2"},
+                                    ]
+                                )
 
         assert result == [({0: 0, 1: 0}, 1.0, 3.0, 5.0), ({0: 1, 1: 0}, 7.0, 9.0, 11.0)]
 

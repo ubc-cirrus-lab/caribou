@@ -88,3 +88,9 @@ plotting/plots/*.png
 
 # testing
 testing
+
+# Solver benchmarks dag image files
+benchmarks/solver_benchmarks/images/
+
+# Benchmark results
+benchmarks/solver_benchmarks/results/

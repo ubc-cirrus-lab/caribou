@@ -15,27 +15,37 @@ from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
 
 class Solver(ABC):
-    def __init__(self, workflow_config: WorkflowConfig) -> None:
+    def __init__(
+        self,
+        workflow_config: WorkflowConfig,
+        all_available_regions: Optional[list[dict]] = None,
+        input_manager: Optional[InputManager] = None,
+    ) -> None:
         self._workflow_config = workflow_config
 
         # Declare the input manager
         self._input_manager = InputManager(workflow_config)
 
         # Get all regions allowed for the workflow
-        self._worklow_level_permitted_regions = self._filter_regions_global(self._input_manager.get_all_regions())
+        if not all_available_regions:
+            all_available_regions = self._input_manager.get_all_regions()
+
+        self._worklow_level_permitted_regions = self._filter_regions_global(all_available_regions)
 
         # Set up the instance indexer (DAG) and region indexer
         self._dag = self.get_dag_representation()
         self._region_indexer = Region(self._worklow_level_permitted_regions)
+
+        if input_manager is None:
+            self._instantiate_input_manager()
+        else:
+            self._input_manager = input_manager
 
         # Setup the ranker for final ranking of solutions
         self._ranker = Ranker(workflow_config)
 
         # Setup the formatter for formatting final output
         self._formatter = Formatter()
-
-        # Initiate input_manager
-        self._instantiate_input_manager()
 
         self._endpoints = Endpoints()
 
@@ -55,7 +65,7 @@ class Solver(ABC):
     def _filter_regions(self, regions: list[dict], regions_and_providers: dict) -> list[dict]:
         # Take in a list of regions, then apply filters to remove regions that do not satisfy the constraints
         # First filter out regions that are not in the provider list
-        provider_names = [provider["name"] for provider in regions_and_providers["providers"]]
+        provider_names = [provider for provider in regions_and_providers["providers"].keys()]
         regions = [region for region in regions if region["provider"] in provider_names]
 
         # Then if the user set a allowed_regions, only permit those regions and return

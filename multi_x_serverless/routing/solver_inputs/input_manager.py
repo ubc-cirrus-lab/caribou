@@ -48,15 +48,12 @@ class InputManager:
         # Workflow loaders use the workfload unique ID from the config
         workflow_id = self._config.workflow_id
         if workflow_id is None:
-            return False, "Workflow ID not found in config"
+            return False
 
         # Utilize the Loaders to load the data from the database
         success = self._loader_manager.setup(regions, workflow_id)
         if not success:
-            # return False
-            # TODO (#35): Handle this error
-            # raise RuntimeError("One or more loaders failed to aquire data from the database.")
-            print("One or more loaders failed to aquire data from the database.")
+            return False
 
         # Get the retrieved information (From database or cache)
         all_loaded_informations = self._loader_manager.retrieve_data()
