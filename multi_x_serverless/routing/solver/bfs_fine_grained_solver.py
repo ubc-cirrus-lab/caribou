@@ -165,8 +165,6 @@ class BFSFineGrainedSolver(Solver):
                         # For now we just use the worse case (Until we implement conditional dag support)
                         for combination in itertools.product(*deployment_group):
                             # For each combination of deployments, merge them together
-                            list_of_dicts = []  # Debug code
-
                             combined_placements: dict = {}
                             max_wc_runtime = 0.0
                             max_pc_runtime = 0.0
@@ -180,8 +178,6 @@ class BFSFineGrainedSolver(Solver):
                                 ]  # Prev should always be either in the dag or be home region
 
                                 previous_wc_runtime = wc_ccr[2]
-
-                                list_of_dicts.append(original_deployment_placement)  # For debug
 
                                 # Merge the deployments information together
                                 combined_placements = combined_placements | original_deployment_placement
@@ -215,7 +211,6 @@ class BFSFineGrainedSolver(Solver):
                         for common_keys, deployment_group in deployment_groups.items():
                             for combination in itertools.product(*deployment_group):
                                 # For each combination of deployments, merge them together
-                                list_of_dicts = []  # Debug code
                                 combined_placements = {}
                                 max_wc_runtime = 0.0
                                 max_pc_runtime = 0.0
@@ -309,7 +304,6 @@ class BFSFineGrainedSolver(Solver):
                                     pc_runtime_total = previous_pc_runtime + pc_runtime_current
 
                                     # Merge the deployments information together
-                                    list_of_dicts.append(original_deployment_placement)  # For debug
                                     combined_placements = combined_placements | original_deployment_placement
 
                                     max_wc_runtime = max(max_wc_runtime, wc_runtime_total)
