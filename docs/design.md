@@ -1,4 +1,4 @@
-#  Design Document
+#  Design Document
 
 In this document we will discuss the design decisions that have been made for the project.
 
@@ -10,19 +10,18 @@ In this document we will discuss the design decisions that have been made for th
       1. [Logical Node Naming Scheme](#logical-node-naming-scheme)
       2. [Connection to Physical Representation](#connection-to-physical-representation)
    3. [Discussion](#discussion)
-2. [Solver Dataflow Architecture](#solver-dataflow-architecture)
-   1. [Data Collector](#data-collector)
-   2. [Solver Input](#solver-input)
-3. [Solver Methodologies](#solver-methodologies)
-   1. [Simple Solver](#simple-solver)
-   2. [Brute Force Solver](#brute-force-solver)
-4. [Source Code Annotation](#source-code-annotation)
-3. [Merge Node](#merge-node)
+2. [Source Code Annotation](#source-code-annotation)
+3. [Synchronization Node](#synchronization-node)
     1. [Implementation](#implementation)
-5. [Workflow Placement Decision](#workflow-placement-decision)
+4. [Workflow Placement Decision](#workflow-placement-decision)
     1. [Component Interaction Order](#component-interaction-order)
+5. [Solvers](#solvers)
+    1. [Coarse Grained](#coarse-grained)
+    2. [Stochastic Heuristic Descent](#stochastic-heuristic-descent)
+    3. [Brute Force](#brute-force)
 6. [References](#references)
-##  Dataflow DAG Model
+
+##  Dataflow DAG Model
 
 Each workflow has two representations in our model.
 We distinguish between the physical and the logical representation of a workflow.
@@ -39,7 +38,7 @@ $P_f = \{n_1, n_2, ..., n_n\}$
 
 This representation is quite simple in our case as the source code for each function is the same, the full workflow folder, however, the handler name (the function name within the package) is different.
 
-###  Logical Representation
+###  Logical Representation
 
 Our logical representation is, similar to a dataflow DAG [1], the representation of the data flow between the physical instances of our functions.
 The dataflow DAG in our case represents calls from functions to other functions with specific input data (thus the name dataflow).
@@ -51,8 +50,8 @@ The logical representation consists of a set of nodes and a set of edges, where 
 It has no incoming edges.
 - Intermediate node: An intermediate node is a node that is called by another node.
 It has exactly one incoming edge.
-- Merge node: A merge node is a node that is called by multiple other nodes.
-It one or more incoming edges.
+- Synchronization node: A synchronization node is a node that is called by multiple other nodes.
+It has one or more incoming edges.
 
 The types of nodes are known at deployment time from static code analysis and are not changed during the execution of the workflow.
 Likweise, the edges are known at deployment time and are not changed during the execution of the workflow.
@@ -71,7 +70,7 @@ The naming scheme of the nodes is as follows:
 - Initial node: `<function_name>:entry_point:0`
 - Intermediate node: `<function_name>:<predecessor_function_name>_<predecessor_index>_<successor_of_predecessor_index>:<index_in_dag>`
   Where `<predecessor_function_name>` is the name of the predecessor function, `<predecessor_index>` is the index of the predecessor function in the dag, `<successor_of_predecessor_index>` is the index of the successor of the predecessor function (when a function calls multiple times the same function, this index is used to distinguish between the different calls), and `<index_in_dag>` is the index of the node in the dag in a topological order of dataflow.
-- Merge node: `<function_name>:merge:<index_in_dag>`
+- Synchronization node: `<function_name>:sync:<index_in_dag>`
 
 This naming scheme is used to uniquely identify a node in the logical representation.
 The scheme has the implication that colons cannot be allowed in the function names.
@@ -87,9 +86,9 @@ Thus we also speak of a _pyhsical node_ and its _logical instances_.
 There are two exceptions with regards to physical nodes in the logical representation:
 
 - The initial node is present only once in the logical representation.
-- A merge node is present only once in the logical representation.
+- A synchronization node is present only once in the logical representation.
 
-###  Discussion
+###  Discussion
 
 These representations gave been chosen because they are simple and easy to understand.
 The logical representation is a DAG, which is a well known data structure and easy to work with.
@@ -100,72 +99,6 @@ The dataflow between the functions is furthermore directed and acyclic because w
 The physical representation is a set of nodes because we do not need to represent any edges between the nodes.
 The physical representation is furthermore a set because we do not need to represent the same node multiple times.
 This notation is only used for the deployment utilities and is hidden from the solver.
-
-## Solver Dataflow Architecture
-
-In order to determine the most optimal deployment path for each instance of a workflow, prioritizing cost, carbon, or runtime objectives, the solver must be able to gather a large amount of data from various sources and properly utilize those values for calculations. Data gathering steps should be decoupled from the solver directly, and some calculated values may be reused for different runs of a solver. Thus, these responsibilities are handled by the Data Collector and Solver Input.
-
-### Data Collector
-
-This application is responsible for directly interacting with and retrieving information from both external APIs and summarizing workflow invocation information. The data collector consists of many different parts, each responsible for different types of data and each invoked at different timming intervals.
-
-#### Workflow Information Collector
-This component is responsible for summarizing invocation information of a workflow and presenting it for use in the solver.
-
-Below are the different pieces of information collected by this collector:
-- `execution_time`: The average execution time of function invocation of an specific instance in units of seconds.
-- `probability`: The probability that an instance node of being traversed in each invocation of a workflow.
-- `data_transfer_size`: The average data transfer size that an instance node will supply to another instance after each invocation.
-
-#### Datacenter Information Collector
-This component is responsible for collecting and summarizing datacenter information used in the solver. Some fields are specific to certain providers and not applicable to others. Datacenter regions are also simply referred to as regions here.
-
-Below are the different information that involved that are collected and sumarized by this collector:
-
-- `data_transfer_ingress_cost`: Cost of ingress from one region to another in units of USD / GB.
-- `data_transfer_egress_cost`: Cost of egress from one region to another in units of USD / GB.
-- `transmission_times`: The transmission time in seconds that it takes to transmit data a range of data sizes in GB.
-- `compute_cost`: The compute cost of execution in one region in units of USD / GBs.
-- `pue`: The Power Usage Effectiveness of a datacenter region.
-- `cfe`: Carbon Free Energy (in fraction), google specific concept.
-- `average_kw_compute`: Average kw of power from unit of compute, in units of kw / Compute. 
-- `memory_kw_mb`: Average kw of power from unit of Memory, in units of kw / MB. 
-- `free_tier_invocations`: Number of free invocations remaining in an region.
-- `free_tier_compute`: Amount of free compute available in an region, in units of GB-s.
-
-#### Carbon Information Collecton
-This component is responsible for collecting and summarizing information from external Carbon Intensity APIs and presenting it for use in the solver. Datacenter regions are also simply referred to as regions here.
-
-Below are the different pieces of information involved that are collected and summarized by this collector:
-
-- `grid_co2e`: The carbon intensity of the electric grid in a datacenter region, in units of gCO2eq / kWh.
-- `data_transfer_co2e`: The carbon intensity of data movement in units of gCO2eq / GB.
-
-### Solver Input
-The solver input is responsible for loading the saved database from the [Data Collector](#data-collector), organizing all applicable data in a format usable for calculation, and presenting an easy-to-use interface for the solver.
-
-Currently, the solver can access the information with the following simple function calls:
-```python
-get_execution_cost_carbon_runtime(instance_index: int, region_index: int)
-```
-
-```python
-get_transmission_cost_carbon_runtime(from_instance_index: int, to_instance_index: int, from_region_index: int, to_region_index: int):
-```
-
-The solver can easily use these functions to quickly calculate the cost, carbon, and runtime of both execution and transmission at each step of a workflow.
-
-## Solver Methodologies
-
-In this project, we provide a variety of different solvers with different methododlogies, each with tradeoffs between speed, computational resource utilization, and thoroughness.
-
-### Simple Solver
-
-This solver deploys the entire workflow, along with all its functions and instances, in a single region. It can perform quickly with minimal computational resource utilization, but at the expense of having coarse-grained deployment options and low thoroughness.
-
-### Brute Force Solver
-
-In this solver, each instance of a workflow can be deployed in any of the user-defined permitted regions, and the solver will attempt to exhaustively search through all possibilities. Thus, this solver will have high thoroughness but at the cost of slow speed and very high computational resource utilization.
 
 ## Source Code Annotation
 
@@ -254,8 +187,6 @@ The payload is optional and can be omitted if the function does not require any 
 - Additionally, there is the option of conditionally calling a function.
 This is done with the following annotation:
 
-**TODO (#11): Implement conditional function invocation**
-
 ```python
 workflow.invoke_serverless_function(second_function, payload, condition)
 ```
@@ -263,34 +194,43 @@ workflow.invoke_serverless_function(second_function, payload, condition)
 The condition is a boolean expression that is evaluated at runtime.
 If the condition evaluates to true, the function is called, otherwise it is not called.
 
-- Finally, there is the option of merging multiple predecessor calls at a merge node.
-The responses from the predecessor calls are then passed to the merge node as a list of responses.
+- Finally, there is the option of synchronizing multiple predecessor calls at a synchronization node.
+The responses from the predecessor calls are then passed to the synchronization node as a list of responses.
 This is done with the following annotation:
 
 ```python
 responses: list[Any] = workflow.get_predecessor_data()
 ```
 
-Using this annotation within a function has an important implication with regards to when the entire function is being executed. The entire function is only executed once all predecessor calls have been completed and the data has been merged. This is important to keep in mind when designing the workflow. Any code within the function preceding the annotation is also executed only once all predecessor calls have been completed and the data has been merged.
+Using this annotation within a function has an important implication with regards to when the entire function is being executed.
+The entire function is only executed once all predecessor calls have been completed and the data has been synchronized.
+This is important to keep in mind when designing the workflow.
+Any code within the function preceding the annotation is also executed only once all predecessor calls have been completed and the data has been synchronized.
 
-## Merge Node
+## Synchronization Node
 
-The merge nodes have a special semantic.
-The definition of a merge node is that, compared to all other nodes, there are one or more predecessor nodes that call the merge node.
-The merge node will receive the payload (responses) from all predecessor nodes and can then handle the responses according to the user defined logic.
-This logic has an important implication for the logical representation of the DAG as it means that since the physical representation does not define on what specific predecessors we are waiting on the merge node waits for all predecessors and thus there can only be one logical instance of a merge node in the logical representation.
-Hence also the slightly different naming scheme of the merge nodes (see also the section on [Logical Node Naming Scheme](#logical-node-naming-scheme)).
+The synchronization nodes have a special semantic.
+The definition of a synchronization node is that, compared to all other nodes, there are one or more predecessor nodes that call the synchronization node.
+The synchronization node will receive the payload (responses) from all predecessor nodes and can then handle the responses according to the user defined logic.
+This logic has an important implication for the logical representation of the DAG as it means that since the physical representation does not define on what specific predecessors we are waiting on the synchronization node waits for all predecessors and thus there can only be one logical instance of a synchronization node in the logical representation.
+Hence also the slightly different naming scheme of the synchronization nodes (see also the section on [Logical Node Naming Scheme](#logical-node-naming-scheme)).
 
 ### Implementation
 
-The logic of the merge node is implemented as follows:
+The logic of the synchronization node is implemented as follows:
 
-1. When a predecessor calls a merge node, the predecessor will add its response to a list of responses in a distributed key-value store in the region of the merge node.
-2. The predecessor will then atomically increment a counter in the distributed key-value store.
-3. The new value of the counter is then checked against the number of predecessors of the merge node.
-4. If the counter is equal to the number of predecessors, the merge node will be called. Otherwise, the predecessor will not call the merge node. This ensures that the merge node is only called when all predecessors have called the merge node.
+1. When a predecessor calls a synchronization node, the predecessor will add its response to a list of responses in a distributed key-value store in the region of the synchronization node.
+2. The predecessor will then atomically add its name to the list of predecessors that have called the synchronization node.
+3. The new length of the list is then checked against the number of predecessors of the synchronization node.
+4. If the counter is equal to the number of predecessors, the synchronization node will be called. Otherwise, the predecessor will not call the synchronization node.
+This ensures that the synchronization node is only called when all predecessors have called the synchronization node.
 
-As previously mentioned, the code in the merge node is only executed once all predecessors have written their responses to the distributed key-value store and the counter has been incremented to the number of predecessors, i.e., the merge node is only called once all predecessors have called the merge node.
+A special consideration is made with regards to conditional calls to successors.
+If a conditional call results in the predecessor not calling a successor, the predecessor knows whether any successor of the function not called would have called the synchronization node.
+If this is the case, the predecessor will add the name of the corresponding successor to the list of predecessors that have called the synchronization node.
+This ensures that the synchronization node is called even if some of the predecessors do not call the synchronization node due to conditional calls.
+
+As previously mentioned, the code in the synchronization node is only executed once all predecessors have written their responses to the distributed key-value store and the counter has been incremented to the number of predecessors, i.e., the synchronization node is only called once all predecessors have called the synchronization node.
 
 ## Workflow Placement Decision
 
@@ -346,6 +286,8 @@ Different parts of this dictionary are provided by different components of the s
 
 ### Component Interaction Order
 
+![Component Interaction Order](./img/component_interaction_overview.png)
+
 The following is the order in which the different components interact with each other with regards to the workflow placement decision:
 
 1. The deployment client uploads an initial version of the workflow placement decision to the distributed key-value store.
@@ -358,6 +300,64 @@ The following is the order in which the different components interact with each 
 During a workflow execution, the initial function instance will download the workflow placement decision from the distributed key-value store and add the `run_id`.
 Subsequent functions will receive the workflow placement decision from the previous function instance which updated the `current_instance_name` to the name of the current function instance.
 
-##  References
+## Solvers
+
+The solvers are responsible for determining the optimal placement of the function instances across the available regions.
+Every solver must create valid and unique deployments.
+A valid deployment is one that satisfies the hard constraints of the workflow in terms of resource requirements for the worst-case runtime (tail).
+The provided constraints will then be valid as quality of service (QoS) requirements for the average-case runtime.
+Prioritisation of the deployments is based on the average-case runtime.
+
+### Coarse Grained
+
+TODO (#86)
+
+### Stochastic Heuristic Descent
+
+The Stochastic Heuristic Descent solver is a heuristic optimization algorithm that utilizes a stochastic approach to explore different deployment configurations.
+It employs a heuristic method for quick and efficient problem-solving.
+The solver is not guaranteed to find the optimal solution, nor to be exhaustive in its search.
+The solver optimizes for multiple objectives including cost, runtime, and carbon footprint.
+It ensures that solutions adhere to specified resource constraints.
+Similar to the other solvers it uses worst-case estimates with regards to conditional calls (all conditional calls are assumed to be true) and the tail latency for the function runtimes and the network latencies to filter for hard constraints.
+The solver is implemented as a hill-climbing algorithm with a stochastic approach.
+
+#### Key Features
+
+- **Stochastic Approach**: Utilizes random selections and probability to explore different deployment configurations.
+- **Heuristic Optimization**: Employs heuristic methods for quick and efficient problem-solving.
+- **Multi-objective Focus**: Optimizes for multiple objectives including cost, runtime, and carbon footprint.
+- **Resource Constraint Compliance**: Ensures that solutions adhere to specified resource constraints.
+
+#### Workflow
+
+1. **Initialization**:
+   - Sets up critical parameters like learning rate and maximum iterations.
+   - Initializes the deployment configuration with initial region assignments.
+
+2. **Iteration Loop**:
+   - Iteratively updates a subset of instances based on the learning rate.
+   - Randomly selects new region assignments for each instance and evaluates potential improvements.
+
+3. **Evaluation of Deployment**:
+   - Checks if the current deployment configuration meets the specified hard resource constraints.
+   - Ensures the uniqueness of the deployment to avoid redundant solutions.
+
+4. **Result Compilation**:
+   - Upon completion of the iterations, compiles a list of valid and unique average case deployments.
+   - These deployments represent the optimized configurations discovered by the solver.
+
+#### Specialities
+
+- **Adaptive Learning Rate**: Dynamically adjusts the number of instances to update in each iteration.
+- **Bias Towards Positive Regions**: Incorporates a bias towards regions that have previously resulted in improvements.
+- **Topology-Aware Optimizations**: Leverages the topological structure of the distributed system for more efficient optimization.
+- **Multi-Dimensional Evaluation**: Simultaneously considers multiple factors (cost, runtime, carbon footprint) in optimization.
+
+### Brute Force
+
+TODO (#87)
+
+##  References
 
 [1]: Ben-Nun T, de Fine Licht J, Ziogas AN, Schneider T, Hoefler T. Stateful dataflow multigraphs: A data-centric model for performance portability on heterogeneous architectures. InProceedings of the International Conference for High Performance Computing, Networking, Storage and Analysis 2019 Nov 17 (pp. 1-14).
