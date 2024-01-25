@@ -270,7 +270,6 @@ total_nodes = 3  # CODE FOR DEBUGGING
 sync_nodes = 1
 num_regions = 3
 solverBenchmark = SolverBenchmark(total_nodes=total_nodes, sync_nodes=sync_nodes, num_regions=num_regions, seed=seed)
-solverBenchmark.visualize_dag()
 
 solverBenchmark.set_deterministic(True)
 
