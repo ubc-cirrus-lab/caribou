@@ -638,6 +638,105 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
 
         self.assertEqual(deployments, expected_deployments)
 
+    def test_solver_hard_constraints_complex_final_merge(self):
+        """
+        This is a test with 6 instances, there are 1 final end node.
+        This is the mofified version of the previous "test_solver_complex_final_merge" test, but with hard constraints.
+        """
+        self.workflow_config.start_hops = {"provider": "p1", "region": "r1"}
+        self.workflow_config.regions_and_providers = {"providers": {"p1": None, "p2": None}}
+        self.workflow_config.instances = [
+            {
+                "instance_name": "i1",
+                "function_name": "f1",
+                "succeeding_instances": ["i2", "i3"],
+                "preceding_instances": [],
+                "regions_and_providers": {
+                    "allowed_regions": None,
+                    "disallowed_regions": None,
+                    "providers": {"p1": None, "p2": None},
+                },
+            },
+            {
+                "instance_name": "i2",
+                "function_name": "f2",
+                "succeeding_instances": ["i4"],
+                "preceding_instances": ["i1"],
+                "regions_and_providers": {
+                    "allowed_regions": None,
+                    "disallowed_regions": None,
+                    "providers": {"p1": None},
+                },
+            },
+            {
+                "instance_name": "i3",
+                "function_name": "f3",
+                "succeeding_instances": ["i4", "i5"],
+                "preceding_instances": ["i1"],
+                "regions_and_providers": {
+                    "allowed_regions": None,
+                    "disallowed_regions": None,
+                    "providers": {"p1": None},
+                },
+            },
+            {
+                "instance_name": "i4",
+                "function_name": "f4",
+                "succeeding_instances": ["i6"],
+                "preceding_instances": ["i2", "i3"],
+                "regions_and_providers": {
+                    "allowed_regions": None,
+                    "disallowed_regions": None,
+                    "providers": {"p1": None},
+                },
+            },
+            {
+                "instance_name": "i5",
+                "function_name": "f5",
+                "succeeding_instances": ["i6"],
+                "preceding_instances": ["i3"],
+                "regions_and_providers": {
+                    "allowed_regions": None,
+                    "disallowed_regions": None,
+                    "providers": {"p1": None},
+                },
+            },
+            {
+                "instance_name": "i6",
+                "function_name": "f6",
+                "succeeding_instances": [],
+                "preceding_instances": ["i4", "i5"],
+                "regions_and_providers": {
+                    "allowed_regions": None,
+                    "disallowed_regions": None,
+                    "providers": {"p1": None, "p2": None},
+                },
+            },
+        ]
+        self.workflow_config.constraints = {
+            "hard_resource_constraints": {
+                "cost": {"value": 67.0},
+                "runtime": {"value": 43.0},
+                "carbon": {"value": 131.0},
+            }
+        }
+
+        regions = [
+            {"provider": "p1", "region": "r1"},
+            {"provider": "p2", "region": "r2"},
+        ]
+        solver = BFSFineGrainedSolver(self.workflow_config, regions, False)
+        solver._input_manager = self.input_manager
+
+        deployments = solver._solve(regions)
+
+        # This is the expected deployments
+        expected_deployments = [
+            ({0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0}, 60.0, 42.0, 120.0),  # Verified
+        ]
+
+        self.assertEqual(deployments, expected_deployments)
+
 
 if __name__ == "__main__":
     unittest.main()

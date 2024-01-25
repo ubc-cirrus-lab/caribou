@@ -201,7 +201,7 @@ class BFSFineGrainedSolver(Solver):
                             ) = self._calculate_wc_pc_cost_carbon_cl_placements(combined_placements)
 
                             if not self._fail_hard_resource_constraints(
-                                self._workflow_config.constraints, wc_cost, wc_carbon, max_wc_runtime
+                                self._workflow_config.constraints, wc_cost, max_wc_runtime, wc_carbon
                             ):
                                 # For now we use worse case, but when proability is implemented we will use that instead
                                 # Note to keep consistency with the other solvers, we save in cost, runtime, then carbon
@@ -334,20 +334,16 @@ class BFSFineGrainedSolver(Solver):
                                     (current_instance_pc_cost, current_instance_pc_carbon),
                                 )
 
-                                # Recalculate the wc cost carbon only if current values failed.
-                                if self._fail_hard_resource_constraints(
-                                    self._workflow_config.constraints, wc_cost_total, wc_carbon_total, max_wc_runtime
-                                ):
-                                    (
-                                        wc_cost_total,
-                                        wc_carbon_total,
-                                        pc_cost_total,
-                                        pc_carbon_total,
-                                        _,
-                                    ) = self._calculate_wc_pc_cost_carbon_cl_placements(combined_placements)
+                                (
+                                    wc_cost_total,
+                                    wc_carbon_total,
+                                    pc_cost_total,
+                                    pc_carbon_total,
+                                    _,
+                                ) = self._calculate_wc_pc_cost_carbon_cl_placements(combined_placements)
 
                                 if not self._fail_hard_resource_constraints(
-                                    self._workflow_config.constraints, wc_cost_total, wc_carbon_total, max_wc_runtime
+                                    self._workflow_config.constraints, wc_cost_total, max_wc_runtime, wc_carbon_total
                                 ):
                                     current_deployments.append(
                                         (
