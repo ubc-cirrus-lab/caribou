@@ -204,7 +204,8 @@ class BFSFineGrainedSolver(Solver):
                                 self._workflow_config.constraints, wc_cost, wc_carbon, max_wc_runtime
                             ):
                                 # For now we use worse case, but when proability is implemented we will use that instead
-                                final_deployments.append((clean_combined_placments, wc_cost, wc_carbon, max_wc_runtime))
+                                # Note to keep consistency with the other solvers, we save in cost, runtime, then carbon
+                                final_deployments.append((clean_combined_placments, wc_cost, max_wc_runtime, wc_carbon))
 
                     del deployments  # Clear all memory
 

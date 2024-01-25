@@ -91,3 +91,9 @@ testing
 
 # Solver benchmarks dag image files
 benchmarks/solver_benchmarks/images/*.png
+
+# Benchmark images
+solver_benchmark.png
+
+# Benchmark results
+benchmarks/solver_benchmarks/results.json

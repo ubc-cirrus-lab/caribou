@@ -20,6 +20,14 @@ class SolverBenchmark:
 
         self._seed = seed
         self._dag = self._generate_dag(total_nodes, sync_nodes)
+        
+
+        # Generate random execution matrix
+        self._execution_matrix = self._generate_random_execution_matrix(total_nodes, num_regions)
+
+        # Generate random tranmission matrix
+        self._transmission_matrix = self._generate_random_transmission_matrix(num_regions)
+
         self._num_regions = num_regions
         self._sync_nodes = sync_nodes
 
@@ -29,11 +37,26 @@ class SolverBenchmark:
     def reset_random(self):
         self._random = np.random.RandomState(self._seed)
 
-    def mock_get_execution_cost_carbon_runtime(self, *args, **kwargs):
-        return (self._random.randint(1, 100), self._random.randint(1, 100), self._random.randint(1, 100))
+    def mock_get_execution_cost_carbon_runtime(self, current_instance_index, to_region_index, consider_probabilistic_invocations=False):
+        return (
+            self._execution_matrix[current_instance_index][to_region_index],
+            self._execution_matrix[current_instance_index][to_region_index] * 2,
+            self._execution_matrix[current_instance_index][to_region_index],
+        )
 
-    def mock_get_transmission_cost_carbon_runtime(self, *args, **kwargs):
-        return (self._random.randint(1, 100), self._random.randint(1, 100), self._random.randint(1, 100))
+    def mock_get_transmission_cost_carbon_runtime(self, previous_instance_index, current_instance_index, from_region_index, to_region_index, consider_probabilistic_invocations=False):
+        if from_region_index is not None and previous_instance_index is not None:
+            # Exception for start hop (if starting from home region, no need to add transmission cost ONLY in regards to start hop)
+            if (previous_instance_index == current_instance_index and from_region_index == to_region_index):
+                return (0, 0, 0)
+        
+            return (
+                self._transmission_matrix[from_region_index][to_region_index],
+                self._transmission_matrix[from_region_index][to_region_index] * 2,
+                self._transmission_matrix[from_region_index][to_region_index],
+            )
+        else:
+            return (0, 0, 0)  # Do not consider start hop
 
     def run_benchmark(self, solver_class=None, number_of_runs=10) -> dict:
         self.reset_random()
@@ -64,10 +87,15 @@ class SolverBenchmark:
         best_runtimes = []
         best_carbons = []
         number_of_final_results = []
+        number_of_runs = 1
         for _ in range(number_of_runs):
             start_time = time.time()
             deployments = solver._solve(self._regions)
             end_time = time.time()
+
+            # print(f"Found {len(deployments)} deployments") # CODE FOR DEBUGGING
+            # for deployment in deployments: 
+            #     print(deployment)
 
             best_cost = max([deployment[1] for deployment in deployments])
             best_runtime = max([deployment[2] for deployment in deployments])
@@ -100,6 +128,44 @@ class SolverBenchmark:
 
     def get_regions(self):
         return self._regions
+
+    def _generate_random_execution_matrix(self, num_instances, num_regions):
+        if self._seed is not None:
+            random.seed(self._seed)
+            np.random.seed(self._seed)
+        
+        # Generate random base values for each instance
+        base_values = np.random.uniform(5.0, 500.0, size=(num_instances, 1))
+
+        # Generate random perturbation for each instance (between 0% to 10%)
+        perturbation = np.random.uniform(0, 0.1, size=(num_instances, num_regions))
+
+        # Calculate the final values for each region and instance
+        random_array = base_values * (1 + perturbation)
+
+        return random_array
+
+    def _generate_random_transmission_matrix(self, num_regions):
+        if self._seed is not None:
+            random.seed(self._seed)
+            np.random.seed(self._seed)
+            
+        # Generate a random matrix with values around 1 to 100
+        transmission_matrix = np.random.uniform(1, 25, size=(num_regions, num_regions))
+
+        # Set diagonal values to be close to 0 to 1
+        np.fill_diagonal(transmission_matrix, np.random.uniform(0, 1, size=num_regions))
+
+        # Mirror the values with a maximum difference of 10%
+        max_difference = 0.1 * transmission_matrix.max()
+        for i in range(num_regions):
+            for j in range(i+1, num_regions):
+                difference = np.random.uniform(-max_difference, max_difference)
+                average_value = (transmission_matrix[i, j] + transmission_matrix[j, i]) / 2
+                transmission_matrix[i, j] = average_value + difference
+                transmission_matrix[j, i] = average_value - difference
+
+        return transmission_matrix
 
     def _generate_config(self):
         config = {}
@@ -169,7 +235,26 @@ seed = 10
 
 results = []
 
-for total_nodes in range(2, 10):
+# total_nodes = 3 # CODE FOR DEBUGGING
+# sync_nodes = 1
+# num_regions = 3
+# print(f"Running benchmark with {total_nodes} nodes, {sync_nodes} sync nodes and {num_regions} regions")
+# solverBenchmark = SolverBenchmark(
+#     total_nodes=total_nodes, sync_nodes=sync_nodes, num_regions=num_regions, seed=seed
+# )
+# solverBenchmark.visualize_dag()
+
+# print("Random execution matrix:")
+# print(solverBenchmark._execution_matrix)
+
+# print("Random transmission matrix:")
+# print(solverBenchmark._transmission_matrix)
+
+
+# results.append(solverBenchmark.run_benchmark(BFSFineGrainedSolver))
+# results.append(solverBenchmark.run_benchmark(StochasticHeuristicDescentSolver))
+
+for total_nodes in range(2, 9):
     for sync_nodes in range(1, 4):
         for num_regions in range(2, 6):
             print(f"Running benchmark with {total_nodes} nodes, {sync_nodes} sync nodes and {num_regions} regions")
