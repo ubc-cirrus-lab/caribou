@@ -311,7 +311,6 @@ class TestStochasticHeuristicDescentSolver(unittest.TestCase):
 
     def test_init_deployment(self):
         solver = StochasticHeuristicDescentSolver(self.workflow_config, [{"provider": "p1", "region": "r1"}])
-
         solver._workflow_config = Mock()
         solver._workflow_config.start_hops = {"provider": "p1", "region": "r1"}
         solver._workflow_config.instances = [{"instance_name": "instance1"}, {"instance_name": "instance2"}]

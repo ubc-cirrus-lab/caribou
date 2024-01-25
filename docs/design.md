@@ -358,6 +358,7 @@ The solver is implemented as a hill-climbing algorithm with a stochastic approac
 
 TODO (#87)
 
-##  References
+
+##  References
 
 [1]: Ben-Nun T, de Fine Licht J, Ziogas AN, Schneider T, Hoefler T. Stateful dataflow multigraphs: A data-centric model for performance portability on heterogeneous architectures. InProceedings of the International Conference for High Performance Computing, Networking, Storage and Analysis 2019 Nov 17 (pp. 1-14).
