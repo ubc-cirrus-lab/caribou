@@ -1,5 +1,5 @@
 import random
-from typing import Optional, Union
+from typing import Optional
 
 import numpy as np
 
@@ -12,7 +12,7 @@ class StochasticHeuristicDescentSolver(Solver):
     def __init__(
         self,
         workflow_config: WorkflowConfig,
-        all_available_regions: Union[list[dict], None] = None,
+        all_available_regions: Optional[list[dict]] = None,
         input_manager: Optional[InputManager] = None,
     ) -> None:
         super().__init__(workflow_config, all_available_regions, input_manager)
