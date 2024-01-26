@@ -10,6 +10,7 @@ class WorkflowCollector(DataCollector):
         super().__init__()
 
         # Perhaps this tables should be imports of the constants.py once we confirm the names
+        available_region_table: str = "available_region_table"
         at_region_table: str = "workflow_collector_at_region_table"
         from_to_region_table: str = "workflow_collector_from_to_region_table"
 
@@ -18,11 +19,12 @@ class WorkflowCollector(DataCollector):
 
         self._data_retriever = WorkflowRetriever()
         self._data_exporter: WorkflowExporter = WorkflowExporter(
+            self._data_collector_client,
+            available_region_table,
             at_region_table,
             from_to_region_table,
             at_instance_table,
             from_to_instance_table,
-            self._data_collector_client,
         )
 
     def run(self) -> None:

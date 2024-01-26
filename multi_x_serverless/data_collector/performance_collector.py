@@ -10,11 +10,14 @@ class PerformanceCollector(DataCollector):
         super().__init__()
 
         # Perhaps this tables should be imports of the constants.py once we confirm the names
+        available_region_table: str = "available_region_table"
         at_region_table: str = "performance_collector_at_region_table"
         from_to_region_table: str = "performance_collector_from_to_region_table"
 
         self._data_retriever = PerformanceRetriever()
-        self._data_exporter = PerformanceExporter(at_region_table, from_to_region_table, self._data_collector_client)
+        self._data_exporter = PerformanceExporter(
+            self._data_collector_client, available_region_table, at_region_table, from_to_region_table
+        )
 
     def run(self) -> None:
         # TODO (#100): Fill Data Collector Implementations

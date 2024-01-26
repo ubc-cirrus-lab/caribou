@@ -10,13 +10,14 @@ class WorkflowExporter(DataExporter):
 
     def __init__(
         self,
+        client: RemoteClient,
+        available_region_table: str,
         at_region_table: str,
         from_to_region_table: str,
         at_instance_table: str,
         from_to_instance_table: str,
-        client: RemoteClient,
     ) -> None:
-        super().__init__(at_region_table, from_to_region_table, client)
+        super().__init__(client, available_region_table, at_region_table, from_to_region_table)
         self._at_instance_table = at_instance_table
         self._from_to_instance_table = from_to_instance_table
 
@@ -29,6 +30,6 @@ class WorkflowExporter(DataExporter):
     ) -> None:
         self._export_region_data(at_region_data, from_to_region_data)
 
-        # For instance tables
+        # Export instance table data
         self._export_data(self._at_instance_table, at_instance_data)
         self._export_data(self._from_to_instance_table, from_to_instance_data)
