@@ -98,81 +98,10 @@ class StochasticHeuristicDescentSolver(Solver):
         tuple[np.ndarray, np.ndarray],
         tuple[np.ndarray, np.ndarray],
     ]:
-        deployment: dict[int, int] = {}
         home_region_index = self._region_indexer.value_to_index(
             self._provider_region_dict_to_tuple(self._workflow_config.start_hops)
         )
-        average_node_weights = np.empty((3, len(self._topological_order)))
-        tail_node_weights = np.empty((3, len(self._topological_order)))
-
-        average_edge_weights = np.zeros((3, len(self._topological_order), len(self._topological_order)))
-        tail_edge_weights = np.zeros((3, len(self._topological_order), len(self._topological_order)))
-
-        for instance in self._workflow_config.instances:
-            instance_index = self._dag.value_to_index(instance["instance_name"])
-            deployment[instance_index] = home_region_index
-
-            (
-                tail_execution_cost,
-                tail_execution_carbon,
-                tail_execution_runtime,
-            ) = self._input_manager.get_execution_cost_carbon_runtime(instance_index, home_region_index)
-
-            tail_node_weights[0, instance_index] = tail_execution_cost
-            tail_node_weights[1, instance_index] = tail_execution_runtime
-            tail_node_weights[2, instance_index] = tail_execution_carbon
-
-            (
-                average_execution_cost,
-                average_execution_carbon,
-                average_execution_runtime,
-            ) = self._input_manager.get_execution_cost_carbon_runtime(
-                instance_index, home_region_index, consider_probabilistic_invocations=True
-            )
-
-            average_node_weights[0, instance_index] = average_execution_cost
-            average_node_weights[1, instance_index] = average_execution_runtime
-            average_node_weights[2, instance_index] = average_execution_carbon
-
-        for i, j in zip(self._adjacency_indexes[0], self._adjacency_indexes[1]):
-            (
-                tail_transmission_cost,
-                tail_transmission_carbon,
-                tail_transmission_runtime,
-            ) = self._input_manager.get_transmission_cost_carbon_runtime(i, j, home_region_index, home_region_index)
-
-            tail_edge_weights[0, i, j] = tail_transmission_cost
-            tail_edge_weights[1, i, j] = tail_transmission_runtime
-            tail_edge_weights[2, i, j] = tail_transmission_carbon
-
-            (
-                average_transmission_cost,
-                average_transmission_carbon,
-                average_transmission_runtime,
-            ) = self._input_manager.get_transmission_cost_carbon_runtime(
-                i, j, home_region_index, home_region_index, consider_probabilistic_invocations=True
-            )
-
-            average_edge_weights[0, i, j] = average_transmission_cost
-            average_edge_weights[1, i, j] = average_transmission_runtime
-            average_edge_weights[2, i, j] = average_transmission_carbon
-
-        (
-            (average_cost, tail_cost),
-            (average_runtime, tail_runtime),
-            (average_carbon, tail_carbon),
-        ) = self._calculate_cost_of_deployment(
-            average_node_weights, tail_node_weights, average_edge_weights, tail_edge_weights
-        )
-
-        return (
-            deployment,
-            (average_cost, tail_cost),
-            (average_runtime, tail_runtime),
-            (average_carbon, tail_carbon),
-            (average_node_weights, tail_node_weights),
-            (average_edge_weights, tail_edge_weights),
-        )
+        return self.init_deployment_to_region(home_region_index)
 
     def _calculate_cost_of_deployment(
         self,

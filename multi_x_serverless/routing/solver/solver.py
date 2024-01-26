@@ -128,3 +128,150 @@ class Solver(ABC):
             or "carbon" in hard_resource_constraints
             and carbon > hard_resource_constraints["carbon"]["value"]
         )
+
+    def init_deployment_to_region(
+        self, region_index: int
+    ) -> tuple[
+        dict[int, int],
+        tuple[float, float],
+        tuple[float, float],
+        tuple[float, float],
+        tuple[np.ndarray, np.ndarray],
+        tuple[np.ndarray, np.ndarray],
+    ]:
+        topological_order = self._dag.topological_sort()
+
+        adjacency_matrix = self._dag.get_adj_matrix()
+        adjacency_indexes = np.where(adjacency_matrix == 1)
+
+        deployment: dict[int, int] = {}
+        average_node_weights = np.empty((3, len(topological_order)))
+        tail_node_weights = np.empty((3, len(topological_order)))
+
+        average_edge_weights = np.zeros((3, len(topological_order), len(topological_order)))
+        tail_edge_weights = np.zeros((3, len(topological_order), len(topological_order)))
+
+        for instance in self._workflow_config.instances:
+            instance_index = self._dag.value_to_index(instance["instance_name"])
+            deployment[instance_index] = region_index
+
+            (
+                tail_execution_cost,
+                tail_execution_carbon,
+                tail_execution_runtime,
+            ) = self._input_manager.get_execution_cost_carbon_runtime(instance_index, region_index)
+
+            tail_node_weights[0, instance_index] = tail_execution_cost
+            tail_node_weights[1, instance_index] = tail_execution_runtime
+            tail_node_weights[2, instance_index] = tail_execution_carbon
+
+            (
+                average_execution_cost,
+                average_execution_carbon,
+                average_execution_runtime,
+            ) = self._input_manager.get_execution_cost_carbon_runtime(
+                instance_index, region_index, consider_probabilistic_invocations=True
+            )
+
+            average_node_weights[0, instance_index] = average_execution_cost
+            average_node_weights[1, instance_index] = average_execution_runtime
+            average_node_weights[2, instance_index] = average_execution_carbon
+
+        for i, j in zip(adjacency_indexes[0], adjacency_indexes[1]):
+            (
+                tail_transmission_cost,
+                tail_transmission_carbon,
+                tail_transmission_runtime,
+            ) = self._input_manager.get_transmission_cost_carbon_runtime(i, j, region_index, region_index)
+
+            tail_edge_weights[0, i, j] = tail_transmission_cost
+            tail_edge_weights[1, i, j] = tail_transmission_runtime
+            tail_edge_weights[2, i, j] = tail_transmission_carbon
+
+            (
+                average_transmission_cost,
+                average_transmission_carbon,
+                average_transmission_runtime,
+            ) = self._input_manager.get_transmission_cost_carbon_runtime(
+                i, j, region_index, region_index, consider_probabilistic_invocations=True
+            )
+
+            average_edge_weights[0, i, j] = average_transmission_cost
+            average_edge_weights[1, i, j] = average_transmission_runtime
+            average_edge_weights[2, i, j] = average_transmission_carbon
+
+        (
+            (average_cost, tail_cost),
+            (average_runtime, tail_runtime),
+            (average_carbon, tail_carbon),
+        ) = self._calculate_cost_of_deployment(
+            average_node_weights, tail_node_weights, average_edge_weights, tail_edge_weights
+        )
+
+        return (
+            deployment,
+            (average_cost, tail_cost),
+            (average_runtime, tail_runtime),
+            (average_carbon, tail_carbon),
+            (average_node_weights, tail_node_weights),
+            (average_edge_weights, tail_edge_weights),
+        )
+
+    def _calculate_cost_of_deployment(
+        self,
+        average_node_weights: np.ndarray,
+        tail_node_weights: np.ndarray,
+        average_edge_weights: np.ndarray,
+        tail_edge_weights: np.ndarray,
+    ) -> tuple[tuple[float, float], tuple[float, float], tuple[float, float]]:
+        (
+            average_cost,
+            average_runtime,
+            average_carbon,
+        ) = self._calculate_cost_of_deployment_case(average_node_weights, average_edge_weights)
+
+        (
+            tail_cost,
+            tail_runtime,
+            tail_carbon,
+        ) = self._calculate_cost_of_deployment_case(tail_node_weights, tail_edge_weights)
+
+        return (
+            (average_cost, tail_cost),
+            (average_runtime, tail_runtime),
+            (average_carbon, tail_carbon),
+        )
+
+    def _calculate_cost_of_deployment_case(
+        self, node_weights: np.ndarray, edge_weights: np.ndarray
+    ) -> tuple[float, float, float]:
+        cost = np.sum(node_weights[0]) + np.sum(edge_weights[0])  # type: ignore
+        runtime = self._most_expensive_path(edge_weights[1], node_weights[1])
+        carbon = np.sum(node_weights[2]) + np.sum(edge_weights[2])  # type: ignore
+
+        return cost, runtime, carbon
+
+    def _most_expensive_path(self, edge_weights: np.ndarray, node_weights: np.ndarray) -> float:
+        topological_order = self._dag.topological_sort()
+        dist = np.full(len(topological_order), -np.inf)
+        dist[topological_order[0]] = node_weights[topological_order[0]]
+
+        for node in topological_order:
+            outgoing_edges = edge_weights[node, :] != 0
+            dist[outgoing_edges] = np.maximum(
+                dist[outgoing_edges], dist[node] + edge_weights[node, outgoing_edges] + node_weights[outgoing_edges]
+            )
+
+        max_cost: float = np.max(dist)
+        return max_cost
+
+    def _get_permitted_region_indices(self, regions: list[dict], instance: int) -> list[int]:
+        permitted_regions: list[dict[(str, str)]] = self._filter_regions_instance(regions, instance)
+        if len(permitted_regions) == 0:  # Should never happen in a valid DAG
+            raise Exception("There are no permitted regions for this instance")
+
+        all_regions_indices = self._region_indexer.get_value_indices()
+        permitted_regions_indices = [
+            all_regions_indices[(region["provider"], region["region"])] for region in permitted_regions
+        ]
+        return permitted_regions_indices

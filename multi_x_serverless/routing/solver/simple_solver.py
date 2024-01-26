@@ -2,49 +2,56 @@ import numpy as np
 
 from multi_x_serverless.routing.solver.solver import Solver
 
-# TODO (#29): Implement / Fix the issues here
-# class SimpleSolver(Solver):
-#     def _solve(self, regions: list[dict]) -> list[tuple[dict, float, float, float]]:
-#         carbon = np.zeros(len(regions))
-#         cost = np.zeros(len(regions))
-#         runtime = np.zeros(len(regions))
-#         number_of_transmissions = self._dag.number_of_edges
 
-#         for data_source_name in self._data_sources:
-#             # Execution cost is the sum of the execution costs of all functions in the same region for the simple solver
-#             execution_matrix = self._data_sources[data_source_name].get_execution_matrix()
+class SimpleSolver(Solver):
+    # Input:
+    #   regions: list[dict] = [{"provider": "p1", "region": "r1"}, {"provider": "p2", "region": "r2"}]
+    # Return values: list[tuple[dict[str, str], float, float, float]] = [
+    #     ({index_instance: the_region_it_is_placed, ...# of instances more },  cost: float, runtime: float, carbon: float),
+    #    ...# of regions more
+    # ]
+    def _solve(self, regions: list[dict]) -> list[tuple[dict, float, float, float]]:
+        average_case_deployments: list[tuple[dict[int, int], float, float, float]] = []
 
-#             row_sums = np.sum(execution_matrix, axis=1)
+        # list of indices of regions that are permitted for all functions
+        permitted_regions: set[int] = set()
 
-#             if data_source_name == "cost":
-#                 cost = row_sums
-#             elif data_source_name == "runtime":
-#                 runtime = row_sums
-#             elif data_source_name == "carbon":
-#                 carbon = row_sums
+        for region in regions:
+            region_index = self._region_indexer.get_value_indices()[(region["provider"], region["region"])]
+            temp_permitted_regions = self._get_permitted_region_indices(regions, region_index)
+            if not permitted_regions:
+                permitted_regions = set(temp_permitted_regions)
+            else:
+                permitted_regions = permitted_regions.intersection(temp_permitted_regions)
 
-#             # Transmission cost is the diagonal of the transmission matrix times the
-#             # number of transmissions between the functions
-#             transmission_matrix = self._data_sources[data_source_name].get_transmission_matrix()
-#             transmission_cost = np.diagonal(transmission_matrix) * number_of_transmissions
+        if not permitted_regions:
+            raise Exception("There are no permitted regions")
 
-#             if data_source_name == "cost":
-#                 cost += transmission_cost
-#             elif data_source_name == "runtime":
-#                 runtime += transmission_cost
-#             elif data_source_name == "carbon":
-#                 carbon += transmission_cost
+        for permitted_region in permitted_regions:
+            current_deployment = self.init_deployment_to_region(permitted_region)
 
-#         deployments: list[tuple[dict[str, str], float, float, float]] = []
+            if (
+                not self._fail_hard_resource_constraints(
+                    self._workflow_config.constraints,
+                    current_deployment[1][1],
+                    current_deployment[2][1],
+                    current_deployment[3][1],
+                )
+                and (
+                    current_deployment[0].copy(),
+                    current_deployment[1][0],
+                    current_deployment[2][0],
+                    current_deployment[3][0],
+                )
+                not in average_case_deployments
+            ):
+                average_case_deployments.append(
+                    (
+                        current_deployment[0].copy(),
+                        current_deployment[1][0],
+                        current_deployment[2][0],
+                        current_deployment[3][0],
+                    )
+                )
 
-#         for i, region in enumerate(regions):
-#             deployment_assignments: dict = {}
-#             for function in self._workflow_config.functions:
-#                 deployment_assignments[function] = region
-
-#             if self._fail_hard_resource_constraints(self._workflow_config.constraints, cost[i], runtime[i], carbon[i]):
-#                 continue
-
-#             deployments.append((deployment_assignments, cost[i], runtime[i], carbon[i]))
-
-#         return deployments
+        return average_case_deployments
