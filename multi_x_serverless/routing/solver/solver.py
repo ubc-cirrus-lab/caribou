@@ -20,6 +20,7 @@ class Solver(ABC):
         workflow_config: WorkflowConfig,
         all_available_regions: Optional[list[dict]] = None,
         input_manager: Optional[InputManager] = None,
+        init_home_region_transmission_costs: bool = True,
     ) -> None:
         self._workflow_config = workflow_config
 
@@ -49,6 +50,26 @@ class Solver(ABC):
 
         self._endpoints = Endpoints()
 
+        self._permitted_region_indices_cache: dict[int, list[int]] = {}
+
+        self._home_region_index = self._region_indexer.value_to_index(
+            self._provider_region_dict_to_tuple(self._workflow_config.start_hops)
+        )
+        self._topological_order = self._dag.topological_sort()
+        if len(self._topological_order) == 0:
+            raise Exception("DAG is empty")
+
+        adjacency_matrix = self._dag.get_adj_matrix()
+        self._adjacency_indexes = np.where(adjacency_matrix == 1)
+
+        self._first_instance_index = self._topological_order[0]
+
+        if init_home_region_transmission_costs:
+            self._init_home_region_transmission_costs(self._worklow_level_permitted_regions)
+
+    def _provider_region_dict_to_tuple(self, provider_region_dict: dict[str, str]) -> tuple[str, str]:
+        return (provider_region_dict["provider"], provider_region_dict["region"])
+
     def solve(self) -> None:
         solved_results = self._solve(self._worklow_level_permitted_regions)
         ranked_results = self.rank_solved_results(solved_results)
@@ -57,6 +78,43 @@ class Solver(ABC):
             selected_result, self._dag.indicies_to_values(), self._region_indexer.indicies_to_values()
         )
         self._upload_result(formatted_result)
+
+    def _init_home_region_transmission_costs(self, regions: list[dict]) -> None:
+        home_region_transmissions_average = np.zeros((3, len(self._region_indexer.get_value_indices())))
+        home_region_transmissions_tail = np.zeros((3, len(self._region_indexer.get_value_indices())))
+
+        valid_region_indices_for_start_hop = self._get_permitted_region_indices(regions, self._first_instance_index)
+
+        for region_index in valid_region_indices_for_start_hop:
+            (
+                home_region_transmission_costs,
+                home_region_transmission_carbon,
+                home_region_transmission_runtime,
+            ) = self._input_manager.get_transmission_cost_carbon_runtime(
+                self._first_instance_index,
+                self._first_instance_index,
+                self._home_region_index,
+                region_index,
+                consider_probabilistic_invocations=True,
+            )
+            home_region_transmissions_average[0, region_index] = home_region_transmission_costs
+            home_region_transmissions_average[1, region_index] = home_region_transmission_runtime
+            home_region_transmissions_average[2, region_index] = home_region_transmission_carbon
+
+            (
+                home_region_transmission_costs,
+                home_region_transmission_carbon,
+                home_region_transmission_runtime,
+            ) = self._input_manager.get_transmission_cost_carbon_runtime(
+                self._first_instance_index, self._first_instance_index, self._home_region_index, region_index
+            )
+
+            home_region_transmissions_tail[0, region_index] = home_region_transmission_costs
+            home_region_transmissions_tail[1, region_index] = home_region_transmission_runtime
+            home_region_transmissions_tail[2, region_index] = home_region_transmission_carbon
+
+        self._home_region_transmission_costs_average = home_region_transmissions_average
+        self._home_region_transmission_costs_tail = home_region_transmissions_tail
 
     @abstractmethod
     def _solve(self, regions: list[dict]) -> list[tuple[dict, float, float, float]]:
@@ -141,17 +199,12 @@ class Solver(ABC):
         tuple[np.ndarray, np.ndarray],
         tuple[np.ndarray, np.ndarray],
     ]:
-        topological_order = self._dag.topological_sort()
-
-        adjacency_matrix = self._dag.get_adj_matrix()
-        adjacency_indexes = np.where(adjacency_matrix == 1)
-
         deployment: dict[int, int] = {}
-        average_node_weights = np.empty((3, len(topological_order)))
-        tail_node_weights = np.empty((3, len(topological_order)))
+        average_node_weights = np.empty((3, len(self._topological_order)))
+        tail_node_weights = np.empty((3, len(self._topological_order)))
 
-        average_edge_weights = np.zeros((3, len(topological_order), len(topological_order)))
-        tail_edge_weights = np.zeros((3, len(topological_order), len(topological_order)))
+        average_edge_weights = np.zeros((3, len(self._topological_order), len(self._topological_order)))
+        tail_edge_weights = np.zeros((3, len(self._topological_order), len(self._topological_order)))
 
         for instance in self._workflow_config.instances:
             instance_index = self._dag.value_to_index(instance["instance_name"])
@@ -179,7 +232,7 @@ class Solver(ABC):
             average_node_weights[1, instance_index] = average_execution_runtime
             average_node_weights[2, instance_index] = average_execution_carbon
 
-        for i, j in zip(adjacency_indexes[0], adjacency_indexes[1]):
+        for i, j in zip(self._adjacency_indexes[0], self._adjacency_indexes[1]):
             (
                 tail_transmission_cost,
                 tail_transmission_carbon,
@@ -207,7 +260,7 @@ class Solver(ABC):
             (average_runtime, tail_runtime),
             (average_carbon, tail_carbon),
         ) = self._calculate_cost_of_deployment(
-            average_node_weights, tail_node_weights, average_edge_weights, tail_edge_weights
+            average_node_weights, tail_node_weights, average_edge_weights, tail_edge_weights, deployment
         )
 
         return (
@@ -225,18 +278,21 @@ class Solver(ABC):
         tail_node_weights: np.ndarray,
         average_edge_weights: np.ndarray,
         tail_edge_weights: np.ndarray,
+        deployment: dict[int, int],
     ) -> tuple[tuple[float, float], tuple[float, float], tuple[float, float]]:
         (
             average_cost,
             average_runtime,
             average_carbon,
-        ) = self._calculate_cost_of_deployment_case(average_node_weights, average_edge_weights)
+        ) = self._calculate_cost_of_deployment_case(
+            average_node_weights, average_edge_weights, deployment, average=True
+        )
 
         (
             tail_cost,
             tail_runtime,
             tail_carbon,
-        ) = self._calculate_cost_of_deployment_case(tail_node_weights, tail_edge_weights)
+        ) = self._calculate_cost_of_deployment_case(tail_node_weights, tail_edge_weights, deployment)
 
         return (
             (average_cost, tail_cost),
@@ -245,11 +301,24 @@ class Solver(ABC):
         )
 
     def _calculate_cost_of_deployment_case(
-        self, node_weights: np.ndarray, edge_weights: np.ndarray
+        self, node_weights: np.ndarray, edge_weights: np.ndarray, deployment: dict[int, int], average: bool = True
     ) -> tuple[float, float, float]:
-        cost = np.sum(node_weights[0]) + np.sum(edge_weights[0])  # type: ignore
-        runtime = self._most_expensive_path(edge_weights[1], node_weights[1])
-        carbon = np.sum(node_weights[2]) + np.sum(edge_weights[2])  # type: ignore
+        initial_node_region = deployment[self._first_instance_index]
+        start_hop_transmission_cost = 0
+        start_hop_transmission_runtime = 0
+        start_hop_transmission_carbon = 0
+        if average:
+            start_hop_transmission_cost = self._home_region_transmission_costs_average[0, initial_node_region]
+            start_hop_transmission_runtime = self._home_region_transmission_costs_average[1, initial_node_region]
+            start_hop_transmission_carbon = self._home_region_transmission_costs_average[2, initial_node_region]
+        else:
+            start_hop_transmission_cost = self._home_region_transmission_costs_tail[0, initial_node_region]
+            start_hop_transmission_runtime = self._home_region_transmission_costs_tail[1, initial_node_region]
+            start_hop_transmission_carbon = self._home_region_transmission_costs_tail[2, initial_node_region]
+
+        cost = np.sum(node_weights[0]) + np.sum(edge_weights[0]) + start_hop_transmission_cost  # type: ignore
+        runtime = self._most_expensive_path(edge_weights[1], node_weights[1]) + start_hop_transmission_runtime  # type: ignore
+        carbon = np.sum(node_weights[2]) + np.sum(edge_weights[2]) + start_hop_transmission_carbon  # type: ignore
 
         return cost, runtime, carbon
 
@@ -268,6 +337,9 @@ class Solver(ABC):
         return max_cost
 
     def _get_permitted_region_indices(self, regions: list[dict], instance: int) -> list[int]:
+        if instance in self._permitted_region_indices_cache:
+            return self._permitted_region_indices_cache[instance]
+
         permitted_regions: list[dict[(str, str)]] = self._filter_regions_instance(regions, instance)
         if len(permitted_regions) == 0:  # Should never happen in a valid DAG
             raise Exception("There are no permitted regions for this instance")
@@ -276,4 +348,5 @@ class Solver(ABC):
         permitted_regions_indices = [
             all_regions_indices[(region["provider"], region["region"])] for region in permitted_regions
         ]
+        self._permitted_region_indices_cache[instance] = permitted_regions_indices
         return permitted_regions_indices
