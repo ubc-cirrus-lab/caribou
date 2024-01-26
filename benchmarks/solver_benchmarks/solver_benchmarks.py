@@ -5,6 +5,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import numpy as np
 import random
+import math
 from multi_x_serverless.routing.models.region import Region
 from multi_x_serverless.routing.solver.bfs_fine_grained_solver import BFSFineGrainedSolver
 from multi_x_serverless.routing.solver.stochastic_heuristic_descent_solver import StochasticHeuristicDescentSolver
@@ -20,7 +21,6 @@ class SolverBenchmark:
 
         self._seed = seed
         self._dag = self._generate_dag(total_nodes, sync_nodes)
-        
 
         # Generate random execution matrix
         self._execution_matrix = self._generate_random_execution_matrix(total_nodes, num_regions)
@@ -32,34 +32,71 @@ class SolverBenchmark:
         self._sync_nodes = sync_nodes
 
         self._config, self._regions = self._generate_config()
-        self.reset_random()
+        self._deterministic = False
 
-    def reset_random(self):
-        self._random = np.random.RandomState(self._seed)
+    def set_deterministic(self, deterministic):
+        self._deterministic = deterministic
 
-    def mock_get_execution_cost_carbon_runtime(self, current_instance_index, to_region_index, consider_probabilistic_invocations=False):
+    def mock_get_execution_cost_carbon_runtime(
+        self, current_instance_index, to_region_index, consider_probabilistic_invocations=False
+    ):
+        cost_value = 1
+        runtime_value = 2
+        carbon_value = 1
+        if not self._deterministic:
+            cost_value = math.sin(current_instance_index + to_region_index) + 1
+            runtime_value = math.cos(current_instance_index + to_region_index) + 2
+            carbon_value = math.sin(current_instance_index - to_region_index) + 1
+            if not consider_probabilistic_invocations:
+                cost_value *= 2
+                runtime_value *= 2
+                carbon_value *= 2
+
         return (
-            self._execution_matrix[current_instance_index][to_region_index],
-            self._execution_matrix[current_instance_index][to_region_index] * 2,
-            self._execution_matrix[current_instance_index][to_region_index],
+            self._execution_matrix[current_instance_index][to_region_index] * cost_value,
+            self._execution_matrix[current_instance_index][to_region_index] * runtime_value,
+            self._execution_matrix[current_instance_index][to_region_index] * carbon_value,
         )
 
-    def mock_get_transmission_cost_carbon_runtime(self, previous_instance_index, current_instance_index, from_region_index, to_region_index, consider_probabilistic_invocations=False):
+    def mock_get_transmission_cost_carbon_runtime(
+        self,
+        previous_instance_index,
+        current_instance_index,
+        from_region_index,
+        to_region_index,
+        consider_probabilistic_invocations=False,
+    ):
         if from_region_index is not None and previous_instance_index is not None:
+            cost_value = 1
+            runtime_value = 2
+            carbon_value = 1
+            if not self._deterministic:
+                cost_value = (
+                    math.sin(previous_instance_index + current_instance_index + from_region_index + to_region_index) + 1
+                )
+                runtime_value = (
+                    math.cos(previous_instance_index + current_instance_index + from_region_index + to_region_index) + 2
+                )
+                carbon_value = (
+                    math.sin(previous_instance_index - current_instance_index + from_region_index - to_region_index) + 1
+                )
+                if not consider_probabilistic_invocations:
+                    cost_value *= 2
+                    runtime_value *= 2
+                    carbon_value *= 2
             # Exception for start hop (if starting from home region, no need to add transmission cost ONLY in regards to start hop)
-            if (previous_instance_index == current_instance_index and from_region_index == to_region_index):
-                return (0, 0, 0)
-        
+            if previous_instance_index == current_instance_index and from_region_index == to_region_index:
+                return (cost_value, runtime_value, carbon_value)
+
             return (
-                self._transmission_matrix[from_region_index][to_region_index],
-                self._transmission_matrix[from_region_index][to_region_index] * 2,
-                self._transmission_matrix[from_region_index][to_region_index],
+                self._transmission_matrix[from_region_index][to_region_index] * cost_value,
+                self._transmission_matrix[from_region_index][to_region_index] * runtime_value,
+                self._transmission_matrix[from_region_index][to_region_index] * carbon_value,
             )
         else:
             return (0, 0, 0)  # Do not consider start hop
 
     def run_benchmark(self, solver_class=None, number_of_runs=10) -> dict:
-        self.reset_random()
         if not solver_class:
             solver_class = self.default_solver_class
 
@@ -70,16 +107,15 @@ class SolverBenchmark:
         workflow_config.instances = self._config["instances"]
         workflow_config.constraints = self._config["constraints"]
 
-        # Create a solver instance and run the benchmark
-        solver = solver_class(workflow_config, self._regions, False)
-
         # Mock input manager
         mock_input_manager = Mock(spec=InputManager)
         mock_input_manager.get_execution_cost_carbon_runtime.side_effect = self.mock_get_execution_cost_carbon_runtime
         mock_input_manager.get_transmission_cost_carbon_runtime.side_effect = (
             self.mock_get_transmission_cost_carbon_runtime
         )
-        solver._input_manager = mock_input_manager
+
+        # Create a solver instance and run the benchmark
+        solver = solver_class(workflow_config, self._regions, mock_input_manager)
 
         # Time solving function
         runtimes = []
@@ -87,19 +123,14 @@ class SolverBenchmark:
         best_runtimes = []
         best_carbons = []
         number_of_final_results = []
-        number_of_runs = 1
         for _ in range(number_of_runs):
             start_time = time.time()
             deployments = solver._solve(self._regions)
             end_time = time.time()
 
-            # print(f"Found {len(deployments)} deployments") # CODE FOR DEBUGGING
-            # for deployment in deployments: 
-            #     print(deployment)
-
-            best_cost = max([deployment[1] for deployment in deployments])
-            best_runtime = max([deployment[2] for deployment in deployments])
-            best_carbon = max([deployment[3] for deployment in deployments])
+            best_cost = min([deployment[1] for deployment in deployments])
+            best_runtime = min([deployment[2] for deployment in deployments])
+            best_carbon = min([deployment[3] for deployment in deployments])
 
             runtimes.append(end_time - start_time)
             best_costs.append(best_cost)
@@ -133,7 +164,6 @@ class SolverBenchmark:
         if self._seed is not None:
             random.seed(self._seed)
             np.random.seed(self._seed)
-        
         # Generate random base values for each instance
         base_values = np.random.uniform(5.0, 500.0, size=(num_instances, 1))
 
@@ -149,7 +179,6 @@ class SolverBenchmark:
         if self._seed is not None:
             random.seed(self._seed)
             np.random.seed(self._seed)
-            
         # Generate a random matrix with values around 1 to 100
         transmission_matrix = np.random.uniform(1, 25, size=(num_regions, num_regions))
 
@@ -159,7 +188,7 @@ class SolverBenchmark:
         # Mirror the values with a maximum difference of 10%
         max_difference = 0.1 * transmission_matrix.max()
         for i in range(num_regions):
-            for j in range(i+1, num_regions):
+            for j in range(i + 1, num_regions):
                 difference = np.random.uniform(-max_difference, max_difference)
                 average_value = (transmission_matrix[i, j] + transmission_matrix[j, i]) / 2
                 transmission_matrix[i, j] = average_value + difference
@@ -233,30 +262,35 @@ class SolverBenchmark:
 
 seed = 10
 
+# Validate that the solvers return the same results when deterministic is set to True
+print("Validating solvers")
+total_nodes = 3  # CODE FOR DEBUGGING
+sync_nodes = 1
+num_regions = 3
+solverBenchmark = SolverBenchmark(total_nodes=total_nodes, sync_nodes=sync_nodes, num_regions=num_regions, seed=seed)
+
+solverBenchmark.set_deterministic(True)
+
+result_1 = solverBenchmark.run_benchmark(BFSFineGrainedSolver, number_of_runs=1)
+result_2 = solverBenchmark.run_benchmark(StochasticHeuristicDescentSolver, number_of_runs=1)
+
+assert result_1["best cost"] == result_2["best cost"]
+assert result_1["best runtime"] == result_2["best runtime"]
+assert result_1["best carbon"] == result_2["best carbon"]
+
+solverBenchmark.set_deterministic(False)
+
+print("Validation successful")
+
+# Benchmark all solvers
+print("Running benchmarks")
 results = []
 
-# total_nodes = 3 # CODE FOR DEBUGGING
-# sync_nodes = 1
-# num_regions = 3
-# print(f"Running benchmark with {total_nodes} nodes, {sync_nodes} sync nodes and {num_regions} regions")
-# solverBenchmark = SolverBenchmark(
-#     total_nodes=total_nodes, sync_nodes=sync_nodes, num_regions=num_regions, seed=seed
-# )
-# solverBenchmark.visualize_dag()
-
-# print("Random execution matrix:")
-# print(solverBenchmark._execution_matrix)
-
-# print("Random transmission matrix:")
-# print(solverBenchmark._transmission_matrix)
-
-
-# results.append(solverBenchmark.run_benchmark(BFSFineGrainedSolver))
-# results.append(solverBenchmark.run_benchmark(StochasticHeuristicDescentSolver))
-
-for total_nodes in range(2, 9):
-    for sync_nodes in range(1, 4):
-        for num_regions in range(2, 6):
+for total_nodes in range(3, 10):
+    for sync_nodes in range(1, 5):
+        if sync_nodes > total_nodes - 1:
+            continue
+        for num_regions in range(4, 10):
             print(f"Running benchmark with {total_nodes} nodes, {sync_nodes} sync nodes and {num_regions} regions")
             solverBenchmark = SolverBenchmark(
                 total_nodes=total_nodes, sync_nodes=sync_nodes, num_regions=num_regions, seed=seed
@@ -278,5 +312,5 @@ results_json = json.dumps(per_solver_results)
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
 # Store the results in a file
-with open(os.path.join(dir_path, "results.json"), "w") as f:
+with open(os.path.join(dir_path, "results/results.json"), "w") as f:
     f.write(results_json)

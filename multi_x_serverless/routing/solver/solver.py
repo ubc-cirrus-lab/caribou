@@ -18,8 +18,8 @@ class Solver(ABC):
     def __init__(
         self,
         workflow_config: WorkflowConfig,
-        all_available_regions: Union[list[dict], None] = None,
-        instantiate_input_manager: bool = True,
+        all_available_regions: Optional[list[dict]] = None,
+        input_manager: Optional[InputManager] = None,
     ) -> None:
         self._workflow_config = workflow_config
 
@@ -36,8 +36,10 @@ class Solver(ABC):
         self._dag = self.get_dag_representation()
         self._region_indexer = Region(self._worklow_level_permitted_regions)
 
-        if instantiate_input_manager:
+        if input_manager is None:
             self._instantiate_input_manager()
+        else:
+            self._input_manager = input_manager
 
         # Setup the ranker for final ranking of solutions
         self._ranker = Ranker(workflow_config)

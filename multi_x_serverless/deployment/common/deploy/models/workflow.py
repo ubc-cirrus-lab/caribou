@@ -174,8 +174,8 @@ class Workflow(Resource):
 
     def _get_function_instance_to_identifier(self, resource_values: dict[str, list[Any]]) -> dict[str, str]:
         function_resource_to_identifiers = {
-            function_resource_description["name"]: function_resource_description["function_identifier"]
-            for function_resource_description in resource_values["function"]
+            function_resource_description["name"]: function_resource_description["topic_identifier"]
+            for function_resource_description in resource_values["sns_topic"]
         }
 
         function_instance_to_identifier = {
