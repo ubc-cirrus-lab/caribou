@@ -6,20 +6,42 @@ from multi_x_serverless.deployment.common.remote_client.remote_client import Rem
 
 class DataExporter(ABC):
     _client: RemoteClient
-    _at_data_table: str
-    _from_to_data_table: str
+    _at_region_table: str
+    _from_to_region_table: str
 
-    def __init__(self, at_data_table: str, from_to_data_table: str, client: RemoteClient) -> None:
-        self._at_data_table = at_data_table
-        self._from_to_data_table = from_to_data_table
+    def __init__(self, at_region_table: str, from_to_region_table: str, client: RemoteClient) -> None:
+        self._at_region_table = at_region_table
+        self._from_to_region_table = from_to_region_table
         self._client = client
 
     @abstractmethod
-    def export_data(self) -> bool:
+    def export_all_data(self, *args: Any, **kwargs: Any) -> bool:
+        raise NotImplementedError
+    
+    def _export_data(self, at_table_name: str, at_data: dict[str, Any], from_to_table_name: str, from_to_data: dict[tuple[str, str], Any]) -> bool:
         """
-        Exports the processed data from the data source
+        Exports all the processed data to all appropriate tables.
+        """
+        success = True
+        success &= self._export_at_data(at_table_name, at_data)
+        success &= self._export_from_to_data(from_to_table_name, from_to_data)
+        return success
+    
+    def _export_at_data(self, table_name: str, at_data: dict[str, Any]) -> bool:
+        """
+        Exports the "at" resource data from processed data.
         """
         # data_json = json.dumps(data)
         # self._data_collector_client.set_value_in_table(self._data_table, self._table_key, data_json)
-
-        return False
+        
+        pass # Should be implemented here
+    
+    # @abstractmethod
+    def _export_from_to_data(self, table_name: str, from_to_data: dict[tuple[str, str], Any]) -> bool:
+        """
+        Exports the "from_to" resource data from processed data.
+        """
+        # data_json = json.dumps(data)
+        # self._data_collector_client.set_value_in_table(self._data_table, self._table_key, data_json)
+        
+        pass # Should be implemented here

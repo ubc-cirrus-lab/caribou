@@ -1,23 +1,15 @@
-# import json
-# from abc import ABC, abstractmethod
-# from typing import Any, Optional
-
 # from multi_x_serverless.common.constants import DATA_COLLECTOR_DATA_TABLE
 # from multi_x_serverless.common.models.endpoints import Endpoints
 # from multi_x_serverless.deployment.common.remote_client.remote_client import RemoteClient
 
-# class DataRetriever(ABC):
-#     _data_table: str
+from typing import Any
 
-#     def __init__(self, client: RemoteClient) -> None:
-#         self._data_collector_client = client
+from multi_x_serverless.data_collector.components.data_retriever import DataRetriever
 
-#     @abstractmethod
-#     def collect_data(self) -> dict[str, Any]:
-#         """
-#         Collects data from the data source
+class CarbonRetriever(DataRetriever):
+    def __init__(self) -> None:
+        # TODO (#50): Fill Data Retriever Implementations
+        pass
 
-#         Returns:
-#             Dict[str, Any]: data collected from the data source
-#         """
-#         pass
+# To view Old legacy code:
+# https://github.com/ubc-cirrus-lab/multi-x-serverless/pull/5 -> multi_x_serverless/routing/data_gatherers/carbon
