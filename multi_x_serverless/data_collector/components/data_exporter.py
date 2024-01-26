@@ -40,10 +40,10 @@ class DataExporter(ABC):
         """
         for key, value in at_data.items():
             data_json = json.dumps(value)
-            # self._client.set_value_in_table(table_name, key, data_json) # Not sufficient 
+            # self._client.set_value_in_table(table_name, key, data_json) # Not sufficient
 
         # Also: Should we alter client to have bool to denote success?
-        return False  # Not yet implemented 
+        return False  # Not yet implemented
 
     def _export_from_to_data(self, table_name: str, from_to_data: dict[tuple[str, str], Any]) -> bool:
         """
