@@ -12,6 +12,7 @@ class DataCollector(ABC):
     _data_retriever: DataRetriever
     _data_exporter: DataExporter
     _data_table: str
+    _data_collector_name: str
 
     @abstractmethod
     def __init__(self) -> None:

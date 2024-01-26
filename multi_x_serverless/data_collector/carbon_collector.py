@@ -8,6 +8,7 @@ from multi_x_serverless.data_collector.data_collector import DataCollector
 class CarbonCollector(DataCollector):
     def __init__(self) -> None:
         super().__init__()
+        self._data_collector_name: str = "carbon_collector"
 
         # Perhaps this tables should be imports of the constants.py once we confirm the names
         available_region_table: str = "available_region_table"
@@ -28,3 +29,7 @@ class CarbonCollector(DataCollector):
         from_to_carbon_region_data: dict[str, Any] = {}
 
         self._data_exporter.export_all_data(at_carbon_region_data, from_to_carbon_region_data)
+
+        # Updates the timestamp of modified regions
+        modified_regions: list[str] = []  # Regions we are updating in this collector
+        self._data_exporter.update_available_region_timestamp(self._data_collector_name, modified_regions)

@@ -8,6 +8,7 @@ from multi_x_serverless.data_collector.data_collector import DataCollector
 class WorkflowCollector(DataCollector):
     def __init__(self) -> None:
         super().__init__()
+        self._data_collector_name: str = "workflow_collector"
 
         # Perhaps this tables should be imports of the constants.py once we confirm the names
         available_region_table: str = "available_region_table"
@@ -45,3 +46,5 @@ class WorkflowCollector(DataCollector):
             at_workflow_instance_data,
             from_to_workflow_instance_data,
         )
+
+        # For workflow collector, no need to modify the time stamp of the regions

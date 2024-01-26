@@ -23,6 +23,13 @@ class DataExporter(ABC):
     def export_all_data(self, *args: Any, **kwargs: Any) -> None:
         raise NotImplementedError
 
+    def update_available_region_timestamp(self, data_collector_name: str, modified_regions: list[str]) -> None:
+        # TODO: Implement this
+        # Here we simply alter the available region table and update the timestamp of last update
+        # Need utilities to allow us to do this, need completion of #102
+        # Where the column being updated is the data_collector_name.
+        pass
+
     def _export_region_data(self, at_region_data: dict[str, Any], from_to_region_data: dict[str, Any]) -> None:
         self._export_data(self._at_region_table, at_region_data)
         self._export_data(self._from_to_region_table, from_to_region_data)
@@ -34,9 +41,3 @@ class DataExporter(ABC):
         for key, value in data.items():
             data_json: str = json.dumps(value)
             self._client.set_value_in_table(table_name, key, data_json)
-
-    def _alter_available_region_table(self, modified_regions: list[str]) -> None:
-        # TODO: Implement this
-        # Here we simply alter the available region table and update the timestamp of last update
-        # Need utilities to allow us to do this, need completion of #102
-        pass
