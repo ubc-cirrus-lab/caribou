@@ -1,6 +1,6 @@
 from typing import Any
 
-from multi_x_serverless.data_collectors.data_collector import DataCollector
+from multi_x_serverless.data_collector.data_collector import DataCollector
 
 class CarbonCollector(DataCollector):
     def __init__(self) -> None:

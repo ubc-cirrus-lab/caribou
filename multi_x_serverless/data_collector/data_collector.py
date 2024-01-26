@@ -4,8 +4,8 @@ from typing import Any
 
 from multi_x_serverless.common.models.endpoints import Endpoints
 
-from multi_x_serverless.data_collectors.components.data_retriever import DataRetriever
-from multi_x_serverless.data_collectors.components.data_exporter import DataExporter
+from multi_x_serverless.data_collector.components.data_retriever import DataRetriever
+from multi_x_serverless.data_collector.components.data_exporter import DataExporter
 
 class DataCollector(ABC):
     _data_retriever: DataRetriever
