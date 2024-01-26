@@ -16,44 +16,17 @@ class DataExporter(ABC):
         self._client = client
 
     @abstractmethod
-    def export_all_data(self, *args: Any, **kwargs: Any) -> bool:
+    def export_all_data(self, *args: Any, **kwargs: Any) -> None:
         raise NotImplementedError
 
-    def _export_data(
-        self,
-        at_table_name: str,
-        at_data: dict[str, Any],
-        from_to_table_name: str,
-        from_to_data: dict[tuple[str, str], Any],
-    ) -> bool:
+    def _export_region_data(self, at_region_data: dict[str, Any], from_to_region_data: dict[str, Any]) -> None:
+        self._export_data(self._at_region_table, at_region_data)
+        self._export_data(self._from_to_region_table, from_to_region_data)
+
+    def _export_data(self, table_name: str, data: dict[str, Any]) -> None:
         """
         Exports all the processed data to all appropriate tables.
         """
-        success = True
-        success &= self._export_at_data(at_table_name, at_data)
-        success &= self._export_from_to_data(from_to_table_name, from_to_data)
-        return success
-
-    def _export_at_data(self, table_name: str, at_data: dict[str, Any]) -> bool:
-        """
-        Exports the "at" resource data from processed data.
-        """
-        # TODO (#101): Implement this
-        for key, value in at_data.items():
-            data_json = json.dumps(value)
-            # self._client.set_value_in_table(table_name, key, data_json) # Not sufficient
-
-        # Also: Should we alter client to have bool to denote success?
-        return False  # Not yet implemented
-
-    def _export_from_to_data(self, table_name: str, from_to_data: dict[tuple[str, str], Any]) -> bool:
-        """
-        Exports the "from_to" resource data from processed data.
-        """
-        # TODO (#101): Implement this
-        for key, value in from_to_data.items():
-            primary_key, secondary_key = key
-            data_json = json.dumps(value)
-            # self._client.set_value_in_table(table_name, key, data_json) # We should implement this but need to be able to have multiple keys in a table
-
-        return False  # Not yet implemented
+        for key, value in data.items():
+            data_json: str = json.dumps(value)
+            self._client.set_value_in_table(table_name, key, data_json)

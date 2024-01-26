@@ -18,10 +18,10 @@ class ProviderCollector(DataCollector):
 
     def run(self) -> None:
         # TODO (#100): Fill Data Collector Implementations
-        
+
         # Do required application logic using data from carbon collector
         # Process said data, then return the final data into the exporters
         at_provider_region_data: dict[str, Any] = {}
-        from_to_provider_region_data: dict[tuple[str, str], Any] = {}
+        from_to_provider_region_data: dict[str, Any] = {}
 
         self._data_exporter.export_all_data(at_provider_region_data, from_to_provider_region_data)

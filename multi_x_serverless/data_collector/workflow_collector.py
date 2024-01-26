@@ -17,7 +17,7 @@ class WorkflowCollector(DataCollector):
         from_to_instance_table: str = "workflow_collector_from_to_instance_table"
 
         self._data_retriever = WorkflowRetriever()
-        self._data_exporter = WorkflowExporter(
+        self._data_exporter: WorkflowExporter = WorkflowExporter(
             at_region_table,
             from_to_region_table,
             at_instance_table,
@@ -27,15 +27,15 @@ class WorkflowCollector(DataCollector):
 
     def run(self) -> None:
         # TODO (#100): Fill Data Collector Implementations
-        
+
         # Do required application logic using data from retriever
         # Process said data, then return the final data into the exporters
         at_workflow_region_data: dict[str, Any] = {}
-        from_to_workflow_region_data: dict[tuple[str, str], Any] = {}
+        from_to_workflow_region_data: dict[str, Any] = {}
 
         # For instance level data
         at_workflow_instance_data: dict[str, Any] = {}
-        from_to_workflow_instance_data: dict[tuple[str, str], Any] = {}
+        from_to_workflow_instance_data: dict[str, Any] = {}
 
         self._data_exporter.export_all_data(
             at_workflow_region_data,

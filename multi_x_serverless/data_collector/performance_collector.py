@@ -22,6 +22,6 @@ class PerformanceCollector(DataCollector):
         # Do required application logic using data from carbon collector
         # Process said data, then return the final data into the exporters
         at_performance_region_data: dict[str, Any] = {}
-        from_to_performance_region_data: dict[tuple[str, str], Any] = {}
+        from_to_performance_region_data: dict[str, Any] = {}
 
         self._data_exporter.export_all_data(at_performance_region_data, from_to_performance_region_data)

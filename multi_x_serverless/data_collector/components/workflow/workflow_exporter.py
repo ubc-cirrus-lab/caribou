@@ -23,12 +23,12 @@ class WorkflowExporter(DataExporter):
     def export_all_data(
         self,
         at_region_data: dict[str, Any],
-        from_to_region_data: dict[tuple[str, str], Any],
+        from_to_region_data: dict[str, Any],
         at_instance_data: dict[str, Any],
-        from_to_instance_data: dict[tuple[str, str], Any],
-    ) -> bool:
-        return self._export_data(
-            self._at_region_table, at_region_data, self._from_to_region_table, from_to_region_data
-        ) and self._export_data(
-            self._at_instance_table, at_instance_data, self._from_to_instance_table, from_to_instance_data
-        )
+        from_to_instance_data: dict[str, Any],
+    ) -> None:
+        self._export_region_data(at_region_data, from_to_region_data)
+
+        # For instance tables
+        self._export_data(self._at_instance_table, at_instance_data)
+        self._export_data(self._from_to_instance_table, from_to_instance_data)
