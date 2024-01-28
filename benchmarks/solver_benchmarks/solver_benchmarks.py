@@ -9,6 +9,7 @@ import math
 from multi_x_serverless.routing.models.region import Region
 from multi_x_serverless.routing.solver.bfs_fine_grained_solver import BFSFineGrainedSolver
 from multi_x_serverless.routing.solver.stochastic_heuristic_descent_solver import StochasticHeuristicDescentSolver
+from multi_x_serverless.routing.solver.coarse_grained_solver import CoarseGrainedSolver
 from multi_x_serverless.routing.solver_inputs.input_manager import InputManager
 
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
@@ -164,7 +165,6 @@ class SolverBenchmark:
         if self._seed is not None:
             random.seed(self._seed)
             np.random.seed(self._seed)
-
         # Generate random base values for each instance
         base_values = np.random.uniform(5.0, 500.0, size=(num_instances, 1))
 
@@ -180,7 +180,6 @@ class SolverBenchmark:
         if self._seed is not None:
             random.seed(self._seed)
             np.random.seed(self._seed)
-
         # Generate a random matrix with values around 1 to 100
         transmission_matrix = np.random.uniform(1, 25, size=(num_regions, num_regions))
 
@@ -275,10 +274,11 @@ solverBenchmark.set_deterministic(True)
 
 result_1 = solverBenchmark.run_benchmark(BFSFineGrainedSolver, number_of_runs=1)
 result_2 = solverBenchmark.run_benchmark(StochasticHeuristicDescentSolver, number_of_runs=1)
+result_3 = solverBenchmark.run_benchmark(CoarseGrainedSolver, number_of_runs=1)
 
-assert result_1["best cost"] == result_2["best cost"]
-assert result_1["best runtime"] == result_2["best runtime"]
-assert result_1["best carbon"] == result_2["best carbon"]
+assert result_1["best cost"] == result_2["best cost"] == result_3["best cost"]
+assert result_1["best runtime"] == result_2["best runtime"] == result_3["best runtime"]
+assert result_1["best carbon"] == result_2["best carbon"] == result_3["best carbon"]
 
 solverBenchmark.set_deterministic(False)
 
@@ -299,6 +299,7 @@ for total_nodes in range(3, 10):
             )
             results.append(solverBenchmark.run_benchmark(BFSFineGrainedSolver))
             results.append(solverBenchmark.run_benchmark(StochasticHeuristicDescentSolver))
+            results.append(solverBenchmark.run_benchmark(CoarseGrainedSolver))
 
 per_solver_results = {}
 

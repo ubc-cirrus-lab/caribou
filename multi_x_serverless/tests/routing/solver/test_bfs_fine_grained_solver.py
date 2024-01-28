@@ -1,13 +1,10 @@
 import unittest
-from unittest.mock import Mock, patch
-import numpy as np
+from unittest.mock import Mock
 
 from multi_x_serverless.routing.solver.bfs_fine_grained_solver import BFSFineGrainedSolver
 from multi_x_serverless.routing.solver_inputs.input_manager import InputManager
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
 from multi_x_serverless.routing.models.region import Region
-import unittest
-from unittest.mock import Mock, patch
 
 
 class TestBFSFineGrainedSolver(unittest.TestCase):
@@ -17,6 +14,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
     def setUp(self):
         self.workflow_config = Mock(spec=WorkflowConfig)
         self.workflow_config.constraints = None
+        self.workflow_config.start_hops = {"provider": "p1", "region": "r1"}
 
         # Say this is the value of deploying an instance at a region (row = from, col = to) # row = instance_index, column = region_index
         # For simplicity, we just say that cost just this value, co2 is this value * 2, and rt is also just this value
@@ -43,7 +41,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
         # Mock input manager
         self.input_manager = Mock(spec=InputManager)
         self.input_manager.get_execution_cost_carbon_runtime.side_effect = (
-            lambda current_instance_index, to_region_index, using_probabilitic=False: (
+            lambda current_instance_index, to_region_index, consider_probabilistic_invocations=False: (
                 (self.execution_matrix[current_instance_index][to_region_index]),
                 (self.execution_matrix[current_instance_index][to_region_index] * 2),
                 (self.execution_matrix[current_instance_index][to_region_index]),
@@ -51,7 +49,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
         )
 
         self.input_manager.get_transmission_cost_carbon_runtime.side_effect = (
-            lambda previous_instance_index, current_instance_index, from_region_index, to_region_index, using_probabilitic=False: (
+            lambda previous_instance_index, current_instance_index, from_region_index, to_region_index, consider_probabilistic_invocations=False: (
                 (self.transmission_matrix[from_region_index][to_region_index]),
                 (self.transmission_matrix[from_region_index][to_region_index] * 2),
                 (self.transmission_matrix[from_region_index][to_region_index]),
@@ -59,17 +57,27 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
             if from_region_index is not None and previous_instance_index is not None
             else (0, 0, 0)  # Do not consider start hop
         )
-
-        # Do nothing mock input manager
-        self.nothing_input_manager = Mock(spec=InputManager)
-        self.nothing_input_manager.get_execution_cost_carbon_runtime.return_value = (0, 0, 0)
-        self.nothing_input_manager.get_transmission_cost_carbon_runtime.return_value = (0, 0, 0)
+        self._all_regions = [
+            {"provider": "p1", "region": "r1"},
+            {"provider": "p2", "region": "r2"},
+        ]
 
     def test_find_common_elements(self):
-        self.workflow_config.regions_and_providers = {"providers": {}}
-        self.workflow_config.instances = []
-        regions = []
-        solver = BFSFineGrainedSolver(self.workflow_config, regions, False)
+        self.workflow_config.regions_and_providers = {"providers": {"p1": None, "p2": None}}
+        self.workflow_config.instances = [
+            {
+                "instance_name": "i1",
+                "function_name": "f1",
+                "succeeding_instances": [],
+                "preceding_instances": [],
+                "regions_and_providers": {
+                    "allowed_regions": None,
+                    "disallowed_regions": None,
+                    "providers": {"p1": None, "p2": None},
+                },
+            },
+        ]
+        solver = BFSFineGrainedSolver(self.workflow_config, self._all_regions, input_manager=self.input_manager)
 
         # Test case 1: empty list_of_sets
         result = solver._find_common_elements([])
@@ -80,11 +88,21 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
         self.assertEqual(result, [3])
 
     def test_calculate_wc_pc_cost_carbon_cl_placements(self):
-        self.workflow_config.regions_and_providers = {"providers": {}}
-        self.workflow_config.instances = []
-        regions = []
-
-        solver = BFSFineGrainedSolver(self.workflow_config, regions, False)
+        self.workflow_config.regions_and_providers = {"providers": {"p1": None, "p2": None}}
+        self.workflow_config.instances = [
+            {
+                "instance_name": "i1",
+                "function_name": "f1",
+                "succeeding_instances": [],
+                "preceding_instances": [],
+                "regions_and_providers": {
+                    "allowed_regions": None,
+                    "disallowed_regions": None,
+                    "providers": {"p1": None, "p2": None},
+                },
+            },
+        ]
+        solver = BFSFineGrainedSolver(self.workflow_config, self._all_regions, self.input_manager)
 
         # Test case 1: empty instance_placement_data
         result = solver._calculate_wc_pc_cost_carbon_cl_placements({})
@@ -120,15 +138,10 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
             },
         ]
         self.workflow_config.constraints = None
-        regions = [
-            {"provider": "p1", "region": "r1"},
-            {"provider": "p2", "region": "r2"},
-        ]
 
-        solver = BFSFineGrainedSolver(self.workflow_config, regions, False)
-        solver._input_manager = self.input_manager
+        solver = BFSFineGrainedSolver(self.workflow_config, self._all_regions, self.input_manager)
 
-        deployments = solver._solve(regions)
+        deployments = solver._solve(self._all_regions)
 
         # This is the expected deployments
         expected_deployments = [({0: 0}, 5.0, 5.0, 10.0), ({0: 1}, 7.0, 7.0, 14.0)]  # Verified
@@ -166,15 +179,10 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
             },
         ]
         self.workflow_config.constraints = None
-        regions = [
-            {"provider": "p1", "region": "r1"},
-            {"provider": "p2", "region": "r2"},
-        ]
 
-        solver = BFSFineGrainedSolver(self.workflow_config, regions, False)
-        solver._input_manager = self.input_manager
+        solver = BFSFineGrainedSolver(self.workflow_config, self._all_regions, self.input_manager)
 
-        deployments = solver._solve(regions)
+        deployments = solver._solve(self._all_regions)
 
         # This is the expected deployments
         expected_deployments = [
@@ -228,15 +236,10 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
             },
         ]
         self.workflow_config.constraints = None
-        regions = [
-            {"provider": "p1", "region": "r1"},
-            {"provider": "p2", "region": "r2"},
-        ]
 
-        solver = BFSFineGrainedSolver(self.workflow_config, regions, False)
-        solver._input_manager = self.input_manager
+        solver = BFSFineGrainedSolver(self.workflow_config, self._all_regions, self.input_manager)
 
-        deployments = solver._solve(regions)
+        deployments = solver._solve(self._all_regions)
 
         # This is the expected deployments
         expected_deployments = [
@@ -290,15 +293,10 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
             },
         ]
         self.workflow_config.constraints = None
-        regions = [
-            {"provider": "p1", "region": "r1"},
-            {"provider": "p2", "region": "r2"},
-        ]
 
-        solver = BFSFineGrainedSolver(self.workflow_config, regions, False)
-        solver._input_manager = self.input_manager
+        solver = BFSFineGrainedSolver(self.workflow_config, self._all_regions, self.input_manager)
 
-        deployments = solver._solve(regions)
+        deployments = solver._solve(self._all_regions)
 
         # This is the expected deployments
         expected_deployments = [
@@ -367,15 +365,10 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
             },
         ]
         self.workflow_config.constraints = None
-        regions = [
-            {"provider": "p1", "region": "r1"},
-            {"provider": "p2", "region": "r2"},
-        ]
 
-        solver = BFSFineGrainedSolver(self.workflow_config, regions, False)
-        solver._input_manager = self.input_manager
+        solver = BFSFineGrainedSolver(self.workflow_config, self._all_regions, self.input_manager)
 
-        deployments = solver._solve(regions)
+        deployments = solver._solve(self._all_regions)
 
         # This is the expected deployments
         expected_deployments = [
@@ -440,15 +433,10 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
             },
         ]
         self.workflow_config.constraints = None
-        regions = [
-            {"provider": "p1", "region": "r1"},
-            {"provider": "p2", "region": "r2"},
-        ]
 
-        solver = BFSFineGrainedSolver(self.workflow_config, regions, False)
-        solver._input_manager = self.input_manager
+        solver = BFSFineGrainedSolver(self.workflow_config, self._all_regions, self.input_manager)
 
-        deployments = solver._solve(regions)
+        deployments = solver._solve(self._all_regions)
 
         # This is the expected deployments
         expected_deployments = [
@@ -524,15 +512,10 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
             },
         ]
         self.workflow_config.constraints = None
-        regions = [
-            {"provider": "p1", "region": "r1"},
-            {"provider": "p2", "region": "r2"},
-        ]
 
-        solver = BFSFineGrainedSolver(self.workflow_config, regions, False)
-        solver._input_manager = self.input_manager
+        solver = BFSFineGrainedSolver(self.workflow_config, self._all_regions, self.input_manager)
 
-        deployments = solver._solve(regions)
+        deployments = solver._solve(self._all_regions)
 
         # This is the expected deployments
         expected_deployments = [
@@ -619,14 +602,10 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
             },
         ]
         self.workflow_config.constraints = None
-        regions = [
-            {"provider": "p1", "region": "r1"},
-            {"provider": "p2", "region": "r2"},
-        ]
-        solver = BFSFineGrainedSolver(self.workflow_config, regions, False)
-        solver._input_manager = self.input_manager
 
-        deployments = solver._solve(regions)
+        solver = BFSFineGrainedSolver(self.workflow_config, self._all_regions, self.input_manager)
+
+        deployments = solver._solve(self._all_regions)
 
         # This is the expected deployments
         expected_deployments = [
@@ -721,14 +700,9 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
             }
         }
 
-        regions = [
-            {"provider": "p1", "region": "r1"},
-            {"provider": "p2", "region": "r2"},
-        ]
-        solver = BFSFineGrainedSolver(self.workflow_config, regions, False)
-        solver._input_manager = self.input_manager
+        solver = BFSFineGrainedSolver(self.workflow_config, self._all_regions, self.input_manager)
 
-        deployments = solver._solve(regions)
+        deployments = solver._solve(self._all_regions)
 
         # This is the expected deployments
         expected_deployments = [
