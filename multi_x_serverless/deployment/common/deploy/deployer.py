@@ -70,7 +70,7 @@ class Deployer:
         )
 
         workflow = self._workflow_builder.re_build_workflow(
-            self._config, filtered_function_to_deployment_regions, workflow_function_descriptions
+            self._config, filtered_function_to_deployment_regions, workflow_function_descriptions, deployed_regions
         )
 
         self._deployment_packager.re_build(workflow, self._endpoints.get_deployment_manager_client())

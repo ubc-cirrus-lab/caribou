@@ -229,33 +229,41 @@ class WorkflowBuilder:
         config: Config,
         function_to_deployment_region: dict[str, dict[str, str]],
         workflow_function_descriptions: list[dict],
+        deployed_regions: dict[str, dict[str, str]],
     ) -> Workflow:
         resources: list[Function] = []
 
-        function_name_to_description: dict[str, dict] = {
-            self._get_function_name_without_provider_and_region(function["name"]): function
-            for function in workflow_function_descriptions
+        function_name_to_description_to_update_functions: dict[str, dict] = {
+            self._get_function_name_without_provider_and_region(function_name): (
+                function_name,
+                function_to_deployment_region[function_name],
+            )
+            for function_name in function_to_deployment_region.keys()
         }
 
-        for function_to_deploy in function_to_deployment_region.keys():
+        for function in workflow_function_descriptions:
             function_name_without_provider_and_region = self._get_function_name_without_provider_and_region(
-                function_to_deploy
+                function["name"]
             )
 
-            if function_name_without_provider_and_region not in function_name_to_description:
-                raise RuntimeError(
-                    f"Function {function_name_without_provider_and_region} is not defined in workflow function descriptions"  # pylint: disable=line-too-long
-                )
-            function = function_name_to_description[function_name_without_provider_and_region]
+            function_name = function["name"]
+            deploy_region = deployed_regions[function["name"]]
+            if function_name_without_provider_and_region in function_name_to_description_to_update_functions:
+                function_name = function_name_to_description_to_update_functions[
+                    function_name_without_provider_and_region
+                ][0]
+                deploy_region = function_name_to_description_to_update_functions[
+                    function_name_without_provider_and_region
+                ][1]
             resources.append(
                 Function(
-                    name=function_to_deploy,
+                    name=function_name,
                     environment_variables=function["environment_variables"],
                     runtime=function["runtime"],
                     handler=function["handler"],
                     role=IAMRole(function["role"]["policy_file"], function["role"]["role_name"]),
                     deployment_package=DeploymentPackage(),
-                    deploy_region=function_to_deployment_region[function_to_deploy],
+                    deploy_region=deploy_region,
                     entry_point=function["entry_point"],
                     providers=function["providers"],
                 )
