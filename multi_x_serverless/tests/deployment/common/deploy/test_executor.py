@@ -24,7 +24,7 @@ class TestExecutor(unittest.TestCase):
     def test_execute_apicall(self):
         deployment_plan = DeploymentPlan()
         deployment_plan.instructions = {
-            "aws:us-west-1": [APICall("test_method", {"param1": Variable("var1")}, "output_var")]
+            "provider1:region2": [APICall("test_method", {"param1": Variable("var1")}, "output_var")]
         }
         self.executor.variables = {"var1": "value1"}
 

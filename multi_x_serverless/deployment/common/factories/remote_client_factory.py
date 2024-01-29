@@ -14,4 +14,6 @@ class RemoteClientFactory:
             return AWSRemoteClient(region)
         if provider_enum == Provider.GCP:
             raise NotImplementedError()
+        if provider_enum in [Provider.TEST_PROVIDER1, Provider.TEST_PROVIDER2]:
+            return AWSRemoteClient(region)
         raise RuntimeError(f"Unknown provider {provider}")

@@ -8,9 +8,7 @@ from multi_x_serverless.data_collector.components.data_retriever import DataRetr
 
 
 class CarbonRetriever(DataRetriever):
-    def __init__(self) -> None:
-        # TODO (#95): Fill Data Retriever Implementations
-        pass
+    pass
 
 
 # To view Old legacy code:

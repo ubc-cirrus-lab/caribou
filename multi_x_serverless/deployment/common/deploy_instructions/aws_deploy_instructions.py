@@ -27,7 +27,7 @@ class AWSDeployInstructions(DeployInstructions):
             [
                 self.get_sns_topic_instruction_for_region(sns_topic_arn_varname, name),
                 RecordResourceVariable(
-                    resource_type="sns_topic",
+                    resource_type="messaging_topic",
                     resource_name=name,
                     name="topic_identifier",
                     variable_name=sns_topic_arn_varname,
@@ -153,8 +153,8 @@ class AWSDeployInstructions(DeployInstructions):
                     output_var=subscription_varname,
                 ),
                 RecordResourceVariable(
-                    resource_type="sns_topic",
-                    resource_name=f"{name}_{self._region}_sns_subscription",
+                    resource_type="messaging_topic_subscription",
+                    resource_name=f"{name}_{self._region}_messaging_subscription",
                     name="topic_identifier",
                     variable_name=subscription_varname,
                 ),

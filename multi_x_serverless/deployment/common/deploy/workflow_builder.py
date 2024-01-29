@@ -2,6 +2,7 @@ import os
 import queue
 from typing import Any, Optional
 
+from multi_x_serverless.common.provider import Provider as ProviderEnum
 from multi_x_serverless.deployment.client.multi_x_serverless_workflow import MultiXServerlessFunction
 from multi_x_serverless.deployment.common.config.config import Config
 from multi_x_serverless.deployment.common.config.config_schema import Provider
@@ -10,72 +11,75 @@ from multi_x_serverless.deployment.common.deploy.models.function import Function
 from multi_x_serverless.deployment.common.deploy.models.function_instance import FunctionInstance
 from multi_x_serverless.deployment.common.deploy.models.iam_role import IAMRole
 from multi_x_serverless.deployment.common.deploy.models.workflow import Workflow
-from multi_x_serverless.common.provider import Provider as ProviderEnum
 
 
 class WorkflowBuilder:
     def build_workflow(  # pylint: disable=too-many-branches
         self, config: Config, regions: list[dict[str, str]]
     ) -> Workflow:
-        resources: list[Function] = []
-
         # A workflow consists of two parts:
         # 1. Set of functions (Resources) that are deployed to a serverless platform
         # 2. A DAG of the workflow that defines the order of execution of the function
         # instances (one function can be executed multiple times with different inputs and different predecessors)
 
+        if len(regions) == 0:
+            raise RuntimeError("At least one region must be defined")
+
+        home_regions_resources: list[Function] = []
+
         # Both of these are later used to build the DAG
         function_name_to_function: dict[str, MultiXServerlessFunction] = {}
         entry_point: Optional[MultiXServerlessFunction] = None
 
-        if config.workflow_name != config.workflow_app.name:
-            raise RuntimeError("Workflow name in config and workflow app must match")
+        for region in regions:
+            if config.workflow_name != config.workflow_app.name:
+                raise RuntimeError("Workflow name in config and workflow app must match")
 
-        if config.workflow_version != config.workflow_app.version:
-            raise RuntimeError("Workflow version in config and workflow app must match")
+            if config.workflow_version != config.workflow_app.version:
+                raise RuntimeError("Workflow version in config and workflow app must match")
 
-        # First, we create the functions (the resources that we deploy to the serverless platform)
-        for function in config.workflow_app.functions.values():
-            function_deployment_name = self._get_function_name(config, function)
-            function_role = self.get_function_role(config, function_deployment_name)
-            if function.regions_and_providers and "providers" in function.regions_and_providers:
-                providers = (
-                    function.regions_and_providers["providers"]
-                    if function.regions_and_providers["providers"]
-                    else config.regions_and_providers["providers"]
-                )
-            else:
-                providers = config.regions_and_providers["providers"]
-            home_region_providers = [provider_region["provider"] for provider_region in config.home_regions]
-            for provider in home_region_providers:
-                if provider not in providers:
-                    raise RuntimeError(
-                        f"Home region provider {provider} is not defined in providers for function {function.name}"
+            # First, we create the functions (the resources that we deploy to the serverless platform)
+            for function in config.workflow_app.functions.values():
+                function_deployment_name = self._get_function_name(config, function, region)
+                function_role = self.get_function_role(config, function_deployment_name)
+                if function.regions_and_providers and "providers" in function.regions_and_providers:
+                    providers = (
+                        function.regions_and_providers["providers"]
+                        if function.regions_and_providers["providers"]
+                        else config.regions_and_providers["providers"]
                     )
-            self._verify_providers(providers)
+                else:
+                    providers = config.regions_and_providers["providers"]
+                home_region_providers = [provider_region["provider"] for provider_region in config.home_regions]
+                for provider in home_region_providers:
+                    if provider not in providers:
+                        raise RuntimeError(
+                            f"Home region provider {provider} is not defined in providers for function {function.name}"
+                        )
+                self._verify_providers(providers)
 
-            merged_env_vars = self.merge_environment_variables(
-                function.environment_variables, config.environment_variables
-            )
-            resources.append(
-                Function(
-                    name=function_deployment_name,
-                    environment_variables=merged_env_vars,
-                    runtime=config.python_version,
-                    handler=function.handler,
-                    role=function_role,
-                    deployment_package=DeploymentPackage(),
-                    deploy_regions=regions,
-                    entry_point=function.entry_point,
-                    providers=providers,
+                merged_env_vars = self.merge_environment_variables(
+                    function.environment_variables, config.environment_variables
                 )
-            )
-            function.name = function_deployment_name
-            function_name_to_function[function.handler] = function
-            if function.entry_point and not entry_point:
-                entry_point = function
-            elif function.entry_point and entry_point:
-                raise RuntimeError("Multiple entry points defined")
+                home_regions_resources.append(
+                    Function(
+                        name=function_deployment_name,
+                        environment_variables=merged_env_vars,
+                        runtime=config.python_version,
+                        handler=function.handler,
+                        role=function_role,
+                        deployment_package=DeploymentPackage(),
+                        deploy_region=region,
+                        entry_point=function.entry_point,
+                        providers=providers,
+                    )
+                )
+                function.name = function_deployment_name
+                function_name_to_function[function.handler] = function
+                if function.entry_point and not entry_point:
+                    entry_point = function
+                elif function.entry_point and entry_point:
+                    raise RuntimeError("Multiple entry points defined")
 
         if not entry_point:
             raise RuntimeError("No entry point defined")
@@ -142,7 +146,7 @@ class WorkflowBuilder:
 
         functions: list[FunctionInstance] = list(function_instances.values())
         return Workflow(
-            resources=resources,
+            resources=home_regions_resources,
             functions=functions,
             edges=edges,
             name=config.workflow_name,
@@ -205,32 +209,52 @@ class WorkflowBuilder:
                         raise RuntimeError(f"Region {provider_region} cannot be both home and disallowed")
         return result_regions_and_providers
 
-    def _get_function_name(self, config: Config, function: MultiXServerlessFunction) -> str:
-        # A function name is of the form <workflow_name>-<workflow_version>-<function_name>
-        # This is used to uniquely identify a function with respect to a workflow and its version
-        name = f"{config.workflow_name}-{config.workflow_version}-{function.name}"
+    def _get_function_name(self, config: Config, function: MultiXServerlessFunction, region: dict[str, str]) -> str:
+        # A function name is of the form <workflow_name>-<workflow_version>-<function_name>-<provider>-<region>
+        # This is used to uniquely identify a function with respect to a workflow,
+        # its version, the provider and the region
+        name = (
+            f"{config.workflow_name}-{config.workflow_version}-{function.name}-{region['provider']}-{region['region']}"
+        )
         return name.replace(".", "_")
+
+    def _get_function_name_without_provider_and_region(self, function_name: str) -> str:
+        # A function name is of the form <workflow_name>-<workflow_version>-<function_name>-<provider>-<region>
+        # We want to return <workflow_name>-<workflow_version>-<function_name>
+        return "-".join(function_name.split("-")[:-2])
 
     def re_build_workflow(
         self,
         config: Config,
-        function_to_deployment_regions: dict[str, list[dict[str, str]]],
+        function_to_deployment_region: dict[str, dict[str, str]],
         workflow_function_descriptions: list[dict],
     ) -> Workflow:
         resources: list[Function] = []
 
-        for function in workflow_function_descriptions:
-            if function["name"] not in function_to_deployment_regions:
-                continue
+        function_name_to_description: dict[str, dict] = {
+            self._get_function_name_without_provider_and_region(function["name"]): function
+            for function in workflow_function_descriptions
+        }
+
+        for function_to_deploy in function_to_deployment_region.keys():
+            function_name_without_provider_and_region = self._get_function_name_without_provider_and_region(
+                function_to_deploy
+            )
+
+            if function_name_without_provider_and_region not in function_name_to_description:
+                raise RuntimeError(
+                    f"Function {function_name_without_provider_and_region} is not defined in workflow function descriptions"  # pylint: disable=line-too-long
+                )
+            function = function_name_to_description[function_name_without_provider_and_region]
             resources.append(
                 Function(
-                    name=function["name"],
+                    name=function_to_deploy,
                     environment_variables=function["environment_variables"],
                     runtime=function["runtime"],
                     handler=function["handler"],
                     role=IAMRole(function["role"]["policy_file"], function["role"]["role_name"]),
                     deployment_package=DeploymentPackage(),
-                    deploy_regions=function_to_deployment_regions[function["name"]],
+                    deploy_region=function_to_deployment_region[function_to_deploy],
                     entry_point=function["entry_point"],
                     providers=function["providers"],
                 )

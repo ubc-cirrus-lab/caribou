@@ -14,10 +14,13 @@ def main() -> int:
         input_workflow_id = sys.argv[1]
         input_regions = sys.argv[2]
 
+        # Important: The function_to_deployment_regions must contain the
+        # function name (not instance names) including provider and region.
+
         function_to_deployment_regions = json.loads(input_regions)
 
         if not isinstance(function_to_deployment_regions, dict):
-            raise ValueError("Regions is not a list")
+            raise ValueError("Function to deployment regions is not a dict")
 
         endpoints = Endpoints()
         deployment_manager_client = endpoints.get_deployment_manager_client()
@@ -55,9 +58,9 @@ def main() -> int:
 
 def run_deployer(
     deployment_config: dict,
-    function_to_deployment_regions: dict[str, list[dict[str, str]]],
+    function_to_deployment_regions: dict[str, dict[str, str]],
     workflow_function_descriptions: list[dict],
-    deployed_regions: dict[str, list[dict[str, str]]],
+    deployed_regions: dict[str, dict[str, str]],
 ) -> None:
     deployer_factory = DeployerFactory(project_dir=None)
     config: Config = deployer_factory.create_config_obj_from_dict(deployment_config=deployment_config)

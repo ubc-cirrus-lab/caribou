@@ -1,22 +1,16 @@
 import json
+import time
 from abc import ABC, abstractmethod
 from typing import Any
-import time
 
+from multi_x_serverless.common.constants import AVAILABLE_REGIONS_TABLE
 from multi_x_serverless.deployment.common.remote_client.remote_client import RemoteClient
 
 
 class DataExporter(ABC):
-    _client: RemoteClient
-    _available_region_table: str
-    _at_region_table: str
-    _from_to_region_table: str
-
-    def __init__(
-        self, client: RemoteClient, available_region_table: str, at_region_table: str, from_to_region_table: str
-    ) -> None:
+    def __init__(self, client: RemoteClient, at_region_table: str, from_to_region_table: str) -> None:
         self._client = client
-        self._available_region_table = available_region_table
+        self._available_region_table = AVAILABLE_REGIONS_TABLE
         self._at_region_table = at_region_table
         self._from_to_region_table = from_to_region_table
 

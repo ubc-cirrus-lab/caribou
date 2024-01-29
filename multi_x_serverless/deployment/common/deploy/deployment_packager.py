@@ -83,7 +83,6 @@ class DeploymentPackager:
             ("common", "remote_client", "remote_client.py"),
             ("common", "deploy", "models", "__init__.py"),
             ("common", "deploy", "models", "resource.py"),
-            ("common", "provider.py"),
         ]
 
         for deployment_path in deployment_paths:
@@ -99,6 +98,7 @@ class DeploymentPackager:
         common_paths = [
             ("common", "models", "endpoints.py"),
             ("common", "constants.py"),
+            ("common", "provider.py"),
         ]
 
         multi_x_serverless_path = os.path.dirname(multi_x_serverless_path)

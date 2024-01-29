@@ -123,7 +123,7 @@ class TestDeployerFactory(unittest.TestCase):
                     }
                 },
                 "allowed_regions": [{"provider": "provider1", "region": "region4"}],
-                "disallowed_regions": [{"provider": "provider1", "region": "eu-central-2"}],
+                "disallowed_regions": [{"provider": "provider1", "region": "region5"}],
             },
             "home_regions": [{"provider": "provider1", "region": "region4"}],
         }
@@ -336,7 +336,7 @@ class TestDeployerFactory(unittest.TestCase):
                     }
                 },
                 "disallowed_regions": [{"provider": "provider1", "region": "region4"}],
-                "allowed_regions": [{"provider": "provider1", "region": "eu-central-2"}],
+                "allowed_regions": [{"provider": "provider1", "region": "region5"}],
             },
             "home_regions": [{"provider": "provider1", "region": "region4"}],
         }
@@ -356,7 +356,7 @@ class TestDeployerFactory(unittest.TestCase):
                 },
                 "disallowed_regions": [{"provider": "provider1", "region": "region4"}],
             },
-            "home_regions": [{"provider": "provider1", "region": "eu-central-2"}],
+            "home_regions": [{"provider": "provider1", "region": "region5"}],
         }
 
         # This should not raise any exceptions

@@ -282,6 +282,16 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
             return item["value"]["S"]
         return ""
 
+    def get_all_values_from_table(self, table_name: str) -> dict[str, dict[str, Any]]:
+        client = self._client("dynamodb")
+        response = client.scan(TableName=table_name)
+        if "Items" not in response:
+            return {}
+        items = response.get("Items")
+        if items is not None:
+            return {item["key"]: json.loads(item["value"]) for item in items}
+        return {}
+
     def get_key_present_in_table(self, table_name: str, key: str) -> bool:
         client = self._client("dynamodb")
         response = client.get_item(TableName=table_name, Key={"key": {"S": key}})

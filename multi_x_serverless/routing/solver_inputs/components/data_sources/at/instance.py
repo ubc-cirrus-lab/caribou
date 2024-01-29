@@ -2,10 +2,11 @@ import typing
 
 import numpy as np
 
+from multi_x_serverless.common.provider import Provider
+
 # Indexers
 from multi_x_serverless.routing.models.indexer import Indexer
 from multi_x_serverless.routing.solver_inputs.components.data_sources.source import Source
-from multi_x_serverless.common.provider import Provider
 
 
 class InstanceSource(Source):

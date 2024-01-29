@@ -20,19 +20,18 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
         environment_variables: dict[str, str],
         handler: str,
         runtime: str,
-        deploy_regions: list[dict[str, str]],
+        deploy_region: dict[str, str],
         providers: dict[str, Any],
     ) -> None:
         super().__init__(name, "function")
         self.entry_point = entry_point
-        self._remote_states: dict[str, dict[str, RemoteState]] = {}
-        self.initialise_remote_states(deploy_regions)
+        self.initialise_remote_state(deploy_region)
         self.role = role
         self.deployment_package = deployment_package
         self.environment_variables = environment_variables
         self.handler = handler
         self.runtime = runtime
-        self.deploy_regions = deploy_regions
+        self.deploy_region = deploy_region
         self.providers = providers
 
     def to_json(self) -> dict[str, Any]:
@@ -47,14 +46,11 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
         }
 
     def __repr__(self) -> str:
-        return f"Function({self.name}): Entry point: {self.entry_point}, Role: {self.role}, Deployment package: {self.deployment_package}, Environment variables: {self.environment_variables}, Handler: {self.handler}, Runtime: {self.runtime}, Deploy regions: {self.deploy_regions}, Providers: {self.providers}"  # pylint: disable=line-too-long
+        return f"Function({self.name}): Entry point: {self.entry_point}, Role: {self.role}, Deployment package: {self.deployment_package}, Environment variables: {self.environment_variables}, Handler: {self.handler}, Runtime: {self.runtime}, Deploy regions: {self.deploy_region}, Providers: {self.providers}"  # pylint: disable=line-too-long
 
-    def initialise_remote_states(self, deploy_regions: list[dict[str, str]]) -> None:
-        for deploy_region in deploy_regions:
-            provider, region = deploy_region["provider"], deploy_region["region"]
-            if provider not in self._remote_states:
-                self._remote_states[provider] = {}
-            self._remote_states[provider][region] = RemoteState(provider=provider, region=region)
+    def initialise_remote_state(self, deploy_region: dict[str, str]) -> None:
+        provider, region = deploy_region["provider"], deploy_region["region"]
+        self._remote_state = RemoteState(provider=provider, region=region)
 
     def dependencies(self) -> Sequence[Resource]:
         resources: list[Resource] = [self.role, self.deployment_package]
@@ -62,22 +58,21 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
 
     def get_deployment_instructions(self) -> dict[str, list[Instruction]]:
         instructions: dict[str, list[Instruction]] = {}
-        for deploy_region in self.deploy_regions:
-            provider, region = deploy_region["provider"], deploy_region["region"]
-            deploy_instruction = DeployInstructionFactory.get_deploy_instructions(provider, region)
-            if self.deployment_package.filename is None:
-                raise RuntimeError("Deployment package has not been built")
-            instructions[f"{provider}:{region}"] = deploy_instruction.get_deployment_instructions(
-                self.name,
-                self.role,
-                self.providers,
-                self.runtime,
-                self.handler,
-                self.environment_variables,
-                self.deployment_package.filename,
-                self._remote_states[provider][region],
-                self._remote_states[provider][region].resource_exists(self),
-            )
+        provider, region = self.deploy_region["provider"], self.deploy_region["region"]
+        deploy_instruction = DeployInstructionFactory.get_deploy_instructions(provider, region)
+        if self.deployment_package.filename is None:
+            raise RuntimeError("Deployment package has not been built")
+        instructions[f"{provider}:{region}"] = deploy_instruction.get_deployment_instructions(
+            self.name,
+            self.role,
+            self.providers,
+            self.runtime,
+            self.handler,
+            self.environment_variables,
+            self.deployment_package.filename,
+            self._remote_state,
+            self._remote_state.resource_exists(self),
+        )
         return instructions
 
     def get_deployment_instructions_gcp(self, region: str) -> list[Instruction]:  # pylint: disable=unused-argument

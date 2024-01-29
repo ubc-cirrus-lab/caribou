@@ -1,15 +1,14 @@
 from typing import Any
 
+from multi_x_serverless.common.constants import (
+    WORKFLOW_AT_INSTANCE_TABLE,
+    WORKFLOW_AT_REGION_TABLE,
+    WORKFLOW_FROM_TO_INSTANCE_TABLE,
+    WORKFLOW_FROM_TO_REGION_TABLE,
+)
+from multi_x_serverless.data_collector.components.data_collector import DataCollector
 from multi_x_serverless.data_collector.components.workflow.workflow_exporter import WorkflowExporter
 from multi_x_serverless.data_collector.components.workflow.workflow_retriever import WorkflowRetriever
-from multi_x_serverless.data_collector.components.data_collector import DataCollector
-from multi_x_serverless.common.constants import (
-    AVAILABLE_REGIONS_TABLE,
-    WORKFLOW_AT_REGION_TABLE,
-    WORKFLOW_FROM_TO_REGION_TABLE,
-    WORKFLOW_AT_INSTANCE_TABLE,
-    WORKFLOW_FROM_TO_INSTANCE_TABLE,
-)
 
 
 class WorkflowCollector(DataCollector):
@@ -17,17 +16,15 @@ class WorkflowCollector(DataCollector):
         super().__init__()
         self._data_collector_name: str = "workflow_collector"
 
-        available_region_table: str = AVAILABLE_REGIONS_TABLE
         at_region_table: str = WORKFLOW_AT_REGION_TABLE
         from_to_region_table: str = WORKFLOW_FROM_TO_REGION_TABLE
 
         at_instance_table: str = WORKFLOW_AT_INSTANCE_TABLE
         from_to_instance_table: str = WORKFLOW_FROM_TO_INSTANCE_TABLE
 
-        self._data_retriever = WorkflowRetriever()
+        self._data_retriever: WorkflowRetriever = WorkflowRetriever(self._data_collector_client)
         self._data_exporter: WorkflowExporter = WorkflowExporter(
             self._data_collector_client,
-            available_region_table,
             at_region_table,
             from_to_region_table,
             at_instance_table,
@@ -35,6 +32,8 @@ class WorkflowCollector(DataCollector):
         )
 
     def run(self) -> None:
+        # Retrieve available regions
+        available_workflow_data = self._data_retriever.retrieve_available_workflows()
         # TODO (#100): Fill Data Collector Implementations
 
         # Do required application logic using data from retriever

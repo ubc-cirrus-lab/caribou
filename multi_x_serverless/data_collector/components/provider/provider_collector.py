@@ -1,14 +1,13 @@
 from typing import Any
 
-from multi_x_serverless.data_collector.components.provider.provider_exporter import ProviderExporter
-from multi_x_serverless.data_collector.components.provider.provider_retriever import ProviderRetriever
-from multi_x_serverless.data_collector.components.data_collector import DataCollector
 from multi_x_serverless.common.constants import (
-    AVAILABLE_REGIONS_TABLE,
+    PROVIDER_AT_PROVIDER_TABLE,
     PROVIDER_AT_REGION_TABLE,
     PROVIDER_FROM_TO_REGION_TABLE,
-    PROVIDER_AT_PROVIDER_TABLE,
 )
+from multi_x_serverless.data_collector.components.data_collector import DataCollector
+from multi_x_serverless.data_collector.components.provider.provider_exporter import ProviderExporter
+from multi_x_serverless.data_collector.components.provider.provider_retriever import ProviderRetriever
 
 
 class ProviderCollector(DataCollector):
@@ -16,7 +15,6 @@ class ProviderCollector(DataCollector):
         super().__init__()
         self._data_collector_name: str = "provider_collector"
 
-        available_region_table: str = AVAILABLE_REGIONS_TABLE
         at_region_table: str = PROVIDER_AT_REGION_TABLE
         from_to_region_table: str = PROVIDER_FROM_TO_REGION_TABLE
         at_provider_table: str = PROVIDER_AT_PROVIDER_TABLE
@@ -24,7 +22,6 @@ class ProviderCollector(DataCollector):
         self._data_retriever: ProviderRetriever = ProviderRetriever()
         self._data_exporter: ProviderExporter = ProviderExporter(
             self._data_collector_client,
-            available_region_table,
             at_region_table,
             from_to_region_table,
             at_provider_table,

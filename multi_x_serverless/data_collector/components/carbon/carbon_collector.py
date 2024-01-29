@@ -1,13 +1,9 @@
 from typing import Any
 
+from multi_x_serverless.common.constants import CARBON_AT_REGION_TABLE, CARBON_FROM_TO_REGION_TABLE
 from multi_x_serverless.data_collector.components.carbon.carbon_exporter import CarbonExporter
 from multi_x_serverless.data_collector.components.carbon.carbon_retriever import CarbonRetriever
 from multi_x_serverless.data_collector.components.data_collector import DataCollector
-from multi_x_serverless.common.constants import (
-    AVAILABLE_REGIONS_TABLE,
-    CARBON_AT_REGION_TABLE,
-    CARBON_FROM_TO_REGION_TABLE,
-)
 
 
 class CarbonCollector(DataCollector):
@@ -15,16 +11,15 @@ class CarbonCollector(DataCollector):
         super().__init__()
         self._data_collector_name: str = "carbon_collector"
 
-        available_region_table: str = AVAILABLE_REGIONS_TABLE
         at_region_table: str = CARBON_AT_REGION_TABLE
         from_to_region_table: str = CARBON_FROM_TO_REGION_TABLE
 
-        self._data_retriever = CarbonRetriever()
-        self._data_exporter = CarbonExporter(
-            self._data_collector_client, available_region_table, at_region_table, from_to_region_table
-        )
+        self._data_retriever = CarbonRetriever(self._data_collector_client)
+        self._data_exporter = CarbonExporter(self._data_collector_client, at_region_table, from_to_region_table)
 
     def run(self) -> None:
+        # Retrieve available regions
+        available_region_data = self._data_retriever.retrieve_available_regions()
         # TODO (#100): Fill Data Collector Implementations
 
         # Do required application logic using data from carbon retriever

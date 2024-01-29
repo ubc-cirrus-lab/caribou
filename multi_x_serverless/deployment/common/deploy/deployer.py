@@ -34,9 +34,9 @@ class Deployer:
 
     def re_deploy(
         self,
-        function_to_deployment_regions: dict[str, list[dict[str, str]]],
+        function_to_deployment_regions: dict[str, dict[str, str]],
         workflow_function_descriptions: list[dict],
-        deployed_regions: dict[str, list[dict[str, str]]],
+        deployed_regions: dict[str, dict[str, str]],
     ) -> None:
         if not isinstance(function_to_deployment_regions, dict):
             raise TypeError("function_to_deployment_regions must be a dictionary")
@@ -51,9 +51,9 @@ class Deployer:
 
     def _re_deploy(
         self,
-        function_to_deployment_regions: dict[str, list[dict[str, str]]],
+        function_to_deployment_regions: dict[str, dict[str, str]],
         workflow_function_descriptions: list[dict],
-        deployed_regions: dict[str, list[dict[str, str]]],
+        deployed_regions: dict[str, dict[str, str]],
     ) -> None:
         if self._config.workflow_id is None or self._config.workflow_id == "{}":
             raise RuntimeError("Workflow id is not set correctly")
@@ -91,31 +91,24 @@ class Deployer:
 
     def _filter_function_to_deployment_regions(
         self,
-        function_to_deployment_regions: dict[str, list[dict[str, str]]],
-        deployed_regions: dict[str, list[dict[str, str]]],
-    ) -> dict[str, list[dict[str, str]]]:
-        filtered_function_to_deployment_regions = {}
+        function_to_deployment_regions: dict[str, dict[str, str]],
+        deployed_regions: dict[str, dict[str, str]],
+    ) -> dict[str, dict[str, str]]:
+        filtered_function_to_deployment_regions: dict[str, dict[str, str]] = {}
         for function_name, deployment_regions in function_to_deployment_regions.items():
-            if function_name in deployed_regions:
-                filtered_function_to_deployment_regions[function_name] = [
-                    region for region in deployment_regions if region not in deployed_regions[function_name]
-                ]
-            else:
+            if function_name not in deployed_regions:
                 filtered_function_to_deployment_regions[function_name] = deployment_regions
         return filtered_function_to_deployment_regions
 
     def _merge_deployed_regions(
         self,
-        deployed_regions: dict[str, list[dict[str, str]]],
-        filtered_function_to_deployment_regions: dict[str, list[dict[str, str]]],
-    ) -> dict[str, list[dict[str, str]]]:
-        merged_deployed_regions = deployed_regions
+        deployed_regions: dict[str, dict[str, str]],
+        filtered_function_to_deployment_regions: dict[str, dict[str, str]],
+    ) -> dict[str, dict[str, str]]:
+        merged_deployer_regions = deployed_regions.copy()
         for function_name, deployment_regions in filtered_function_to_deployment_regions.items():
-            if function_name in merged_deployed_regions:
-                merged_deployed_regions[function_name].extend(deployment_regions)
-            else:
-                merged_deployed_regions[function_name] = deployment_regions
-        return merged_deployed_regions
+            merged_deployer_regions[function_name] = deployment_regions
+        return merged_deployer_regions
 
     def deploy(self, regions: list[dict[str, str]]) -> None:
         try:
@@ -235,7 +228,7 @@ class Deployer:
         )
 
     def _update_workflow_to_deployer_server(
-        self, workflow: Workflow, workflow_id: str, deployed_regions: dict[str, list[dict[str, str]]]
+        self, workflow: Workflow, workflow_id: str, deployed_regions: dict[str, dict[str, str]]
     ) -> None:
         workflow_function_descriptions = workflow.get_function_description()
         workflow_function_descriptions_json = json.dumps(workflow_function_descriptions)

@@ -1,24 +1,17 @@
+import os
 from typing import Any
 
+import googlemaps
 import requests
 from bs4 import BeautifulSoup
-import googlemaps
 
-from multi_x_serverless.data_collector.components.data_retriever import DataRetriever
 from multi_x_serverless.common.provider import Provider
-import os
+from multi_x_serverless.data_collector.components.data_retriever import DataRetriever
 
 
 class ProviderRetriever(DataRetriever):
     def __init__(self) -> None:
         self._google_api_key = os.environ.get("GOOGLE_API_KEY")
-
-    # Maybe use this to determine AWS region -
-    # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html#concepts-availability-zones
-    # Can use /aws/service/global-infrastructure/regions/region-code/longName to get region name
-
-    # To view Old legacy code:
-    # https://github.com/ubc-cirrus-lab/multi-x-serverless/pull/5 -> multi_x_serverless/routing/data_gatherers/cost/datacenter_information
 
     def retrieve_aws_regions(self) -> dict[str, dict[str, Any]]:
         amazon_region_url = "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html#concepts-available-regions"  # pylint: disable=line-too-long
@@ -59,14 +52,14 @@ class ProviderRetriever(DataRetriever):
     def retrieve_location(self, name: str) -> tuple[float, float]:
         google_maps = googlemaps.Client(key=self._google_api_key)
 
-        if location_name == "Columbus":
-            location_name = "Columbus, Ohio"  # Somehow Google Maps doesn't know where Columbus, OH is
-        geocode_result = google_maps.geocode(location_name)
+        if name == "Columbus":
+            name = "Columbus, Ohio"  # Somehow Google Maps doesn't know where Columbus, OH is
+        geocode_result = google_maps.geocode(name)
         if geocode_result:
             latitude = geocode_result[0]["geometry"]["location"]["lat"]
             longitude = geocode_result[0]["geometry"]["location"]["lng"]
         else:
-            raise ValueError(f"Could not find location {location_name}")
+            raise ValueError(f"Could not find location {name}")
         return (latitude, longitude)
 
     def retrieve_available_regions(self) -> dict[str, dict[str, Any]]:
@@ -78,3 +71,4 @@ class ProviderRetriever(DataRetriever):
                 pass
             else:
                 raise NotImplementedError(f"Provider {provider} not implemented")
+        return available_regions
