@@ -11,4 +11,5 @@ class DataRetriever(ABC):
         self._available_region_table = AVAILABLE_REGIONS_TABLE
 
     def retrieve_available_regions(self) -> dict[str, dict[str, Any]]:
-        return self._client.get_all_values_from_table(self._available_region_table)
+        self._available_regions = self._client.get_all_values_from_table(self._available_region_table)
+        return self._available_regions

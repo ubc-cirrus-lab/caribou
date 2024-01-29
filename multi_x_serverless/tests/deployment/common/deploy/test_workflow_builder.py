@@ -97,7 +97,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         # Call build_workflow
         with self.assertRaisesRegex(
             RuntimeError,
-            "Cycle detected: test_workflow-0_0_1-function2-provider1-region1 is being visited again",
+            "Cycle detected: test_workflow-0_0_1-function2_provider1-region1 is being visited again",
         ):
             self.builder.build_workflow(self.config, [{"provider": "provider1", "region": "region1"}])
 
@@ -188,7 +188,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         # Call build_workflow
         with self.assertRaisesRegex(
             RuntimeError,
-            "Cycle detected: test_workflow-0_0_1-function1-provider1-region1 is being visited again",
+            "Cycle detected: test_workflow-0_0_1-function1_provider1-region1 is being visited again",
         ):
             self.builder.build_workflow(self.config, [{"provider": "provider1", "region": "region1"}])
 
@@ -250,7 +250,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         # Call build_workflow and assert the specific error message
         with self.assertRaisesRegex(
             RuntimeError,
-            "Cycle detected: test_workflow-0_0_1-function1-provider1-region1 is being visited again",
+            "Cycle detected: test_workflow-0_0_1-function1_provider1-region1 is being visited again",
         ):
             self.builder.build_workflow(self.config, [{"provider": "provider1", "region": "region1"}])
 

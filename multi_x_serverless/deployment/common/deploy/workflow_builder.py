@@ -122,7 +122,7 @@ class WorkflowBuilder:
             function_instance_name = (
                 f"{self._get_function_name_without_provider_and_region(multi_x_serverless_function.name)}:{predecessor_instance_name_for_instance}_{predecessor_index}_{successor_of_predecessor_index}:{index_in_dag}"  # pylint: disable=line-too-long
                 if not multi_x_serverless_function.is_waiting_for_predecessors()
-                else f"{self._get_function_name_without_provider_and_region(multi_x_serverless_function.name)}:sync:{index_in_dag}"
+                else f"{self._get_function_name_without_provider_and_region(multi_x_serverless_function.name)}:sync:{index_in_dag}"  # pylint: disable=line-too-long
             )
 
             index_in_dag += 1
@@ -233,7 +233,7 @@ class WorkflowBuilder:
     ) -> Workflow:
         resources: list[Function] = []
 
-        function_name_to_description_to_update_functions: dict[str, dict] = {
+        function_name_to_description_to_update_functions: dict[str, tuple[str, dict]] = {
             self._get_function_name_without_provider_and_region(function_name): (
                 function_name,
                 function_to_deployment_region[function_name],

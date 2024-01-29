@@ -40,6 +40,6 @@ class ProviderCollector(DataCollector):
         self._data_exporter.export_all_data(at_provider_region_data, from_to_provider_region_data)
 
         # Updates the timestamp of modified regions
-        modified_regions: list[str] = []  # Regions we are updating in this collector
+        modified_regions: set[str] = set()  # Regions we are updating in this collector
         # Important: Regions are stored as provider_region
         self._data_exporter.update_available_region_timestamp(self._data_collector_name, modified_regions)
