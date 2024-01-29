@@ -68,7 +68,8 @@ class TestStochasticHeuristicDescentSolver(unittest.TestCase):
         mock_input_manager_instance = Mock()
         mock_input_manager.return_value = mock_input_manager_instance
         mock_input_manager_instance.get_all_regions.return_value = [{"provider": "provider1", "region": "region1"}]
-        solver = StochasticHeuristicDescentSolver(self.workflow_config)
+        mock_input_manager_instance.get_transmission_cost_carbon_runtime.return_value = (1.0, 2.0, 3.0)
+        solver = StochasticHeuristicDescentSolver(self.workflow_config, input_manager=mock_input_manager_instance)
         solver._record_successful_change(1)
         assert 1 in solver._positive_regions
         assert len(solver._positive_regions) == 1
@@ -85,7 +86,8 @@ class TestStochasticHeuristicDescentSolver(unittest.TestCase):
         mock_input_manager_instance = Mock()
         mock_input_manager.return_value = mock_input_manager_instance
         mock_input_manager_instance.get_all_regions.return_value = [{"provider": "provider1", "region": "region1"}]
-        solver = StochasticHeuristicDescentSolver(self.workflow_config)
+        mock_input_manager_instance.get_transmission_cost_carbon_runtime.return_value = (1.0, 2.0, 3.0)
+        solver = StochasticHeuristicDescentSolver(self.workflow_config, input_manager=mock_input_manager_instance)
         solver._topological_order = [0, 1, 2]
         edge_weights = np.array([[0, 1, 0], [0, 0, 1], [0, 0, 0]])
         node_weights = np.array([1, 2, 3])
@@ -97,7 +99,8 @@ class TestStochasticHeuristicDescentSolver(unittest.TestCase):
         mock_input_manager_instance = Mock()
         mock_input_manager.return_value = mock_input_manager_instance
         mock_input_manager_instance.get_all_regions.return_value = [{"provider": "provider1", "region": "region1"}]
-        solver = StochasticHeuristicDescentSolver(self.workflow_config)
+        mock_input_manager_instance.get_transmission_cost_carbon_runtime.return_value = (1.0, 2.0, 3.0)
+        solver = StochasticHeuristicDescentSolver(self.workflow_config, input_manager=mock_input_manager_instance)
         deployment = (
             {0: 0},
             (1.0, 2.0),
@@ -164,7 +167,8 @@ class TestStochasticHeuristicDescentSolver(unittest.TestCase):
         mock_input_manager_instance = Mock()
         mock_input_manager.return_value = mock_input_manager_instance
         mock_input_manager_instance.get_all_regions.return_value = [{"provider": "provider1", "region": "region1"}]
-        solver = StochasticHeuristicDescentSolver(self.workflow_config)
+        mock_input_manager_instance.get_transmission_cost_carbon_runtime.return_value = (1.0, 2.0, 3.0)
+        solver = StochasticHeuristicDescentSolver(self.workflow_config, input_manager=mock_input_manager_instance)
         solver._adjacency_indexes = (np.array([0, 1, 0]), np.array([1, 0, 0]))
 
         previous_deployment = (
@@ -231,7 +235,8 @@ class TestStochasticHeuristicDescentSolver(unittest.TestCase):
         mock_input_manager_instance = Mock()
         mock_input_manager.return_value = mock_input_manager_instance
         mock_input_manager_instance.get_all_regions.return_value = [{"provider": "provider1", "region": "region1"}]
-        solver = StochasticHeuristicDescentSolver(self.workflow_config)
+        mock_input_manager_instance.get_transmission_cost_carbon_runtime.return_value = (1.0, 2.0, 3.0)
+        solver = StochasticHeuristicDescentSolver(self.workflow_config, input_manager=mock_input_manager_instance)
         solver._bias_probability = 0.5
         solver._positive_regions = [1]
         solver._region_indexer = Mock()
@@ -243,7 +248,7 @@ class TestStochasticHeuristicDescentSolver(unittest.TestCase):
         previous_deployment = {0: 0, 1: 1}
         regions = [{"provider": "provider1", "region": "region1"}, {"provider": "provider2", "region": "region2"}]
 
-        with patch("random.choice", side_effect=[0, 1]):
+        with patch("random.choice", side_effect=[0, 1, 1, 1]):
             with patch("random.random", return_value=0.4):
                 with patch.object(solver, "_filter_regions_instance", return_value=regions):
                     instance, new_region = solver.select_random_instance_and_region(previous_deployment, regions)
@@ -264,7 +269,8 @@ class TestStochasticHeuristicDescentSolver(unittest.TestCase):
         mock_input_manager_instance = Mock()
         mock_input_manager.return_value = mock_input_manager_instance
         mock_input_manager_instance.get_all_regions.return_value = [{"provider": "provider1", "region": "region1"}]
-        solver = StochasticHeuristicDescentSolver(self.workflow_config)
+        mock_input_manager_instance.get_transmission_cost_carbon_runtime.return_value = (1.0, 2.0, 3.0)
+        solver = StochasticHeuristicDescentSolver(self.workflow_config, input_manager=mock_input_manager_instance)
         node_weights = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]])
         edge_weights = np.array(
             [
@@ -289,7 +295,8 @@ class TestStochasticHeuristicDescentSolver(unittest.TestCase):
         mock_input_manager_instance = Mock()
         mock_input_manager.return_value = mock_input_manager_instance
         mock_input_manager_instance.get_all_regions.return_value = [{"provider": "provider1", "region": "region1"}]
-        solver = StochasticHeuristicDescentSolver(self.workflow_config)
+        mock_input_manager_instance.get_transmission_cost_carbon_runtime.return_value = (1.0, 2.0, 3.0)
+        solver = StochasticHeuristicDescentSolver(self.workflow_config, input_manager=mock_input_manager_instance)
         average_node_weights = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]])
         tail_node_weights = np.array([[10.0, 20.0, 30.0], [40.0, 50.0, 60.0], [70.0, 80.0, 90.0]])
         average_edge_weights = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]])
@@ -322,8 +329,11 @@ class TestStochasticHeuristicDescentSolver(unittest.TestCase):
         mock_input_manager_instance = Mock()
         mock_input_manager.return_value = mock_input_manager_instance
         mock_input_manager_instance.get_all_regions.return_value = [{"provider": "provider1", "region": "region1"}]
+        mock_input_manager_instance.get_transmission_cost_carbon_runtime.return_value = (1.0, 2.0, 3.0)
         solver = StochasticHeuristicDescentSolver(
-            self.workflow_config, [{"provider": "provider1", "region": "region1"}]
+            self.workflow_config,
+            [{"provider": "provider1", "region": "region1"}],
+            input_manager=mock_input_manager_instance,
         )
         solver._workflow_config = Mock()
         solver._workflow_config.start_hops = {"provider": "p1", "region": "r1"}
@@ -372,7 +382,8 @@ class TestStochasticHeuristicDescentSolver(unittest.TestCase):
         mock_input_manager_instance = Mock()
         mock_input_manager.return_value = mock_input_manager_instance
         mock_input_manager_instance.get_all_regions.return_value = [{"provider": "provider1", "region": "region1"}]
-        solver = StochasticHeuristicDescentSolver(self.workflow_config)
+        mock_input_manager_instance.get_transmission_cost_carbon_runtime.return_value = (1.0, 2.0, 3.0)
+        solver = StochasticHeuristicDescentSolver(self.workflow_config, input_manager=mock_input_manager_instance)
         solver._max_iterations = 5
         solver._learning_rate = 0.01
         solver._workflow_config = Mock()

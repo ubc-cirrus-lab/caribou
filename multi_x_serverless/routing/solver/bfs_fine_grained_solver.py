@@ -1,14 +1,25 @@
 import itertools
+from typing import Optional
 
 import numpy as np
 
 from multi_x_serverless.routing.solver.solver import Solver
+from multi_x_serverless.routing.solver_inputs.input_manager import InputManager
+from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
 
 class BFSFineGrainedSolver(Solver):
+    def __init__(
+        self,
+        workflow_config: WorkflowConfig,
+        all_available_regions: Optional[list[dict]] = None,
+        input_manager: Optional[InputManager] = None,
+        init_home_region_transmission_costs: bool = True,
+    ) -> None:
+        super().__init__(workflow_config, all_available_regions, input_manager, False)
+
     def _solve(self, regions: list[dict]) -> list[tuple[dict, float, float, float]]:
         # Get the topological representation of a DAG
-        topological_order = self._dag.topological_sort()
         prerequisites_dictionary = self._dag.get_prerequisites_dict()
         successor_dictionary = self._dag.get_preceeding_dict()
         processed_node_indicies = set()  # Denotes the nodes that have been processed - used for clearing memory
@@ -21,7 +32,7 @@ class BFSFineGrainedSolver(Solver):
         # Add virtual leaf nodes to the DAG
         leaf_nodes = self._dag.get_leaf_nodes()
         if len(leaf_nodes) > 0:  # If there are leaf nodes (There should always be leaf nodes)
-            topological_order.append(-1)
+            self._topological_order.append(-1)
             for leaf_node in leaf_nodes:
                 if -1 not in prerequisites_dictionary:
                     prerequisites_dictionary[-1] = []
@@ -41,7 +52,7 @@ class BFSFineGrainedSolver(Solver):
                 ]
             ],
         ] = {}
-        for current_instance_index in topological_order:
+        for current_instance_index in self._topological_order:
             # print("\nCurrent Instance Index:", current_instance_index)
 
             # Instance flow related information
