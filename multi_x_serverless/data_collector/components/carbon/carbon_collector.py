@@ -2,7 +2,12 @@ from typing import Any
 
 from multi_x_serverless.data_collector.components.carbon.carbon_exporter import CarbonExporter
 from multi_x_serverless.data_collector.components.carbon.carbon_retriever import CarbonRetriever
-from multi_x_serverless.data_collector.data_collector import DataCollector
+from multi_x_serverless.data_collector.components.data_collector import DataCollector
+from multi_x_serverless.common.constants import (
+    AVAILABLE_REGIONS_TABLE,
+    CARBON_AT_REGION_TABLE,
+    CARBON_FROM_TO_REGION_TABLE,
+)
 
 
 class CarbonCollector(DataCollector):
@@ -10,10 +15,9 @@ class CarbonCollector(DataCollector):
         super().__init__()
         self._data_collector_name: str = "carbon_collector"
 
-        # Perhaps this tables should be imports of the constants.py once we confirm the names
-        available_region_table: str = "available_region_table"
-        at_region_table: str = "carbon_collector_at_region_table"
-        from_to_region_table: str = "carbon_collector_from_to_region_table"
+        available_region_table: str = AVAILABLE_REGIONS_TABLE
+        at_region_table: str = CARBON_AT_REGION_TABLE
+        from_to_region_table: str = CARBON_FROM_TO_REGION_TABLE
 
         self._data_retriever = CarbonRetriever()
         self._data_exporter = CarbonExporter(

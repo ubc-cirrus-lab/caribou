@@ -2,7 +2,12 @@ from typing import Any
 
 from multi_x_serverless.data_collector.components.performance.performance_exporter import PerformanceExporter
 from multi_x_serverless.data_collector.components.performance.performance_retriever import PerformanceRetriever
-from multi_x_serverless.data_collector.data_collector import DataCollector
+from multi_x_serverless.data_collector.components.data_collector import DataCollector
+from multi_x_serverless.common.constants import (
+    AVAILABLE_REGIONS_TABLE,
+    PERFORMANCE_AT_REGION_TABLE,
+    PERFORMANCE_FROM_TO_REGION_TABLE,
+)
 
 
 class PerformanceCollector(DataCollector):
@@ -10,10 +15,9 @@ class PerformanceCollector(DataCollector):
         super().__init__()
         self._data_collector_name: str = "performance_collector"
 
-        # Perhaps this tables should be imports of the constants.py once we confirm the names
-        available_region_table: str = "available_region_table"
-        at_region_table: str = "performance_collector_at_region_table"
-        from_to_region_table: str = "performance_collector_from_to_region_table"
+        available_region_table: str = AVAILABLE_REGIONS_TABLE
+        at_region_table: str = PERFORMANCE_AT_REGION_TABLE
+        from_to_region_table: str = PERFORMANCE_FROM_TO_REGION_TABLE
 
         self._data_retriever = PerformanceRetriever()
         self._data_exporter = PerformanceExporter(
