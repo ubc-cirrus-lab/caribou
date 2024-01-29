@@ -99,7 +99,7 @@ class WorkflowBuilder:
         index_in_dag = 0
         # We start with the entry point
         predecessor_instance = FunctionInstance(
-            name=f"{entry_point.name}:entry_point:{index_in_dag}",
+            name=f"{self._get_function_name_without_provider_and_region(entry_point.name)}:entry_point:{index_in_dag}",
             entry_point=entry_point.entry_point,
             regions_and_providers=self._merge_and_verify_regions_and_providers(
                 entry_point.regions_and_providers, config
@@ -120,9 +120,9 @@ class WorkflowBuilder:
             predecessor_instance_name_for_instance = predecessor_instance_name.split(":", maxsplit=1)[0]
             predecessor_index = predecessor_instance_name.split(":")[-1]
             function_instance_name = (
-                f"{multi_x_serverless_function.name}:{predecessor_instance_name_for_instance}_{predecessor_index}_{successor_of_predecessor_index}:{index_in_dag}"  # pylint: disable=line-too-long
+                f"{self._get_function_name_without_provider_and_region(multi_x_serverless_function.name)}:{predecessor_instance_name_for_instance}_{predecessor_index}_{successor_of_predecessor_index}:{index_in_dag}"  # pylint: disable=line-too-long
                 if not multi_x_serverless_function.is_waiting_for_predecessors()
-                else f"{multi_x_serverless_function.name}:sync:{index_in_dag}"
+                else f"{self._get_function_name_without_provider_and_region(multi_x_serverless_function.name)}:sync:{index_in_dag}"
             )
 
             index_in_dag += 1
@@ -210,18 +210,19 @@ class WorkflowBuilder:
         return result_regions_and_providers
 
     def _get_function_name(self, config: Config, function: MultiXServerlessFunction, region: dict[str, str]) -> str:
-        # A function name is of the form <workflow_name>-<workflow_version>-<function_name>-<provider>-<region>
+        # A function name is of the form <workflow_name>-<workflow_version>-<function_name>_<provider>-<region>
         # This is used to uniquely identify a function with respect to a workflow,
         # its version, the provider and the region
         name = (
-            f"{config.workflow_name}-{config.workflow_version}-{function.name}-{region['provider']}-{region['region']}"
+            f"{config.workflow_name}-{config.workflow_version}-{function.name}_{region['provider']}-{region['region']}"
         )
         return name.replace(".", "_")
 
     def _get_function_name_without_provider_and_region(self, function_name: str) -> str:
-        # A function name is of the form <workflow_name>-<workflow_version>-<function_name>-<provider>-<region>
+        # A function name is of the form <workflow_name>-<workflow_version>-<function_name>_<provider>-<region>
         # We want to return <workflow_name>-<workflow_version>-<function_name>
-        return "-".join(function_name.split("-")[:-2])
+        # <workflow_name>-<workflow_version>-<function_name> can contain _
+        return "_".join(function_name.split("_")[:-1])
 
     def re_build_workflow(
         self,

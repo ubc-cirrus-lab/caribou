@@ -115,7 +115,7 @@ class Workflow(Resource):
             paths_to_sync_nodes = self._find_all_paths_to_any_sync_node(instance["instance_name"])
             predecessors_to_sync_nodes_and_sync_nodes = []
             if paths_to_sync_nodes:
-                predecessors_to_sync_nodes_and_sync_nodes = [path[:-2] for path in paths_to_sync_nodes]
+                predecessors_to_sync_nodes_and_sync_nodes = [path[-2:] for path in paths_to_sync_nodes]
             new_instance["dependent_sync_predecessors"] = predecessors_to_sync_nodes_and_sync_nodes
             finished_instances.append(new_instance)
         return finished_instances

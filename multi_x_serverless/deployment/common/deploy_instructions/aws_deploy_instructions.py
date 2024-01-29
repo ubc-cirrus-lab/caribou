@@ -22,7 +22,7 @@ class AWSDeployInstructions(DeployInstructions):
     ) -> list[Instruction]:
         memory, timeout = self._get_memory_and_timeout(providers)
         instructions: list[Instruction] = []
-        sns_topic_arn_varname = f"{name}_{self._region}_sns_topic"
+        sns_topic_arn_varname = f"{name}_sns_topic"
         instructions.extend(
             [
                 self.get_sns_topic_instruction_for_region(sns_topic_arn_varname, name),
@@ -34,7 +34,7 @@ class AWSDeployInstructions(DeployInstructions):
                 ),
             ]
         )
-        iam_role_varname = f"{role.name}_role_arn_{self._region}"
+        iam_role_varname = f"{role.name}_role_arn"
         lambda_trust_policy = {
             "Version": "2012-10-17",
             "Statement": [
@@ -60,7 +60,7 @@ class AWSDeployInstructions(DeployInstructions):
                     ),
                     RecordResourceVariable(
                         resource_type="iam_role",
-                        resource_name=f"{name}_{self._region}_iam_role",
+                        resource_name=f"{name}_iam_role",
                         name="role_identifier",
                         variable_name=iam_role_varname,
                     ),
@@ -80,7 +80,7 @@ class AWSDeployInstructions(DeployInstructions):
                     ),
                     RecordResourceVariable(
                         resource_type="iam_role",
-                        resource_name=f"{name}_{self._region}_iam_role",
+                        resource_name=f"{name}_iam_role",
                         name="role_identifier",
                         variable_name=iam_role_varname,
                     ),
@@ -89,7 +89,7 @@ class AWSDeployInstructions(DeployInstructions):
 
         with open(filename, "rb") as f:
             zip_contents = f.read()
-        function_varname = f"{name}_lambda_arn_{self._region}"
+        function_varname = f"{name}_lambda_arn"
         if not function_exists:
             instructions.extend(
                 [
@@ -140,7 +140,7 @@ class AWSDeployInstructions(DeployInstructions):
                     ),
                 ]
             )
-        subscription_varname = f"{name}_{self._region}_sns_subscription"
+        subscription_varname = f"{name}_sns_subscription"
         instructions.extend(
             [
                 APICall(
@@ -154,7 +154,7 @@ class AWSDeployInstructions(DeployInstructions):
                 ),
                 RecordResourceVariable(
                     resource_type="messaging_topic_subscription",
-                    resource_name=f"{name}_{self._region}_messaging_subscription",
+                    resource_name=f"{name}_messaging_subscription",
                     name="topic_identifier",
                     variable_name=subscription_varname,
                 ),
@@ -173,7 +173,7 @@ class AWSDeployInstructions(DeployInstructions):
         return APICall(
             name="create_sns_topic",
             params={
-                "topic_name": f"{name}_{self._region}_sns_topic",
+                "topic_name": f"{name}_sns_topic",
             },
             output_var=output_var,
         )
