@@ -15,7 +15,7 @@ class TestInstanceSource(unittest.TestCase):
         instance_configuration = [
             {
                 "instance_name": "instance1",
-                "regions_and_providers": {"providers": {"aws": {"memory": 1769, "vcpu": 1.0}}},
+                "regions_and_providers": {"providers": {"provider1": {"memory": 1769, "vcpu": 1.0}}},
             }
         ]
         instances = ["instance1"]
@@ -24,12 +24,12 @@ class TestInstanceSource(unittest.TestCase):
 
         self.assertEqual(
             instance_source._data,
-            {0: {"execution_time": 1.0, "provider_configurations": {"aws": {"memory": 1769, "vcpu": 1.0}}}},
+            {0: {"execution_time": 1.0, "provider_configurations": {"provider1": {"memory": 1769, "vcpu": 1.0}}}},
         )
 
         self.assertEqual(instance_source.get_value("execution_time", 0), 1.0)
         self.assertEqual(
-            instance_source.get_value("provider_configurations", 0), {"aws": {"memory": 1769, "vcpu": 1.0}}
+            instance_source.get_value("provider_configurations", 0), {"provider1": {"memory": 1769, "vcpu": 1.0}}
         )
 
 

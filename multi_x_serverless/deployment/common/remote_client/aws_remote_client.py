@@ -255,6 +255,23 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         client = self._client("dynamodb")
         client.put_item(TableName=table_name, Item={"key": {"S": key}, "value": {"S": value}})
 
+    def set_value_in_composite_key_table(self, table_name: str, key: str, timestamp: float, value: str) -> None:
+        client = self._client("dynamodb")
+        client.put_item(
+            TableName=table_name,
+            Item={"key": {"S": key}, "timestamp": {"N": str(timestamp)}, "value": {"S": value}},
+        )
+
+    def update_timestamp_in_composite_key_table(self, table_name: str, key: str, timestamp: float) -> None:
+        client = self._client("dynamodb")
+        client.update_item(
+            TableName=table_name,
+            Key={"key": {"S": key}, "timestamp": {"N": str(timestamp)}},
+            UpdateExpression="SET #t = :new_timestamp",
+            ExpressionAttributeNames={"#t": "timestamp"},
+            ExpressionAttributeValues={":new_timestamp": {"N": str(timestamp)}},
+        )
+
     def get_value_from_table(self, table_name: str, key: str) -> str:
         client = self._client("dynamodb")
         response = client.get_item(TableName=table_name, Key={"key": {"S": key}})

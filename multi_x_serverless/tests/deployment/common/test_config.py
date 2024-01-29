@@ -53,8 +53,8 @@ class TestConfig(unittest.TestCase):
             _ = self.config.environment_variables
 
     def test_home_regions(self):
-        self.config.project_config["home_regions"] = [{"provider": "aws", "region": "us-west-2"}]
-        self.assertEqual(self.config.home_regions, [{"provider": "aws", "region": "us-west-2"}])
+        self.config.project_config["home_regions"] = [{"provider": "provider1", "region": "region1"}]
+        self.assertEqual(self.config.home_regions, [{"provider": "provider1", "region": "region1"}])
 
     def test_estimated_invocations_per_month(self):
         self.config.project_config["estimated_invocations_per_month"] = 1000
@@ -72,18 +72,18 @@ class TestConfig(unittest.TestCase):
         self.config.project_config["regions_and_providers"] = {
             "allowed_regions": [
                 {
-                    "provider": "aws",
-                    "region": "us-east-1",
+                    "provider": "provider1",
+                    "region": "region2",
                 }
             ],
             "disallowed_regions": [
                 {
-                    "provider": "aws",
-                    "region": "us-east-2",
+                    "provider": "provider1",
+                    "region": "region3",
                 }
             ],
             "providers": {
-                "aws": {
+                "provider1": {
                     "config": {
                         "timeout": 60,
                         "memory": 128,
@@ -96,18 +96,18 @@ class TestConfig(unittest.TestCase):
             {
                 "allowed_regions": [
                     {
-                        "provider": "aws",
-                        "region": "us-east-1",
+                        "provider": "provider1",
+                        "region": "region2",
                     }
                 ],
                 "disallowed_regions": [
                     {
-                        "provider": "aws",
-                        "region": "us-east-2",
+                        "provider": "provider1",
+                        "region": "region3",
                     }
                 ],
                 "providers": {
-                    "aws": {
+                    "provider1": {
                         "config": {
                             "timeout": 60,
                             "memory": 128,

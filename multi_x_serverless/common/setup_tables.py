@@ -11,6 +11,18 @@ def create_table(dynamodb, table_name):
     )
 
 
+def create_composite_table(dynamodb, table_name):
+    dynamodb.create_table(
+        TableName=table_name,
+        AttributeDefinitions=[
+            {"AttributeName": "key", "AttributeType": "S"},
+            {"AttributeName": "timestamp", "AttributeType": "N"},
+        ],
+        KeySchema=[{"AttributeName": "key", "KeyType": "HASH"}, {"AttributeName": "timestamp", "KeyType": "RANGE"}],
+        BillingMode="PAY_PER_REQUEST",
+    )
+
+
 def create_bucket(s3, bucket_name):
     s3.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": "us-east-1"})
 
@@ -25,7 +37,10 @@ def main():
         if attr.endswith("_TABLE"):
             table_name = getattr(constants, attr)
             print(f"Creating table: {table_name}")
-            create_table(dynamodb, table_name)
+            if table_name == constants.AVAILABLE_REGIONS_TABLE:
+                create_composite_table(dynamodb, table_name)
+            else:
+                create_table(dynamodb, table_name)
         # If the attribute name ends with '_BUCKET', create an S3 bucket
         elif attr.endswith("_BUCKET"):
             bucket_name = getattr(constants, attr)

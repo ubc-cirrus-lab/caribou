@@ -3,7 +3,7 @@ from unittest.mock import Mock, patch
 from multi_x_serverless.deployment.common.config.config import Config
 from multi_x_serverless.deployment.client.multi_x_serverless_workflow import MultiXServerlessFunction
 from multi_x_serverless.deployment.common.deploy.workflow_builder import WorkflowBuilder
-from multi_x_serverless.deployment.common.provider import Provider
+from multi_x_serverless.common.provider import Provider
 
 import tempfile
 import os
@@ -31,7 +31,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         os.mkdir(os.path.join(self.project_dir, ".multi-x-serverless"))
 
         with open(self.policy_file, "w") as f:
-            f.write('{"aws": {"Version": "2012-10-17"}}')
+            f.write('{"provider1": {"Version": "2012-10-17"}}')
 
         with open(os.path.join(self.project_dir, ".multi-x-serverless", "policy.json"), "w") as f:
             f.write('{ "workflow_name": "test_workflow" }')
@@ -370,14 +370,14 @@ class TestWorkflowBuilder(unittest.TestCase):
 
     def test_no_regions_and_providers(self):
         config = Mock(spec=Config)
-        config.regions_and_providers = {"providers": {"aws": "value"}}
+        config.regions_and_providers = {"providers": {"provider1": "value"}}
         config.home_regions = [{"provider": "provider1", "region": "region1"}]
         result = self.builder._merge_and_verify_regions_and_providers({}, config)
-        self.assertEqual(result, {"providers": {"aws": "value"}})
+        self.assertEqual(result, {"providers": {"provider1": "value"}})
 
     def test_providers_only(self):
         config = Mock(spec=Config)
-        config.regions_and_providers = {"providers": {"aws": "value"}}
+        config.regions_and_providers = {"providers": {"provider1": "value"}}
         config.home_regions = [{"provider": "provider1", "region": "region1"}]
         regions_and_providers = {"providers": {"provider2": "value2"}}
         result = self.builder._merge_and_verify_regions_and_providers(regions_and_providers, config)
@@ -385,98 +385,98 @@ class TestWorkflowBuilder(unittest.TestCase):
 
     def test_allowed_regions_only(self):
         config = Mock(spec=Config)
-        config.regions_and_providers = {"providers": {"aws": "value"}}
+        config.regions_and_providers = {"providers": {"provider1": "value"}}
         config.home_regions = [{"provider": "provider1", "region": "region1"}]
-        regions_and_providers = {"allowed_regions": [{"provider": "aws", "region": "value"}]}
+        regions_and_providers = {"allowed_regions": [{"provider": "provider1", "region": "value"}]}
         result = self.builder._merge_and_verify_regions_and_providers(regions_and_providers, config)
         self.assertEqual(
             result,
-            {"providers": {"aws": "value"}, "allowed_regions": [{"provider": "aws", "region": "value"}]},
+            {"providers": {"provider1": "value"}, "allowed_regions": [{"provider": "provider1", "region": "value"}]},
         )
 
     def test_disallowed_regions_only(self):
         config = Mock(spec=Config)
-        config.regions_and_providers = {"providers": {"aws": "value"}}
+        config.regions_and_providers = {"providers": {"provider1": "value"}}
         config.home_regions = [{"provider": "provider1", "region": "region1"}]
-        regions_and_providers = {"disallowed_regions": [{"provider": "aws", "region": "value"}]}
+        regions_and_providers = {"disallowed_regions": [{"provider": "provider1", "region": "value"}]}
         result = self.builder._merge_and_verify_regions_and_providers(regions_and_providers, config)
         self.assertEqual(
             result,
             {
-                "providers": {"aws": "value"},
-                "disallowed_regions": [{"provider": "aws", "region": "value"}],
+                "providers": {"provider1": "value"},
+                "disallowed_regions": [{"provider": "provider1", "region": "value"}],
             },
         )
 
     def test_both_allowed_and_disallowed_regions(self):
         config = Mock(spec=Config)
-        config.regions_and_providers = {"providers": {"aws": "value"}}
-        config.home_regions = [{"provider": "aws", "region": "region1"}]
+        config.regions_and_providers = {"providers": {"provider1": "value"}}
+        config.home_regions = [{"provider": "provider1", "region": "region1"}]
         regions_and_providers = {
-            "allowed_regions": [{"provider": "aws", "region": "value"}],
-            "disallowed_regions": [{"provider": "aws", "region": "value1"}],
+            "allowed_regions": [{"provider": "provider1", "region": "value"}],
+            "disallowed_regions": [{"provider": "provider1", "region": "value1"}],
         }
         result = self.builder._merge_and_verify_regions_and_providers(regions_and_providers, config)
         self.assertEqual(
             result,
             {
-                "providers": {"aws": "value"},
-                "allowed_regions": [{"provider": "aws", "region": "value"}],
-                "disallowed_regions": [{"provider": "aws", "region": "value1"}],
+                "providers": {"provider1": "value"},
+                "allowed_regions": [{"provider": "provider1", "region": "value"}],
+                "disallowed_regions": [{"provider": "provider1", "region": "value1"}],
             },
         )
 
     def test_allowed_regions_not_list(self):
         config = Mock(spec=Config)
-        config.regions_and_providers = {"providers": {"aws": "value"}}
+        config.regions_and_providers = {"providers": {"provider1": "value"}}
         regions_and_providers = {"allowed_regions": "not a list"}
         with self.assertRaises(RuntimeError, msg="allowed_regions must be a list"):
             self.builder._merge_and_verify_regions_and_providers(regions_and_providers, config)
 
     def test_allowed_regions_missing_provider_or_region(self):
         config = Mock(spec=Config)
-        config.regions_and_providers = {"providers": {"aws": "value"}}
-        regions_and_providers = {"allowed_regions": [{"provider": "aws"}]}
+        config.regions_and_providers = {"providers": {"provider1": "value"}}
+        regions_and_providers = {"allowed_regions": [{"provider": "provider1"}]}
         with self.assertRaises(
-            RuntimeError, msg="Region {'provider': 'aws'} must have both provider and region defined"
+            RuntimeError, msg="Region {'provider': 'provider1'} must have both provider and region defined"
         ):
             self.builder._merge_and_verify_regions_and_providers(regions_and_providers, config)
 
     def test_disallowed_regions_not_list(self):
         config = Mock(spec=Config)
-        config.regions_and_providers = {"providers": {"aws": "value"}}
+        config.regions_and_providers = {"providers": {"provider1": "value"}}
         regions_and_providers = {"disallowed_regions": "not a list"}
         with self.assertRaises(RuntimeError, msg="disallowed_regions must be a list"):
             self.builder._merge_and_verify_regions_and_providers(regions_and_providers, config)
 
     def test_disallowed_regions_missing_provider_or_region(self):
         config = Mock(spec=Config)
-        config.regions_and_providers = {"providers": {"aws": "value"}}
-        regions_and_providers = {"disallowed_regions": [{"provider": "aws"}]}
+        config.regions_and_providers = {"providers": {"provider1": "value"}}
+        regions_and_providers = {"disallowed_regions": [{"provider": "provider1"}]}
         with self.assertRaises(
-            RuntimeError, msg="Region {'provider': 'aws'} must have both provider and region defined"
+            RuntimeError, msg="Region {'provider': 'provider1'} must have both provider and region defined"
         ):
             self.builder._merge_and_verify_regions_and_providers(regions_and_providers, config)
 
     def test_region_both_allowed_and_disallowed(self):
         config = Mock(spec=Config)
-        config.regions_and_providers = {"providers": {"aws": "value"}}
+        config.regions_and_providers = {"providers": {"provider1": "value"}}
         regions_and_providers = {
-            "allowed_regions": [{"provider": "aws", "region": "value"}],
-            "disallowed_regions": [{"provider": "aws", "region": "value"}],
+            "allowed_regions": [{"provider": "provider1", "region": "value"}],
+            "disallowed_regions": [{"provider": "provider1", "region": "value"}],
         }
         with self.assertRaises(
-            RuntimeError, msg="Region {'provider': 'aws', 'region': 'value'} cannot be both allowed and disallowed"
+            RuntimeError, msg="Region {'provider': 'provider1', 'region': 'value'} cannot be both allowed and disallowed"
         ):
             self.builder._merge_and_verify_regions_and_providers(regions_and_providers, config)
 
     def test_region_both_home_and_disallowed(self):
         config = Mock(spec=Config)
-        config.regions_and_providers = {"providers": {"aws": "value"}}
-        config.home_regions = [{"provider": "aws", "region": "value"}]
-        regions_and_providers = {"disallowed_regions": [{"provider": "aws", "region": "value"}]}
+        config.regions_and_providers = {"providers": {"provider1": "value"}}
+        config.home_regions = [{"provider": "provider1", "region": "value"}]
+        regions_and_providers = {"disallowed_regions": [{"provider": "provider1", "region": "value"}]}
         with self.assertRaises(
-            RuntimeError, msg="Region {'provider': 'aws', 'region': 'value'} cannot be both home and disallowed"
+            RuntimeError, msg="Region {'provider': 'provider1', 'region': 'value'} cannot be both home and disallowed"
         ):
             self.builder._merge_and_verify_regions_and_providers(regions_and_providers, config)
 

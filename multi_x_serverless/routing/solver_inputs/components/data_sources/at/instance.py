@@ -5,6 +5,7 @@ import numpy as np
 # Indexers
 from multi_x_serverless.routing.models.indexer import Indexer
 from multi_x_serverless.routing.solver_inputs.components.data_sources.source import Source
+from multi_x_serverless.common.provider import Provider
 
 
 class InstanceSource(Source):
@@ -46,7 +47,7 @@ class InstanceSource(Source):
                 vcpu = provider_information.get("vcpu", -1)
 
                 # Configure memory and vcpu configuration and or translation
-                if provider_name == "aws":
+                if provider_name == Provider.AWS.value:
                     # Vcpu ratio (assuming linear, intercept at 0 scaling) for aws lambda https://docs.aws.amazon.com/lambda/latest/dg/configuration-function-common.html
                     vcpu = memory / 1769
 

@@ -15,6 +15,9 @@ SYNC_PREDECESSOR_COUNTER_TABLE = "sync_predecessor_counter_table"
 # Code Resources Bucket
 MULTI_X_SERVERLESS_CODE_RESOURCES_BUCKET = "multi-x-serverless-code-resource-bucket"
 
+# Global System Region
+GLOBAL_SYSTEM_REGION = "us-west-2"
+
 # Data Collector Tables
 ## General Tables
 AVAILABLE_REGIONS_TABLE = "available_regions_table"

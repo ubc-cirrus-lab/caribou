@@ -1,6 +1,7 @@
 import json
 from abc import ABC, abstractmethod
 from typing import Any
+import time
 
 from multi_x_serverless.deployment.common.remote_client.remote_client import RemoteClient
 
@@ -24,17 +25,19 @@ class DataExporter(ABC):
         raise NotImplementedError
 
     def update_available_region_timestamp(self, data_collector_name: str, modified_regions: list[str]) -> None:
-        # TODO: Implement this
-        # Here we simply alter the available region table and update the timestamp of last update
-        # Need utilities to allow us to do this, need completion of #102
-        # Where the column being updated is the data_collector_name.
-        pass
+        for region in modified_regions:
+            current_timestamp: float = time.time()
+            self._client.update_timestamp_in_composite_key_table(
+                self._available_region_table, region, current_timestamp
+            )
 
-    def _export_region_data(self, at_region_data: dict[str, Any], from_to_region_data: dict[str, Any]) -> None:
+    def _export_region_data(
+        self, at_region_data: dict[str, dict[str, Any]], from_to_region_data: dict[str, Any]
+    ) -> None:
         self._export_data(self._at_region_table, at_region_data)
         self._export_data(self._from_to_region_table, from_to_region_data)
 
-    def _export_data(self, table_name: str, data: dict[str, Any]) -> None:
+    def _export_data(self, table_name: str, data: dict[str, dict[str, Any]]) -> None:
         """
         Exports all the processed data to all appropriate tables.
         """

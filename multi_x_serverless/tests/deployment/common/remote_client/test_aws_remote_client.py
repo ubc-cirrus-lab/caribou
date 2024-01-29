@@ -15,7 +15,7 @@ from multi_x_serverless.common.constants import SYNC_MESSAGES_TABLE
 class TestAWSRemoteClient(unittest.TestCase):
     @patch("boto3.session.Session")
     def setUp(self, mock_session):
-        self.region = "us-west-2"
+        self.region = "region1"
         self.aws_client = AWSRemoteClient(self.region)
         self.mock_session = mock_session
 
@@ -55,13 +55,13 @@ class TestAWSRemoteClient(unittest.TestCase):
         environment_variables = {"test_key": "test_value"}
         timeout = 10
         memory_size = 128
-        mock_create_lambda.return_value = ("arn:aws:lambda:us-west-2:123456789012:function:test_function", "Inactive")
+        mock_create_lambda.return_value = ("arn:aws:lambda:region1:123456789012:function:test_function", "Inactive")
         result = self.aws_client.create_function(
             function_name, role_arn, zip_contents, runtime, handler, environment_variables, timeout, memory_size
         )
         mock_create_lambda.assert_called_once()
         mock_wait_for_function.assert_called_once_with(function_name)
-        self.assertEqual(result, "arn:aws:lambda:us-west-2:123456789012:function:test_function")
+        self.assertEqual(result, "arn:aws:lambda:region1:123456789012:function:test_function")
 
     @patch.object(AWSRemoteClient, "_client")
     def test_update_function(self, mock_client):

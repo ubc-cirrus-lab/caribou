@@ -10,7 +10,7 @@ from multi_x_serverless.deployment.common.deploy.models.function import Function
 from multi_x_serverless.deployment.common.deploy.models.function_instance import FunctionInstance
 from multi_x_serverless.deployment.common.deploy.models.iam_role import IAMRole
 from multi_x_serverless.deployment.common.deploy.models.workflow import Workflow
-from multi_x_serverless.deployment.common.provider import Provider as ProviderEnum
+from multi_x_serverless.common.provider import Provider as ProviderEnum
 
 
 class WorkflowBuilder:

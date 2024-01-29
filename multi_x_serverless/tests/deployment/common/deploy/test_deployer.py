@@ -102,7 +102,7 @@ class TestDeployer(unittest.TestCase):
         deployment_packager = Mock()
         deployer = Deployer(config, workflow_builder, deployment_packager, None)
 
-        function_to_deployment_regions = {"test_function": [{"region": "us-west-2"}]}
+        function_to_deployment_regions = {"test_function": [{"region": "region1"}]}
         workflow_function_description = [{"name": "test_function", "version": "0.0.1"}]
         deployed_regions = {"test_function": [{"region": "us-west-1"}]}
         workflow = Workflow("test_workflow", "0.0.1", [], [], [], config)
@@ -122,7 +122,7 @@ class TestDeployer(unittest.TestCase):
         executor = Mock()
         deployer = Deployer(config, workflow_builder, deployment_packager, executor)
 
-        function_to_deployment_regions = {"test_function": [{"region": "us-west-2"}]}
+        function_to_deployment_regions = {"test_function": [{"region": "region1"}]}
         workflow_function_description = [{"name": "test_function", "version": "0.0.1"}]
         deployed_regions = {"test_function": [{"region": "us-west-1"}]}
 
@@ -143,7 +143,7 @@ class TestDeployer(unittest.TestCase):
         deployer = Deployer(config, workflow_builder, deployment_packager, executor)
         deployed_regions = {"test_function": [{"region": "us-west-1"}]}
 
-        function_to_deployment_regions = {"test_function": [{"region": "us-west-2"}]}
+        function_to_deployment_regions = {"test_function": [{"region": "region1"}]}
         workflow_function_description = [{"name": "test_function", "version": "0.0.1"}]
 
         with patch.object(Deployer, "_re_deploy", side_effect=ClientError({}, "TestOperation")):
@@ -219,12 +219,12 @@ class TestDeployer(unittest.TestCase):
 
         deployed_regions = {"test_function": [{"region": "us-west-1"}]}
         filtered_function_to_deployment_regions = {
-            "test_function": [{"region": "us-west-2"}],
+            "test_function": [{"region": "region1"}],
             "new_function": [{"region": "us-east-1"}],
         }
 
         expected_merged_regions = {
-            "test_function": [{"region": "us-west-1"}, {"region": "us-west-2"}],
+            "test_function": [{"region": "us-west-1"}, {"region": "region1"}],
             "new_function": [{"region": "us-east-1"}],
         }
 
@@ -240,13 +240,13 @@ class TestDeployer(unittest.TestCase):
         deployer = Deployer(config, workflow_builder, deployment_packager, executor)
 
         function_to_deployment_regions = {
-            "test_function": [{"region": "us-west-1"}, {"region": "us-west-2"}],
+            "test_function": [{"region": "us-west-1"}, {"region": "region1"}],
             "new_function": [{"region": "us-east-1"}],
         }
         deployed_regions = {"test_function": [{"region": "us-west-1"}]}
 
         expected_filtered_regions = {
-            "test_function": [{"region": "us-west-2"}],
+            "test_function": [{"region": "region1"}],
             "new_function": [{"region": "us-east-1"}],
         }
 

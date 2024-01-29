@@ -16,7 +16,7 @@ class TestWorkflow(unittest.TestCase):
     def setUp(self):
         self.test_dir = tempfile.mkdtemp()
         self.config = Config({}, self.test_dir)
-        self.config.project_config["home_regions"] = [{"provider": "aws", "region": "region"}]
+        self.config.project_config["home_regions"] = [{"provider": "provider1", "region": "region1"}]
         self.function = Mock(spec=Function)
         self.function_instance = Mock(spec=FunctionInstance)
         self.function_instance.name = "function_instance_1::"
@@ -52,8 +52,8 @@ class TestWorkflow(unittest.TestCase):
         self.assertEqual(self.workflow.dependencies(), [self.function])
 
     def test_get_deployment_instructions(self):
-        self.function.get_deployment_instructions.return_value = {"region": [Instruction("test_instruction")]}
-        self.assertEqual(self.workflow.get_deployment_instructions(), {"region": [Instruction("test_instruction")]})
+        self.function.get_deployment_instructions.return_value = {"region1": [Instruction("test_instruction")]}
+        self.assertEqual(self.workflow.get_deployment_instructions(), {"region1": [Instruction("test_instruction")]})
 
     def test_get_deployment_packages(self):
         self.function.deployment_package = DeploymentPackage("package_name")
@@ -67,7 +67,7 @@ class TestWorkflow(unittest.TestCase):
         }
         self.config.project_config["regions_and_providers"] = {
             "providers": {
-                "aws": {
+                "provider1": {
                     "config": {"memory": 128, "timeout": 10},
                 }
             }
@@ -120,11 +120,11 @@ class TestWorkflow(unittest.TestCase):
         expected_output = {
             "function_instance_1::": {
                 "identifier": "identifier_1",
-                "provider_region": {"provider": "aws", "region": "region"},
+                "provider_region": {"provider": "provider1", "region": "region1"},
             },
             "function_instance_2::": {
                 "identifier": "identifier_2",
-                "provider_region": {"provider": "aws", "region": "region"},
+                "provider_region": {"provider": "provider1", "region": "region1"},
             },
         }
         self.assertEqual(self.workflow._get_workflow_placement(resource_values), expected_output)
@@ -188,11 +188,11 @@ class TestWorkflow(unittest.TestCase):
             "workflow_placement": {
                 "function_instance_1::": {
                     "identifier": "identifier_1",
-                    "provider_region": {"provider": "aws", "region": "region"},
+                    "provider_region": {"provider": "provider1", "region": "region1"},
                 },
                 "function_instance_2::": {
                     "identifier": "identifier_2",
-                    "provider_region": {"provider": "aws", "region": "region"},
+                    "provider_region": {"provider": "provider1", "region": "region1"},
                 },
             },
         }

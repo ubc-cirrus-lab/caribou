@@ -36,4 +36,5 @@ class CarbonCollector(DataCollector):
 
         # Updates the timestamp of modified regions
         modified_regions: list[str] = []  # Regions we are updating in this collector
+        # Important: Regions are stored as provider_region
         self._data_exporter.update_available_region_timestamp(self._data_collector_name, modified_regions)

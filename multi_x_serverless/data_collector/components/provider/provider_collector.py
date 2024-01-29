@@ -21,7 +21,7 @@ class ProviderCollector(DataCollector):
         from_to_region_table: str = PROVIDER_FROM_TO_REGION_TABLE
         at_provider_table: str = PROVIDER_AT_PROVIDER_TABLE
 
-        self._data_retriever = ProviderRetriever()
+        self._data_retriever: ProviderRetriever = ProviderRetriever()
         self._data_exporter: ProviderExporter = ProviderExporter(
             self._data_collector_client,
             available_region_table,
@@ -31,9 +31,11 @@ class ProviderCollector(DataCollector):
         )
 
     def run(self) -> None:
-        # TODO (#100): Fill Data Collector Implementations
+        # Retrieve and export available regions
+        available_region_data = self._data_retriever.retrieve_available_regions()
+        self._data_exporter.export_available_region_table(available_region_data)
 
-        # Do required application logic using data from carbon collector
+        # Do required application logic using data from provider collector
         # Process said data, then return the final data into the exporters
         at_provider_region_data: dict[str, Any] = {}
         from_to_provider_region_data: dict[str, Any] = {}
@@ -42,4 +44,5 @@ class ProviderCollector(DataCollector):
 
         # Updates the timestamp of modified regions
         modified_regions: list[str] = []  # Regions we are updating in this collector
+        # Important: Regions are stored as provider_region
         self._data_exporter.update_available_region_timestamp(self._data_collector_name, modified_regions)

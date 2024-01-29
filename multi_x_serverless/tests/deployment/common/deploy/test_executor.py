@@ -38,7 +38,7 @@ class TestExecutor(unittest.TestCase):
 
             self.executor.execute(deployment_plan)
 
-            mock_get_remote_client.assert_called_once_with("aws", "us-west-1")
+            mock_get_remote_client.assert_called_once_with("provider1", "region2")
             mock_client.test_method.assert_called_once_with(param1="value1")
             self.assertEqual(self.executor.variables["output_var"], "response")
 
