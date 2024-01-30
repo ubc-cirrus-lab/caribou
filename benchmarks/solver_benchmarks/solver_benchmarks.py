@@ -85,6 +85,10 @@ class SolverBenchmark:
                     cost_value *= 2
                     runtime_value *= 2
                     carbon_value *= 2
+                if from_region_index == to_region_index:
+                    cost_value = cost_value / 20
+                    runtime_value = runtime_value / 20
+                    carbon_value = carbon_value / 20
             # Exception for start hop (if starting from home region, no need to add transmission cost ONLY in regards to start hop)
             if previous_instance_index == current_instance_index and from_region_index == to_region_index:
                 return (cost_value, runtime_value, carbon_value)
@@ -288,19 +292,19 @@ print("Validation successful")
 print("Running benchmarks")
 results = []
 
-for total_nodes in range(3, 11):
-    for sync_nodes in range(1, 3):
-        if sync_nodes > total_nodes - 1:
+for total_nodes in range(3, 16):
+    for sync_nodes in range(1, 4):
+        if sync_nodes > (total_nodes - 1):
             continue
-        for num_regions in range(5, 11):
+        for num_regions in range(3, 16):
             print(f"Running benchmark with {total_nodes} nodes, {sync_nodes} sync nodes and {num_regions} regions")
             solverBenchmark = SolverBenchmark(
                 total_nodes=total_nodes, sync_nodes=sync_nodes, num_regions=num_regions, seed=seed
             )
-            number_of_runs = 5
-            #results.append(solverBenchmark.run_benchmark(BFSFineGrainedSolver, number_of_runs))
-            results.append(solverBenchmark.run_benchmark(StochasticHeuristicDescentSolver, number_of_runs))
-            results.append(solverBenchmark.run_benchmark(CoarseGrainedSolver, number_of_runs))
+            if total_nodes < 8 and num_regions < 8:
+                results.append(solverBenchmark.run_benchmark(BFSFineGrainedSolver, number_of_runs=3))
+            results.append(solverBenchmark.run_benchmark(StochasticHeuristicDescentSolver, number_of_runs=3))
+            results.append(solverBenchmark.run_benchmark(CoarseGrainedSolver, number_of_runs=3))
 
 per_solver_results = {}
 
