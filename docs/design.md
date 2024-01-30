@@ -383,7 +383,7 @@ The Workflow Collector is responsible for aggregating runtime and invocation pro
 
 This collector is responsible for managing the "workflow_instance_table" database table. Unlike the other Data Collectors, the Workflow Collector should not and will not have or require updating any timestamp of the "available_regions_table" table.
 
-The "workflow_instance_table" is responsible for summarizing and collecting information regarding :
+The "workflow_instance_table" is responsible for summarizing and collecting information regarding past instance invocation at various regions:
 - Key: `<workflow_unique_id>`
 - Values:
   - At Instance `<instance_unique_id>`
