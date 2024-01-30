@@ -288,18 +288,19 @@ print("Validation successful")
 print("Running benchmarks")
 results = []
 
-for total_nodes in range(3, 10):
-    for sync_nodes in range(1, 5):
+for total_nodes in range(3, 11):
+    for sync_nodes in range(1, 3):
         if sync_nodes > total_nodes - 1:
             continue
-        for num_regions in range(4, 10):
+        for num_regions in range(5, 11):
             print(f"Running benchmark with {total_nodes} nodes, {sync_nodes} sync nodes and {num_regions} regions")
             solverBenchmark = SolverBenchmark(
                 total_nodes=total_nodes, sync_nodes=sync_nodes, num_regions=num_regions, seed=seed
             )
-            results.append(solverBenchmark.run_benchmark(BFSFineGrainedSolver))
-            results.append(solverBenchmark.run_benchmark(StochasticHeuristicDescentSolver))
-            results.append(solverBenchmark.run_benchmark(CoarseGrainedSolver))
+            number_of_runs = 5
+            #results.append(solverBenchmark.run_benchmark(BFSFineGrainedSolver, number_of_runs))
+            results.append(solverBenchmark.run_benchmark(StochasticHeuristicDescentSolver, number_of_runs))
+            results.append(solverBenchmark.run_benchmark(CoarseGrainedSolver, number_of_runs))
 
 per_solver_results = {}
 

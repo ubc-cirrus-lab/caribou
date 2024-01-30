@@ -1,4 +1,4 @@
-#  Design Document
+# Design Document
 
 In this document we will discuss the design decisions that have been made for the project.
 
@@ -26,7 +26,7 @@ In this document we will discuss the design decisions that have been made for th
     3. [Brute Force](#brute-force)
 7. [References](#references)
 
-##  Dataflow DAG Model
+## Dataflow DAG Model
 
 Each workflow has two representations in our model.
 We distinguish between the physical and the logical representation of a workflow.
@@ -43,7 +43,7 @@ $P_f = \{n_1, n_2, ..., n_n\}$
 
 This representation is quite simple in our case as the source code for each function is the same, the full workflow folder, however, the handler name (the function name within the package) is different.
 
-###  Logical Representation
+### Logical Representation
 
 Our logical representation is, similar to a dataflow DAG [1], the representation of the data flow between the physical instances of our functions.
 The dataflow DAG in our case represents calls from functions to other functions with specific input data (thus the name dataflow).
@@ -93,7 +93,7 @@ There are two exceptions with regards to physical nodes in the logical represent
 - The initial node is present only once in the logical representation.
 - A synchronization node is present only once in the logical representation.
 
-###  Discussion
+### Discussion
 
 These representations gave been chosen because they are simple and easy to understand.
 The logical representation is a DAG, which is a well known data structure and easy to work with.
@@ -307,19 +307,29 @@ Subsequent functions will receive the workflow placement decision from the previ
 
 ## Data Collectors
 
-The Data Collectors are responsible for aggregating information needed by various instances of Solvers to solve for the optimal cost, carbon, and/or runtime. This information is gathered through various different sources and both internal and external APIs. This section will outline the various Data Collectors, their responsibilities, and also the format of their outputs.
+The Data Collectors are responsible for aggregating information needed by various instances of Solvers to solve for the optimal cost, carbon, and/or runtime.
+This information is gathered through various different sources and both internal and external APIs.
+This section will outline the various Data Collectors, their responsibilities, and also the format of their outputs.
 
 ![Data Collector High Level Architecture](./img/data_collector_architecture.png)
 
-There are four main types of data collectors, each accessing different sources of input data, managing its own output databases, and running or triggering at different intervals and/or trigger conditions. The four main collectors are the Provider Collector, Carbon Collector, Performance Collector, and Workflow Collector.
+There are four main types of data collectors, each accessing different sources of input data, managing their own output databases, and running or triggering at different intervals and/or trigger conditions.
+The four main collectors are the Provider Collector, Carbon Collector, Performance Collector, and Workflow Collector.
 
 ### Provider Collector
 
-The Provider Collector is responsible for collecting information through external APIs regarding the cost, location, and offered services of all available data center regions, as well as identifying which data center regions are currently available. This collector is pivotal for determining the availability of data centers, and it must be run at least once before the other data collectors can be functional, as it sets data center regions to be put under consideration. Since pricing information and offered services of data center regions rarely change, this Collector should be run very infrequently, likely once per week or longer. The frequency with which this collector should run needs further investigation.
+The Provider Collector is responsible for collecting information through external APIs regarding the cost, location, and offered services of all available data center regions, as well as identifying which data center regions are currently available.
+This collector is pivotal for determining the availability of data centers, and it must be run at least once before the other data collectors can be functional, as it sets data center regions to be put under consideration.
+Since pricing information and offered services of data center regions rarely change, this Collector should be run very infrequently, likely once per week or longer.
+The frequency with which this collector should run needs further investigation.
 
-This collector is responsible for managing the three database tables: "available_regions_table", "at_provider_table", and "provider_region_table".
+This collector is responsible for managing the three database tables: `available_regions_table`, `at_provider_table`, and `provider_region_table`.
 
-The "available_regions_table" is responsible for managing the list of available regions that may be viable for consideration by Solver instances and denotes which regions must be updated by the other Collectors. This table is primarily responsible for listing the basic information of regions needed for the other Data Collectors, as well as the timestamp of when the region was last updated by each Data Collector (with the exception of the Workflow Data Collector, as that is Workflow-specific). The Provider Collector must not override the timestamp of other Data Collectors. The keys and information stored in this table are as follows:
+The `available_regions_table` is responsible for managing the list of available regions that may be viable for consideration by Solver instances and denotes which regions must be updated by the other Collectors.
+This table is primarily responsible for listing the basic information of regions needed for the other Data Collectors, as well as the timestamp of when the region was last updated by each Data Collector (with the exception of the Workflow Data Collector, as that is Workflow-specific).
+The Provider Collector must not override the timestamp of other Data Collectors.
+The keys and information stored in this table are as follows:
+
 - Key: `<provider_unique_id>:<region_name>`
 - Values:
   - Available services at the data center region.
@@ -328,33 +338,37 @@ The "available_regions_table" is responsible for managing the list of available 
   - Timestamp of when the Carbon Collector was last run for this data center region.
   - Timestamp of when the Performance Collector was last run for this data center region.
 
-The "at_provider_table" is responsible for managing information regarding provider-level information. The keys and information stored in this table are as follows:
+The `at_provider_table` is responsible for managing information regarding provider-level information. The keys and information stored in this table are as follows:
+
 - Key: `<provider_unique_id>`
 - Values:
-  - Remaining free tier at region (invocation/execution).
-  - Provider level Ingress/Egress Costs (Only for transmission between providers).
+  - Remaining free tier at provider (invocation/execution).
 
-The "provider_region_table" is responsible for managing region specific information. The keys and information stored in this table are as follows:
+The `provider_region_table` is responsible for managing region specific information.
+The keys and information stored in this table are as follows:
+
 - Key: `<provider_unique_id>:<region_name>`
 - Values:
   - Execution Cost for each configuration (or services).
-  - Electricity-related information (PUE, CFE).
+  - Power-efficiency-related information (PUE, CFE).
   - Average Memory and CPU compute power.
-  - To Region `<provider_unique_id>:<region_name>`
-    - Region-to-region specific ingress/egress cost.
-
+  - Egress Global Data Transfer Cost (outgoing to different providers).
+  - Egress Provider Data Transfer Cost (outgoing to different regions within the same provider).
+  - Egress Region Data Transfer Cost (outgoing to same regions within the same provider).
 
 Note: Data Transfer Cost and complexities of this warrant further investigation and thus associated storage information regarding such may be subject to change.
 
 ### Carbon Collector
 
-The Carbon Collector is responsible for calculating and refreshing carbon transmission and execution information for all available data center regions that are part of the "available_regions_table", which was first populated by the Provider Collector. Since carbon information changes frequently (where the Electric Maps API refreshes grid carbon information every hour), this collector may be run frequently, perhaps in the order of hours. The frequency with which this collector should run needs further investigation.
+The Carbon Collector is responsible for calculating and refreshing carbon transmission and execution information for all available data center regions that are part of the `available_regions_table`, which was first populated by the Provider Collector.
+Since carbon information changes frequently (where the Electric Maps API refreshes grid carbon information every hour), this collector may be run frequently, perhaps in the order of hours.
+The frequency with which this collector should run needs further investigation.
 
+This collector is responsible for managing the `carbon_region_table` database table.
+It is also responsible for updating the timestamp of carbon-updated regions in the Carbon Collector timestamp field of the `available_regions_table` table.
 
-This collector is responsible for managing the "carbon_region_table" database table. It is also responsible for updating the timestamp of carbon-updated regions in the Carbon Collector timestamp field of the "available_regions_table" table.
+The `carbon_region_table` is responsible for managing carbon region-specific information. The keys and information stored in this table are as follows:
 
-
-The "carbon_region_table" is responsible for managing carbon region-specific information. The keys and information stored in this table are as follows:
 - Key: `<provider_unique_id>:<region_name>`
 - Values:
   - Execution Carbon per kWh (gCO2e/kWh)
@@ -365,41 +379,54 @@ Note: Perhaps this may be expanded in the future if we are incorporating more ex
 
 ### Performance Collector
 
-The Performance Collector is responsible for aggregating performance benchmarks to determine the relative performance differences of running workloads between different data center regions. Similar to the Carbon Collector, this is only done for all available data center regions that are part of the "available_regions_table", which was first populated by the Provider Collector. Depending on the results of our investigation into the change in performance variability between data center regions and across providers, the frequency of this collector may need to be considered. For now, this Collector should be run much more frequently than the Provider Collector but perhaps less frequently than the Carbon Collector. Again, the frequency with which this collector should run needs further investigation.
+The Performance Collector is responsible for aggregating performance benchmarks to determine the relative performance differences of running workloads between different data center regions.
+Similar to the Carbon Collector, this is only done for all available data center regions that are part of the `available_regions_table`, which was first populated by the Provider Collector.
+Depending on the results of our investigation into the change in performance variability between data center regions and across providers, the frequency of this collector may need to be considered.
+For now, this Collector should be run much more frequently than the Provider Collector but perhaps less frequently than the Carbon Collector.
+Again, the frequency with which this collector should run needs further investigation.
 
-This collector is responsible for managing the  "performance_region_table" database table. It is also responsible for updating the timestamp of performance-updated regions in the Performance Collector timestamp field of the "available_regions_table" table.
+This collector is responsible for managing the  `performance_region_table` database table.
+It is also responsible for updating the timestamp of performance-updated regions in the Performance Collector timestamp field of the `available_regions_table` table.
 
-The "performance_region_table" is responsible for managing performance region-specific information of our benchmarking application. The keys and information stored in this table are as follows:
+The `performance_region_table` is responsible for managing performance region-specific information of our benchmarking application.
+The keys and information stored in this table are as follows:
+
 - Key: `<provider_unique_id>:<region_name>`
 - Values:
   - Execution time of performance tests in various regions.
   - To Region `<provider_unique_id>:<region_name>`
-    - Region-to-region Estimated latency in terms of data transfer size (list of transfer size with latency).
+    - Region-to-region Estimated latency in terms of data transfer size (s/GB).
 
 Note: Perhaps in the future, we should also consider provider-level performance differences with a different database table.
 
 ### Workflow Collector
-The Workflow Collector is responsible for aggregating runtime and invocation probability of each instance of one or more workflows and also includes the actual execution and transmission time of running workflow instances in a given region. Similar to the Carbon and Performance Collector, it should only consider regions that are part of the "available_regions_table" and discard any information of workflow running in regions not in the available region list. This Workflow Collector is different from the other collectors, as this Collector should not look at all workflows but perhaps for specific workflows that will soon need to have its deployment plan updated by the Solver. Thus, this Collector should not be run periodically but rather invoked by perhaps the update checker or some other utilities. This needs to be further investigated.
 
-This collector is responsible for managing the "workflow_instance_table" database table. Unlike the other Data Collectors, the Workflow Collector should not and will not have or require updating any timestamp of the "available_regions_table" table.
+The Workflow Collector is responsible for aggregating runtime and invocation probability of each instance of one or more workflows and also includes the actual execution and transmission time of running workflow instances in a given region.
+Similar to the Carbon and Performance Collector, it should only consider regions that are part of the `available_regions_table` and discard any information of workflow running in regions not in the available region list.
+This Workflow Collector is different from the other collectors, as this Collector should not look at all workflows but perhaps for specific workflows that will soon need to have its deployment plan updated by the Solver.
+This Collector should be run very frequently, and triggered by the Solver Update Checker.
 
-The "workflow_instance_table" is responsible for summarizing and collecting information regarding past instance invocation at various regions:
+This collector is responsible for managing the "workflow_instance_table" database table.
+Unlike the other Data Collectors, the Workflow Collector should not and will not have or require updating any timestamp of the `available_regions_table` table.
+
+The `workflow_instance_table` is responsible for summarizing and collecting information regarding past instance invocation at various regions:
+
 - Key: `<workflow_unique_id>`
 - Values:
   - At Instance `<instance_unique_id>`
-    - Favourite home Region Average/Tail Runtime. 
+    - Favourite home Region Average/Tail Runtime.
     - Favorite home region `<provider_unique_id>:<region_name>`
     - Projected or estimated number of monthly invocations (For free tier considerations).
     - At Region `<provider_unique_id>:<region_name>`
-      - Region Average/Tail Runtime. 
+      - Region Average/Tail Runtime.
     - To Instance `<instance_unique_id>`
       - Probability of At Instance invoking To Instance
       - Average data transfer size between instance stages.
       - At Region `<provider_unique_id>:<region_name>`
         - To Region `<provider_unique_id>:<region_name>`
-          - Region Average/Tail Latency. 
+          - Region Average/Tail Latency.
 
-Note: `<workflow_unique_id>` and `<instance_unique_id>` should be changed to its component parts. 
+Note: `<workflow_unique_id>` and `<instance_unique_id>` should be changed to its component parts.
 
 ## Solvers
 
@@ -458,7 +485,6 @@ The solver is implemented as a hill-climbing algorithm with a stochastic approac
 ### Brute Force
 
 TODO (#87)
-
 
 ##  References
 
