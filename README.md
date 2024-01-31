@@ -108,6 +108,12 @@ This will generate a plot in `plotting/plots/`.
 
 For the architecture, see the current [draw.io](https://app.diagrams.net/#G1rql5LiXzNiWIzN1-zJmqYMQYyUwjmrOq) diagram.
 
+##  Documentation
+
+The documentation can be found in `docs/` and contains the following:
+
+- [Design](docs/design.md)
+
 ## Development
 
 ## About
