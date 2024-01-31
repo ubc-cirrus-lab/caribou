@@ -8,10 +8,10 @@ import requests
 
 from multi_x_serverless.data_collector.components.data_retriever import DataRetriever
 from multi_x_serverless.deployment.common.remote_client.remote_client import RemoteClient
-from multi_x_serverless.data_collector.components.carbon.distance_carbon_transmission_cost_calculator import (
+from multi_x_serverless.data_collector.components.carbon.carbon_transmission_cost_calculator.distance_carbon_transmission_cost_calculator import (
     DistanceCarbonTransmissionCostCalculator,
 )
-from multi_x_serverless.data_collector.components.carbon.latency_carbon_transmission_cost_calculator import (
+from multi_x_serverless.data_collector.components.carbon.carbon_transmission_cost_calculator.latency_carbon_transmission_cost_calculator import (
     LatencyCarbonTransmissionCostCalculator,
 )
 

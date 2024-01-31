@@ -1,6 +1,8 @@
-from multi_x_serverless.data_collector.components.carbon.carbon_transmission_cost_calculator import (
+from multi_x_serverless.data_collector.components.carbon.carbon_transmission_cost_calculator.carbon_transmission_cost_calculator import (
     CarbonTransmissionCostCalculator,
 )
+from multi_x_serverless.data_collector.utils.aws_latency_retriever import AWSLatencyRetriever
+from multi_x_serverless.common.provider import Provider
 from typing import Any
 
 
@@ -11,6 +13,7 @@ class LatencyCarbonTransmissionCostCalculator(CarbonTransmissionCostCalculator):
             self._kwh_per_ms_gb_estimate = config["_kwh_per_km_gb_estimate"]
         else:
             self._kwh_per_ms_gb_estimate = 0.0000166667
+        self._aws_latency_retriever = AWSLatencyRetriever()
 
     def calculate_transmission_carbon_intensity(self, region_from: dict[str, Any], region_to: dict[str, Any]) -> float:
         total_latency = self._get_total_latency(region_from, region_to)
@@ -38,4 +41,5 @@ class LatencyCarbonTransmissionCostCalculator(CarbonTransmissionCostCalculator):
         return gCO2e_per_gb
 
     def _get_total_latency(self, region_from: dict[str, Any], region_to: dict[str, Any]) -> float:
-        pass
+        if region_from["provider"] == region_to["provider"] and region_from["provider"] == Provider.AWS.value:
+            return self._aws_latency_retriever.get_latency(region_from, region_to)
