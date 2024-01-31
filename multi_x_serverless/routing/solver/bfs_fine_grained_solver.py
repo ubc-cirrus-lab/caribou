@@ -43,7 +43,7 @@ class BFSFineGrainedSolver(Solver):
 
         # Where its in format of {instance_index:
         # [(deployment decisions (and cost and latency at that instance node),
-        # cumulative worse case cost/co2/runtime, probabilitic case runtime)]}
+        # cumulative worse case cost/co2/runtime, probabilistic case runtime)]}
         deployments: dict[
             int,
             list[
@@ -52,6 +52,7 @@ class BFSFineGrainedSolver(Solver):
                 ]
             ],
         ] = {}
+        all_regions_indices = self._region_indexer.get_value_indices()
         for current_instance_index in self._topological_order:
             # print("\nCurrent Instance Index:", current_instance_index)
 
@@ -64,7 +65,6 @@ class BFSFineGrainedSolver(Solver):
             if len(permitted_regions) == 0:  # Should never happen in a valid DAG
                 raise Exception("There are no permitted regions for this instance")
 
-            all_regions_indices = self._region_indexer.get_value_indices()
             permitted_regions_indices = np.array(
                 [all_regions_indices[(region["provider"], region["region"])] for region in permitted_regions]
             )
@@ -87,34 +87,19 @@ class BFSFineGrainedSolver(Solver):
                     )
 
                     # Calculate the carbon/cost/runtime for transmission and execution # Do not consider start hop for now
-                    # For porbabilistic case (Using average latency and factor in invocation probability)
+                    # For probabilistic case (Using average latency and factor in invocation probability)
                     pc_e_cost, pc_e_carbon, pc_e_runtime = self._input_manager.get_execution_cost_carbon_runtime(
                         current_instance_index, to_region_index, True
                     )
 
                     # Start hop considerations
-                    (
-                        wc_t_cost,
-                        wc_t_carbon,
-                        wc_t_runtime,
-                    ) = self._input_manager.get_transmission_cost_carbon_runtime(
-                        current_instance_index,
-                        current_instance_index,
-                        from_region_index,
-                        to_region_index,
+                    (wc_t_cost, wc_t_carbon, wc_t_runtime) = self._input_manager.get_transmission_cost_carbon_runtime(
+                        current_instance_index, current_instance_index, from_region_index, to_region_index
                     )
 
-                    # For porbabilistic case (Using average latency and factor in invocation probability)
-                    (
-                        pc_t_cost,
-                        pc_t_carbon,
-                        pc_t_runtime,
-                    ) = self._input_manager.get_transmission_cost_carbon_runtime(
-                        current_instance_index,
-                        current_instance_index,
-                        from_region_index,
-                        to_region_index,
-                        True,
+                    # For probabilistic case (Using average latency and factor in invocation probability)
+                    (pc_t_cost, pc_t_carbon, pc_t_runtime) = self._input_manager.get_transmission_cost_carbon_runtime(
+                        current_instance_index, current_instance_index, from_region_index, to_region_index, True
                     )
 
                     wc_cost = wc_t_cost + wc_e_cost
@@ -127,9 +112,7 @@ class BFSFineGrainedSolver(Solver):
 
                     current_deployments.append(
                         (
-                            {
-                                current_instance_index: (to_region_index, (wc_cost, wc_carbon), (pc_cost, pc_carbon)),
-                            },
+                            {current_instance_index: (to_region_index, (wc_cost, wc_carbon), (pc_cost, pc_carbon))},
                             (wc_cost, wc_carbon, wc_runtime),
                             pc_runtime,
                         )
@@ -180,10 +163,9 @@ class BFSFineGrainedSolver(Solver):
                             max_wc_runtime = 0.0
                             max_pc_runtime = 0.0
                             for (
-                                original_deployment_placement,
-                                wc_ccr,
-                                previous_pc_runtime,
-                            ), previous_instance_index in combination:
+                                (original_deployment_placement, wc_ccr, previous_pc_runtime),
+                                previous_instance_index,
+                            ) in combination:
                                 from_region_index = original_deployment_placement.get(previous_instance_index, None)[
                                     0
                                 ]  # Prev should always be either in the dag or be home region
@@ -198,7 +180,7 @@ class BFSFineGrainedSolver(Solver):
                                 max_pc_runtime = max(max_pc_runtime, previous_pc_runtime)
 
                             # We need to now recalculate the cost and carbon for the combined placements
-                            # As this is a potential merge node, here we also need a clean placemnet dict for results
+                            # As this is a potential merge node, here we also need a clean placement dict for results
                             (
                                 wc_cost,
                                 wc_carbon,
@@ -229,7 +211,7 @@ class BFSFineGrainedSolver(Solver):
                                 wc_cost_total = wc_carbon_total = wc_runtime_total = 0.0
                                 pc_runtime_total = 0.0
 
-                                # Calcualte the cost, carbon and runtime of execuion (Just execution here as its a shared value)
+                                # Calculate the cost, carbon and runtime of execution (Just execution here as its a shared value)
                                 (
                                     wc_e_cost,
                                     wc_e_carbon,
@@ -255,10 +237,9 @@ class BFSFineGrainedSolver(Solver):
                                 # Previous instances to current region
                                 current_max_wc_t_runtime = current_max_pc_t_runtime = 0.0
                                 for (
-                                    original_deployment_placement,
-                                    wc_ccr,
-                                    previous_pc_runtime,
-                                ), previous_instance_index in combination:
+                                    (original_deployment_placement, wc_ccr, previous_pc_runtime),
+                                    previous_instance_index,
+                                ) in combination:
                                     from_region_index = original_deployment_placement.get(
                                         previous_instance_index, None
                                     )[
@@ -282,7 +263,7 @@ class BFSFineGrainedSolver(Solver):
                                     current_cumulative_wc_t_cost += wc_t_cost
                                     current_cumulative_wc_t_carbon += wc_t_carbon
 
-                                    # For porbabilistic case (Using average latency and factor in invocation probability)
+                                    # For probabilistic case (Using average latency and factor in invocation probability)
                                     (
                                         pc_t_cost,
                                         pc_t_carbon,
@@ -399,10 +380,9 @@ class BFSFineGrainedSolver(Solver):
         pc_cost = pc_carbon = 0.0
         clean_placement_dict = {}
 
-        for instance_index, (
-            region_index,
-            (wc_cost_instance, wc_carbon_instance),
-            (pc_cost_instance, pc_carbon_instance),
+        for (
+            instance_index,
+            (region_index, (wc_cost_instance, wc_carbon_instance), (pc_cost_instance, pc_carbon_instance)),
         ) in instance_placement_data.items():
             wc_cost += wc_cost_instance
             wc_carbon += wc_carbon_instance
