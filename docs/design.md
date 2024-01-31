@@ -452,7 +452,36 @@ Prioritisation of the deployments is based on the average-case runtime.
 
 ### Coarse Grained
 
-TODO (#86)
+The Coarse Grained Solver is a simplified optimization algorithm designed to quickly identify viable deployment configurations across a limited set of permitted regions. 
+It does this by evaluating each permitted region for all instances in a topologically ordered manner, ensuring that the deployment satisfies hard resource constraints such as cost, runtime, and carbon footprint. 
+Unlike more complex solvers, the Coarse Grained Solver does not iterate over multiple configurations per instance but rather selects a single region that is permissible for all instances, thereby simplifying the decision-making process.
+
+#### Key Features
+
+- **Simplified Region Selection**: Focuses on a limited set of regions that are permissible for all instances, reducing complexity.
+- **Hard Resource Constraint Compliance**: Ensures that deployments adhere to specified hard constraints like cost, runtime, and carbon footprint.
+- **Single Deployment Focus**: Generates a single deployment configuration, making it suitable for quick assessments or scenarios with less variability.
+
+#### Workflow
+
+1. **Initialization**:
+   - Identifies the set of regions permitted for all instances by intersecting the permissible regions of individual instances.
+   - Initializes the deployment configuration with the selected region.
+
+2. **Deployment Generation**:
+   - For each permitted region, a deployment configuration is generated if it does not violate the specified hard resource constraints.
+   - Ensures the uniqueness of the deployment configuration to avoid redundant solutions.
+
+3. **Evaluation of Deployment**:
+   - Checks if the generated deployment configuration meets the hard resource constraints specified and filter out the ones that do not meet these constraints.
+
+4. **Result Compilation**:
+   - Compiles a list of valid deployment configurations that satisfies the constraints.
+
+#### Specialities
+- **Reduced Search Space**: By focusing on regions permissible for all instances, it significantly narrows down the search space.
+- **Quick Assessment**: Ideal for scenarios where a quick assessment of deployment viability across regions is needed.
+- **Simplified Decision Making**: With a focus on generating a single deployment configuration, it simplifies the decision-making process for scenarios with less variability or lower complexity requirements.
 
 ### Stochastic Heuristic Descent
 
