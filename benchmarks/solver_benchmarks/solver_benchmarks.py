@@ -314,6 +314,9 @@ results_json = json.dumps(per_solver_results)
 # Get the directory of the current script
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
+# Check if results directory exists and create it if not
+os.makedirs(os.path.join(dir_path, "results"), exist_ok=True)
+
 # Store the results in a file
 with open(os.path.join(dir_path, "results/results.json"), "w") as f:
     f.write(results_json)
