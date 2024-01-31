@@ -1,3 +1,4 @@
+from collections import defaultdict
 import itertools
 from typing import Optional
 
@@ -22,7 +23,7 @@ class BFSFineGrainedSolver(Solver):
         # Get the topological representation of a DAG
         prerequisites_dictionary = self._dag.get_prerequisites_dict()
         successor_dictionary = self._dag.get_preceeding_dict()
-        processed_node_indicies = set()  # Denotes the nodes that have been processed - used for clearing memory
+        processed_node_indices = set()  # Denotes the nodes that have been processed - used for clearing memory
 
         # Get the home region index -> this is the region that the workflow starts from
         # For now the current implementation only supports one home region
@@ -141,15 +142,14 @@ class BFSFineGrainedSolver(Solver):
                         )
 
                         if common_keys not in deployment_groups:
-                            deployment_groups[common_keys] = []
-
-                        while len(deployment_groups[common_keys]) <= pred_index_counter:
-                            deployment_groups[common_keys].append([])
+                            deployment_groups[common_keys] = [[] for _ in range(pred_index_counter + 1)]
+                        else:
+                            while len(deployment_groups[common_keys]) <= pred_index_counter:
+                                deployment_groups[common_keys].append([])
 
                         deployment_groups[common_keys][pred_index_counter].append(
                             (previous_deployment, previous_instance_index)
                         )
-
                     pred_index_counter += 1
                 if current_instance_index == -1:  # If this is the virtual end node
                     final_deployments: list[tuple[dict, float, float, float]] = []
@@ -186,15 +186,15 @@ class BFSFineGrainedSolver(Solver):
                                 wc_carbon,
                                 pc_cost,
                                 pc_carbon,
-                                clean_combined_placments,
+                                clean_combined_placements,
                             ) = self._calculate_wc_pc_cost_carbon_cl_placements(combined_placements)
 
                             if not self._fail_hard_resource_constraints(
                                 self._workflow_config.constraints, wc_cost, max_wc_runtime, wc_carbon
                             ):
-                                # For now we use worse case, but when proability is implemented we will use that instead
+                                # For now we use worse case, but when probability is implemented we will use that instead
                                 # Note to keep consistency with the other solvers, we save in cost, runtime, then carbon
-                                final_deployments.append((clean_combined_placments, pc_cost, max_pc_runtime, pc_carbon))
+                                final_deployments.append((clean_combined_placements, pc_cost, max_pc_runtime, pc_carbon))
 
                     del deployments  # Clear all memory
 
@@ -340,7 +340,7 @@ class BFSFineGrainedSolver(Solver):
                                     )
 
             deployments[current_instance_index] = current_deployments
-            processed_node_indicies.add(current_instance_index)
+            processed_node_indices.add(current_instance_index)
 
             # Clear memory of previous node
             for previous_instance_index in prerequisites_indices:
@@ -353,7 +353,7 @@ class BFSFineGrainedSolver(Solver):
                     # Check if all successors have been processed
                     all_successors_processed = True
                     for successor_index in previous_successor_indices:
-                        if successor_index not in processed_node_indicies:
+                        if successor_index not in processed_node_indices:
                             all_successors_processed = False
                             break
 
@@ -369,7 +369,7 @@ class BFSFineGrainedSolver(Solver):
         common_elements = set(list_of_sets[0])
 
         for s in list_of_sets[1:]:
-            common_elements.intersection_update(s)
+            common_elements &= s    # intersection
 
         return list(common_elements)
 
@@ -378,7 +378,7 @@ class BFSFineGrainedSolver(Solver):
     ) -> tuple[float, float, float, float, dict[int, int]]:
         wc_cost = wc_carbon = 0.0
         pc_cost = pc_carbon = 0.0
-        clean_placement_dict = {}
+        clean_placement_dict = defaultdict(int)
 
         for (
             instance_index,
