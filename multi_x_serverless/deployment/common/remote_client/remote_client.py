@@ -89,11 +89,9 @@ class RemoteClient(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def set_value_in_composite_key_table(self, table_name: str, key: str, timestamp: float, value: str) -> None:
-        raise NotImplementedError()
-
-    @abstractmethod
-    def update_timestamp_in_composite_key_table(self, table_name: str, key: str, timestamp: float) -> None:
+    def set_value_in_table_column(
+        self, table_name: str, key: str, column_type_value: list[tuple[str, str, str]]
+    ) -> None:
         raise NotImplementedError()
 
     @abstractmethod

@@ -21,9 +21,4 @@ class ProviderExporter(DataExporter):
         self._export_region_data(at_region_data, from_to_region_data)
 
     def export_available_region_table(self, available_region_data: dict[str, dict[str, Any]]) -> None:
-        for key, value in available_region_data.items():
-            data_json: str = json.dumps(value)
-            current_timestamp: float = time.time()
-            self._client.set_value_in_composite_key_table(
-                self._available_region_table, key, current_timestamp, data_json
-            )
+        self._export_data(self._available_region_table, available_region_data)

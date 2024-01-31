@@ -39,7 +39,7 @@ class ProviderRetriever(DataRetriever):
                 region_code = table_cells[0].text.strip()
                 region_name = table_cells[1].text.strip()
                 coordinates = self.retrieve_location(region_name)
-                regions[f"{Provider.AWS.value}_{region_code}"] = {
+                regions[f"{Provider.AWS.value}:{region_code}"] = {
                     "name": region_name,
                     "provider": Provider.AWS.value,
                     "code": region_code,

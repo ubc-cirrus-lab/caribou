@@ -316,6 +316,17 @@ This section will outline the various Data Collectors, their responsibilities, a
 There are four main types of data collectors, each accessing different sources of input data, managing their own output databases, and running or triggering at different intervals and/or trigger conditions.
 The four main collectors are the Provider Collector, Carbon Collector, Performance Collector, and Workflow Collector.
 
+All the following tables are stored in a DynamoDB database.
+In the following, we will outline the responsibilities of each Data Collector, the database tables they manage, and the information stored in each table.
+The information stored in each table has one key and one or more values.
+All keys are strings.
+The type of the key and values are denoted by the following abbreviations:
+
+- S: String
+- N: Number
+
+If a string type is used but it has multiple child values, the string is a JSON string.
+
 ### Provider Collector
 
 The Provider Collector is responsible for collecting information through external APIs regarding the cost, location, and offered services of all available data center regions, as well as identifying which data center regions are currently available.
@@ -331,24 +342,27 @@ The Provider Collector must not override the timestamp of other Data Collectors.
 The keys and information stored in this table are as follows:
 
 - Key: `<provider_unique_id>:<region_name>`
-- Values:
+- Value (S):
   - Available services at the data center region.
   - The geographical location of the data center region (in longitude and latitude).
+- Provider Collector timestamp (N):
   - Timestamp of when the Provider Collector was last run for this data center region.
+- Carbon Collector timestamp (N):
   - Timestamp of when the Carbon Collector was last run for this data center region.
+- Performance Collector timestamp (N):
   - Timestamp of when the Performance Collector was last run for this data center region.
 
 The `at_provider_table` is responsible for managing information regarding provider-level information. The keys and information stored in this table are as follows:
 
 - Key: `<provider_unique_id>`
-- Values:
+- Value (S):
   - Remaining free tier at provider (invocation/execution).
 
 The `provider_region_table` is responsible for managing region specific information.
 The keys and information stored in this table are as follows:
 
 - Key: `<provider_unique_id>:<region_name>`
-- Values:
+- Value (S):
   - Execution Cost for each configuration (or services).
   - Power-efficiency-related information (PUE, CFE).
   - Average Memory and CPU compute power.
@@ -370,7 +384,7 @@ It is also responsible for updating the timestamp of carbon-updated regions in t
 The `carbon_region_table` is responsible for managing carbon region-specific information. The keys and information stored in this table are as follows:
 
 - Key: `<provider_unique_id>:<region_name>`
-- Values:
+- Value (S):
   - Execution Carbon per kWh (gCO2e/kWh)
   - To Region `<provider_unique_id>:<region_name>`
     - Region-to-region Data Transfer Carbon Impact (gCO2e/GB)
@@ -392,7 +406,7 @@ The `performance_region_table` is responsible for managing performance region-sp
 The keys and information stored in this table are as follows:
 
 - Key: `<provider_unique_id>:<region_name>`
-- Values:
+- Value (S):
   - Execution time of performance tests in various regions.
   - To Region `<provider_unique_id>:<region_name>`
     - Region-to-region Estimated latency in terms of data transfer size (s/GB).
@@ -412,7 +426,7 @@ Unlike the other Data Collectors, the Workflow Collector should not and will not
 The `workflow_instance_table` is responsible for summarizing and collecting information regarding past instance invocation at various regions:
 
 - Key: `<workflow_unique_id>`
-- Values:
+- Value (S):
   - At Instance `<instance_unique_id>`
     - Favourite home Region Average/Tail Runtime.
     - Favorite home region `<provider_unique_id>:<region_name>`

@@ -59,8 +59,7 @@ class MockRemoteClient(RemoteClient):
     def get_all_values_from_table(self, table_name: str) -> dict:
         pass
 
-    def set_value_in_composite_key_table(self, table_name: str, key: str, timestamp: float, value: str) -> None:
-        pass
-
-    def update_timestamp_in_composite_key_table(self, table_name: str, key: str, timestamp: float) -> None:
+    def set_value_in_table_column(
+        self, table_name: str, key: str, column_type_value: list[tuple[str, str, str]]
+    ) -> None:
         pass
