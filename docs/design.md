@@ -452,8 +452,8 @@ Prioritisation of the deployments is based on the average-case runtime.
 
 ### Coarse Grained
 
-The Coarse Grained Solver is a simplified optimization algorithm designed to quickly identify viable deployment configurations across a limited set of permitted regions. 
-It does this by evaluating each permitted region for all instances in a topologically ordered manner, ensuring that the deployment satisfies hard resource constraints such as cost, runtime, and carbon footprint. 
+The Coarse Grained Solver is a simplified optimization algorithm designed to quickly identify viable deployment configurations across a limited set of permitted regions.
+It does this by evaluating each permitted region for all instances in a topologically ordered manner, ensuring that the deployment satisfies hard resource constraints such as cost, runtime, and carbon footprint.
 Unlike more complex solvers, the Coarse Grained Solver does not iterate over multiple configurations per instance but rather selects a single region that is permissible for all instances, thereby simplifying the decision-making process.
 
 #### Key Features
@@ -479,6 +479,7 @@ Unlike more complex solvers, the Coarse Grained Solver does not iterate over mul
    - Compiles a list of valid deployment configurations that satisfies the constraints.
 
 #### Specialities
+
 - **Reduced Search Space**: By focusing on regions permissible for all instances, it significantly narrows down the search space.
 - **Quick Assessment**: Ideal for scenarios where a quick assessment of deployment viability across regions is needed.
 - **Simplified Decision Making**: With a focus on generating a single deployment configuration, it simplifies the decision-making process for scenarios with less variability or lower complexity requirements.
