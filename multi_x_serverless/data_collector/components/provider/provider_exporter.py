@@ -10,15 +10,15 @@ class ProviderExporter(DataExporter):
     def __init__(
         self,
         client: RemoteClient,
-        at_region_table: str,
-        from_to_region_table: str,
-        at_provider_table: str,
+        provider_region_table: str,
+        provider_table: str,
     ) -> None:
-        super().__init__(client, at_region_table, from_to_region_table)
-        self._at_provider_table = at_provider_table
+        super().__init__(client, provider_region_table)
+        self.provider_table = provider_table
 
-    def export_all_data(self, at_region_data: dict[str, Any], from_to_region_data: dict[str, Any]) -> None:
-        self._export_region_data(at_region_data, from_to_region_data)
+    def export_all_data(self, provider_region_data: dict[str, Any], provider_data: dict[str, Any]) -> None:
+        self._export_region_data(provider_region_data)
+        self._export_data(self.provider_table, provider_data)
 
     def export_available_region_table(self, available_region_data: dict[str, dict[str, Any]]) -> None:
         self._export_data(self._available_region_table, available_region_data)

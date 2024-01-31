@@ -19,7 +19,7 @@ class CarbonRetriever(DataRetriever):
         self._global_average_worst_case_carbon_intensity = 475.0
         self._kwh_per_gb_estimate = 1.0
 
-    def retrieve_at_region_carbon_data(self) -> dict[str, dict[str, Any]]:
+    def retrieve_carbon_region_data(self) -> dict[str, dict[str, Any]]:
         result_dict: dict[str, dict[str, Any]] = {}
         for region_key, available_region in self._available_regions.items():
             latitude = available_region["latitude"]

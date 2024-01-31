@@ -8,11 +8,10 @@ from multi_x_serverless.deployment.common.remote_client.remote_client import Rem
 
 
 class DataExporter(ABC):
-    def __init__(self, client: RemoteClient, at_region_table: str, from_to_region_table: str) -> None:
+    def __init__(self, client: RemoteClient, region_table: str) -> None:
         self._client = client
         self._available_region_table = AVAILABLE_REGIONS_TABLE
-        self._at_region_table = at_region_table
-        self._from_to_region_table = from_to_region_table
+        self._region_table = region_table
         self._modified_regions: set[str] = set()
 
     @abstractmethod
@@ -20,23 +19,20 @@ class DataExporter(ABC):
         raise NotImplementedError
 
     def update_available_region_timestamp(self, data_collector_name: str, modified_regions: set[str]) -> None:
+        current_timestamp: float = time.time()
         for region in modified_regions:
-            current_timestamp: float = time.time()
-            self._client.update_timestamp_in_composite_key_table(
-                self._available_region_table, region, current_timestamp
+            self._client.set_value_in_table_column(
+                self._available_region_table, region, column_type_value=(data_collector_name, "N", current_timestamp)
             )
 
     def get_modified_regions(self) -> set[str]:
         return self._modified_regions
 
-    def _export_region_data(
-        self, at_region_data: dict[str, dict[str, Any]], from_to_region_data: dict[str, Any]
-    ) -> None:
-        self._export_data(self._at_region_table, at_region_data)
-        self._export_data(self._from_to_region_table, from_to_region_data)
+    def _export_region_data(self, region_data: dict[str, dict[str, Any]]) -> None:
+        self._export_data(self._region_table, region_data)
 
     def _update_modified_regions(self, provider: str, region: str) -> None:
-        self._modified_regions.add(f"{provider}_{region}")
+        self._modified_regions.add(f"{provider}:{region}")
 
     def _export_data(self, table_name: str, data: dict[str, dict[str, Any]]) -> None:
         """

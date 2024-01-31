@@ -1,10 +1,7 @@
 from typing import Any
 
 from multi_x_serverless.common.constants import (
-    WORKFLOW_AT_INSTANCE_TABLE,
-    WORKFLOW_AT_REGION_TABLE,
-    WORKFLOW_FROM_TO_INSTANCE_TABLE,
-    WORKFLOW_FROM_TO_REGION_TABLE,
+    WORKFLOW_INSTANCE_TABLE,
 )
 from multi_x_serverless.data_collector.components.data_collector import DataCollector
 from multi_x_serverless.data_collector.components.workflow.workflow_exporter import WorkflowExporter
@@ -16,20 +13,10 @@ class WorkflowCollector(DataCollector):
         super().__init__()
         self._data_collector_name: str = "workflow_collector"
 
-        at_region_table: str = WORKFLOW_AT_REGION_TABLE
-        from_to_region_table: str = WORKFLOW_FROM_TO_REGION_TABLE
-
-        at_instance_table: str = WORKFLOW_AT_INSTANCE_TABLE
-        from_to_instance_table: str = WORKFLOW_FROM_TO_INSTANCE_TABLE
+        workflow_instance_table: str = WORKFLOW_INSTANCE_TABLE
 
         self._data_retriever: WorkflowRetriever = WorkflowRetriever(self._data_collector_client)
-        self._data_exporter: WorkflowExporter = WorkflowExporter(
-            self._data_collector_client,
-            at_region_table,
-            from_to_region_table,
-            at_instance_table,
-            from_to_instance_table,
-        )
+        self._data_exporter: WorkflowExporter = WorkflowExporter(self._data_collector_client, workflow_instance_table)
 
     def run(self) -> None:
         # Retrieve available regions

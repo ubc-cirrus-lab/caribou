@@ -352,7 +352,7 @@ The keys and information stored in this table are as follows:
 - Performance Collector timestamp (N):
   - Timestamp of when the Performance Collector was last run for this data center region.
 
-The `at_provider_table` is responsible for managing information regarding provider-level information. The keys and information stored in this table are as follows:
+The `provider_table` is responsible for managing information regarding provider-level information. The keys and information stored in this table are as follows:
 
 - Key: `<provider_unique_id>`
 - Value (S):

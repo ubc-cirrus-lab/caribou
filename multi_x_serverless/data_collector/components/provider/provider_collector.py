@@ -1,8 +1,8 @@
 from typing import Any
 
 from multi_x_serverless.common.constants import (
-    PROVIDER_AT_PROVIDER_TABLE,
-    PROVIDER_AT_REGION_TABLE,
+    PROVIDER_TABLE,
+    PROVIDER_REGION_TABLE,
     PROVIDER_FROM_TO_REGION_TABLE,
 )
 from multi_x_serverless.data_collector.components.data_collector import DataCollector
@@ -15,16 +15,14 @@ class ProviderCollector(DataCollector):
         super().__init__()
         self._data_collector_name: str = "provider_collector"
 
-        at_region_table: str = PROVIDER_AT_REGION_TABLE
-        from_to_region_table: str = PROVIDER_FROM_TO_REGION_TABLE
-        at_provider_table: str = PROVIDER_AT_PROVIDER_TABLE
+        provider_region_table: str = PROVIDER_REGION_TABLE
+        provider_table: str = PROVIDER_TABLE
 
         self._data_retriever: ProviderRetriever = ProviderRetriever()
         self._data_exporter: ProviderExporter = ProviderExporter(
             self._data_collector_client,
-            at_region_table,
-            from_to_region_table,
-            at_provider_table,
+            provider_region_table,
+            provider_table,
         )
 
     def run(self) -> None:
@@ -32,12 +30,12 @@ class ProviderCollector(DataCollector):
         available_region_data = self._data_retriever.retrieve_available_regions()
         self._data_exporter.export_available_region_table(available_region_data)
 
-        # Do required application logic using data from provider collector
-        # Process said data, then return the final data into the exporters
-        at_provider_region_data: dict[str, Any] = {}
-        from_to_provider_region_data: dict[str, Any] = {}
+        provider_region_data: dict[str, Any] = {}
 
-        self._data_exporter.export_all_data(at_provider_region_data, from_to_provider_region_data)
+        # TODO (#27): Implement free tier data collection
+        provider_data: dict[str, Any] = {}
+
+        self._data_exporter.export_all_data(provider_region_data, provider_data)
 
         # Updates the timestamp of modified regions
         modified_regions: set[str] = set()  # Regions we are updating in this collector

@@ -23,21 +23,14 @@ GLOBAL_SYSTEM_REGION = "us-west-2"
 AVAILABLE_REGIONS_TABLE = "available_regions_table"
 
 ## Carbon Tables
-CARBON_AT_REGION_TABLE = "carbon_at_region_table"
-CARBON_FROM_TO_REGION_TABLE = "carbon_from_to_region_table"
+CARBON_REGION_TABLE = "carbon_region_table"
 
 ## Performance Tables
-PERFORMANCE_AT_REGION_TABLE = "performance_at_region_table"
-PERFORMANCE_FROM_TO_REGION_TABLE = "performance_from_to_region_table"
+PERFORMANCE_REGION_TABLE = "performance_region_table"
 
 ## Provider Tables
-PROVIDER_AT_REGION_TABLE = "provider_at_region_table"
-PROVIDER_FROM_TO_REGION_TABLE = "provider_from_to_region_table"
-PROVIDER_AT_PROVIDER_TABLE = "provider_at_provider_table"
+PROVIDER_REGION_TABLE = "provider_region_table"
+PROVIDER_TABLE = "provider_table"
 
 ## Workflow Tables
-WORKFLOW_AT_REGION_TABLE = "workflow_at_region_table"
-WORKFLOW_FROM_TO_REGION_TABLE = "workflow_from_to_region_table"
-
-WORKFLOW_AT_INSTANCE_TABLE = "workflow_at_instance_table"
-WORKFLOW_FROM_TO_INSTANCE_TABLE = "workflow_from_to_instance_table"
+WORKFLOW_INSTANCE_TABLE = "workflow_at_instance_table"

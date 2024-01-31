@@ -5,5 +5,5 @@ from multi_x_serverless.deployment.common.remote_client.remote_client import Rem
 
 
 class CarbonExporter(DataExporter):
-    def export_all_data(self, at_region_data: dict[str, Any], from_to_region_data: dict[str, Any]) -> None:
-        self._export_region_data(at_region_data, from_to_region_data)
+    def export_all_data(self, carbon_region_data: dict[str, Any]) -> None:
+        self._export_region_data(carbon_region_data)
