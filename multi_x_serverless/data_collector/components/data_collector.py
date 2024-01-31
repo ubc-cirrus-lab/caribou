@@ -1,6 +1,5 @@
 import json
 from abc import ABC, abstractmethod
-from typing import Any
 
 from multi_x_serverless.common.models.endpoints import Endpoints
 from multi_x_serverless.data_collector.components.data_exporter import DataExporter
