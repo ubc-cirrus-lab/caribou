@@ -13,8 +13,9 @@ In this document we will discuss the design decisions that have been made for th
 2. [Source Code Annotation](#source-code-annotation)
 3. [Synchronization Node](#synchronization-node)
     1. [Implementation](#implementation)
-4. [Workflow Placement Decision](#workflow-placement-decision)
+4. [Component Interaction](#component-interaction)
     1. [Component Interaction Order](#component-interaction-order)
+    2. [Workflow Placement Decision](#workflow-placement-decision)
 5. [Data Collectors](#data-collectors)
     1. [Provider Collector](#provider-collector)
     2. [Carbon Collector](#carbon-collector)
@@ -237,7 +238,30 @@ This ensures that the synchronization node is called even if some of the predece
 
 As previously mentioned, the code in the synchronization node is only executed once all predecessors have written their responses to the distributed key-value store and the counter has been incremented to the number of predecessors, i.e., the synchronization node is only called once all predecessors have called the synchronization node.
 
-## Workflow Placement Decision
+## Component Interaction
+
+The components of the system interact with each other in a specific order.
+As well as over defined interfaces.
+The following section will outline the order in which the components interact with each other and the interfaces that are used for the interaction.
+
+### Component Interaction Order
+
+![Component Interaction Order](./img/component_interaction_overview.png)
+
+The following is the order in which the different components interact with each other:
+
+1. The deployment client uploads an initial version of the [Workflow Placement Decision](#workflow-placement-decision), the [Deployment Manager Resource](#deployment-manager-resource) of this workflow, as well as the [Workflow Config](#workflow-config) for the solver update checker to the corresponding tables in the distributed key-value store.
+It aditionally uploads the [Deployment Package](#deployment-package) (source code) of the workflow to the distributed blob store.
+2. The solver update checker is informed of a new workflow to be solved.
+3. The solver update checker triggers the solver to solve the workflow.
+4. The solver updates the workflow placement decision with the current placement of the function instances in a staging distributed key-value store.
+5. The deployment update checker checks the staging distributed key-value store for updates to the workflow placement decision and re-deploys function instances if necessary.
+6. The deployment server uploads the updated workflow placement decision to the distributed key-value store.
+
+During a workflow execution, the initial function instance will download the workflow placement decision from the distributed key-value store and add the `run_id`.
+Subsequent functions will receive the workflow placement decision from the previous function instance which updated the `current_instance_name` to the name of the current function instance.
+
+### Workflow Placement Decision
 
 The workflow placement decision is a dictionary of information with regards to current function instance placement.
 This information is used both to determine the current function instance, as well as to determine where the next function instance is to be called.
@@ -253,27 +277,33 @@ The dictionary contains the following information:
         "provider": "aws",
         "region": "region"
       },
-      "identifier": "test_identifier"
+      "identifier": "test_identifier",
+      "function_identifier": "test_function_identifier"
     },
     "function_name_2:function_name_0_0:1": {
       "provider_region": {
         "provider": "aws",
         "region": "region"
       },
-      "identifier": "test_identifier"
+      "identifier": "test_identifier",
+      "function_identifier": "test_function_identifier"
     }
   },
   "current_instance_name": "function_name:entry_point:0",
   "instances": [
     {
-      "instance_name": "function_name:entry_point:0",
+      "instance_name": "workflow_id-function_name:entry_point:0",
+      "function_name": "workflow_id-function_name_provider-region",
       "succeeding_instances": ["function_name_2:function_name_0_0:1"],
-      "preceding_instances": []
+      "preceding_instances": [],
+      "dependent_sync_predecessors": [],
     },
     {
       "instance_name": "function_name_2:function_name_0_0:1",
+      "function_name": "workflow_id-function_name_2_provider-region",
       "succeeding_instances": [],
-      "preceding_instances": ["function_name:entry_point:0"]
+      "preceding_instances": ["function_name:entry_point:0"],
+      "dependent_sync_predecessors": [],
     }
   ]
 }
@@ -283,27 +313,60 @@ Different parts of this dictionary are provided by different components of the s
 
 - The `run_id` is set by the initial function of the workflow.
 - The `workflow_placement` is set by the solver and contains the current placement of the function instances.
-  The `identifier` is a unique identifier for the function instance at a provider.
-  This is provided by the deployment utilities.
+  - The `provider_region` is either set at initial deployment or is set by the solver  in the staging area and moved over at deployment and contains the provider and region of the function instance.
+  - The `identifier` is a unique identifier for the messaging queue instance at a provider.
+    This is used to identify the calling point of the function instance.
+    This is provided and updated by the deployment utilities.
+  - The `function_identifier` is a unique identifier for the function instance.
 - The `current_instance_name` is initially set by the deployment utilities as the name of the entry point function.
   It is then updated by the function instances to identify the successor function instance.
-- The `instances` is set by the deployment utilities and contains the information about the workflow DAG.
+- The `instances` is set and updated by the deployment utilities and contains the information about the workflow DAG.
+  - The `instance_name` is the name of the function instance.
+  - The `function_name` is the name of the function.
+    This name always contains the provider and region of the function that this instance is deployed to.
+    Thus this also has to be updated upon re-deployment.
+  - The `succeeding_instances` is a list of the names of the succeeding function instances.
+  - The `preceding_instances` is a list of the names of the preceding function instances.
+  - The `dependent_sync_predecessors` is a list of the names of the synchronization nodes that the function instance is required to update in case of a conditional call.
 
-### Component Interaction Order
+### Deployment Manager Resource
 
-![Component Interaction Order](./img/component_interaction_overview.png)
+The deployment manager resource is a dictionary of information with regards to the deployment of the workflow.
+This is used by the deployment utilities to facilitate the re-deployment of function instances.
+The structure of the deployment manager resource is as follows:
 
-The following is the order in which the different components interact with each other with regards to the workflow placement decision:
+```json
+{
+  "workflow_id": "test_workflow_id",
+  "workflow_function_descriptions": "[{\"name\": \"workflow_id-function_name_2_provider-region\", \"entry_point\":...}]",
+  "deployment_config": "{\"workflow_name\": \"workflow_name\",...}",
+  "deployed_regions": "{\"workflow_id-function_name_2_provider-region\": {\"provider\": \"provider\", \"region\": \"region\"},...}",
+}
+```
 
-1. The deployment client uploads an initial version of the workflow placement decision to the distributed key-value store.
-2. The solver update checker is informed of a new workflow to be solved.
-3. The solver update checker triggers the solver to solve the workflow.
-4. The solver updates the workflow placement decision with the current placement of the function instances in a staging distributed key-value store.
-5. The deployment client checks the staging distributed key-value store for updates to the workflow placement decision and re-deploys function instances if necessary.
-6. The deployment client uploads the updated workflow placement decision to the distributed key-value store.
+Different parts of this dictionary are provided by different components of the system.
 
-During a workflow execution, the initial function instance will download the workflow placement decision from the distributed key-value store and add the `run_id`.
-Subsequent functions will receive the workflow placement decision from the previous function instance which updated the `current_instance_name` to the name of the current function instance.
+- The `workflow_id` is set at initial deployment by the deployment utilities.
+  It is the concatenation of the workflow name and version.
+- The `workflow_function_descriptions` is a list of functions that are part of the workflow.
+  It is set at initial deployment by the deployment utilities.
+  At re-deployment, if a function was re-deployed to a new region, the new function (new in the sense that the name is updated to the new provider and region) is added to the list.
+- The `deployment_config` is the deployment config of the workflow.
+  It is set at initial deployment by the deployment utilities.
+- The `deployed_regions` is a dictionary of the deployed regions of the workflow.
+  It is set at initial deployment by the deployment utilities.
+  At re-deployment, if a function was re-deployed to a new region, the new region is added to the dictionary.
+  This is theoretically not necessary as the information is also contained in the `workflow_function_descriptions`, however, it is more efficient to have this information in a separate dictionary.
+
+### Workflow Config
+
+The workflow config is a dictionary of information with regards to the workflow.
+
+### Deployment Package
+
+The deployment package is the source code of the workflow.
+It is packaged as a zip file.
+And is uploaded to the distributed blob store.
 
 ## Data Collectors
 
@@ -437,13 +500,12 @@ The Workflow Collector is responsible for extracting information from the `workf
       - Number of invocation (of this instance in this region)
       - Region Average/Tail Runtime.
     - To Instance `<instance_unique_id>`
-      - Number of calls from parent instance to this instance. 
+      - Number of calls from parent instance to this instance.
       - Average data transfer size between instance stages.
       - At Region `<provider_unique_id>:<region_name>`
         - To Region `<provider_unique_id>:<region_name>`
           - Number transmission
           - Region Average/Tail Latency.
-
 
 The `workflow_instance_table` is responsible for summarizing and collecting information regarding past instance invocation at various regions:
 
@@ -478,13 +540,7 @@ The Coarse Grained Solver is a simplified optimization algorithm designed to qui
 It does this by evaluating each permitted region for all instances in a topologically ordered manner, ensuring that the deployment satisfies hard resource constraints such as cost, runtime, and carbon footprint.
 Unlike more complex solvers, the Coarse Grained Solver does not iterate over multiple configurations per instance but rather selects a single region that is permissible for all instances, thereby simplifying the decision-making process.
 
-#### Key Features
-
-- **Simplified Region Selection**: Focuses on a limited set of regions that are permissible for all instances, reducing complexity.
-- **Hard Resource Constraint Compliance**: Ensures that deployments adhere to specified hard constraints like cost, runtime, and carbon footprint.
-- **Single Deployment Focus**: Generates a single deployment configuration, making it suitable for quick assessments or scenarios with less variability.
-
-#### Workflow
+#### Coarse Grained Workflow
 
 1. **Initialization**:
    - Identifies the set of regions permitted for all instances by intersecting the permissible regions of individual instances.
@@ -500,12 +556,6 @@ Unlike more complex solvers, the Coarse Grained Solver does not iterate over mul
 4. **Result Compilation**:
    - Compiles a list of valid deployment configurations that satisfies the constraints.
 
-#### Specialities
-
-- **Reduced Search Space**: By focusing on regions permissible for all instances, it significantly narrows down the search space.
-- **Quick Assessment**: Ideal for scenarios where a quick assessment of deployment viability across regions is needed.
-- **Simplified Decision Making**: With a focus on generating a single deployment configuration, it simplifies the decision-making process for scenarios with less variability or lower complexity requirements.
-
 ### Stochastic Heuristic Descent
 
 The Stochastic Heuristic Descent solver is a heuristic optimization algorithm that utilizes a stochastic approach to explore different deployment configurations.
@@ -516,14 +566,7 @@ It ensures that solutions adhere to specified resource constraints.
 Similar to the other solvers it uses worst-case estimates with regards to conditional calls (all conditional calls are assumed to be true) and the tail latency for the function runtimes and the network latencies to filter for hard constraints.
 The solver is implemented as a hill-climbing algorithm with a stochastic approach.
 
-#### Key Features
-
-- **Stochastic Approach**: Utilizes random selections and probability to explore different deployment configurations.
-- **Heuristic Optimization**: Employs heuristic methods for quick and efficient problem-solving.
-- **Multi-objective Focus**: Optimizes for multiple objectives including cost, runtime, and carbon footprint.
-- **Resource Constraint Compliance**: Ensures that solutions adhere to specified resource constraints.
-
-#### Workflow
+#### Stochastic Heuristic Descent Workflow
 
 1. **Initialization**:
    - Sets up critical parameters like learning rate and maximum iterations.
@@ -540,13 +583,6 @@ The solver is implemented as a hill-climbing algorithm with a stochastic approac
 4. **Result Compilation**:
    - Upon completion of the iterations, compiles a list of valid and unique average case deployments.
    - These deployments represent the optimized configurations discovered by the solver.
-
-#### Specialities
-
-- **Adaptive Learning Rate**: Dynamically adjusts the number of instances to update in each iteration.
-- **Bias Towards Positive Regions**: Incorporates a bias towards regions that have previously resulted in improvements.
-- **Topology-Aware Optimizations**: Leverages the topological structure of the distributed system for more efficient optimization.
-- **Multi-Dimensional Evaluation**: Simultaneously considers multiple factors (cost, runtime, carbon footprint) in optimization.
 
 ### Brute Force
 

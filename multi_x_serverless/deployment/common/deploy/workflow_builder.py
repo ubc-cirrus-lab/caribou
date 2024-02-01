@@ -233,13 +233,12 @@ class WorkflowBuilder:
     ) -> Workflow:
         resources: list[Function] = []
 
-        function_name_to_description_to_update_functions: dict[str, tuple[str, dict]] = {
-            self._get_function_name_without_provider_and_region(function_name): (
-                function_name,
-                function_to_deployment_region[function_name],
-            )
-            for function_name in function_to_deployment_region.keys()
-        }
+        function_name_to_description_to_update_functions = defaultdict(list)
+
+        for function_name, deployment_region in function_to_deployment_region.items():
+            key = self._get_function_name_without_provider_and_region(function_name)
+            value = (function_name, deployment_region)
+            function_name_to_description_to_update_functions[key].append(value)
 
         for function in workflow_function_descriptions:
             function_name_without_provider_and_region = self._get_function_name_without_provider_and_region(
@@ -249,15 +248,27 @@ class WorkflowBuilder:
             function_name = function["name"]
             deploy_region = deployed_regions[function["name"]]
             if function_name_without_provider_and_region in function_name_to_description_to_update_functions:
-                function_name = function_name_to_description_to_update_functions[
+                for function_name, deployment_region in function_name_to_description_to_update_functions[
                     function_name_without_provider_and_region
-                ][0]
-                deploy_region = function_name_to_description_to_update_functions[
-                    function_name_without_provider_and_region
-                ][1]
+                ]:
+                    # This is a function that was already deployed and we are adding a new region to it
+                    resources.append(
+                        Function(
+                            name=function_name,
+                            environment_variables=function["environment_variables"],
+                            runtime=function["runtime"],
+                            handler=function["handler"],
+                            role=IAMRole(function["role"]["policy_file"], f"{function_name}-role"),
+                            deployment_package=DeploymentPackage(),
+                            deploy_region=deploy_region,
+                            entry_point=function["entry_point"],
+                            providers=function["providers"],
+                        )
+                    )
+            # In any case, we need to add the original function to the resources
             resources.append(
                 Function(
-                    name=function_name,
+                    name=function["name"],
                     environment_variables=function["environment_variables"],
                     runtime=function["runtime"],
                     handler=function["handler"],
