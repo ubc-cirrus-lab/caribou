@@ -1,6 +1,7 @@
 name: linting-and-tests
 on:
   pull_request:
+    types: [ready_for_review]
     branches:
       - main
 
