@@ -233,3 +233,9 @@ class Workflow(Resource):
             ] = function_instance_to_function_identifier[instance_name]
 
         return staging_area_placement
+
+    def _update_instances(self, staging_area_placement: dict[str, Any]) -> None:
+        for instance in staging_area_placement["instances"]:
+            instance["function_name"] = staging_area_placement["workflow_placement"][instance["instance_name"]][
+                "function_identifier"
+            ].split(":")[-1]
