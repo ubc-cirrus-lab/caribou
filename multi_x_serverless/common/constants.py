@@ -34,3 +34,6 @@ PROVIDER_TABLE = "provider_table"
 
 ## Workflow Tables
 WORKFLOW_INSTANCE_TABLE = "workflow_instance_table"
+
+# Database Syncer Tables
+WORKFLOW_SUMMARY_TABLE = "workflow_summary_table"

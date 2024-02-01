@@ -423,9 +423,7 @@ This Collector should be run very frequently, and triggered by the Solver Update
 This collector is responsible for managing the "workflow_instance_table" database table.
 Unlike the other Data Collectors, the Workflow Collector should not and will not have or require updating any timestamp of the `available_regions_table` table.
 
-The Workflow Collector is responsible for extracting information from the `workflow_performance_table` which was managed by the Datastore Syncer (Which should retrieve all the invocations of the workflow from local invoked datacenters and then remove the local entries only after finishing sumarization). Below are the tenative expected format of this table:
-
-The Workflow Collector is responsible for extracting information from the `workflow_performance_table`, which is managed by the Datastore Syncer. The Datastore Syncer should retrieve all the invocations log of the workflow from locally data centers and then remove the local entries only after finishing summarization. Below are the tentative expected formats of this table:
+The Workflow Collector is responsible for extracting information from the `workflow_summary_table`, which is managed by the Datastore Syncer. The Datastore Syncer should retrieve all the invocations log of the workflow from locally data centers and then remove the local entries only after finishing summarization. Below are the tentative expected formats of this table:
 
 - Key: `<workflow_unique_id>`
 - Sort Key (N): Timestamp of last summary (last summarized by Datastore Syncer)

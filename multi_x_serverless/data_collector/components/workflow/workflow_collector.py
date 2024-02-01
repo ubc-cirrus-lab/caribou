@@ -12,29 +12,25 @@ class WorkflowCollector(DataCollector):
         self._data_collector_name: str = "workflow_collector"
 
         workflow_instance_table: str = WORKFLOW_INSTANCE_TABLE
-
+        
         self._data_retriever: WorkflowRetriever = WorkflowRetriever(self._data_collector_client)
         self._data_exporter: WorkflowExporter = WorkflowExporter(self._data_collector_client, workflow_instance_table)
 
-    def run(self) -> None:
+    def run(self) -> None: # Run on all workflows -> not recommanded as it will take a lot of time, better to run on a specific workflow
+        all_workflow_ids = self._data_retriever.retrieve_all_workflow_ids()
+
+        for workflow_unique_id in all_workflow_ids:
+            self.run(workflow_unique_id)
+
+    def run(self, workflow_unique_id: str) -> None: # Run on a specific workflow
         # Retrieve available regions
-        available_workflow_data = self._data_retriever.retrieve_available_workflows()
-        # TODO (#100): Fill Data Collector Implementations
+        self._data_retriever.retrieve_available_regions()
 
-        # Do required application logic using data from retriever
-        # Process said data, then return the final data into the exporters
-        at_workflow_region_data: dict[str, Any] = {}
-        from_to_workflow_region_data: dict[str, Any] = {}
+        workflow_summary_data: dict[str, Any] = self._data_retriever.retrieve_workflow_summary(workflow_unique_id)
 
-        # For instance level data
-        at_workflow_instance_data: dict[str, Any] = {}
-        from_to_workflow_instance_data: dict[str, Any] = {}
-
-        self._data_exporter.export_all_data(
-            at_workflow_region_data,
-            from_to_workflow_region_data,
-            at_workflow_instance_data,
-            from_to_workflow_instance_data,
-        )
+        self._data_exporter.export_all_data(workflow_summary_data)
 
         # For workflow collector, no need to modify the time stamp of the regions
+        # Perhaps we should have a different tables for informing solver or update timer that workflow has sufficient information
+        # To run the solver, or perhaps they can directly access the workflow summary table to check if the workflow has
+        # sufficient information to run the solver
