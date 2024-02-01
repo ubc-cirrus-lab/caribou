@@ -8,10 +8,15 @@ from multi_x_serverless.routing.solver_inputs.input_manager import InputManager
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
 
-PROFILE = True
+PROFILE = False
 
 if PROFILE:
-    time_dic = {"_find_common_elements": 0, "_calculate_wc_pc_cost_carbon_cl_placements": 0}
+    time_dic = {
+        "_find_common_elements": 0,
+        "_calculate_wc_pc_cost_carbon_cl_placements": 0,
+        "prerequisites_indices_loop": 0,
+        "non_end_n3_loop": 0,
+    }
 
 
 class BFSFineGrainedSolver(Solver):
@@ -25,6 +30,8 @@ class BFSFineGrainedSolver(Solver):
         super().__init__(workflow_config, all_available_regions, input_manager, False)
 
     def _solve(self, regions: list[dict]) -> list[tuple[dict, float, float, float]]:
+        transmission_cost_carbon_runtime_cache = {}
+
         # Get the topological representation of a DAG
         prerequisites_dictionary = self._dag.get_prerequisites_dict()
         successor_dictionary = self._dag.get_preceeding_dict()
@@ -99,18 +106,49 @@ class BFSFineGrainedSolver(Solver):
                     )
 
                     # Start hop considerations
-                    (wc_t_cost, wc_t_carbon, wc_t_runtime) = self._input_manager.get_transmission_cost_carbon_runtime(
-                        current_instance_index, current_instance_index, from_region_index, to_region_index
+                    lookup_key = (
+                        current_instance_index,
+                        current_instance_index,
+                        from_region_index,
+                        to_region_index,
+                        False,
                     )
+                    if lookup_key in transmission_cost_carbon_runtime_cache:
+                        (wc_t_cost, wc_t_carbon, wc_t_runtime) = transmission_cost_carbon_runtime_cache[lookup_key]
+                    else:
+                        (
+                            wc_t_cost,
+                            wc_t_carbon,
+                            wc_t_runtime,
+                        ) = self._input_manager.get_transmission_cost_carbon_runtime(
+                            current_instance_index, current_instance_index, from_region_index, to_region_index, False
+                        )
+                        # cache the results
+                        transmission_cost_carbon_runtime_cache[lookup_key] = (wc_t_cost, wc_t_carbon, wc_t_runtime)
 
                     wc_cost = wc_t_cost + wc_e_cost
                     wc_carbon = wc_t_carbon + wc_e_carbon
                     wc_runtime = wc_t_runtime + wc_e_runtime
 
                     # For probabilistic case (Using average latency and factor in invocation probability)
-                    (pc_t_cost, pc_t_carbon, pc_t_runtime) = self._input_manager.get_transmission_cost_carbon_runtime(
-                        current_instance_index, current_instance_index, from_region_index, to_region_index, True
+                    lookup_key = (
+                        current_instance_index,
+                        current_instance_index,
+                        from_region_index,
+                        to_region_index,
+                        True,
                     )
+                    if lookup_key in transmission_cost_carbon_runtime_cache:
+                        (pc_t_cost, pc_t_carbon, pc_t_runtime) = transmission_cost_carbon_runtime_cache[lookup_key]
+                    else:
+                        (
+                            pc_t_cost,
+                            pc_t_carbon,
+                            pc_t_runtime,
+                        ) = self._input_manager.get_transmission_cost_carbon_runtime(
+                            current_instance_index, current_instance_index, from_region_index, to_region_index, True
+                        )
+                        transmission_cost_carbon_runtime_cache[lookup_key] = (pc_t_cost, pc_t_carbon, pc_t_runtime)
 
                     pc_cost = pc_t_cost + pc_e_cost
                     pc_carbon = pc_t_carbon + pc_e_carbon
@@ -143,6 +181,8 @@ class BFSFineGrainedSolver(Solver):
                 # Now we can group the previous deployments by the common keys
                 deployment_groups: dict[frozenset[tuple[int, int]], list[list]] = {}
                 pred_index_counter = 0
+                if PROFILE:
+                    s = time.time()
                 for previous_instance_index in prerequisites_indices:
                     for previous_deployment in deployments[previous_instance_index]:
                         common_keys = frozenset(
@@ -161,6 +201,9 @@ class BFSFineGrainedSolver(Solver):
                             (previous_deployment, previous_instance_index)
                         )
                     pred_index_counter += 1
+                if PROFILE:
+                    e = time.time()
+                    time_dic["prerequisites_indices_loop"] += e - s
                 if current_instance_index == -1:  # If this is the virtual end node
                     final_deployments: list[tuple[dict, float, float, float]] = []
                     for common_keys, deployment_group in deployment_groups.items():
@@ -217,7 +260,9 @@ class BFSFineGrainedSolver(Solver):
                     if PROFILE:
                         print(time_dic)
                     return final_deployments
-                else:
+                else:  # Not the virtual end node
+                    if PROFILE:
+                        s227 = time.time()
                     for to_region_index in permitted_regions_indices:
                         for common_keys, deployment_group in deployment_groups.items():
                             for combination in itertools.product(*deployment_group):
@@ -225,8 +270,9 @@ class BFSFineGrainedSolver(Solver):
                                 combined_placements = {}
                                 max_wc_runtime = 0.0
                                 max_pc_runtime = 0.0
-
-                                wc_cost_total = wc_carbon_total = wc_runtime_total = 0.0
+                                wc_cost_total = 0.0
+                                wc_carbon_total = 0.0
+                                wc_runtime_total = 0.0
                                 pc_runtime_total = 0.0
 
                                 # Calculate the cost, carbon and runtime of execution (Just execution here as its a shared value)
@@ -248,12 +294,15 @@ class BFSFineGrainedSolver(Solver):
 
                                 # Transmission is is how much it cost to get from EVERY previous instance to this instance
                                 # So we need to calculate the transmission cost for each previous instance
-                                current_cumulative_wc_t_cost = current_cumulative_wc_t_carbon = 0.0
-                                current_cumulative_pc_t_cost = current_cumulative_pc_t_carbon = 0.0
+                                current_cumulative_wc_t_cost = 0.0
+                                current_cumulative_wc_t_carbon = 0.0
+                                current_cumulative_pc_t_cost = 0.0
+                                current_cumulative_pc_t_carbon = 0.0
 
                                 # This is the current max runtime from transition for all combinations of
                                 # Previous instances to current region
-                                current_max_wc_t_runtime = current_max_pc_t_runtime = 0.0
+                                current_max_wc_t_runtime = 0.0
+                                current_max_pc_t_runtime = 0.0
                                 for (
                                     (original_deployment_placement, wc_ccr, previous_pc_runtime),
                                     previous_instance_index,
@@ -267,32 +316,67 @@ class BFSFineGrainedSolver(Solver):
 
                                     # Calculate the carbon/cost/runtime for transmission
                                     # For worse case (Using tail latency)
-                                    (
-                                        wc_t_cost,
-                                        wc_t_carbon,
-                                        wc_t_runtime,
-                                    ) = self._input_manager.get_transmission_cost_carbon_runtime(
+                                    lookup_key = (
                                         previous_instance_index,
                                         current_instance_index,
                                         from_region_index,
                                         to_region_index,
+                                        False,
                                     )
+                                    if lookup_key in transmission_cost_carbon_runtime_cache:
+                                        (wc_t_cost, wc_t_carbon, wc_t_runtime) = transmission_cost_carbon_runtime_cache[
+                                            lookup_key
+                                        ]
+                                    else:
+                                        (
+                                            wc_t_cost,
+                                            wc_t_carbon,
+                                            wc_t_runtime,
+                                        ) = self._input_manager.get_transmission_cost_carbon_runtime(
+                                            previous_instance_index,
+                                            current_instance_index,
+                                            from_region_index,
+                                            to_region_index,
+                                            False,
+                                        )
+                                        transmission_cost_carbon_runtime_cache[lookup_key] = (
+                                            wc_t_cost,
+                                            wc_t_carbon,
+                                            wc_t_runtime,
+                                        )
 
                                     current_cumulative_wc_t_cost += wc_t_cost
                                     current_cumulative_wc_t_carbon += wc_t_carbon
 
                                     # For probabilistic case (Using average latency and factor in invocation probability)
-                                    (
-                                        pc_t_cost,
-                                        pc_t_carbon,
-                                        pc_t_runtime,
-                                    ) = self._input_manager.get_transmission_cost_carbon_runtime(
+                                    lookup_key = (
                                         previous_instance_index,
                                         current_instance_index,
                                         from_region_index,
                                         to_region_index,
                                         True,
                                     )
+                                    if lookup_key in transmission_cost_carbon_runtime_cache:
+                                        (pc_t_cost, pc_t_carbon, pc_t_runtime) = transmission_cost_carbon_runtime_cache[
+                                            lookup_key
+                                        ]
+                                    else:
+                                        (
+                                            pc_t_cost,
+                                            pc_t_carbon,
+                                            pc_t_runtime,
+                                        ) = self._input_manager.get_transmission_cost_carbon_runtime(
+                                            previous_instance_index,
+                                            current_instance_index,
+                                            from_region_index,
+                                            to_region_index,
+                                            True,
+                                        )
+                                        transmission_cost_carbon_runtime_cache[lookup_key] = (
+                                            pc_t_cost,
+                                            pc_t_carbon,
+                                            pc_t_runtime,
+                                        )
 
                                     current_cumulative_pc_t_cost += pc_t_cost
                                     current_cumulative_pc_t_carbon += pc_t_carbon
@@ -317,11 +401,9 @@ class BFSFineGrainedSolver(Solver):
                                     combined_placements = combined_placements | original_deployment_placement
 
                                     max_wc_runtime = max(max_wc_runtime, wc_runtime_total)
-
                                     max_pc_runtime = max(max_pc_runtime, pc_runtime_total)
 
                                     current_max_wc_t_runtime = max(current_max_wc_t_runtime, wc_t_runtime)
-
                                     current_max_pc_t_runtime = max(current_max_pc_t_runtime, pc_t_runtime)
 
                                 # Get the current total cost and carbon for this specific transition (runtime doesn't matter for this)
@@ -361,6 +443,9 @@ class BFSFineGrainedSolver(Solver):
                                             max_pc_runtime,
                                         )
                                     )
+                    if PROFILE:
+                        e227 = time.time()
+                        time_dic["non_end_n3_loop"] += e227 - s227
 
             deployments[current_instance_index] = current_deployments
             processed_node_indices.add(current_instance_index)
