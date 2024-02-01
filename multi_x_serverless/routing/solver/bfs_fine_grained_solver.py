@@ -1,12 +1,17 @@
-from collections import defaultdict
 import itertools
-from typing import Optional
-
 import numpy as np
+import time
+from typing import Optional
 
 from multi_x_serverless.routing.solver.solver import Solver
 from multi_x_serverless.routing.solver_inputs.input_manager import InputManager
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
+
+
+PROFILE = True
+
+if PROFILE:
+    time_dic = {"_find_common_elements": 0, "_calculate_wc_pc_cost_carbon_cl_placements": 0}
 
 
 class BFSFineGrainedSolver(Solver):
@@ -128,7 +133,12 @@ class BFSFineGrainedSolver(Solver):
                     predecessor_previous_instances.append(set(deployments[previous_instance_index][0][0].keys()))
 
                 # Find the common keys between the previous instances
+                if PROFILE:
+                    s = time.time()
                 common_past_instance_keys = self._find_common_elements(predecessor_previous_instances)
+                if PROFILE:
+                    e = time.time()
+                    time_dic["_find_common_elements"] += e - s
 
                 # Now we can group the previous deployments by the common keys
                 deployment_groups: dict[frozenset[tuple[int, int]], list[list]] = {}
@@ -181,6 +191,8 @@ class BFSFineGrainedSolver(Solver):
 
                             # We need to now recalculate the cost and carbon for the combined placements
                             # As this is a potential merge node, here we also need a clean placement dict for results
+                            if PROFILE:
+                                s = time.time()
                             (
                                 wc_cost,
                                 wc_carbon,
@@ -188,6 +200,9 @@ class BFSFineGrainedSolver(Solver):
                                 pc_carbon,
                                 clean_combined_placements,
                             ) = self._calculate_wc_pc_cost_carbon_cl_placements(combined_placements)
+                            if PROFILE:
+                                e = time.time()
+                                time_dic["_calculate_wc_pc_cost_carbon_cl_placements"] += e - s
 
                             if not self._fail_hard_resource_constraints(
                                 self._workflow_config.constraints, wc_cost, max_wc_runtime, wc_carbon
@@ -199,7 +214,8 @@ class BFSFineGrainedSolver(Solver):
                                 )
 
                     del deployments  # Clear all memory
-
+                    if PROFILE:
+                        print(time_dic)
                     return final_deployments
                 else:
                     for to_region_index in permitted_regions_indices:
@@ -322,6 +338,8 @@ class BFSFineGrainedSolver(Solver):
                                     (current_instance_pc_cost, current_instance_pc_carbon),
                                 )
 
+                                if PROFILE:
+                                    s = time.time()
                                 (
                                     wc_cost_total,
                                     wc_carbon_total,
@@ -329,6 +347,9 @@ class BFSFineGrainedSolver(Solver):
                                     pc_carbon_total,
                                     _,
                                 ) = self._calculate_wc_pc_cost_carbon_cl_placements(combined_placements)
+                                if PROFILE:
+                                    e = time.time()
+                                    time_dic["_calculate_wc_pc_cost_carbon_cl_placements"] += e - s
 
                                 if not self._fail_hard_resource_constraints(
                                     self._workflow_config.constraints, wc_cost_total, max_wc_runtime, wc_carbon_total
@@ -362,6 +383,7 @@ class BFSFineGrainedSolver(Solver):
                     if all_successors_processed:
                         del deployments[previous_instance_index]
 
+        # print(time_dic)
         return final_deployments
 
     def _find_common_elements(self, list_of_sets: list[set[int]]) -> set[int]:
@@ -372,9 +394,12 @@ class BFSFineGrainedSolver(Solver):
     def _calculate_wc_pc_cost_carbon_cl_placements(
         self, instance_placement_data: dict[int, tuple[int, tuple[float, float], tuple[float, float]]]
     ) -> tuple[float, float, float, float, dict[int, int]]:
-        wc_cost = wc_carbon = 0.0
-        pc_cost = pc_carbon = 0.0
-        clean_placement_dict = defaultdict(int)
+        wc_cost = 0.0
+        wc_carbon = 0.0
+        pc_cost = 0.0
+        pc_carbon = 0.0
+
+        clean_placement_dict = {k: 0 for k in self._topological_order}
 
         for (
             instance_index,
@@ -382,10 +407,8 @@ class BFSFineGrainedSolver(Solver):
         ) in instance_placement_data.items():
             wc_cost += wc_cost_instance
             wc_carbon += wc_carbon_instance
-
             pc_cost += pc_cost_instance
             pc_carbon += pc_carbon_instance
-
             clean_placement_dict[instance_index] = region_index
 
         return wc_cost, wc_carbon, pc_cost, pc_carbon, clean_placement_dict
