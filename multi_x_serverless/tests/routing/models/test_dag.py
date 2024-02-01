@@ -34,7 +34,15 @@ class TestDAG(unittest.TestCase):
         self.assertEqual(self.dag.topological_sort(), [0, 1, 2])
 
     def test_topological_sort_complex_1(self):
-        dag = DAG([{"instance_name": "node1"}, {"instance_name": "node2"}, {"instance_name": "node3"}, {"instance_name": "node4"}, {"instance_name": "node5"}])
+        dag = DAG(
+            [
+                {"instance_name": "node1"},
+                {"instance_name": "node2"},
+                {"instance_name": "node3"},
+                {"instance_name": "node4"},
+                {"instance_name": "node5"},
+            ]
+        )
         dag.add_edge("node1", "node2")
         dag.add_edge("node2", "node3")
         dag.add_edge("node3", "node4")
@@ -43,7 +51,14 @@ class TestDAG(unittest.TestCase):
         self.assertEqual(dag.topological_sort(), [0, 1, 2, 3, 4])
 
     def test_topological_sort_complex_2(self):
-        dag = DAG([{"instance_name": "node1"}, {"instance_name": "node2"}, {"instance_name": "node3"}, {"instance_name": "node4"}])
+        dag = DAG(
+            [
+                {"instance_name": "node1"},
+                {"instance_name": "node2"},
+                {"instance_name": "node3"},
+                {"instance_name": "node4"},
+            ]
+        )
         dag.add_edge("node1", "node2")
         dag.add_edge("node1", "node3")
         dag.add_edge("node2", "node4")
@@ -60,7 +75,14 @@ class TestDAG(unittest.TestCase):
             self.dag.topological_sort()
 
     def test_topological_sort_complex_4(self):
-        dag = DAG([{"instance_name": "node1"}, {"instance_name": "node2"}, {"instance_name": "node3"}, {"instance_name": "node4"}])
+        dag = DAG(
+            [
+                {"instance_name": "node1"},
+                {"instance_name": "node2"},
+                {"instance_name": "node3"},
+                {"instance_name": "node4"},
+            ]
+        )
         dag.add_edge("node1", "node2")
         dag.add_edge("node2", "node3")
         dag.add_edge("node3", "node4")
@@ -70,7 +92,16 @@ class TestDAG(unittest.TestCase):
             dag.topological_sort()
 
     def test_topological_sort_complex_5(self):
-        dag = DAG([{"instance_name": "node1"}, {"instance_name": "node2"}, {"instance_name": "node3"}, {"instance_name": "node4"}, {"instance_name": "node5"}, {"instance_name": "node6"}])
+        dag = DAG(
+            [
+                {"instance_name": "node1"},
+                {"instance_name": "node2"},
+                {"instance_name": "node3"},
+                {"instance_name": "node4"},
+                {"instance_name": "node5"},
+                {"instance_name": "node6"},
+            ]
+        )
         dag.add_edge("node1", "node2")
         dag.add_edge("node2", "node3")
         dag.add_edge("node3", "node4")
@@ -78,7 +109,7 @@ class TestDAG(unittest.TestCase):
         dag.add_edge("node5", "node6")
 
         self.assertEqual(dag.topological_sort(), [0, 1, 2, 3, 4, 5])
-    
+
     def test_topological_sort_complex_large(self):
         nodes = [{"instance_name": f"node{i}"} for i in range(1, 1001)]
         dag = DAG(nodes)
