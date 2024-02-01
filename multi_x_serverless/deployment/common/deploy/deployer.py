@@ -202,6 +202,9 @@ class Deployer:
         self._endpoints.get_solver_update_checker_client().set_value_in_table(
             WORKFLOW_PLACEMENT_DECISION_TABLE, self._config.workflow_id, workflow_placement_decision_json
         )
+        self._endpoints.get_solver_workflow_placement_decision_client().remove_value_from_table(
+            WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE, self._config.workflow_id
+        )
 
     def _upload_workflow_placement_decision(self, workflow: Workflow) -> None:
         if self._executor is None:

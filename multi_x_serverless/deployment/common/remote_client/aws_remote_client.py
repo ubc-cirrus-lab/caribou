@@ -265,6 +265,10 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
             return item["value"]["S"]
         return ""
 
+    def remove_value_from_table(self, table_name: str, key: str) -> None:
+        client = self._client("dynamodb")
+        client.delete_item(TableName=table_name, Key={"key": {"S": key}})
+
     def get_key_present_in_table(self, table_name: str, key: str) -> bool:
         client = self._client("dynamodb")
         response = client.get_item(TableName=table_name, Key={"key": {"S": key}})

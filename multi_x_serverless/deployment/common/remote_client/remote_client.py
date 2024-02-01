@@ -93,6 +93,10 @@ class RemoteClient(ABC):
         raise NotImplementedError()
 
     @abstractmethod
+    def remove_value_from_table(self, table_name: str, key: str) -> None:
+        raise NotImplementedError()
+
+    @abstractmethod
     def get_key_present_in_table(self, table_name: str, key: str) -> bool:
         raise NotImplementedError()
 
