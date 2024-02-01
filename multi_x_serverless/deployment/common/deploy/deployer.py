@@ -60,7 +60,7 @@ class Deployer:
             raise DeploymentError(
                 f"Workflow {self._config.workflow_name} with version {self._config.workflow_version} not deployed, something went wrong"  # pylint: disable=line-too-long
             )
-    
+
         staging_area_data = self._endpoints.get_solver_update_checker_client().get_value_from_table(
             WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE, self._config.workflow_id
         )
@@ -71,17 +71,17 @@ class Deployer:
 
         if previous_workflow_placement_decision is None:
             raise RuntimeError("Current workflow placement decision is None")
-        
+
         previous_workflow_placement_decision_json = json.loads(previous_workflow_placement_decision)
 
         if staging_area_data is None:
             raise RuntimeError("Staging area data is None")
-        
+
         staging_area_data_json = json.loads(staging_area_data)
 
         if not isinstance(staging_area_data_json, dict):
             raise RuntimeError("Staging area data is not a dictionary")
-        
+
         function_to_deployment_regions = self._get_function_to_deployment_regions(staging_area_data_json)
 
         filtered_function_to_deployment_regions = self._filter_function_to_deployment_regions(
@@ -106,7 +106,26 @@ class Deployer:
         )
 
         self._update_workflow_to_deployer_server(workflow, merged_deployer_regions)
-        self._update_workflow_placement_decision(workflow, staging_area_data, previous_workflow_placement_decision_json["instances"])
+        self._update_workflow_placement_decision(
+            workflow, staging_area_data, previous_workflow_placement_decision_json["instances"]
+        )
+
+    def _get_function_to_deployment_regions(self, staging_area_data: dict) -> dict[str, dict[str, str]]:
+        function_to_deployment_regions: dict[str, dict[str, str]] = {}
+        for instance_name, placement in staging_area_data["workflow_placement"].items():
+            function_name = (
+                instance_name.split(":", maxsplit=1)[0]
+                + "_"
+                + placement["provider_region"]["provider"]
+                + "-"
+                + placement["provider_region"]["region"]
+            )
+            if function_name not in function_to_deployment_regions:
+                function_to_deployment_regions[function_name] = {
+                    "provider": placement["provider_region"]["provider"],
+                    "region": placement["provider_region"]["region"],
+                }
+        return function_to_deployment_regions
 
     def _filter_function_to_deployment_regions(
         self,
@@ -191,7 +210,9 @@ class Deployer:
             SOLVER_UPDATE_CHECKER_RESOURCE_TABLE, self._config.workflow_id
         )
 
-    def _update_workflow_placement_decision(self, workflow: Workflow, staging_area_data: str, previous_instances: list[dict]) -> None:
+    def _update_workflow_placement_decision(
+        self, workflow: Workflow, staging_area_data: str, previous_instances: list[dict]
+    ) -> None:
         if staging_area_data is None:
             raise RuntimeError("Staging area data is None")
 
