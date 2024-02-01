@@ -98,14 +98,14 @@ class BFSFineGrainedSolver(Solver):
                         current_instance_index, current_instance_index, from_region_index, to_region_index
                     )
 
+                    wc_cost = wc_t_cost + wc_e_cost
+                    wc_carbon = wc_t_carbon + wc_e_carbon
+                    wc_runtime = wc_t_runtime + wc_e_runtime
+
                     # For probabilistic case (Using average latency and factor in invocation probability)
                     (pc_t_cost, pc_t_carbon, pc_t_runtime) = self._input_manager.get_transmission_cost_carbon_runtime(
                         current_instance_index, current_instance_index, from_region_index, to_region_index, True
                     )
-
-                    wc_cost = wc_t_cost + wc_e_cost
-                    wc_carbon = wc_t_carbon + wc_e_carbon
-                    wc_runtime = wc_t_runtime + wc_e_runtime
 
                     pc_cost = pc_t_cost + pc_e_cost
                     pc_carbon = pc_t_carbon + pc_e_carbon
@@ -194,7 +194,9 @@ class BFSFineGrainedSolver(Solver):
                             ):
                                 # For now we use worse case, but when probability is implemented we will use that instead
                                 # Note to keep consistency with the other solvers, we save in cost, runtime, then carbon
-                                final_deployments.append((clean_combined_placements, pc_cost, max_pc_runtime, pc_carbon))
+                                final_deployments.append(
+                                    (clean_combined_placements, pc_cost, max_pc_runtime, pc_carbon)
+                                )
 
                     del deployments  # Clear all memory
 
@@ -306,7 +308,7 @@ class BFSFineGrainedSolver(Solver):
 
                                     current_max_pc_t_runtime = max(current_max_pc_t_runtime, pc_t_runtime)
 
-                                # Get the current total cost and carbon for this specific transition (runtime doesnt matter for this)
+                                # Get the current total cost and carbon for this specific transition (runtime doesn't matter for this)
                                 current_instance_wc_cost = current_cumulative_wc_t_cost + wc_e_cost
                                 current_instance_wc_carbon = current_cumulative_wc_t_carbon + wc_e_carbon
 
@@ -362,16 +364,10 @@ class BFSFineGrainedSolver(Solver):
 
         return final_deployments
 
-    def _find_common_elements(self, list_of_sets: list[set[int]]) -> list[int]:
+    def _find_common_elements(self, list_of_sets: list[set[int]]) -> set[int]:
         if not list_of_sets:
-            return []
-
-        common_elements = set(list_of_sets[0])
-
-        for s in list_of_sets[1:]:
-            common_elements &= s    # intersection
-
-        return list(common_elements)
+            return {}
+        return set.intersection(*list_of_sets)
 
     def _calculate_wc_pc_cost_carbon_cl_placements(
         self, instance_placement_data: dict[int, tuple[int, tuple[float, float], tuple[float, float]]]
