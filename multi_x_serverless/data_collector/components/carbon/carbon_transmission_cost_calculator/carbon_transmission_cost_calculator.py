@@ -1,6 +1,6 @@
+import math
 from abc import ABC, abstractmethod
 from typing import Any
-import math
 
 
 class CarbonTransmissionCostCalculator(ABC):
@@ -15,7 +15,6 @@ class CarbonTransmissionCostCalculator(ABC):
     @abstractmethod
     def calculate_transmission_carbon_intensity(self, region_from: dict[str, Any], region_to: dict[str, Any]) -> float:
         raise NotImplementedError
-
 
     def _get_distance_between_coordinates(
         self, latitude_from: float, longitude_from: float, latitude_to: float, longitude_to: float
@@ -37,7 +36,6 @@ class CarbonTransmissionCostCalculator(ABC):
         distance = R * c
 
         return distance
-
 
     def _get_carbon_intensity_segments_from_coordinates(
         self, latitude_from: float, longitude_from: float, latitude_to: float, longitude_to: float

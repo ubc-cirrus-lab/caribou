@@ -423,6 +423,29 @@ This Collector should be run very frequently, and triggered by the Solver Update
 This collector is responsible for managing the "workflow_instance_table" database table.
 Unlike the other Data Collectors, the Workflow Collector should not and will not have or require updating any timestamp of the `available_regions_table` table.
 
+The Workflow Collector is responsible for extracting information from the `workflow_performance_table` which was managed by the Datastore Syncer (Which should retrieve all the invocations of the workflow from local invoked datacenters and then remove the local entries only after finishing sumarization). Below are the tenative expected format of this table:
+
+The Workflow Collector is responsible for extracting information from the `workflow_performance_table`, which is managed by the Datastore Syncer. The Datastore Syncer should retrieve all the invocations log of the workflow from locally data centers and then remove the local entries only after finishing summarization. Below are the tentative expected formats of this table:
+
+- Key: `<workflow_unique_id>`
+- Sort Key (N): Timestamp of last summary (last summarized by Datastore Syncer)
+- Value (S):
+  - Number of total invocations (For the entire workflow)
+  - Time between last summary to current summary
+  - At Instance `<instance_unique_id>`
+    Number of total invocation of this instance
+    - At Region `<provider_unique_id>:<region_name>`
+      - Number of invocation (of this instance in this region)
+      - Region Average/Tail Runtime.
+    - To Instance `<instance_unique_id>`
+      - Number of calls from parent instance to this instance. 
+      - Average data transfer size between instance stages.
+      - At Region `<provider_unique_id>:<region_name>`
+        - To Region `<provider_unique_id>:<region_name>`
+          - Number transmission
+          - Region Average/Tail Latency.
+
+
 The `workflow_instance_table` is responsible for summarizing and collecting information regarding past instance invocation at various regions:
 
 - Key: `<workflow_unique_id>`

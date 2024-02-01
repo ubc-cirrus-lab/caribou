@@ -1,8 +1,9 @@
+import math
+from typing import Any
+
 from multi_x_serverless.data_collector.components.carbon.carbon_transmission_cost_calculator.carbon_transmission_cost_calculator import (
     CarbonTransmissionCostCalculator,
 )
-import math
-from typing import Any
 
 
 class DistanceCarbonTransmissionCostCalculator(CarbonTransmissionCostCalculator):

@@ -33,4 +33,4 @@ PROVIDER_REGION_TABLE = "provider_region_table"
 PROVIDER_TABLE = "provider_table"
 
 ## Workflow Tables
-WORKFLOW_INSTANCE_TABLE = "workflow_at_instance_table"
+WORKFLOW_INSTANCE_TABLE = "workflow_instance_table"

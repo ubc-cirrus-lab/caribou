@@ -1,9 +1,10 @@
+from typing import Any
+
+from multi_x_serverless.common.provider import Provider
 from multi_x_serverless.data_collector.components.carbon.carbon_transmission_cost_calculator.carbon_transmission_cost_calculator import (
     CarbonTransmissionCostCalculator,
 )
 from multi_x_serverless.data_collector.utils.aws_latency_retriever import AWSLatencyRetriever
-from multi_x_serverless.common.provider import Provider
-from typing import Any
 
 
 class LatencyCarbonTransmissionCostCalculator(CarbonTransmissionCostCalculator):

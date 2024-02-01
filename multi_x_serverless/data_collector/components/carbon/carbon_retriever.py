@@ -6,14 +6,14 @@ from typing import Any
 
 import requests
 
-from multi_x_serverless.data_collector.components.data_retriever import DataRetriever
-from multi_x_serverless.deployment.common.remote_client.remote_client import RemoteClient
 from multi_x_serverless.data_collector.components.carbon.carbon_transmission_cost_calculator.distance_carbon_transmission_cost_calculator import (
     DistanceCarbonTransmissionCostCalculator,
 )
 from multi_x_serverless.data_collector.components.carbon.carbon_transmission_cost_calculator.latency_carbon_transmission_cost_calculator import (
     LatencyCarbonTransmissionCostCalculator,
 )
+from multi_x_serverless.data_collector.components.data_retriever import DataRetriever
+from multi_x_serverless.deployment.common.remote_client.remote_client import RemoteClient
 
 
 class CarbonRetriever(DataRetriever):
@@ -26,15 +26,21 @@ class CarbonRetriever(DataRetriever):
         self._kwh_per_gb_estimate = 1.0
         if "carbon_transmission_cost_calculator" in config:
             if config["carbon_transmission_cost_calculator"] == "latency":
-                self._carbon_transmission_cost_calculator = LatencyCarbonTransmissionCostCalculator(config, self._get_carbon_intensity_from_coordinates)
+                self._carbon_transmission_cost_calculator = LatencyCarbonTransmissionCostCalculator(
+                    config, self._get_carbon_intensity_from_coordinates
+                )
             elif config["carbon_transmission_cost_calculator"] == "distance":
-                self._carbon_transmission_cost_calculator = DistanceCarbonTransmissionCostCalculator(config, self._get_carbon_intensity_from_coordinates)
+                self._carbon_transmission_cost_calculator = DistanceCarbonTransmissionCostCalculator(
+                    config, self._get_carbon_intensity_from_coordinates
+                )
             else:
                 raise ValueError(
                     f"Invalid carbon transmission cost calculator: {config['carbon_transmission_cost_calculator']}"
                 )
         else:
-            self._carbon_transmission_cost_calculator = DistanceCarbonTransmissionCostCalculator(config, self._get_carbon_intensity_from_coordinates)
+            self._carbon_transmission_cost_calculator = DistanceCarbonTransmissionCostCalculator(
+                config, self._get_carbon_intensity_from_coordinates
+            )
 
     def retrieve_carbon_region_data(self) -> dict[str, dict[str, Any]]:
         result_dict: dict[str, dict[str, Any]] = {}
