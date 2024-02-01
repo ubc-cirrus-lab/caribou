@@ -363,12 +363,13 @@ The keys and information stored in this table are as follows:
 
 - Key: `<provider_unique_id>:<region_name>`
 - Value (S):
-  - Execution Cost for each configuration (or services).
+  - Execution Cost:
+    - Values for each configuration (or services).
   - Power-efficiency-related information (PUE, CFE).
   - Average Memory and CPU compute power.
-  - Egress Global Data Transfer Cost (outgoing to different providers).
-  - Egress Provider Data Transfer Cost (outgoing to different regions within the same provider).
-  - Egress Region Data Transfer Cost (outgoing to same regions within the same provider).
+  - Transmission Cost:
+    - Egress Global Data Transfer Cost (outgoing to different providers).
+    - Egress Provider Data Transfer Cost (outgoing to different regions within the same provider).
 
 Note: Data Transfer Cost and complexities of this warrant further investigation and thus associated storage information regarding such may be subject to change.
 

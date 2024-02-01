@@ -1,3 +1,0 @@
-bs4>=0.0.1
-googlemaps>=4.10.0
-urllib3<2

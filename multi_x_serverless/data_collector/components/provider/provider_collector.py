@@ -1,6 +1,6 @@
 from typing import Any
 
-from multi_x_serverless.common.constants import PROVIDER_FROM_TO_REGION_TABLE, PROVIDER_REGION_TABLE, PROVIDER_TABLE
+from multi_x_serverless.common.constants import PROVIDER_REGION_TABLE, PROVIDER_TABLE
 from multi_x_serverless.data_collector.components.data_collector import DataCollector
 from multi_x_serverless.data_collector.components.provider.provider_exporter import ProviderExporter
 from multi_x_serverless.data_collector.components.provider.provider_retriever import ProviderRetriever
@@ -29,11 +29,11 @@ class ProviderCollector(DataCollector):
         provider_region_data: dict[str, Any] = {}
 
         # TODO (#27): Implement free tier data collection
-        provider_data: dict[str, Any] = {}
+        provider_data: dict[str, Any] = self._data_retriever.retrieve_provider_data()
 
         self._data_exporter.export_all_data(provider_region_data, provider_data)
 
         # Updates the timestamp of modified regions
-        modified_regions: set[str] = set()  # Regions we are updating in this collector
-        # Important: Regions are stored as provider_region
+        modified_regions: set[str] = self._data_exporter.get_modified_regions()
+
         self._data_exporter.update_available_region_timestamp(self._data_collector_name, modified_regions)
