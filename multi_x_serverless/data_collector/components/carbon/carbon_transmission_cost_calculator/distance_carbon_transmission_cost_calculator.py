@@ -1,5 +1,5 @@
 import math
-from typing import Any
+from typing import Any, Callable
 
 from multi_x_serverless.data_collector.components.carbon.carbon_transmission_cost_calculator.carbon_transmission_cost_calculator import (
     CarbonTransmissionCostCalculator,
@@ -7,7 +7,7 @@ from multi_x_serverless.data_collector.components.carbon.carbon_transmission_cos
 
 
 class DistanceCarbonTransmissionCostCalculator(CarbonTransmissionCostCalculator):
-    def __init__(self, config: dict, get_carbon_intensity_from_coordinates: callable) -> None:
+    def __init__(self, config: dict, get_carbon_intensity_from_coordinates: Callable) -> None:
         super().__init__(config, get_carbon_intensity_from_coordinates)
         if "_kwh_per_km_gb_estimate" in config:
             self._kwh_per_km_gb_estimate = config["_kwh_per_km_gb_estimate"]

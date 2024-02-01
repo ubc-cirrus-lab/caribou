@@ -12,10 +12,8 @@ class WorkflowRetriever(DataRetriever):
         self._workflow_summary_table: str = WORKFLOW_SUMMARY_TABLE
 
     def retrieve_all_workflow_ids(self) -> list[str]:
-        workflow_summaries = self._client.get_all_values_from_table(self._workflow_summary_table)
-
-        # TODO -> Parse the workflow summaries to get the workflow ids
-        return []
+        # Perhaps there could be a get all keys method in the remote client
+        return list(self._client.get_all_values_from_table(self._workflow_summary_table).keys())
 
     def retrieve_workflow_summary(self, workflow_unique_id: str) -> dict[str, Any]:
         # # No associated legacy code
@@ -38,4 +36,5 @@ class WorkflowRetriever(DataRetriever):
         #           - Region Average/Tail Latency.
 
         # TODO -> Parse the workflow summary to get the workflow summary
-        return self._client.get_value_from_table(self._workflow_summary_table, workflow_unique_id)
+        self._client.get_value_from_table(self._workflow_summary_table, workflow_unique_id)
+        return {}

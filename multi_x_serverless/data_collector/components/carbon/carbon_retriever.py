@@ -6,6 +6,9 @@ from typing import Any
 
 import requests
 
+from multi_x_serverless.data_collector.components.carbon.carbon_transmission_cost_calculator.carbon_transmission_cost_calculator import (
+    CarbonTransmissionCostCalculator,
+)
 from multi_x_serverless.data_collector.components.carbon.carbon_transmission_cost_calculator.distance_carbon_transmission_cost_calculator import (
     DistanceCarbonTransmissionCostCalculator,
 )
@@ -17,6 +20,8 @@ from multi_x_serverless.deployment.common.remote_client.remote_client import Rem
 
 
 class CarbonRetriever(DataRetriever):
+    _carbon_transmission_cost_calculator: CarbonTransmissionCostCalculator
+
     def __init__(self, client: RemoteClient, config: dict) -> None:
         super().__init__(client)
         self._electricity_maps_auth_token = os.environ["ELECTRICITY_MAPS_AUTH_TOKEN"]

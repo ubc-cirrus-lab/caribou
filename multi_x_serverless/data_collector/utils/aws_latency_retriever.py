@@ -15,7 +15,7 @@ class AWSLatencyRetriever:
         self._soup = BeautifulSoup(self._cloudping_page.content, "html.parser")
         self._parse_table()
 
-    def _parse_table(self):
+    def _parse_table(self) -> None:
         table = self._soup.find("table", class_="table table-bordered table-sm")
 
         headers = table.find_all("th", class_="region_title")

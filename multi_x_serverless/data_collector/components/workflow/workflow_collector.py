@@ -24,9 +24,9 @@ class WorkflowCollector(DataCollector):
         all_workflow_ids = self._data_retriever.retrieve_all_workflow_ids()
 
         for workflow_unique_id in all_workflow_ids:
-            self.run(workflow_unique_id)
+            self.collect_single_workflow(workflow_unique_id)
 
-    def run(self, workflow_unique_id: str) -> None:  # Run on a specific workflow
+    def collect_single_workflow(self, workflow_unique_id: str) -> None:  # Run on a specific workflow
         # Retrieve available regions
         self._data_retriever.retrieve_available_regions()
 

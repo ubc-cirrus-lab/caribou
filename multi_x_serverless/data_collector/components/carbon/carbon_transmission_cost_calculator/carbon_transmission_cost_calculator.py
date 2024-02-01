@@ -1,10 +1,10 @@
 import math
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Callable
 
 
 class CarbonTransmissionCostCalculator(ABC):
-    def __init__(self, config: dict, get_carbon_intensity_from_coordinates: callable) -> None:
+    def __init__(self, config: dict, get_carbon_intensity_from_coordinates: Callable) -> None:
         self._config = config
         self._get_carbon_intensity_from_coordinates = get_carbon_intensity_from_coordinates
         if "kwh_per_gb_estimate" in config:
@@ -39,7 +39,7 @@ class CarbonTransmissionCostCalculator(ABC):
 
     def _get_carbon_intensity_segments_from_coordinates(
         self, latitude_from: float, longitude_from: float, latitude_to: float, longitude_to: float
-    ) -> float:
+    ) -> list[tuple[float, float]]:
         self._total_distance = self._get_distance_between_coordinates(
             latitude_from, longitude_from, latitude_to, longitude_to
         )

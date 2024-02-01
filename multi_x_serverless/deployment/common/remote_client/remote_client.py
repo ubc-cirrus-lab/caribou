@@ -99,7 +99,7 @@ class RemoteClient(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def get_all_values_from_table(self, table_name: str) -> dict[str, dict[str, Any]]:
+    def get_all_values_from_table(self, table_name: str) -> dict[str, Any]:
         raise NotImplementedError()
 
     @abstractmethod

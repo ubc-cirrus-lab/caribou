@@ -16,7 +16,7 @@ class ProviderRetriever(DataRetriever):
     def __init__(self) -> None:
         self._google_api_key = os.environ.get("GOOGLE_API_KEY")
         self._aws_pricing_client = boto3.client("pricing", region_name="us-east-1")
-        self._aws_region_name_to_code = {}
+        self._aws_region_name_to_code: dict[str, str] = {}
 
     def retrieve_aws_regions(self) -> dict[str, dict[str, Any]]:
         amazon_region_url = "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html#concepts-available-regions"  # pylint: disable=line-too-long
@@ -85,7 +85,7 @@ class ProviderRetriever(DataRetriever):
     def retrieve_provider_data(self) -> dict[str, dict[str, Any]]:
         provider_data = {}
 
-        grouped_by_provider = {}
+        grouped_by_provider: dict[str, list[str]] = {}
         for region_key, available_region in self._available_regions.items():
             provider = available_region["provider"]
             if provider not in grouped_by_provider:
