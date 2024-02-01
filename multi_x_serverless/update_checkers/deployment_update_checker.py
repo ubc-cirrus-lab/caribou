@@ -5,7 +5,7 @@ from multi_x_serverless.update_checkers.update_checker import UpdateChecker
 
 class DeploymentUpdateChecker(UpdateChecker):
     # This should be a timed update checker (every hour)
-    def __init__(self, name):
+    def __init__(self, name) -> None:
         super().__init__(name)
 
     def check(self) -> None:

@@ -25,7 +25,7 @@ def main() -> int:
 
 def run(
     input_workflow_id: str,
-):
+) -> None:
     endpoints = Endpoints()
     deployment_manager_client = endpoints.get_deployment_manager_client()
 
