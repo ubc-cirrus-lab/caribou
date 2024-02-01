@@ -107,6 +107,10 @@ class RemoteClient(ABC):
     @abstractmethod
     def download_resource(self, key: str) -> bytes:
         raise NotImplementedError()
+    
+    @abstractmethod
+    def get_keys(self, table_name: str) -> list[str]:
+        raise NotImplementedError()
 
     @abstractmethod
     def update_function(

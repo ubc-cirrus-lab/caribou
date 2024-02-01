@@ -197,7 +197,10 @@ class Workflow(Resource):
         return result
 
     def get_workflow_placement_decision_extend_staging(
-        self, resource_values: dict[str, list[Any]], staging_area_placement: dict[str, Any]
+        self,
+        resource_values: dict[str, list[Any]],
+        staging_area_placement: dict[str, Any],
+        previous_instances: list[dict],
     ) -> dict[str, Any]:
         """
         The desired output format is explained in the `docs/design.md` file under `Workflow Placement Decision`.
@@ -205,4 +208,11 @@ class Workflow(Resource):
         staging_area_placement["instances"] = self._get_instances()
         staging_area_placement["current_instance_name"] = self._get_entry_point_instance_name()
         self._extend_stage_area_placement(resource_values, staging_area_placement)
+        self._update_instances(staging_area_placement)
         return staging_area_placement
+
+    def _update_instances(self, staging_area_placement: dict[str, Any]) -> None:
+        for instance in staging_area_placement["instances"]:
+            instance["function_name"] = staging_area_placement["workflow_placement"][instance["instance_name"]][
+                "function_identifier"
+            ].split(":")[-1]
