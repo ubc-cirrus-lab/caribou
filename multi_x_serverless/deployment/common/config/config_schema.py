@@ -25,9 +25,9 @@ class RegionAndProviders(BaseModel):
     @model_validator(mode="after")
     def validate_config(cls: Any, values: Any) -> Any:  # pylint: disable=no-self-argument, unused-argument
         for provider in values.providers.keys():
-            if provider not in ["aws", "gcp"]:
+            if provider not in ["aws", "gcp", "provider1", "provider2"]:
                 raise ValueError(f"Provider {provider} is not supported")
-            if provider == "aws":
+            if provider == "aws" or provider == "provider1":
                 config = values.providers[provider].config
                 if "memory" not in config or not isinstance(config["memory"], int):
                     raise ValueError("The 'config' dictionary must contain 'memory' key with an integer value")

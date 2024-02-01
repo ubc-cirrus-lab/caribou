@@ -7,7 +7,7 @@ class TestDeployInstructionFactory(unittest.TestCase):
     def test_get_deploy_instructions_aws(self):
         # Arrange
         provider = "aws"
-        region = "us-west-2"
+        region = "region1"
         deploy_instruction_factory = DeployInstructionFactory()
 
         # Act
@@ -19,7 +19,7 @@ class TestDeployInstructionFactory(unittest.TestCase):
     def test_get_deploy_instructions_unknown(self):
         # Arrange
         provider = "unknown"
-        region = "us-west-2"
+        region = "region1"
         deploy_instruction_factory = DeployInstructionFactory()
 
         # Act & Assert
@@ -29,7 +29,7 @@ class TestDeployInstructionFactory(unittest.TestCase):
     def test_get_deploy_instructions_gcp(self):
         # Arrange
         provider = "gcp"
-        region = "us-west-2"
+        region = "region1"
         deploy_instruction_factory = DeployInstructionFactory()
 
         # Act & Assert

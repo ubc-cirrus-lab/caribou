@@ -12,13 +12,13 @@ class TestDeployerFactory(unittest.TestCase):
     @mock.patch(
         "builtins.open",
         new_callable=mock.mock_open,
-        read_data='{"workflow_name": "test", "workflow_version": "test", "environment_variables": {"test": "test"}, "iam_policy_file": "test", "regions_and_providers": {"providers": {"aws": {"region": "eu-central-1", "account_id": "123456789012", "role_name": "test"}}}}',
+        read_data='{"workflow_name": "test", "workflow_version": "test", "environment_variables": {"test": "test"}, "iam_policy_file": "test", "regions_and_providers": {"providers": {"provider1": {"region": "region4", "account_id": "123456789012", "role_name": "test"}}}}',
     )
     def test_load_project_config(self, mock_open, mock_yaml):
-        mock_yaml.return_value = {"provider": "aws"}
+        mock_yaml.return_value = {"provider": "provider1"}
         factory = DeployerFactory("project_dir")
         config = factory.load_project_config()
-        self.assertEqual(config, {"provider": "aws"})
+        self.assertEqual(config, {"provider": "provider1"})
 
     @mock.patch("multi_x_serverless.deployment.common.factories.deployer_factory.DeployerFactory.load_project_config")
     @mock.patch("multi_x_serverless.deployment.common.factories.deployer_factory.DeployerFactory.load_workflow_app")
@@ -26,12 +26,12 @@ class TestDeployerFactory(unittest.TestCase):
         mock_load_config.return_value = {
             "workflow_name": "test",
             "workflow_version": "test",
-            "home_regions": [{"provider": "aws", "region": "eu-central-1"}],
+            "home_regions": [{"provider": "provider1", "region": "region4"}],
             "environment_variables": [{"key": "test", "value": "test"}],
             "iam_policy_file": "test",
             "regions_and_providers": {
                 "providers": {
-                    "aws": {
+                    "provider1": {
                         "config": {"memory": 128, "timeout": 10},
                     }
                 }
@@ -53,12 +53,12 @@ class TestDeployerFactory(unittest.TestCase):
             {
                 "workflow_name": "test",
                 "workflow_version": "test",
-                "home_regions": [{"provider": "aws", "region": "eu-central-1"}],
+                "home_regions": [{"provider": "provider1", "region": "region4"}],
                 "environment_variables": [{"key": "test", "value": "test"}],
                 "iam_policy_file": "test",
                 "regions_and_providers": {
                     "providers": {
-                        "aws": {
+                        "provider1": {
                             "config": {"memory": 128, "timeout": 10},
                         }
                     }
@@ -78,11 +78,11 @@ class TestDeployerFactory(unittest.TestCase):
             {
                 "workflow_name": "test",
                 "workflow_version": "test",
-                "home_regions": [{"provider": "aws", "region": "eu-central-1"}],
+                "home_regions": [{"provider": "provider1", "region": "region4"}],
                 "environment_variables": [{"key": "test", "value": "test"}],
                 "iam_policy_file": "test",
                 "regions_and_providers": {
-                    "providers": {"aws": {"region": "eu-central-1", "account_id": "123456789012", "role_name": "test"}}
+                    "providers": {"provider1": {"region": "region4", "account_id": "123456789012", "role_name": "test"}}
                 },
             },
             "project_dir",
@@ -102,7 +102,7 @@ class TestDeployerFactory(unittest.TestCase):
                 "environment_variables": {"test": "test"},
                 "iam_policy_file": "test",
                 "regions_and_providers": {
-                    "providers": {"aws": {"region": "eu-central-1", "account_id": "123456789012", "role_name": "test"}}
+                    "providers": {"provider1": {"region": "region4", "account_id": "123456789012", "role_name": "test"}}
                 },
             },
             "project_dir",
@@ -118,14 +118,14 @@ class TestDeployerFactory(unittest.TestCase):
         project_config = {
             "regions_and_providers": {
                 "providers": {
-                    "aws": {
+                    "provider1": {
                         "config": {"memory": 128, "timeout": 10},
                     }
                 },
-                "allowed_regions": [{"provider": "aws", "region": "eu-central-1"}],
-                "disallowed_regions": [{"provider": "aws", "region": "eu-central-2"}],
+                "allowed_regions": [{"provider": "provider1", "region": "region4"}],
+                "disallowed_regions": [{"provider": "provider1", "region": "region5"}],
             },
-            "home_regions": [{"provider": "aws", "region": "eu-central-1"}],
+            "home_regions": [{"provider": "provider1", "region": "region4"}],
         }
         # This should not raise any exceptions
         factory._DeployerFactory__validate_allowed_and_disallowed_regions_and_providers(project_config)
@@ -154,7 +154,7 @@ class TestDeployerFactory(unittest.TestCase):
         project_config = {
             "regions_and_providers": {
                 "providers": {
-                    "aws": {
+                    "provider1": {
                         "config": {"memory": 128, "timeout": 10},
                     }
                 },
@@ -168,7 +168,7 @@ class TestDeployerFactory(unittest.TestCase):
         project_config = {
             "regions_and_providers": {
                 "providers": {
-                    "aws": {
+                    "provider1": {
                         "config": {"memory": 128, "timeout": 10},
                     }
                 },
@@ -182,15 +182,15 @@ class TestDeployerFactory(unittest.TestCase):
         project_config = {
             "regions_and_providers": {
                 "providers": {
-                    "aws": {
+                    "provider1": {
                         "config": {"memory": 128, "timeout": 10},
                     }
                 },
-                "allowed_regions": [{"provider": "aws"}],
+                "allowed_regions": [{"provider": "provider1"}],
             }
         }
         with self.assertRaises(
-            RuntimeError, msg="Region {'provider': 'aws'} must have both provider and region defined"
+            RuntimeError, msg="Region {'provider': 'provider1'} must have both provider and region defined"
         ):
             factory._DeployerFactory__validate_allowed_and_disallowed_regions_and_providers(project_config)
 
@@ -198,11 +198,11 @@ class TestDeployerFactory(unittest.TestCase):
         project_config = {
             "regions_and_providers": {
                 "providers": {
-                    "aws": {
+                    "provider1": {
                         "config": {"memory": 128, "timeout": 10},
                     }
                 },
-                "allowed_regions": [{"provider": "unsupported", "region": "eu-central-1"}],
+                "allowed_regions": [{"provider": "unsupported", "region": "region4"}],
             }
         }
         with self.assertRaises(RuntimeError, msg="Provider unsupported is not supported"):
@@ -212,11 +212,11 @@ class TestDeployerFactory(unittest.TestCase):
         project_config = {
             "regions_and_providers": {
                 "providers": {
-                    "aws": {
+                    "provider1": {
                         "config": {"memory": 128, "timeout": 10},
                     }
                 },
-                "allowed_regions": [{"provider": "gcp", "region": "eu-central-1"}],
+                "allowed_regions": [{"provider": "gcp", "region": "region4"}],
             }
         }
         with self.assertRaises(RuntimeError, msg="Provider gcp is not defined in providers"):
@@ -226,14 +226,14 @@ class TestDeployerFactory(unittest.TestCase):
         project_config = {
             "regions_and_providers": {
                 "providers": {
-                    "aws": {
+                    "provider1": {
                         "config": {"memory": 128, "timeout": 10},
                         "account_id": "123456789012",
                         "role_name": "test",
-                        "region": "eu-central-1",
+                        "region": "region4",
                     }
                 },
-                "allowed_regions": [{"provider": "aws", "region": "eu-central-1"}],
+                "allowed_regions": [{"provider": "provider1", "region": "region4"}],
             }
         }
 
@@ -244,7 +244,7 @@ class TestDeployerFactory(unittest.TestCase):
         project_config = {
             "regions_and_providers": {
                 "providers": {
-                    "aws": {
+                    "provider1": {
                         "config": {"memory": 128, "timeout": 10},
                     }
                 },
@@ -258,7 +258,7 @@ class TestDeployerFactory(unittest.TestCase):
         project_config = {
             "regions_and_providers": {
                 "providers": {
-                    "aws": {
+                    "provider1": {
                         "config": {"memory": 128, "timeout": 10},
                     }
                 },
@@ -272,15 +272,15 @@ class TestDeployerFactory(unittest.TestCase):
         project_config = {
             "regions_and_providers": {
                 "providers": {
-                    "aws": {
+                    "provider1": {
                         "config": {"memory": 128, "timeout": 10},
                     }
                 },
-                "disallowed_regions": [{"provider": "aws"}],
+                "disallowed_regions": [{"provider": "provider1"}],
             }
         }
         with self.assertRaises(
-            RuntimeError, msg="Region {'provider': 'aws'} must have both provider and region defined"
+            RuntimeError, msg="Region {'provider': 'provider1'} must have both provider and region defined"
         ):
             factory._DeployerFactory__validate_allowed_and_disallowed_regions_and_providers(project_config)
 
@@ -288,11 +288,11 @@ class TestDeployerFactory(unittest.TestCase):
         project_config = {
             "regions_and_providers": {
                 "providers": {
-                    "aws": {
+                    "provider1": {
                         "config": {"memory": 128, "timeout": 10},
                     }
                 },
-                "disallowed_regions": [{"provider": "unsupported", "region": "eu-central-1"}],
+                "disallowed_regions": [{"provider": "unsupported", "region": "region4"}],
             }
         }
         with self.assertRaises(RuntimeError, msg="Provider unsupported is not supported"):
@@ -302,11 +302,11 @@ class TestDeployerFactory(unittest.TestCase):
         project_config = {
             "regions_and_providers": {
                 "providers": {
-                    "aws": {
+                    "provider1": {
                         "config": {"memory": 128, "timeout": 10},
                     }
                 },
-                "disallowed_regions": [{"provider": "gcp", "region": "eu-central-1"}],
+                "disallowed_regions": [{"provider": "gcp", "region": "region4"}],
             }
         }
         with self.assertRaises(RuntimeError, msg="Provider gcp is not defined in providers"):
@@ -316,47 +316,47 @@ class TestDeployerFactory(unittest.TestCase):
         project_config = {
             "regions_and_providers": {
                 "providers": {
-                    "aws": {
+                    "provider1": {
                         "config": {"memory": 128, "timeout": 10},
                     }
                 },
-                "disallowed_regions": [{"provider": "aws", "region": "eu-central-1"}],
-                "allowed_regions": [{"provider": "aws", "region": "eu-central-1"}],
+                "disallowed_regions": [{"provider": "provider1", "region": "region4"}],
+                "allowed_regions": [{"provider": "provider1", "region": "region4"}],
             }
         }
-        with self.assertRaises(RuntimeError, msg="Region eu-central-1 cannot be both allowed and disallowed"):
+        with self.assertRaises(RuntimeError, msg="Region region4 cannot be both allowed and disallowed"):
             factory._DeployerFactory__validate_allowed_and_disallowed_regions_and_providers(project_config)
 
         # Test with home region in disallowed regions
         project_config = {
             "regions_and_providers": {
                 "providers": {
-                    "aws": {
+                    "provider1": {
                         "config": {"memory": 128, "timeout": 10},
                     }
                 },
-                "disallowed_regions": [{"provider": "aws", "region": "eu-central-1"}],
-                "allowed_regions": [{"provider": "aws", "region": "eu-central-2"}],
+                "disallowed_regions": [{"provider": "provider1", "region": "region4"}],
+                "allowed_regions": [{"provider": "provider1", "region": "region5"}],
             },
-            "home_regions": [{"provider": "aws", "region": "eu-central-1"}],
+            "home_regions": [{"provider": "provider1", "region": "region4"}],
         }
-        with self.assertRaises(RuntimeError, msg="Region eu-central-1 cannot be both home and disallowed"):
+        with self.assertRaises(RuntimeError, msg="Region region4 cannot be both home and disallowed"):
             factory._DeployerFactory__validate_allowed_and_disallowed_regions_and_providers(project_config)
 
         # Test with a valid project_config
         project_config = {
             "regions_and_providers": {
                 "providers": {
-                    "aws": {
+                    "provider1": {
                         "config": {"memory": 128, "timeout": 10},
                         "account_id": "123456789012",
                         "role_name": "test",
-                        "region": "eu-central-1",
+                        "region": "region4",
                     }
                 },
-                "disallowed_regions": [{"provider": "aws", "region": "eu-central-1"}],
+                "disallowed_regions": [{"provider": "provider1", "region": "region4"}],
             },
-            "home_regions": [{"provider": "aws", "region": "eu-central-2"}],
+            "home_regions": [{"provider": "provider1", "region": "region5"}],
         }
 
         # This should not raise any exceptions

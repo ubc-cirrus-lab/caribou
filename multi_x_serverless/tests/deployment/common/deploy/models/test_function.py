@@ -20,13 +20,12 @@ class TestFunction(unittest.TestCase):
             {"env_var": "value"},
             "handler",
             "runtime",
-            [{"provider": "aws", "region": "us-west-1"}],
-            {"aws": {}},
+            {"provider": "provider1", "region": "region1"},
+            {"provider1": {}},
         )
 
     def test_initialise_remote_states(self):
-        self.assertEqual(len(self.function._remote_states), 1)
-        self.assertIsInstance(self.function._remote_states["aws"]["us-west-1"], RemoteState)
+        self.assertIsInstance(self.function._remote_state, RemoteState)
 
     def test_dependencies(self):
         dependencies = self.function.dependencies()
@@ -45,11 +44,11 @@ class TestFunction(unittest.TestCase):
             mock_resource = MockResource()
             mock_resource.resource_exists.return_value = False
 
-            self.function._remote_states = {"aws": {"us-west-1": mock_resource}}
+            self.function._remote_state = mock_resource
             self.deployment_package.filename = "filename"
             instructions = self.function.get_deployment_instructions()
 
-            mock_get_deploy_instructions.assert_called_once_with("aws", "us-west-1")
+            mock_get_deploy_instructions.assert_called_once_with("provider1", "region1")
             mock_deploy_instruction.get_deployment_instructions.assert_called_once_with(
                 self.function.name,
                 self.function.role,
@@ -58,10 +57,10 @@ class TestFunction(unittest.TestCase):
                 self.function.handler,
                 self.function.environment_variables,
                 self.function.deployment_package.filename,
-                self.function._remote_states["aws"]["us-west-1"],
+                self.function._remote_state,
                 False,
             )
-            self.assertEqual(instructions, {"aws:us-west-1": [Instruction("Some instruction")]})
+            self.assertEqual(instructions, {"provider1:region1": [Instruction("Some instruction")]})
 
     def test_get_deployment_instructions_deployment_package_not_built(self):
         with patch(
@@ -77,7 +76,7 @@ class TestFunction(unittest.TestCase):
 
     def test_get_deployment_instructions_gcp(self):
         with self.assertRaises(NotImplementedError):
-            self.function.get_deployment_instructions_gcp("us-west-1")
+            self.function.get_deployment_instructions_gcp("region1")
 
 
 if __name__ == "__main__":

@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
 from typing import Any
 
+from multi_x_serverless.common.provider import Provider
 from multi_x_serverless.deployment.common.deploy.models.iam_role import IAMRole
 from multi_x_serverless.deployment.common.deploy.models.instructions import Instruction
 from multi_x_serverless.deployment.common.deploy.models.remote_state import RemoteState
-from multi_x_serverless.deployment.common.provider import Provider
 
 
 class DeployInstructions(ABC):

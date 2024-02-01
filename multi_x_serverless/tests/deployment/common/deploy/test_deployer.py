@@ -25,7 +25,7 @@ class TestDeployer(unittest.TestCase):
         executor = Mock()
         deployer = Deployer(config, workflow_builder, deployment_packager, executor)
 
-        regions = [{"region": "us-west-1"}]
+        regions = [{"region": "region2"}]
         workflow = Workflow("test_workflow", "0.0.1", [], [], [], config)
         workflow_builder.build_workflow.return_value = workflow
         executor.get_deployed_resources.return_value = [Resource("test_resource", "test_resource")]
@@ -50,7 +50,7 @@ class TestDeployer(unittest.TestCase):
         executor = Mock()
         deployer = Deployer(config, workflow_builder, deployment_packager, executor)
 
-        regions = [{"region": "us-west-1"}]
+        regions = [{"region": "region2"}]
         workflow_builder.build_workflow.side_effect = ClientError({"Error": {}}, "operation")
 
         with patch.object(Deployer, "_upload_workflow_to_solver_update_checker", return_value=None), patch.object(
@@ -65,7 +65,7 @@ class TestDeployer(unittest.TestCase):
         deployment_packager = Mock()
         deployer = Deployer(config, workflow_builder, deployment_packager, None)
 
-        regions = [{"region": "us-west-1"}]
+        regions = [{"region": "region2"}]
         workflow = Workflow("test_workflow", "0.0.1", [], [], [], config)
         workflow_builder.build_workflow.return_value = workflow
 
@@ -84,7 +84,7 @@ class TestDeployer(unittest.TestCase):
         executor = Mock()
         deployer = Deployer(config, workflow_builder, deployment_packager, executor)
 
-        regions = [{"region": "us-west-1"}]
+        regions = [{"region": "region2"}]
         workflow = Workflow("test_workflow", "0.0.1", [], [], [], config)
         workflow_builder.build_workflow.return_value = workflow
         executor.get_deployed_resources.return_value = [Resource("test_resource", "test_resource")]
@@ -102,9 +102,9 @@ class TestDeployer(unittest.TestCase):
         deployment_packager = Mock()
         deployer = Deployer(config, workflow_builder, deployment_packager, None)
 
-        function_to_deployment_regions = {"test_function": [{"region": "us-west-2"}]}
+        function_to_deployment_regions = {"test_function": [{"provider": "provider1", "region": "region1"}]}
         workflow_function_description = [{"name": "test_function", "version": "0.0.1"}]
-        deployed_regions = {"test_function": [{"region": "us-west-1"}]}
+        deployed_regions = {"test_function": [{"region": "region2"}]}
         workflow = Workflow("test_workflow", "0.0.1", [], [], [], config)
         workflow_builder.re_build_workflow.return_value = workflow
 
@@ -122,9 +122,9 @@ class TestDeployer(unittest.TestCase):
         executor = Mock()
         deployer = Deployer(config, workflow_builder, deployment_packager, executor)
 
-        function_to_deployment_regions = {"test_function": [{"region": "us-west-2"}]}
+        function_to_deployment_regions = {"test_function": [{"region": "region1"}]}
         workflow_function_description = [{"name": "test_function", "version": "0.0.1"}]
-        deployed_regions = {"test_function": [{"region": "us-west-1"}]}
+        deployed_regions = {"test_function": [{"region": "region2"}]}
 
         with patch.object(
             Deployer, "_get_workflow_already_deployed", return_value=None
@@ -141,9 +141,9 @@ class TestDeployer(unittest.TestCase):
         deployment_packager = Mock()
         executor = Mock()
         deployer = Deployer(config, workflow_builder, deployment_packager, executor)
-        deployed_regions = {"test_function": [{"region": "us-west-1"}]}
+        deployed_regions = {"test_function": [{"region": "region2"}]}
 
-        function_to_deployment_regions = {"test_function": [{"region": "us-west-2"}]}
+        function_to_deployment_regions = {"test_function": [{"region": "region1"}]}
         workflow_function_description = [{"name": "test_function", "version": "0.0.1"}]
 
         with patch.object(Deployer, "_re_deploy", side_effect=ClientError({}, "TestOperation")):
@@ -180,9 +180,7 @@ class TestDeployer(unittest.TestCase):
 
         workflow = Mock(spec=Workflow)
         workflow.get_function_description = Mock(return_value=[{"name": "test_function", "version": "0.0.1"}])
-        workflow.get_deployed_regions_initial_deployment = Mock(
-            return_value={"test_function": [{"region": "us-west-1"}]}
-        )
+        workflow.get_deployed_regions_initial_deployment = Mock(return_value={"test_function": [{"region": "region2"}]})
 
         with patch.object(AWSRemoteClient, "set_value_in_table") as set_value_in_table:
             deployer._upload_workflow_to_deployer_server(workflow)
@@ -190,7 +188,7 @@ class TestDeployer(unittest.TestCase):
             set_value_in_table.assert_called_once_with(
                 "deployment_manager_resources_table",
                 "test_workflow_id",
-                '{"workflow_id": "test_workflow_id", "workflow_function_descriptions": "[{\\"name\\": \\"test_function\\", \\"version\\": \\"0.0.1\\"}]", "deployment_config": "{}", "deployed_regions": "{\\"test_function\\": [{\\"region\\": \\"us-west-1\\"}]}"}',
+                '{"workflow_id": "test_workflow_id", "workflow_function_descriptions": "[{\\"name\\": \\"test_function\\", \\"version\\": \\"0.0.1\\"}]", "deployment_config": "{}", "deployed_regions": "{\\"test_function\\": [{\\"region\\": \\"region2\\"}]}"}',
             )
 
     def test_upload_deployment_package_resource(self):
@@ -217,15 +215,15 @@ class TestDeployer(unittest.TestCase):
         executor = Mock()
         deployer = Deployer(config, workflow_builder, deployment_packager, executor)
 
-        deployed_regions = {"test_function": [{"region": "us-west-1"}]}
+        deployed_regions = {"test_function": [{"region": "region2"}]}
         filtered_function_to_deployment_regions = {
-            "test_function": [{"region": "us-west-2"}],
-            "new_function": [{"region": "us-east-1"}],
+            "test_function": {"region": "region1"},
+            "new_function": {"region": "region3"},
         }
 
         expected_merged_regions = {
-            "test_function": [{"region": "us-west-1"}, {"region": "us-west-2"}],
-            "new_function": [{"region": "us-east-1"}],
+            "test_function": {"region": "region1"},
+            "new_function": {"region": "region3"},
         }
 
         merged_regions = deployer._merge_deployed_regions(deployed_regions, filtered_function_to_deployment_regions)
@@ -240,14 +238,13 @@ class TestDeployer(unittest.TestCase):
         deployer = Deployer(config, workflow_builder, deployment_packager, executor)
 
         function_to_deployment_regions = {
-            "test_function": [{"region": "us-west-1"}, {"region": "us-west-2"}],
-            "new_function": [{"region": "us-east-1"}],
+            "test_function": {"region": "region2"},
+            "new_function": {"region": "region3"},
         }
-        deployed_regions = {"test_function": [{"region": "us-west-1"}]}
+        deployed_regions = {"test_function": {"region": "region2"}}
 
         expected_filtered_regions = {
-            "test_function": [{"region": "us-west-2"}],
-            "new_function": [{"region": "us-east-1"}],
+            "new_function": {"region": "region3"},
         }
 
         filtered_regions = deployer._filter_function_to_deployment_regions(

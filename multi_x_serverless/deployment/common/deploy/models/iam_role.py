@@ -2,8 +2,8 @@ import json
 import os
 from typing import Sequence
 
+from multi_x_serverless.common.provider import Provider
 from multi_x_serverless.deployment.common.deploy.models.resource import Resource
-from multi_x_serverless.deployment.common.provider import Provider
 
 
 class IAMRole(Resource):

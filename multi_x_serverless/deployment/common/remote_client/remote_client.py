@@ -1,6 +1,6 @@
 import json
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Any, Optional
 
 from multi_x_serverless.deployment.common.deploy.models.resource import Resource
 
@@ -89,11 +89,20 @@ class RemoteClient(ABC):
         raise NotImplementedError()
 
     @abstractmethod
+    def set_value_in_table_column(
+        self, table_name: str, key: str, column_type_value: list[tuple[str, str, str]]
+    ) -> None:
+        raise NotImplementedError()
+
+    @abstractmethod
     def get_value_from_table(self, table_name: str, key: str) -> str:
         raise NotImplementedError()
 
     @abstractmethod
     def remove_value_from_table(self, table_name: str, key: str) -> None:
+        raise NotImplementedError()
+
+    def get_all_values_from_table(self, table_name: str) -> dict[str, dict[str, Any]]:
         raise NotImplementedError()
 
     @abstractmethod

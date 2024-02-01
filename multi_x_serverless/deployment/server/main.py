@@ -18,21 +18,20 @@ def main() -> int:
             input_workflow_id=input_workflow_id,
             input_regions=input_regions,
         )
-        
+
         return 0
     except Exception:  # pylint: disable=broad-except
         print(traceback.format_exc(), file=sys.stderr)
         return 2
 
+
 def run(
-        input_workflow_id: str,
-): 
+    input_workflow_id: str,
+):
     endpoints = Endpoints()
     deployment_manager_client = endpoints.get_deployment_manager_client()
 
-    workflow_data = deployment_manager_client.get_value_from_table(
-        DEPLOYMENT_MANAGER_RESOURCE_TABLE, input_workflow_id
-    )
+    workflow_data = deployment_manager_client.get_value_from_table(DEPLOYMENT_MANAGER_RESOURCE_TABLE, input_workflow_id)
 
     workflow_data = json.loads(workflow_data)
 
@@ -59,7 +58,7 @@ def run(
 def run_deployer(
     deployment_config: dict,
     workflow_function_descriptions: list[dict],
-    deployed_regions: dict[str, list[dict[str, str]]],
+    deployed_regions: dict[str, dict[str, str]],
 ) -> None:
     deployer_factory = DeployerFactory(project_dir=None)
     config: Config = deployer_factory.create_config_obj_from_dict(deployment_config=deployment_config)

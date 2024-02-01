@@ -255,6 +255,26 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         client = self._client("dynamodb")
         client.put_item(TableName=table_name, Item={"key": {"S": key}, "value": {"S": value}})
 
+    def set_value_in_table_column(
+        self, table_name: str, key: str, column_type_value: list[tuple[str, str, str]]
+    ) -> None:
+        client = self._client("dynamodb")
+        expression_attribute_names = {}
+        expression_attribute_values = {}
+        update_expression = "SET "
+        for column, type_, value in column_type_value:
+            expression_attribute_names[f"#{column}"] = column
+            expression_attribute_values[f":{column}"] = {type_: value}
+            update_expression += f"#{column} = :{column}, "
+        update_expression = update_expression[:-2]
+        client.update_item(
+            TableName=table_name,
+            Key={"key": {"S": key}},
+            ExpressionAttributeNames=expression_attribute_names,
+            ExpressionAttributeValues=expression_attribute_values,
+            UpdateExpression=update_expression,
+        )
+
     def get_value_from_table(self, table_name: str, key: str) -> str:
         client = self._client("dynamodb")
         response = client.get_item(TableName=table_name, Key={"key": {"S": key}})
@@ -268,6 +288,16 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
     def remove_value_from_table(self, table_name: str, key: str) -> None:
         client = self._client("dynamodb")
         client.delete_item(TableName=table_name, Key={"key": {"S": key}})
+
+    def get_all_values_from_table(self, table_name: str) -> dict[str, dict[str, Any]]:
+        client = self._client("dynamodb")
+        response = client.scan(TableName=table_name)
+        if "Items" not in response:
+            return {}
+        items = response.get("Items")
+        if items is not None:
+            return {item["key"]: json.loads(item["value"]) for item in items}
+        return {}
 
     def get_key_present_in_table(self, table_name: str, key: str) -> bool:
         client = self._client("dynamodb")
