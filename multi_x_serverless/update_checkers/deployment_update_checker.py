@@ -1,10 +1,10 @@
-from multi_x_serverless.update_checkers.update_checker import UpdateChecker
 from multi_x_serverless.common.constants import WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE
 from multi_x_serverless.deployment.server.main import run
+from multi_x_serverless.update_checkers.update_checker import UpdateChecker
 
 
 class DeploymentUpdateChecker(UpdateChecker):
-    # This should be a timed update checker (every hour)
+    # This should be a timed update checker (every hour)
     def __init__(self, name):
         super().__init__(name)
 

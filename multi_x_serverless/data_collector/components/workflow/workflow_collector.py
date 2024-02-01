@@ -12,17 +12,21 @@ class WorkflowCollector(DataCollector):
         self._data_collector_name: str = "workflow_collector"
 
         workflow_instance_table: str = WORKFLOW_INSTANCE_TABLE
-        
+
         self._data_retriever: WorkflowRetriever = WorkflowRetriever(self._data_collector_client)
         self._data_exporter: WorkflowExporter = WorkflowExporter(self._data_collector_client, workflow_instance_table)
 
-    def run(self) -> None: # Run on all workflows -> not recommanded as it will take a lot of time, better to run on a specific workflow
+    def run(
+        self,
+    ) -> (
+        None
+    ):  # Run on all workflows -> not recommanded as it will take a lot of time, better to run on a specific workflow
         all_workflow_ids = self._data_retriever.retrieve_all_workflow_ids()
 
         for workflow_unique_id in all_workflow_ids:
             self.run(workflow_unique_id)
 
-    def run(self, workflow_unique_id: str) -> None: # Run on a specific workflow
+    def run(self, workflow_unique_id: str) -> None:  # Run on a specific workflow
         # Retrieve available regions
         self._data_retriever.retrieve_available_regions()
 

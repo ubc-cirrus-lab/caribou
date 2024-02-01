@@ -1,12 +1,12 @@
+import datetime
+import json
 import os
 from typing import Any, Optional
 
+import boto3
 import googlemaps
 import requests
 from bs4 import BeautifulSoup
-import boto3
-import datetime
-import json
 
 from multi_x_serverless.common.provider import Provider
 from multi_x_serverless.data_collector.components.data_retriever import DataRetriever
@@ -118,7 +118,7 @@ class ProviderRetriever(DataRetriever):
             }
             for region_key in aws_regions
         }
-    
+
     def _retrieve_aws_available_architectures(self, execution_cost: dict[str, Any]) -> list[str]:
         available_architectures = []
         if execution_cost["invocation_cost"]["arm64"] > 0:
@@ -133,8 +133,8 @@ class ProviderRetriever(DataRetriever):
         for region_key in available_region:
             region_code = region_key.split(":")[1]
 
-            global_data_transfer = 0
-            provider_data_transfer = 0
+            global_data_transfer: float = 0.0
+            provider_data_transfer: float = 0.0
             if region_code.startswith("us-"):
                 global_data_transfer = 0.09
                 provider_data_transfer = 0.02

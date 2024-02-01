@@ -1,8 +1,6 @@
 from typing import Any
 
-from multi_x_serverless.common.constants import WORKFLOW_PLACEMENT_DECISION_TABLE
-from multi_x_serverless.common.constants import WORKFLOW_SUMMARY_TABLE
-
+from multi_x_serverless.common.constants import WORKFLOW_PLACEMENT_DECISION_TABLE, WORKFLOW_SUMMARY_TABLE
 from multi_x_serverless.data_collector.components.data_retriever import DataRetriever
 from multi_x_serverless.deployment.common.remote_client.remote_client import RemoteClient
 
@@ -32,12 +30,12 @@ class WorkflowRetriever(DataRetriever):
         #       - Number of invocation (of this instance in this region)
         #       - Region Average/Tail Runtime.
         #     - To Instance `<instance_unique_id>`
-        #       - Number of calls from parent instance to this instance. 
+        #       - Number of calls from parent instance to this instance.
         #       - Average data transfer size between instance stages.
         #       - At Region `<provider_unique_id>:<region_name>`
         #         - To Region `<provider_unique_id>:<region_name>`
         #           - Number transmission
         #           - Region Average/Tail Latency.
-        
+
         # TODO -> Parse the workflow summary to get the workflow summary
         return self._client.get_value_from_table(self._workflow_summary_table, workflow_unique_id)

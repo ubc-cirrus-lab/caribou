@@ -12,11 +12,9 @@ from multi_x_serverless.deployment.common.factories.deployer_factory import Depl
 def main() -> int:
     try:
         input_workflow_id = sys.argv[1]
-        input_regions = sys.argv[2]
 
         run(
             input_workflow_id=input_workflow_id,
-            input_regions=input_regions,
         )
 
         return 0

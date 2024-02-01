@@ -221,7 +221,7 @@ class Workflow(Resource):
         """
         The desired output format is explained in the `docs/design.md` file under `Workflow Placement Decision`.
         """
-        staging_area_placement["instances"] = self._get_instances()
+        staging_area_placement["instances"] = previous_instances
         staging_area_placement["current_instance_name"] = self._get_entry_point_instance_name()
         self._extend_stage_area_placement(resource_values, staging_area_placement)
         self._update_instances(staging_area_placement)

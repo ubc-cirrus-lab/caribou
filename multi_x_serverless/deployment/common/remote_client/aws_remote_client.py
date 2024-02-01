@@ -312,3 +312,13 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         client = self._client("s3")
         response = client.get_object(Bucket="multi-x-serverless-resources", Key=key)
         return response["Body"].read()
+
+    def get_keys(self, table_name: str) -> list[str]:
+        client = self._client("dynamodb")
+        response = client.scan(TableName=table_name)
+        if "Items" not in response:
+            return []
+        items = response.get("Items")
+        if items is not None:
+            return [item["key"] for item in items]
+        return []
