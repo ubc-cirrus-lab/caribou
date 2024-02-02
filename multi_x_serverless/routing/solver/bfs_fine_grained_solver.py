@@ -86,7 +86,7 @@ class BFSFineGrainedSolver(Solver):
                     # Calculate the carbon/cost/runtime for transmission and execution
                     # For worse case (Using tail latency)
                     exec_lookup_key = (current_instance_index, to_region_index, False)
-                    if exec_lookup_key in execution_cost_carbon_runtime_cache.keys():
+                    if exec_lookup_key in execution_cost_carbon_runtime_cache:
                         (wc_e_cost, wc_e_carbon, wc_e_runtime) = execution_cost_carbon_runtime_cache[exec_lookup_key]
                     else:
                         wc_e_cost, wc_e_carbon, wc_e_runtime = self._input_manager.get_execution_cost_carbon_runtime(
@@ -97,7 +97,7 @@ class BFSFineGrainedSolver(Solver):
                     # Calculate the carbon/cost/runtime for transmission and execution # Do not consider start hop for now
                     # For probabilistic case (Using average latency and factor in invocation probability)
                     exec_lookup_key = (current_instance_index, to_region_index, True)
-                    if exec_lookup_key in execution_cost_carbon_runtime_cache.keys():
+                    if exec_lookup_key in execution_cost_carbon_runtime_cache:
                         pc_e_cost, pc_e_carbon, pc_e_runtime = execution_cost_carbon_runtime_cache[exec_lookup_key]
                     else:
                         pc_e_cost, pc_e_carbon, pc_e_runtime = self._input_manager.get_execution_cost_carbon_runtime(
@@ -113,8 +113,8 @@ class BFSFineGrainedSolver(Solver):
                         to_region_index,
                         False,
                     )
-                    if transmission_lookup_key in transmission_cost_carbon_runtime_cache.keys():
-                        (wc_t_cost, wc_t_carbon, wc_t_runtime) = transmission_cost_carbon_runtime_cache.keys()[
+                    if transmission_lookup_key in transmission_cost_carbon_runtime_cache:
+                        (wc_t_cost, wc_t_carbon, wc_t_runtime) = transmission_cost_carbon_runtime_cache[
                             transmission_lookup_key
                         ]
                     else:
@@ -144,8 +144,8 @@ class BFSFineGrainedSolver(Solver):
                         to_region_index,
                         True,
                     )
-                    if transmission_lookup_key in transmission_cost_carbon_runtime_cache.keys():
-                        (pc_t_cost, pc_t_carbon, pc_t_runtime) = transmission_cost_carbon_runtime_cache.keys()[
+                    if transmission_lookup_key in transmission_cost_carbon_runtime_cache:
+                        (pc_t_cost, pc_t_carbon, pc_t_runtime) = transmission_cost_carbon_runtime_cache[
                             transmission_lookup_key
                         ]
                     else:
@@ -265,10 +265,10 @@ class BFSFineGrainedSolver(Solver):
                                 pc_runtime_total = 0.0
 
                                 # Calculate the cost, carbon and runtime of execution (Just execution here as its a shared value)
-                                lookup_key = (current_instance_index, to_region_index, False)
-                                if lookup_key in execution_cost_carbon_runtime_cache.keys():
+                                exec_lookup_key = (current_instance_index, to_region_index, False)
+                                if exec_lookup_key in execution_cost_carbon_runtime_cache:
                                     wc_e_cost, wc_e_carbon, wc_e_runtime = execution_cost_carbon_runtime_cache[
-                                        lookup_key
+                                        exec_lookup_key
                                     ]
                                 else:
                                     (
@@ -278,16 +278,16 @@ class BFSFineGrainedSolver(Solver):
                                     ) = self._input_manager.get_execution_cost_carbon_runtime(
                                         current_instance_index, to_region_index, False
                                     )
-                                    execution_cost_carbon_runtime_cache[lookup_key] = (
+                                    execution_cost_carbon_runtime_cache[exec_lookup_key] = (
                                         wc_e_cost,
                                         wc_e_carbon,
                                         wc_e_runtime,
                                     )
 
-                                lookup_key = (current_instance_index, to_region_index, True)
-                                if lookup_key in execution_cost_carbon_runtime_cache.keys():
+                                exec_lookup_key = (current_instance_index, to_region_index, True)
+                                if exec_lookup_key in execution_cost_carbon_runtime_cache:
                                     pc_e_cost, pc_e_carbon, pc_e_runtime = execution_cost_carbon_runtime_cache[
-                                        lookup_key
+                                        exec_lookup_key
                                     ]
                                 else:
                                     (
@@ -297,7 +297,7 @@ class BFSFineGrainedSolver(Solver):
                                     ) = self._input_manager.get_execution_cost_carbon_runtime(
                                         current_instance_index, to_region_index, True
                                     )
-                                    execution_cost_carbon_runtime_cache[lookup_key] = (
+                                    execution_cost_carbon_runtime_cache[exec_lookup_key] = (
                                         pc_e_cost,
                                         pc_e_carbon,
                                         pc_e_runtime,
@@ -334,7 +334,7 @@ class BFSFineGrainedSolver(Solver):
                                         to_region_index,
                                         False,
                                     )
-                                    if lookup_key in transmission_cost_carbon_runtime_cache.keys():
+                                    if lookup_key in transmission_cost_carbon_runtime_cache:
                                         (wc_t_cost, wc_t_carbon, wc_t_runtime) = transmission_cost_carbon_runtime_cache[
                                             lookup_key
                                         ]
@@ -367,7 +367,7 @@ class BFSFineGrainedSolver(Solver):
                                         to_region_index,
                                         True,
                                     )
-                                    if lookup_key in transmission_cost_carbon_runtime_cache.keys():
+                                    if lookup_key in transmission_cost_carbon_runtime_cache:
                                         (pc_t_cost, pc_t_carbon, pc_t_runtime) = transmission_cost_carbon_runtime_cache[
                                             lookup_key
                                         ]
