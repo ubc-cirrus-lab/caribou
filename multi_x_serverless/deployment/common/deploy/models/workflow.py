@@ -209,9 +209,10 @@ class Workflow(Resource):
 
     def _update_instances(self, staging_area_placement: dict[str, Any]) -> None:
         for instance in staging_area_placement["instances"]:
-            instance["function_name"] = staging_area_placement["workflow_placement"][instance["instance_name"]][
+            function_identifier = staging_area_placement["workflow_placement"][instance["instance_name"]][
                 "function_identifier"
-            ].split(":")[-1]
+            ]
+            instance["function_name"] = function_identifier.split(":")[-1]
 
     def _extend_stage_area_placement(
         self, resource_values: dict[str, list[Any]], staging_area_placement: dict[str, Any]
@@ -223,7 +224,7 @@ class Workflow(Resource):
             resource_values["function"], "function_identifier"
         )
 
-        for instance_name in staging_area_placement["workflow_placement"].keys():
+        for instance_name in staging_area_placement["workflow_placement"]:
             staging_area_placement["workflow_placement"][instance_name][
                 "identifier"
             ] = function_instance_to_messaging_identifier[instance_name]
