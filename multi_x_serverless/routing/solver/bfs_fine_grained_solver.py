@@ -1,7 +1,7 @@
 import itertools
-import numpy as np
-import time
 from typing import Optional
+
+import numpy as np
 
 from multi_x_serverless.routing.solver.solver import Solver
 from multi_x_serverless.routing.solver_inputs.input_manager import InputManager
