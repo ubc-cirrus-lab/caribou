@@ -243,9 +243,10 @@ class BFSFineGrainedSolver(Solver):
                                 # Merge the deployments information together
                                 combined_placements = combined_placements | original_deployment_placement
 
-                                max_wc_runtime = max(max_wc_runtime, previous_wc_runtime)
-
-                                max_pc_runtime = max(max_pc_runtime, previous_pc_runtime)
+                                if previous_wc_runtime > max_wc_runtime:
+                                    max_wc_runtime = previous_wc_runtime
+                                if previous_pc_runtime > max_pc_runtime:
+                                    max_pc_runtime = previous_pc_runtime
 
                             # We need to now recalculate the cost and carbon for the combined placements
                             # As this is a potential merge node, here we also need a clean placement dict for results
@@ -437,11 +438,14 @@ class BFSFineGrainedSolver(Solver):
                                     # Merge the deployments information together
                                     combined_placements = combined_placements | original_deployment_placement
 
-                                    max_wc_runtime = max(max_wc_runtime, wc_runtime_total)
-                                    max_pc_runtime = max(max_pc_runtime, pc_runtime_total)
-
-                                    current_max_wc_t_runtime = max(current_max_wc_t_runtime, wc_t_runtime)
-                                    current_max_pc_t_runtime = max(current_max_pc_t_runtime, pc_t_runtime)
+                                    if wc_runtime_total > max_wc_runtime:
+                                        max_wc_runtime = wc_runtime_total
+                                    if pc_runtime_total > max_pc_runtime:
+                                        max_pc_runtime = pc_runtime_total
+                                    if wc_t_runtime > current_max_wc_t_runtime:
+                                        current_max_wc_t_runtime = wc_t_runtime
+                                    if pc_t_runtime > current_max_pc_t_runtime:
+                                        current_max_pc_t_runtime = pc_t_runtime
 
                                 # Get the current total cost and carbon for this specific transition (runtime doesn't matter for this)
                                 current_instance_wc_cost = current_cumulative_wc_t_cost + wc_e_cost
