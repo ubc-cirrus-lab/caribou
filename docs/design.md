@@ -523,8 +523,6 @@ The `workflow_instance_table` is responsible for summarizing and collecting info
         - To Region `<provider_unique_id>:<region_name>`
           - Region Average/Tail Latency.
 
-Note: `<workflow_unique_id>` and `<instance_unique_id>` should be changed to its component parts.
-
 ## Solvers
 
 The solvers are responsible for determining the optimal placement of the function instances across the available regions.
