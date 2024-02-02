@@ -4,7 +4,7 @@ from multi_x_serverless.common.models.endpoints import Endpoints
 
 
 class UpdateChecker(ABC):
-    def __init__(self, name):
+    def __init__(self, name: str) -> None:
         self.name = name
         self._endpoints = Endpoints()
 

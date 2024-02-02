@@ -68,3 +68,9 @@ class MockRemoteClient(RemoteClient):
 
     def get_all_values_from_sort_key_table(self, table_name: str, key: str) -> list[dict[str, Any]]:
         pass
+
+    def get_keys(self, table_name: str) -> list[str]:
+        pass
+
+    def remove_value_from_table(self, table_name: str, key: str) -> None:
+        pass

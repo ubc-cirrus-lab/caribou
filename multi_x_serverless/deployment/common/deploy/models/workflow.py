@@ -168,26 +168,6 @@ class Workflow(Resource):
 
         return workflow_placement
 
-    def _extend_stage_area_placement(
-        self, resource_values: dict[str, list[Any]], staging_area_placement: dict[str, Any]
-    ) -> dict[str, dict[str, Any]]:
-        function_instance_to_messaging_identifier = self._get_function_instance_to_identifier(
-            resource_values["messaging_topic"], "topic_identifier"
-        )
-        function_instance_to_function_identifier = self._get_function_instance_to_identifier(
-            resource_values["function"], "function_identifier"
-        )
-
-        for instance_name in staging_area_placement["workflow_placement"].keys():
-            staging_area_placement["workflow_placement"][instance_name][
-                "identifier"
-            ] = function_instance_to_messaging_identifier[instance_name]
-            staging_area_placement["workflow_placement"][instance_name][
-                "function_identifier"
-            ] = function_instance_to_function_identifier[instance_name]
-
-        return staging_area_placement
-
     def _get_function_instance_to_identifier(self, resource_values: list[Any], identifier_key: str) -> dict[str, str]:
         function_resource_to_identifiers = {
             function_resource_description["name"]: function_resource_description[identifier_key]
@@ -232,3 +212,23 @@ class Workflow(Resource):
             instance["function_name"] = staging_area_placement["workflow_placement"][instance["instance_name"]][
                 "function_identifier"
             ].split(":")[-1]
+
+    def _extend_stage_area_placement(
+        self, resource_values: dict[str, list[Any]], staging_area_placement: dict[str, Any]
+    ) -> dict[str, dict[str, Any]]:
+        function_instance_to_messaging_identifier = self._get_function_instance_to_identifier(
+            resource_values["messaging_topic"], "topic_identifier"
+        )
+        function_instance_to_function_identifier = self._get_function_instance_to_identifier(
+            resource_values["function"], "function_identifier"
+        )
+
+        for instance_name in staging_area_placement["workflow_placement"].keys():
+            staging_area_placement["workflow_placement"][instance_name][
+                "identifier"
+            ] = function_instance_to_messaging_identifier[instance_name]
+            staging_area_placement["workflow_placement"][instance_name][
+                "function_identifier"
+            ] = function_instance_to_function_identifier[instance_name]
+
+        return staging_area_placement
