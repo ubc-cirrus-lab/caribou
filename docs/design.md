@@ -429,8 +429,7 @@ The Workflow Collector is responsible for extracting information from the `workf
 - Key: `<workflow_unique_id>`
 - Sort Key (N): Timestamp of last summary (last summarized by Datastore Syncer)
 - Value (S):
-  - Number of total invocations (For the entire workflow)
-  - Time between last summary to current summary
+  - Time between last summary to current summary (Months between summaries)
   - At Instance `<instance_unique_id>`
     Number of total invocation of this instance
     - At Region `<provider_unique_id>:<region_name>`
@@ -450,14 +449,14 @@ The `workflow_instance_table` is responsible for summarizing and collecting info
 - Key: `<workflow_unique_id>`
 - Value (S):
   - At Instance `<instance_unique_id>`
-    - Favourite home Region Average/Tail Runtime.
     - Favorite home region `<provider_unique_id>:<region_name>`
+    - Favourite home Region Average/Tail Runtime. (in units of seconds)
     - Projected or estimated number of monthly invocations (For free tier considerations).
-    - At Region `<provider_unique_id>:<region_name>`
+    - At Region `<provider_unique_id>:<region_name>` (Execution Summary)
       - Region Average/Tail Runtime.
-    - To Instance `<instance_unique_id>`
-      - Probability of At Instance invoking To Instance
-      - Average data transfer size between instance stages.
+    - To Instance `<instance_unique_id>` (Invocation Summary)
+      - Probability of At Instance invoking To Instance (in Fractions)
+      - Average data transfer size between instance stages. (In GB)
       - At Region `<provider_unique_id>:<region_name>`
         - To Region `<provider_unique_id>:<region_name>`
           - Region Average/Tail Latency.
