@@ -1,30 +1,39 @@
 # Loader
-from multi_x_serverless.routing.models.indexer import Indexer
+from multi_x_serverless.routing.solver.input.components.loaders.region_viability_loader import RegionViabilityLoader
+from multi_x_serverless.routing.solver.input.components.loaders.datacenter_loader import DatacenterLoader
+from multi_x_serverless.routing.solver.input.components.loaders.performance_loader import PerformanceLoader
+from multi_x_serverless.routing.solver.input.components.loaders.carbon_loader import CarbonLoader
+from multi_x_serverless.routing.solver.input.components.loaders.workflow_loader import WorkflowLoader
+
+# Calculators
+from multi_x_serverless.routing.solver.input.components.calculators.carbon_calculator import CarbonCalculator
+from multi_x_serverless.routing.solver.input.components.calculators.cost_calculator import CostCalculator
+from multi_x_serverless.routing.solver.input.components.calculators.runtime_calculator import RuntimeCalculator
 
 # Outside library
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
-
+from multi_x_serverless.routing.models.indexer import Indexer
 
 class InputManager:
     def __init__(self, config: WorkflowConfig) -> None:
         super().__init__()
         self._config = config
 
-        # # initialize components
-        # # Loader Manager
-        # self._loader_manager = LoaderManager()
+        # initialize Loaders
+        # Loader Manager
+        self._region_viability_loader = RegionViabilityLoader()
+        self._datacenter_loader = DatacenterLoader()
+        self._performance_loader = PerformanceLoader()
+        self._carbon_loader = CarbonLoader()
+        self._workflow_loader = WorkflowLoader()
 
-        # # Viability loader
-        # self._region_viability_loader = RegionViabilityLoader()
-        # self._region_viability_loader.setup()  # Setup the viability loader
+        # Setup the viability loader and load available regions
+        self._region_viability_loader.setup()  # Setup the viability loader -> This loads data from the database
 
-        # # Data sources
-        # self._data_source_manager = DataSourceManager()
-
-        # # Finalized inputs
-        # self._carbon_input = CarbonInput()
-        # self._cost_input = CostInput()
-        # self._runtime_input = RuntimeInput()
+        # Calculators
+        self._carbon_calculator = CarbonCalculator()
+        self._cost_calculator = CostCalculator()
+        self._runtime_calculator = RuntimeCalculator()
 
     def setup(self, regions_indexer: Indexer, instance_indexer: Indexer) -> bool:
         # # Regions and instances under consideration
