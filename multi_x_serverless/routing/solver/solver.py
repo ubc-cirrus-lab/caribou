@@ -25,10 +25,10 @@ class Solver(ABC):
         self._workflow_config = workflow_config
 
         # Declare the input manager
-        self._input_manager = InputManager(workflow_config)
+        self._input_manager = InputManager(workflow_config, all_available_regions is None)
 
         # Get all regions allowed for the workflow
-        if not all_available_regions:
+        if all_available_regions is None:
             all_available_regions = self._input_manager.get_all_regions()
 
         self._worklow_level_permitted_regions = self._filter_regions_global(all_available_regions)

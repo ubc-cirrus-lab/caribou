@@ -1,34 +1,41 @@
 # Loader
-from multi_x_serverless.routing.solver.input.components.loaders.region_viability_loader import RegionViabilityLoader
-from multi_x_serverless.routing.solver.input.components.loaders.datacenter_loader import DatacenterLoader
-from multi_x_serverless.routing.solver.input.components.loaders.performance_loader import PerformanceLoader
-from multi_x_serverless.routing.solver.input.components.loaders.carbon_loader import CarbonLoader
-from multi_x_serverless.routing.solver.input.components.loaders.workflow_loader import WorkflowLoader
+from multi_x_serverless.common.models.endpoints import Endpoints
+from multi_x_serverless.deployment.common.remote_client.remote_client import RemoteClient
+from multi_x_serverless.routing.models.indexer import Indexer
 
 # Calculators
 from multi_x_serverless.routing.solver.input.components.calculators.carbon_calculator import CarbonCalculator
 from multi_x_serverless.routing.solver.input.components.calculators.cost_calculator import CostCalculator
 from multi_x_serverless.routing.solver.input.components.calculators.runtime_calculator import RuntimeCalculator
+from multi_x_serverless.routing.solver.input.components.loaders.carbon_loader import CarbonLoader
+from multi_x_serverless.routing.solver.input.components.loaders.datacenter_loader import DatacenterLoader
+from multi_x_serverless.routing.solver.input.components.loaders.performance_loader import PerformanceLoader
+from multi_x_serverless.routing.solver.input.components.loaders.region_viability_loader import RegionViabilityLoader
+from multi_x_serverless.routing.solver.input.components.loaders.workflow_loader import WorkflowLoader
 
 # Outside library
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
-from multi_x_serverless.routing.models.indexer import Indexer
+
 
 class InputManager:
-    def __init__(self, config: WorkflowConfig) -> None:
+    def __init__(self, config: WorkflowConfig, setup_region_viability: bool = True) -> None:
         super().__init__()
         self._config = config
 
+        # Initialize remote client
+        self._data_collector_client: RemoteClient = Endpoints().get_data_collector_client()
+
         # initialize Loaders
         # Loader Manager
-        self._region_viability_loader = RegionViabilityLoader()
-        self._datacenter_loader = DatacenterLoader()
-        self._performance_loader = PerformanceLoader()
-        self._carbon_loader = CarbonLoader()
-        self._workflow_loader = WorkflowLoader()
+        self._region_viability_loader = RegionViabilityLoader(self._data_collector_client)
+        self._datacenter_loader = DatacenterLoader(self._data_collector_client)
+        self._performance_loader = PerformanceLoader(self._data_collector_client)
+        self._carbon_loader = CarbonLoader(self._data_collector_client)
+        self._workflow_loader = WorkflowLoader(self._data_collector_client)
 
         # Setup the viability loader and load available regions
-        self._region_viability_loader.setup()  # Setup the viability loader -> This loads data from the database
+        if setup_region_viability:
+            self._region_viability_loader.setup()  # Setup the viability loader -> This loads data from the database
 
         # Calculators
         self._carbon_calculator = CarbonCalculator()
@@ -36,6 +43,10 @@ class InputManager:
         self._runtime_calculator = RuntimeCalculator()
 
     def setup(self, regions_indexer: Indexer, instance_indexer: Indexer) -> bool:
+        # # Need to convert it back
+        # for region in converted_regions:
+        #     (region["provider"], region["region"])
+
         # # Regions and instances under consideration
         # regions: list[tuple[str, str]] = list(regions_indexer.get_value_indices().keys())
         # instances: list[str] = list(instance_indexer.get_value_indices().keys())
@@ -109,5 +120,10 @@ class InputManager:
         return [0.0, 0.0, 0.0]
 
     def get_all_regions(self) -> list[dict]:
-        # return self._region_viability_loader.retrieve_data()["viable_regions"]
-        return []
+        # Need to convert the regions to a list of dictionaries
+        # Where the dict has the following keys: "region", "provider"
+        converted_regions: list[dict] = []
+        for region in self._region_viability_loader.get_available_regions():
+            converted_regions.append({"provider": region[0], "region": region[1]})
+
+        return converted_regions
