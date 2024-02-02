@@ -738,7 +738,7 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
         function = lambda x: x
         name = "test_function"
         entry_point = True
-        regions_and_providers = {"us-west-1": "provider1"}
+        regions_and_providers = {"region1": "provider1"}
         environment_variables = [{"key": "value"}]
 
         self.workflow.register_function(function, name, entry_point, regions_and_providers, environment_variables)
@@ -751,7 +751,7 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
         function = lambda x: x
         name = "test_function"
         entry_point = True
-        regions_and_providers = {"us-west-1": "provider1"}
+        regions_and_providers = {"region1": "provider1"}
         environment_variables = [{"key": "value"}]
 
         self.workflow.register_function(function, name, entry_point, regions_and_providers, environment_variables)
@@ -768,7 +768,7 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
 
         name = "test_function"
         entry_point = True
-        regions_and_providers = {"us-west-1": "provider1"}
+        regions_and_providers = {"region1": "provider1"}
         environment_variables = [{"key": "value"}]
 
         self.workflow.register_function(function1, name, entry_point, regions_and_providers, environment_variables)
@@ -778,7 +778,7 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
 
     def test_get_predecessor_data(self):
         self.workflow.get_current_instance_provider_region_instance_name = Mock(
-            return_value=("provider1", "us-west-1", "current_instance", "workflow_instance_id")
+            return_value=("provider1", "region1", "current_instance", "workflow_instance_id")
         )
         client_mock = Mock()
         client_mock.get_predecessor_data.return_value = ['{"key": "value"}']
@@ -799,38 +799,74 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
                 "current_instance_name": "current_instance",
                 "run_id": "workflow_instance_id",
                 "workflow_placement": {
-                    "current_instance": {"provider_region": {"provider": "provider1", "region": "us-west-1"}}
+                    "current_instance": {"provider_region": {"provider": "provider1", "region": "region1"}}
                 },
             }
         )
 
         result = self.workflow.get_current_instance_provider_region_instance_name()
 
-        self.assertEqual(result, ("provider1", "us-west-1", "current_instance", "workflow_instance_id"))
+        self.assertEqual(result, ("provider1", "region1", "current_instance", "workflow_instance_id"))
 
     def test_inform_sync_node_of_conditional_non_execution(self):
         mock_remote_client = Mock()
-        mock_remote_client.set_predecessor_reached.return_value = 3
-        mock_remote_client.invoke_function.return_value = None
         mock_remote_client_factory = Mock()
-        mock_remote_client_factory.get_remote_client.return_value = mock_remote_client
+        mock_remote_client_factory.get_remote_client = Mock(return_value=mock_remote_client)
+
+        workflow_placement_decision = {
+            "current_instance_name": "not_called_instance",
+            "run_id": "workflow_instance_id",
+            "workflow_placement": {
+                "not_called_instance": {"provider_region": {"provider": "provider1", "region": "region1"}},
+                "next_instance": {"provider_region": {"provider": "provider1", "region": "region1"}},
+                "sync_node": {"provider_region": {"provider": "provider1", "region": "region1"}},
+            },
+            "instances": [
+                {
+                    "instance_name": "not_called_instance",
+                    "succeeding_instances": ["next_instance"],
+                    "dependent_sync_predecessors": [["next_instance", "sync_node"]],
+                },
+                {
+                    "instance_name": "next_instance",
+                    "preceding_instances": ["not_called_instance"],
+                    "successor_sync_node": "sync_node",
+                },
+                {"instance_name": "sync_node", "preceding_instances": ["next_instance"]},
+            ],
+        }
 
         with patch(
             "multi_x_serverless.deployment.client.multi_x_serverless_workflow.RemoteClientFactory",
             return_value=mock_remote_client_factory,
         ) as mock_factory_class:
-
-            self.workflow.get_successor_workflow_placement_decision = Mock(return_value=("provider", "region", "identifier"))
-            self.workflow.get_successor_workflow_placement_decision_dictionary = Mock(return_value=self.workflow_placement_decision)
-
-            self.workflow._inform_sync_node_of_conditional_non_execution(self.workflow_placement_decision, self.successor_instance_name)
-
-            mock_remote_client.set_predecessor_reached.assert_called_once_with(
-                predecessor_name="predecessor",
-                sync_node_name="sync_node",
-                workflow_instance_id="run_id"
+            mock_factory_class.get_remote_client("provider1", "region1").set_predecessor_reached.return_value = 1
+            mock_factory_class.get_remote_client("provider1", "region1").invoke_function.return_value = None
+            self.workflow.get_successor_workflow_placement_decision = Mock(
+                return_value=("provider1", "region1", "identifier")
             )
-            mock_remote_client.invoke_function.assert_called_once()
+            self.workflow.get_successor_workflow_placement_decision_dictionary = Mock(
+                return_value=workflow_placement_decision
+            )
+
+            self.workflow._inform_sync_node_of_conditional_non_execution(
+                workflow_placement_decision, "not_called_instance"
+            )
+
+            mock_factory_class.get_remote_client.assert_called_with("provider1", "region1")
+            mock_factory_class.get_remote_client(
+                "provider1", "region1"
+            ).set_predecessor_reached.assert_called_once_with(
+                predecessor_name="next_instance",
+                sync_node_name="sync_node",
+                workflow_instance_id="workflow_instance_id",
+            )
+            mock_factory_class.get_remote_client("provider1", "region1").invoke_function.assert_called_once_with(
+                message='{"workflow_placement_decision": {"current_instance_name": "not_called_instance", "run_id": "workflow_instance_id", "workflow_placement": {"not_called_instance": {"provider_region": {"provider": "provider1", "region": "region1"}}, "next_instance": {"provider_region": {"provider": "provider1", "region": "region1"}}, "sync_node": {"provider_region": {"provider": "provider1", "region": "region1"}}}, "instances": [{"instance_name": "not_called_instance", "succeeding_instances": ["next_instance"], "dependent_sync_predecessors": [["next_instance", "sync_node"]]}, {"instance_name": "next_instance", "preceding_instances": ["not_called_instance"], "successor_sync_node": "sync_node"}, {"instance_name": "sync_node", "preceding_instances": ["next_instance"]}]}}',
+                identifier="identifier",
+                workflow_instance_id="workflow_instance_id",
+                sync=False,
+            )
 
 
 if __name__ == "__main__":
