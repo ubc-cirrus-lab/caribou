@@ -1,2 +1,0 @@
-#google-auth>=2.23.4 # TODO (vGsteiger): Enable once we extend to GCP
-#google-cloud-compute>=1.14.1
