@@ -36,7 +36,7 @@ class DataExporter(ABC):
     def _update_modified_regions(self, provider: str, region: str) -> None:
         self._modified_regions.add(f"{provider}:{region}")
 
-    def _export_data(self, table_name: str, data: dict[str, Any], is_region_data: bool = False) -> None:
+    def _export_data(self, table_name: str, data: dict[str, Any], update_modified_regions: bool = False) -> None:
         """
         Exports all the processed data to all appropriate tables.
 
@@ -50,7 +50,7 @@ class DataExporter(ABC):
             data_json: str = json.dumps(value)
             self._client.set_value_in_table(table_name, key, data_json)
 
-            if is_region_data:
+            if update_modified_regions:
                 if "provider" not in value or "region" not in value:
                     raise ValueError("Data dictionary must have provider and region keys")
                 self._update_modified_regions(value["provider"], value["region"])
