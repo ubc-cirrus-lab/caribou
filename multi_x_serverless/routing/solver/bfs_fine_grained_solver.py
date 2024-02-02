@@ -8,17 +8,6 @@ from multi_x_serverless.routing.solver_inputs.input_manager import InputManager
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
 
-PROFILE = False
-
-if PROFILE:
-    time_dic = {
-        "_find_common_elements": 0,
-        "_calculate_wc_pc_cost_carbon_cl_placements": 0,
-        "prerequisites_indices_loop": 0,
-        "non_end_n3_loop": 0,
-    }
-
-
 class BFSFineGrainedSolver(Solver):
     def __init__(
         self,
@@ -96,37 +85,37 @@ class BFSFineGrainedSolver(Solver):
                 for to_region_index in permitted_regions_indices:
                     # Calculate the carbon/cost/runtime for transmission and execution
                     # For worse case (Using tail latency)
-                    lookup_key = (current_instance_index, to_region_index, False)
-                    if lookup_key in execution_cost_carbon_runtime_cache.keys():
-                        (wc_e_cost, wc_e_carbon, wc_e_runtime) = execution_cost_carbon_runtime_cache[lookup_key]
+                    exec_lookup_key = (current_instance_index, to_region_index, False)
+                    if exec_lookup_key in execution_cost_carbon_runtime_cache.keys():
+                        (wc_e_cost, wc_e_carbon, wc_e_runtime) = execution_cost_carbon_runtime_cache[exec_lookup_key]
                     else:
                         wc_e_cost, wc_e_carbon, wc_e_runtime = self._input_manager.get_execution_cost_carbon_runtime(
                             current_instance_index, to_region_index, False
                         )
-                        execution_cost_carbon_runtime_cache[lookup_key] = (wc_e_cost, wc_e_carbon, wc_e_runtime)
+                        execution_cost_carbon_runtime_cache[exec_lookup_key] = (wc_e_cost, wc_e_carbon, wc_e_runtime)
 
                     # Calculate the carbon/cost/runtime for transmission and execution # Do not consider start hop for now
                     # For probabilistic case (Using average latency and factor in invocation probability)
-                    lookup_key = (current_instance_index, to_region_index, True)
-                    if lookup_key in execution_cost_carbon_runtime_cache.keys():
-                        pc_e_cost, pc_e_carbon, pc_e_runtime = execution_cost_carbon_runtime_cache[lookup_key]
+                    exec_lookup_key = (current_instance_index, to_region_index, True)
+                    if exec_lookup_key in execution_cost_carbon_runtime_cache.keys():
+                        pc_e_cost, pc_e_carbon, pc_e_runtime = execution_cost_carbon_runtime_cache[exec_lookup_key]
                     else:
                         pc_e_cost, pc_e_carbon, pc_e_runtime = self._input_manager.get_execution_cost_carbon_runtime(
                             current_instance_index, to_region_index, True
                         )
-                        execution_cost_carbon_runtime_cache[lookup_key] = (pc_e_cost, pc_e_carbon, pc_e_runtime)
+                        execution_cost_carbon_runtime_cache[exec_lookup_key] = (pc_e_cost, pc_e_carbon, pc_e_runtime)
 
                     # Start hop considerations
-                    lookup_key = (
+                    transmission_lookup_key = (
                         current_instance_index,
                         current_instance_index,
                         from_region_index,
                         to_region_index,
                         False,
                     )
-                    if lookup_key in transmission_cost_carbon_runtime_cache.keys():
+                    if transmission_lookup_key in transmission_cost_carbon_runtime_cache.keys():
                         (wc_t_cost, wc_t_carbon, wc_t_runtime) = transmission_cost_carbon_runtime_cache.keys()[
-                            lookup_key
+                            transmission_lookup_key
                         ]
                     else:
                         (
@@ -137,23 +126,27 @@ class BFSFineGrainedSolver(Solver):
                             current_instance_index, current_instance_index, from_region_index, to_region_index, False
                         )
                         # cache the results
-                        transmission_cost_carbon_runtime_cache[lookup_key] = (wc_t_cost, wc_t_carbon, wc_t_runtime)
+                        transmission_cost_carbon_runtime_cache[transmission_lookup_key] = (
+                            wc_t_cost,
+                            wc_t_carbon,
+                            wc_t_runtime,
+                        )
 
                     wc_cost = wc_t_cost + wc_e_cost
                     wc_carbon = wc_t_carbon + wc_e_carbon
                     wc_runtime = wc_t_runtime + wc_e_runtime
 
                     # For probabilistic case (Using average latency and factor in invocation probability)
-                    lookup_key = (
+                    transmission_lookup_key = (
                         current_instance_index,
                         current_instance_index,
                         from_region_index,
                         to_region_index,
                         True,
                     )
-                    if lookup_key in transmission_cost_carbon_runtime_cache.keys():
+                    if transmission_lookup_key in transmission_cost_carbon_runtime_cache.keys():
                         (pc_t_cost, pc_t_carbon, pc_t_runtime) = transmission_cost_carbon_runtime_cache.keys()[
-                            lookup_key
+                            transmission_lookup_key
                         ]
                     else:
                         (
@@ -163,7 +156,11 @@ class BFSFineGrainedSolver(Solver):
                         ) = self._input_manager.get_transmission_cost_carbon_runtime(
                             current_instance_index, current_instance_index, from_region_index, to_region_index, True
                         )
-                        transmission_cost_carbon_runtime_cache[lookup_key] = (pc_t_cost, pc_t_carbon, pc_t_runtime)
+                        transmission_cost_carbon_runtime_cache[transmission_lookup_key] = (
+                            pc_t_cost,
+                            pc_t_carbon,
+                            pc_t_runtime,
+                        )
 
                     pc_cost = pc_t_cost + pc_e_cost
                     pc_carbon = pc_t_carbon + pc_e_carbon
@@ -186,18 +183,11 @@ class BFSFineGrainedSolver(Solver):
                     predecessor_previous_instances.append(set(deployments[previous_instance_index][0][0].keys()))
 
                 # Find the common keys between the previous instances
-                if PROFILE:
-                    s = time.time()
                 common_past_instance_keys = self._find_common_elements(predecessor_previous_instances)
-                if PROFILE:
-                    e = time.time()
-                    time_dic["_find_common_elements"] += e - s
 
                 # Now we can group the previous deployments by the common keys
                 deployment_groups: dict[frozenset[tuple[int, int]], list[list]] = {}
                 pred_index_counter = 0
-                if PROFILE:
-                    s = time.time()
                 for previous_instance_index in prerequisites_indices:
                     for previous_deployment in deployments[previous_instance_index]:
                         common_keys = frozenset(
@@ -217,9 +207,6 @@ class BFSFineGrainedSolver(Solver):
                             (previous_deployment, previous_instance_index)
                         )
                     pred_index_counter += 1
-                if PROFILE:
-                    e = time.time()
-                    time_dic["prerequisites_indices_loop"] += e - s
                 if current_instance_index == -1:  # If this is the virtual end node
                     final_deployments: list[tuple[dict, float, float, float]] = []
                     for deployment_group in deployment_groups.values():
@@ -245,8 +232,6 @@ class BFSFineGrainedSolver(Solver):
 
                             # We need to now recalculate the cost and carbon for the combined placements
                             # As this is a potential merge node, here we also need a clean placement dict for results
-                            if PROFILE:
-                                s = time.time()
                             (
                                 wc_cost,
                                 wc_carbon,
@@ -254,9 +239,6 @@ class BFSFineGrainedSolver(Solver):
                                 pc_carbon,
                                 clean_combined_placements,
                             ) = self._calculate_wc_pc_cost_carbon_cl_placements(combined_placements)
-                            if PROFILE:
-                                e = time.time()
-                                time_dic["_calculate_wc_pc_cost_carbon_cl_placements"] += e - s
 
                             if not self._fail_hard_resource_constraints(
                                 self._workflow_config.constraints, wc_cost, max_wc_runtime, wc_carbon
@@ -268,12 +250,8 @@ class BFSFineGrainedSolver(Solver):
                                 )
 
                     del deployments  # Clear all memory
-                    if PROFILE:
-                        print(time_dic)
                     return final_deployments
                 else:  # Not the virtual end node
-                    if PROFILE:
-                        s227 = time.time()
                     for to_region_index in permitted_regions_indices:
                         for deployment_group in deployment_groups.values():
                             for combination in itertools.product(*deployment_group):
@@ -456,17 +434,12 @@ class BFSFineGrainedSolver(Solver):
                                     (current_instance_pc_cost, current_instance_pc_carbon),
                                 )
 
-                                if PROFILE:
-                                    s = time.time()
                                 (
                                     wc_cost_total,
                                     wc_carbon_total,
                                     pc_cost_total,
                                     pc_carbon_total,
                                 ) = self._calculate_wc_pc_cost_carbon(combined_placements)
-                                if PROFILE:
-                                    e = time.time()
-                                    time_dic["_calculate_wc_pc_cost_carbon_cl_placements"] += e - s
 
                                 if not self._fail_hard_resource_constraints(
                                     self._workflow_config.constraints, wc_cost_total, max_wc_runtime, wc_carbon_total
@@ -478,9 +451,6 @@ class BFSFineGrainedSolver(Solver):
                                             max_pc_runtime,
                                         )
                                     )
-                    if PROFILE:
-                        e227 = time.time()
-                        time_dic["non_end_n3_loop"] += e227 - s227
 
             deployments[current_instance_index] = current_deployments
             processed_node_indices.add(current_instance_index)
