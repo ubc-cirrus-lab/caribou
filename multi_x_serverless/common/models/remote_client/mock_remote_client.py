@@ -1,4 +1,6 @@
-from multi_x_serverless.deployment.common.remote_client.remote_client import RemoteClient
+from typing import Any
+
+from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
 
 
 class MockRemoteClient(RemoteClient):
@@ -62,4 +64,7 @@ class MockRemoteClient(RemoteClient):
     def set_value_in_table_column(
         self, table_name: str, key: str, column_type_value: list[tuple[str, str, str]]
     ) -> None:
+        pass
+
+    def get_all_values_from_sort_key_table(self, table_name: str, key: str) -> list[dict[str, Any]]:
         pass

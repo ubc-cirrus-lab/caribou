@@ -1,5 +1,3 @@
-import numpy as np
-
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
 
@@ -25,11 +23,10 @@ class Ranker:
     ) -> list[tuple[dict, float, float, float]]:
         if self._config.constraints is None or "priority_order" not in self._config.constraints:
             return sorted(results, key=lambda x: (x[1], x[2], x[3]))
-        else:
-            priority_order = self._config.constraints["priority_order"]
-            ordering = tuple(self._priority_order_name_to_index[metric] + 1 for metric in priority_order)
-            sorted_order = sorted(results, key=lambda x: tuple(x[i] for i in ordering))
-            return sorted_order
+        priority_order = self._config.constraints["priority_order"]
+        ordering = tuple(self._priority_order_name_to_index[metric] + 1 for metric in priority_order)
+        sorted_order = sorted(results, key=lambda x: tuple(x[i] for i in ordering))
+        return sorted_order
 
     def _rank_with_soft_resource_constraints(
         self, results: list[tuple[dict, float, float, float]], soft_resource_constraints: dict

@@ -1,11 +1,11 @@
-import numpy as np
-
-from multi_x_serverless.routing.solver_inputs.components.loaders.loader import Loader
+from multi_x_serverless.routing.solver_inputs.components.loaders.instance_loader import InstanceLoader
 
 
-class WorkflowInstanceLoader(Loader):
+class WorkflowInstanceLoader(InstanceLoader):
     def setup(self, workflow_id: str) -> bool:
         self._data = {}
+
+        print(f"Loading data for workflow {workflow_id}")
 
         # TODO (#35): Load data from database, convert to proper format and store in self._data
 

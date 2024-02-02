@@ -1,22 +1,21 @@
 import datetime
-import math
 import os
 import time
 from typing import Any
 
 import requests
 
-from multi_x_serverless.data_collector.components.carbon.carbon_transmission_cost_calculator.carbon_transmission_cost_calculator import (
+from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
+from multi_x_serverless.data_collector.components.carbon.carbon_transmission_cost_calculator.carbon_transmission_cost_calculator import (  # pylint: disable=line-too-long
     CarbonTransmissionCostCalculator,
 )
-from multi_x_serverless.data_collector.components.carbon.carbon_transmission_cost_calculator.distance_carbon_transmission_cost_calculator import (
+from multi_x_serverless.data_collector.components.carbon.carbon_transmission_cost_calculator.distance_carbon_transmission_cost_calculator import (  # pylint: disable=line-too-long
     DistanceCarbonTransmissionCostCalculator,
 )
-from multi_x_serverless.data_collector.components.carbon.carbon_transmission_cost_calculator.latency_carbon_transmission_cost_calculator import (
+from multi_x_serverless.data_collector.components.carbon.carbon_transmission_cost_calculator.latency_carbon_transmission_cost_calculator import (  # pylint: disable=line-too-long
     LatencyCarbonTransmissionCostCalculator,
 )
 from multi_x_serverless.data_collector.components.data_retriever import DataRetriever
-from multi_x_serverless.deployment.common.remote_client.remote_client import RemoteClient
 
 
 class CarbonRetriever(DataRetriever):
@@ -58,7 +57,7 @@ class CarbonRetriever(DataRetriever):
 
             for region_key_to, available_region_to in self._available_regions.items():
                 transmission_carbon_dict[region_key_to] = {
-                    "carbon_intensity": self._carbon_transmission_cost_calculator.calculate_transmission_carbon_intensity(
+                    "carbon_intensity": self._carbon_transmission_cost_calculator.calculate_transmission_carbon_intensity(  # pylint: disable=line-too-long
                         available_region, available_region_to
                     ),
                     "unit": "gCO2eq/GB",
@@ -90,8 +89,7 @@ class CarbonRetriever(DataRetriever):
 
             if "carbonIntensity" in json_data:
                 return json_data["carbonIntensity"]
-            else:
-                raise ValueError("Could not find carbon intensity in response")
+            raise ValueError("Could not find carbon intensity in response")
 
         if response.status_code == 404 and "No recent data for zone" in response.text:
             return self._global_average_worst_case_carbon_intensity

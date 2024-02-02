@@ -1,7 +1,5 @@
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import Any
-
-import numpy as np
 
 
 class Indexer(ABC):

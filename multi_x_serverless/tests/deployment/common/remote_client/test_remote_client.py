@@ -2,8 +2,7 @@ import unittest
 from unittest.mock import Mock
 import json
 
-from multi_x_serverless.deployment.common.remote_client.remote_client import RemoteClient
-from multi_x_serverless.deployment.common.remote_client.mock_remote_client import MockRemoteClient
+from multi_x_serverless.common.models.remote_client.mock_remote_client import MockRemoteClient
 
 
 class TestRemoteClient(unittest.TestCase):
@@ -25,3 +24,7 @@ class TestRemoteClient(unittest.TestCase):
         client.upload_predecessor_data_at_sync_node.assert_called_once_with(
             "sync_node_name", "workflow_instance_id", '"test"'
         )
+
+
+if __name__ == "__main__":
+    unittest.main()

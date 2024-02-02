@@ -2,8 +2,8 @@ import json
 from typing import Any
 
 from multi_x_serverless.common.constants import WORKFLOW_SUMMARY_TABLE
+from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
 from multi_x_serverless.data_collector.components.data_retriever import DataRetriever
-from multi_x_serverless.deployment.common.remote_client.remote_client import RemoteClient
 
 
 class WorkflowRetriever(DataRetriever):
@@ -17,20 +17,20 @@ class WorkflowRetriever(DataRetriever):
 
     def retrieve_workflow_summary(self, workflow_unique_id: str) -> dict[str, Any]:
         # Load the summarized logs from the workflow summary table
-        workflow_summarized_logs: list[dict[str, Any]] = self._client.get_values_from_composite_key_table(
+        workflow_summarized_logs: list[dict[str, Any]] = self._client.get_all_values_from_sort_key_table(
             self._workflow_summary_table, workflow_unique_id
         )
 
         # Consolidate all the timestamps together to one summary and return the result
         return self._consolidate_logs(workflow_summarized_logs)
 
-    def _consolidate_logs(self, logs: list[dict[str, Any]]) -> dict[str, Any]:
+    def _consolidate_logs(self, logs: list[dict[str, Any]]) -> dict[str, Any]:  # pylint: disable=too-many-branches
         # Here are the list of all keys in the available regions
         available_regions_set: set[str] = set(self._available_regions.keys())
 
         consolidated: dict[str, Any] = {}
         total_months = 0
-        for data in logs:
+        for data in logs:  # pylint: disable=too-many-nested-blocks
             loaded_data = json.loads(data["value"])
             total_months += loaded_data["months_between_summary"]
             for instance_id, instance_data in loaded_data["instance_summary"].items():
@@ -132,7 +132,7 @@ class WorkflowRetriever(DataRetriever):
 
         # Summarized data in proper output format
         workflow_summary_data: dict[str, Any] = {}
-        for instance_id, instance_data in consolidated.items():
+        for instance_id, instance_data in consolidated.items():  # pylint: disable=too-many-nested-blocks
             # Home region average/tail runtime
             # Only regions within the available regions list is allowed
             filtered_execution_summary = {
@@ -140,9 +140,7 @@ class WorkflowRetriever(DataRetriever):
                 for region, data in instance_data["execution_summary"].items()
                 if region in available_regions_set
             }
-            favourite_home_region = max(
-                filtered_execution_summary, key=lambda region: filtered_execution_summary[region]["invocation_count"]
-            )
+            favourite_home_region = self.get_favourite_home_region(filtered_execution_summary)
 
             # Now for execution summary only in the available regions
             execution_summary: dict[str, Any] = {}
@@ -199,3 +197,8 @@ class WorkflowRetriever(DataRetriever):
             }
 
         return workflow_summary_data
+
+    def get_favourite_home_region(self, filtered_execution_summary: dict[str, Any]) -> str:
+        return max(
+            filtered_execution_summary, key=lambda region: filtered_execution_summary[region]["invocation_count"]
+        )

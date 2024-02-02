@@ -1,26 +1,27 @@
 import datetime
-import json
 import os
-from typing import Any, Optional
+from typing import Any
 
 import boto3
 import googlemaps
 import requests
 from bs4 import BeautifulSoup
 
+from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
 from multi_x_serverless.common.provider import Provider
 from multi_x_serverless.data_collector.components.data_retriever import DataRetriever
 
 
 class ProviderRetriever(DataRetriever):
-    def __init__(self) -> None:
+    def __init__(self, client: RemoteClient) -> None:
+        super().__init__(client)
         self._google_api_key = os.environ.get("GOOGLE_API_KEY")
         self._aws_pricing_client = boto3.client("pricing", region_name="us-east-1")
         self._aws_region_name_to_code: dict[str, str] = {}
 
     def retrieve_aws_regions(self) -> dict[str, dict[str, Any]]:
         amazon_region_url = "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html#concepts-available-regions"  # pylint: disable=line-too-long
-        amazon_region_page = requests.get(amazon_region_url)
+        amazon_region_page = requests.get(amazon_region_url, timeout=5)
 
         amazon_region_page_soup = BeautifulSoup(amazon_region_page.content, "html.parser")
 
@@ -75,7 +76,7 @@ class ProviderRetriever(DataRetriever):
                 available_regions.update(self.retrieve_aws_regions())
             elif provider == Provider.GCP:
                 pass
-            elif provider == Provider.TEST_PROVIDER1 or provider == Provider.TEST_PROVIDER2:
+            elif provider in (Provider.TEST_PROVIDER1, Provider.TEST_PROVIDER2):
                 pass
             else:
                 raise NotImplementedError(f"Provider {provider} not implemented")
@@ -97,8 +98,10 @@ class ProviderRetriever(DataRetriever):
                 provider_data.update(self._retrieve_provider_data_aws(regions))
             elif provider == Provider.GCP.value:
                 raise NotImplementedError("GCP not implemented")
+            elif provider in (Provider.TEST_PROVIDER1.value, Provider.TEST_PROVIDER2.value):
+                pass
             else:
-                raise NotImplementedError(f"Provider {available_region['provider']} not implemented")
+                raise NotImplementedError(f"Provider {provider} not implemented")
         return provider_data
 
     def _retrieve_provider_data_aws(self, aws_regions: list[str]) -> dict[str, Any]:
@@ -127,7 +130,9 @@ class ProviderRetriever(DataRetriever):
             available_architectures.append("x86_64")
         return available_architectures
 
-    def _retrieve_aws_transmission_cost(self, available_region: list[str]) -> dict[str, Any]:
+    def _retrieve_aws_transmission_cost(  # pylint: disable=too-many-branches, too-many-statements
+        self, available_region: list[str]
+    ) -> dict[str, Any]:
         result_transmission_cost_dict = {}
 
         for region_key in available_region:
@@ -220,10 +225,6 @@ class ProviderRetriever(DataRetriever):
 
             response = requests.get(price_list_file["Url"], timeout=5)
             price_list_file_json = response.json()
-
-            if region_code == "ca-west-1":
-                with open("ca-west-1.json", "w") as f:
-                    json.dump(price_list_file_json, f)
 
             (
                 invocation_call_sku_arm64,

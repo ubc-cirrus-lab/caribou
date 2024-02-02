@@ -14,7 +14,7 @@ class ProviderCollector(DataCollector):
         provider_region_table: str = PROVIDER_REGION_TABLE
         provider_table: str = PROVIDER_TABLE
 
-        self._data_retriever: ProviderRetriever = ProviderRetriever()
+        self._data_retriever: ProviderRetriever = ProviderRetriever(self._data_collector_client)
         self._data_exporter: ProviderExporter = ProviderExporter(
             self._data_collector_client,
             provider_region_table,

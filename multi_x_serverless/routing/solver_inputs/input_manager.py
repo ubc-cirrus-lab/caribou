@@ -7,7 +7,6 @@ from multi_x_serverless.routing.solver_inputs.components.cost_input import CostI
 
 # Data sources
 from multi_x_serverless.routing.solver_inputs.components.data_sources.data_source_manager import DataSourceManager
-from multi_x_serverless.routing.solver_inputs.components.data_sources.source import Source
 
 # Inputs
 from multi_x_serverless.routing.solver_inputs.components.input import Input

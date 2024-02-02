@@ -27,7 +27,7 @@ class RegionAndProviders(BaseModel):
         for provider in values.providers.keys():
             if provider not in ["aws", "gcp", "provider1", "provider2"]:
                 raise ValueError(f"Provider {provider} is not supported")
-            if provider == "aws" or provider == "provider1":
+            if provider in ("aws", "provider1"):
                 config = values.providers[provider].config
                 if "memory" not in config or not isinstance(config["memory"], int):
                     raise ValueError("The 'config' dictionary must contain 'memory' key with an integer value")

@@ -1,7 +1,6 @@
 import json
 from typing import Any
 
-import numpy as np
 from pydantic import ValidationError
 
 from multi_x_serverless.routing.workflow_config_schema import WorkflowConfigSchema
@@ -53,5 +52,4 @@ class WorkflowConfig:
         start_hops = self._lookup("start_hops")
         if start_hops is None or len(start_hops) == 0:
             return {}
-        else:
-            return start_hops[0]
+        return start_hops[0]

@@ -1,6 +1,6 @@
 import json
 from abc import ABC, abstractmethod
-from typing import Optional, Union
+from typing import Optional
 
 import numpy as np
 
@@ -14,7 +14,7 @@ from multi_x_serverless.routing.solver_inputs.input_manager import InputManager
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
 
-class Solver(ABC):
+class Solver(ABC):  # pylint: disable=too-many-instance-attributes
     def __init__(
         self,
         workflow_config: WorkflowConfig,
@@ -57,7 +57,7 @@ class Solver(ABC):
         )
         self._topological_order = self._dag.topological_sort()
         if len(self._topological_order) == 0:
-            raise Exception("DAG is empty")
+            raise ValueError("DAG is empty")
 
         adjacency_matrix = self._dag.get_adj_matrix()
         self._adjacency_indexes = np.where(adjacency_matrix == 1)
@@ -123,7 +123,7 @@ class Solver(ABC):
     def _filter_regions(self, regions: list[dict], regions_and_providers: dict) -> list[dict]:
         # Take in a list of regions, then apply filters to remove regions that do not satisfy the constraints
         # First filter out regions that are not in the provider list
-        provider_names = [provider for provider in regions_and_providers["providers"].keys()]
+        provider_names = list(regions_and_providers["providers"].keys())
         regions = [region for region in regions if region["provider"] in provider_names]
 
         # Then if the user set a allowed_regions, only permit those regions and return
@@ -165,7 +165,7 @@ class Solver(ABC):
 
     def get_dag_representation(self) -> DAG:
         nodes = [
-            {k: v for k, v in node.items() if k != "succeeding_instances" and k != "preceding_instances"}
+            {k: v for k, v in node.items() if k not in ("succeeding_instances", "preceding_instances")}
             for node in self._workflow_config.instances
         ]
         dag = DAG(nodes)
@@ -317,7 +317,7 @@ class Solver(ABC):
             start_hop_transmission_carbon = self._home_region_transmission_costs_tail[2, initial_node_region]
 
         cost = np.sum(node_weights[0]) + np.sum(edge_weights[0]) + start_hop_transmission_cost  # type: ignore
-        runtime = self._most_expensive_path(edge_weights[1], node_weights[1]) + start_hop_transmission_runtime  # type: ignore
+        runtime = self._most_expensive_path(edge_weights[1], node_weights[1]) + start_hop_transmission_runtime  # type: ignore  # pylint: disable=line-too-long
         carbon = np.sum(node_weights[2]) + np.sum(edge_weights[2]) + start_hop_transmission_carbon  # type: ignore
 
         return cost, runtime, carbon
@@ -342,7 +342,7 @@ class Solver(ABC):
 
         permitted_regions: list[dict[(str, str)]] = self._filter_regions_instance(regions, instance)
         if len(permitted_regions) == 0:  # Should never happen in a valid DAG
-            raise Exception("There are no permitted regions for this instance")
+            raise ValueError("There are no permitted regions for this instance")
 
         all_regions_indices = self._region_indexer.get_value_indices()
         permitted_regions_indices = [

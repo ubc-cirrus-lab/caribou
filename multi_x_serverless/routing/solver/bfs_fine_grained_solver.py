@@ -18,7 +18,9 @@ class BFSFineGrainedSolver(Solver):
     ) -> None:
         super().__init__(workflow_config, all_available_regions, input_manager, False)
 
-    def _solve(self, regions: list[dict]) -> list[tuple[dict, float, float, float]]:
+    def _solve(  # pylint: disable=too-many-statements, too-many-branches, too-many-nested-blocks
+        self, regions: list[dict]
+    ) -> list[tuple[dict, float, float, float]]:
         # Get the topological representation of a DAG
         prerequisites_dictionary = self._dag.get_prerequisites_dict()
         successor_dictionary = self._dag.get_preceeding_dict()
@@ -39,7 +41,7 @@ class BFSFineGrainedSolver(Solver):
                 prerequisites_dictionary[-1].append(leaf_node)
                 successor_dictionary[leaf_node].append(-1)
         else:
-            raise Exception("There are no leaf nodes in the DAG")
+            raise ValueError("There are no leaf nodes in the DAG")
 
         # Where its in format of {instance_index:
         # [(deployment decisions (and cost and latency at that instance node),
@@ -62,7 +64,7 @@ class BFSFineGrainedSolver(Solver):
             # Where start hop and end hop should be already integrated into restrictions
             permitted_regions: list[dict[(str, str)]] = self._filter_regions_instance(regions, current_instance_index)
             if len(permitted_regions) == 0:  # Should never happen in a valid DAG
-                raise Exception("There are no permitted regions for this instance")
+                raise ValueError("There are no permitted regions for this instance")
 
             all_regions_indices = self._region_indexer.get_value_indices()
             permitted_regions_indices = np.array(
@@ -86,7 +88,8 @@ class BFSFineGrainedSolver(Solver):
                         current_instance_index, to_region_index
                     )
 
-                    # Calculate the carbon/cost/runtime for transmission and execution # Do not consider start hop for now
+                    # Calculate the carbon/cost/runtime for transmission and execution
+                    # Do not consider start hop for now
                     # For porbabilistic case (Using average latency and factor in invocation probability)
                     pc_e_cost, pc_e_carbon, pc_e_runtime = self._input_manager.get_execution_cost_carbon_runtime(
                         current_instance_index, to_region_index, True
@@ -168,7 +171,7 @@ class BFSFineGrainedSolver(Solver):
                         )
 
                     pred_index_counter += 1
-                if current_instance_index == -1:  # If this is the virtual end node
+                if current_instance_index == -1:  # If this is the virtual end node  # pylint: disable=no-else-return
                     final_deployments: list[tuple[dict, float, float, float]] = []
                     for common_keys, deployment_group in deployment_groups.items():
                         # Here is the format of the final deployment options
@@ -229,7 +232,8 @@ class BFSFineGrainedSolver(Solver):
                                 wc_cost_total = wc_carbon_total = wc_runtime_total = 0.0
                                 pc_runtime_total = 0.0
 
-                                # Calcualte the cost, carbon and runtime of execuion (Just execution here as its a shared value)
+                                # Calcualte the cost, carbon and runtime of execuion
+                                # (Just execution here as its a shared value)
                                 (
                                     wc_e_cost,
                                     wc_e_carbon,
@@ -246,7 +250,8 @@ class BFSFineGrainedSolver(Solver):
                                     current_instance_index, to_region_index, True
                                 )
 
-                                # Transmission is is how much it cost to get from EVERY previous instance to this instance
+                                # Transmission is is how much it cost to get from EVERY
+                                # previous instance to this instance
                                 # So we need to calculate the transmission cost for each previous instance
                                 current_cumulative_wc_t_cost = current_cumulative_wc_t_carbon = 0.0
                                 current_cumulative_pc_t_cost = current_cumulative_pc_t_carbon = 0.0
@@ -282,7 +287,8 @@ class BFSFineGrainedSolver(Solver):
                                     current_cumulative_wc_t_cost += wc_t_cost
                                     current_cumulative_wc_t_carbon += wc_t_carbon
 
-                                    # For porbabilistic case (Using average latency and factor in invocation probability)
+                                    # For porbabilistic case
+                                    # (Using average latency and factor in invocation probability)
                                     (
                                         pc_t_cost,
                                         pc_t_carbon,
@@ -325,7 +331,8 @@ class BFSFineGrainedSolver(Solver):
 
                                     current_max_pc_t_runtime = max(current_max_pc_t_runtime, pc_t_runtime)
 
-                                # Get the current total cost and carbon for this specific transition (runtime doesnt matter for this)
+                                # Get the current total cost and carbon for this specific transition
+                                # (runtime doesnt matter for this)
                                 current_instance_wc_cost = current_cumulative_wc_t_cost + wc_e_cost
                                 current_instance_wc_carbon = current_cumulative_wc_t_carbon + wc_e_carbon
 
@@ -353,7 +360,7 @@ class BFSFineGrainedSolver(Solver):
                                     current_deployments.append(
                                         (
                                             combined_placements,
-                                            (wc_cost_total, wc_carbon_total, max_wc_runtime),
+                                            (pc_cost_total, pc_carbon_total, max_wc_runtime),
                                             max_pc_runtime,
                                         )
                                     )

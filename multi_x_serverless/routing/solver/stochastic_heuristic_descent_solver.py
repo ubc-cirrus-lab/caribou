@@ -22,7 +22,7 @@ class StochasticHeuristicDescentSolver(Solver):
         self._bias_probability = 0.5
 
         if len(self._topological_order) == 0:
-            raise Exception("The DAG has no nodes")
+            raise ValueError("The DAG has no nodes")
 
     def _solve(self, regions: list[dict]) -> list[tuple[dict[int, int], float, float, float]]:
         average_case_deployments: list[tuple[dict[int, int], float, float, float]] = []

@@ -3,9 +3,8 @@ from botocore.exceptions import ClientError
 from multi_x_serverless.deployment.common.config.config import Config
 from multi_x_serverless.deployment.common.deploy.models.resource import Resource
 from multi_x_serverless.deployment.common.deploy.models.workflow import Workflow
-from multi_x_serverless.deployment.common.remote_client.aws_remote_client import AWSRemoteClient
+from multi_x_serverless.common.models.remote_client.aws_remote_client import AWSRemoteClient
 from multi_x_serverless.deployment.common.deploy.deployer import Deployer, DeploymentError
-from multi_x_serverless.deployment.common.factories.remote_client_factory import RemoteClientFactory
 import unittest
 import tempfile
 import shutil

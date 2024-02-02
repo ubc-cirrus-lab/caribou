@@ -6,8 +6,8 @@ from boto3.session import Session
 from botocore.exceptions import ClientError
 
 from multi_x_serverless.common.constants import SYNC_MESSAGES_TABLE, SYNC_PREDECESSOR_COUNTER_TABLE
+from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
 from multi_x_serverless.deployment.common.deploy.models.resource import Resource
-from multi_x_serverless.deployment.common.remote_client.remote_client import RemoteClient
 
 
 class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
@@ -309,7 +309,7 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         response = client.get_object(Bucket="multi-x-serverless-resources", Key=key)
         return response["Body"].read()
 
-    def get_values_from_composite_key_table(self, table_name: str, key: str) -> list[dict[str, Any]]:
+    def get_all_values_from_sort_key_table(self, table_name: str, key: str) -> list[dict[str, Any]]:
         client = self._client("dynamodb")
         response = client.query(
             TableName=table_name,

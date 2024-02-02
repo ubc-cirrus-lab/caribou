@@ -1,5 +1,3 @@
-import numpy as np
-
 from multi_x_serverless.routing.solver.solver import Solver
 
 
@@ -18,7 +16,7 @@ class CoarseGrainedSolver(Solver):
                 permitted_regions = permitted_regions.intersection(temp_permitted_regions)
 
         if not permitted_regions:
-            raise Exception("There are no permitted regions")
+            raise ValueError("No permitted regions for any of the functions")
 
         for permitted_region in permitted_regions:
             current_deployment = self.init_deployment_to_region(permitted_region)

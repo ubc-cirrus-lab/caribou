@@ -35,6 +35,7 @@ class WorkflowCollector(DataCollector):
         self._data_exporter.export_all_data(workflow_summary_data)
 
         # For workflow collector, no need to modify the time stamp of the regions
-        # Perhaps we should have a different tables for informing solver or update timer that workflow has sufficient information
+        # Perhaps we should have a different tables for informing solver or update
+        # timer that workflow has sufficient information
         # To run the solver, or perhaps they can directly access the workflow summary table to check if the workflow has
         # sufficient information to run the solver

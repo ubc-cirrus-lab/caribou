@@ -1,16 +1,9 @@
-import typing
-from abc import ABC, abstractmethod
-
-import numpy as np
+from abc import ABC
+from typing import Any
 
 
 class Loader(ABC):
-    _data: dict
-
-    @abstractmethod
-    def setup(self, *args: typing.Any, **kwargs: typing.Any) -> bool:
-        # Clear Cache
-        raise NotImplementedError
+    _data: dict[str, Any] = {}
 
     def retrieve_data(self) -> dict:
         """

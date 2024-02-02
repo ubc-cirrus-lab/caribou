@@ -1,10 +1,10 @@
 from multi_x_serverless.common.constants import GLOBAL_SYSTEM_REGION
+from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
 from multi_x_serverless.common.provider import Provider
 from multi_x_serverless.deployment.common.factories.remote_client_factory import RemoteClientFactory
-from multi_x_serverless.deployment.common.remote_client.remote_client import RemoteClient
 
 
-class Endpoints:
+class Endpoints:  # pylint: disable=too-many-instance-attributes
     def __init__(self) -> None:
         # TODO (#56): Implement retrieval of deployer server and update checker regions
         self._deployment_server_region = GLOBAL_SYSTEM_REGION

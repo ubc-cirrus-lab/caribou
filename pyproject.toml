@@ -87,7 +87,7 @@ exclude = [
     "multi_x_serverless/tests",
     "multi_x_serverless/routing/legacy",
     "multi_x_serverless/common/setup_tables.py",
-    "multi_x_serverless/deployment/common/remote_client/mock_remote_client.py",
+    "multi_x_serverless/common/models/remote_client/mock_remote_client.py",
     ]
 
 [tool.isort]

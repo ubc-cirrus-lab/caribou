@@ -1,5 +1,5 @@
 import unittest
-from multi_x_serverless.deployment.common.remote_client.aws_remote_client import AWSRemoteClient
+from multi_x_serverless.common.models.remote_client.aws_remote_client import AWSRemoteClient
 from multi_x_serverless.deployment.common.factories.remote_client_factory import RemoteClientFactory
 
 

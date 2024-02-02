@@ -1,10 +1,10 @@
 import json
 import time
-from abc import ABC, abstractmethod
-from typing import Any, Optional
+from abc import ABC
+from typing import Any
 
 from multi_x_serverless.common.constants import AVAILABLE_REGIONS_TABLE
-from multi_x_serverless.deployment.common.remote_client.remote_client import RemoteClient
+from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
 
 
 class DataExporter(ABC):
@@ -13,10 +13,6 @@ class DataExporter(ABC):
         self._available_region_table = AVAILABLE_REGIONS_TABLE
         self._region_table = region_table
         self._modified_regions: set[str] = set()
-
-    @abstractmethod
-    def export_all_data(self, *args: Any, **kwargs: Any) -> None:
-        raise NotImplementedError
 
     def update_available_region_timestamp(self, data_collector_name: str, modified_regions: set[str]) -> None:
         current_timestamp: float = time.time()

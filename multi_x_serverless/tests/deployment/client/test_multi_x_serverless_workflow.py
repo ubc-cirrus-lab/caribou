@@ -808,6 +808,30 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
 
         self.assertEqual(result, ("provider1", "us-west-1", "current_instance", "workflow_instance_id"))
 
+    def test_inform_sync_node_of_conditional_non_execution(self):
+        mock_remote_client = Mock()
+        mock_remote_client.set_predecessor_reached.return_value = 3
+        mock_remote_client.invoke_function.return_value = None
+        mock_remote_client_factory = Mock()
+        mock_remote_client_factory.get_remote_client.return_value = mock_remote_client
+
+        with patch(
+            "multi_x_serverless.deployment.client.multi_x_serverless_workflow.RemoteClientFactory",
+            return_value=mock_remote_client_factory,
+        ) as mock_factory_class:
+
+            self.workflow.get_successor_workflow_placement_decision = Mock(return_value=("provider", "region", "identifier"))
+            self.workflow.get_successor_workflow_placement_decision_dictionary = Mock(return_value=self.workflow_placement_decision)
+
+            self.workflow._inform_sync_node_of_conditional_non_execution(self.workflow_placement_decision, self.successor_instance_name)
+
+            mock_remote_client.set_predecessor_reached.assert_called_once_with(
+                predecessor_name="predecessor",
+                sync_node_name="sync_node",
+                workflow_instance_id="run_id"
+            )
+            mock_remote_client.invoke_function.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -6,7 +6,7 @@ from multi_x_serverless.deployment.common.deploy.models.instructions import APIC
 from multi_x_serverless.deployment.common.deploy.models.resource import Resource
 from multi_x_serverless.deployment.common.deploy.models.variable import Variable
 from multi_x_serverless.deployment.common.deploy.executor import Executor
-from multi_x_serverless.deployment.common.remote_client.remote_client import RemoteClient
+from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
 
 import tempfile
 import shutil

@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import Mock, patch
 from multi_x_serverless.routing.models.indexer import Indexer
-from multi_x_serverless.routing.solver_inputs.components.data_sources.at.instance import InstanceSource
+from multi_x_serverless.routing.solver_inputs.components.data_sources.at.instance_source import InstanceSource
 
 
 class TestInstanceSource(unittest.TestCase):
@@ -20,7 +20,7 @@ class TestInstanceSource(unittest.TestCase):
         ]
         instances = ["instance1"]
 
-        instance_source.setup(loaded_data, instance_configuration, instances, mock_indexer)
+        instance_source.setup(loaded_data, instances, mock_indexer, configurations=instance_configuration)
 
         self.assertEqual(
             instance_source._data,

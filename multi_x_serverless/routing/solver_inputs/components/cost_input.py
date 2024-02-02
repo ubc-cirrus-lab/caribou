@@ -9,6 +9,8 @@ from multi_x_serverless.routing.solver_inputs.components.runtime_input import Ru
 class CostInput(Input):
     def __init__(self) -> None:
         self._cost_calculator = CostCalculator()
+        self._data_transfer_size_matrix = np.zeros((0, 0), dtype=float)
+        self._transmission_cost_matrix = np.zeros((0, 0), dtype=float)
 
     def setup(
         self,

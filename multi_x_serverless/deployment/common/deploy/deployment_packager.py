@@ -15,9 +15,9 @@ import pip
 import yaml
 
 import multi_x_serverless
+from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
 from multi_x_serverless.deployment.common.config.config import Config
 from multi_x_serverless.deployment.common.deploy.models.workflow import Workflow
-from multi_x_serverless.deployment.common.remote_client.remote_client import RemoteClient
 
 
 class DeploymentPackager:
@@ -78,9 +78,6 @@ class DeploymentPackager:
             ("common", "__init__.py"),
             ("common", "factories", "__init__.py"),
             ("common", "factories", "remote_client_factory.py"),
-            ("common", "remote_client", "__init__.py"),
-            ("common", "remote_client", "aws_remote_client.py"),
-            ("common", "remote_client", "remote_client.py"),
             ("common", "deploy", "models", "__init__.py"),
             ("common", "deploy", "models", "resource.py"),
         ]
@@ -99,6 +96,9 @@ class DeploymentPackager:
             ("common", "models", "endpoints.py"),
             ("common", "constants.py"),
             ("common", "provider.py"),
+            ("common", "models", "remote_client", "__init__.py"),
+            ("common", "models", "remote_client", "aws_remote_client.py"),
+            ("common", "models", "remote_client", "remote_client.py"),
         ]
 
         multi_x_serverless_path = os.path.dirname(multi_x_serverless_path)

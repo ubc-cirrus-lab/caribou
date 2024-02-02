@@ -1,36 +1,37 @@
-import typing
-
-import numpy as np
+from typing import Any, Optional
 
 from multi_x_serverless.common.provider import Provider
-
-# Indexers
 from multi_x_serverless.routing.models.indexer import Indexer
-from multi_x_serverless.routing.solver_inputs.components.data_sources.source import Source
+from multi_x_serverless.routing.solver_inputs.components.data_sources.at.at_source import AtSource
 
 
-class InstanceSource(Source):
-    def __init__(self) -> None:
-        super().__init__()
-
+class InstanceSource(AtSource):
     def setup(
-        self, loaded_data: dict, instance_configuration: list[dict], instances: list[str], instance_indexer: Indexer
+        self,
+        loaded_data: dict,
+        items_to_source: list,
+        indexer: Indexer,
+        configurations: Optional[list[dict]] = None,
     ) -> None:
-        self._data = {}
+        self._data: dict[int, Any] = {}
+
+        if configurations is None:
+            raise ValueError("No configurations provided for the instance source")
 
         # Parse the instance configuration to usable format for next steps
-        provider_configurations = self._parse_provider_configuration(instance_configuration)
+        provider_configurations = self._parse_provider_configuration(configurations)
 
         # Known information
-        for instance in instances:
-            instance_index = instance_indexer.value_to_index(instance)
+        for instance in items_to_source:
+            instance_index = indexer.value_to_index(instance)
 
             # Group data
             self._data[instance_index] = {
                 # Data Collector information - Past invocation information (from historical data)
                 "execution_time": loaded_data.get("execution_time", {}).get(instance, -1),
                 # Other properties
-                ## Need to consider different configurations of different providers defined at the instance configuration level
+                # Need to consider different configurations of different providers defined at
+                # the instance configuration level
                 "provider_configurations": provider_configurations[instance],
             }
 
@@ -49,7 +50,8 @@ class InstanceSource(Source):
 
                 # Configure memory and vcpu configuration and or translation
                 if provider_name == Provider.AWS.value:
-                    # Vcpu ratio (assuming linear, intercept at 0 scaling) for aws lambda https://docs.aws.amazon.com/lambda/latest/dg/configuration-function-common.html
+                    # Vcpu ratio (assuming linear, intercept at 0 scaling)
+                    # for aws lambda https://docs.aws.amazon.com/lambda/latest/dg/configuration-function-common.html
                     vcpu = memory / 1769
 
                 instance_provider_information[provider_name] = {
@@ -60,8 +62,3 @@ class InstanceSource(Source):
             provider_configurations[instance_name] = instance_provider_information
 
         return provider_configurations
-
-    def get_value(self, data_name: str, instance_index: int) -> typing.Any:
-        # Result type might not necessarily be float, such as provider_configurations
-        # Which is a tuple containing memory and vcpu information of a instance.
-        return self._data[instance_index][data_name]

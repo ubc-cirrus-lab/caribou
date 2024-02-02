@@ -1,11 +1,11 @@
-import numpy as np
-
-from multi_x_serverless.routing.solver_inputs.components.loaders.loader import Loader
+from multi_x_serverless.routing.solver_inputs.components.loaders.region_loader import RegionLoader
 
 
-class CarbonRegionFromToLoader(Loader):
+class CarbonRegionFromToLoader(RegionLoader):
     def setup(self, regions: list[tuple[str, str]]) -> bool:
         self._data = {}
+
+        print("Loading CarbonRegionFromToLoader for regions: ", regions)
 
         # TODO (#35): Load data from database, convert to proper format and store in self._data
 
