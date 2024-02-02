@@ -30,8 +30,8 @@ class BFSFineGrainedSolver(Solver):
         super().__init__(workflow_config, all_available_regions, input_manager, False)
 
     def _solve(self, regions: list[dict]) -> list[tuple[dict, float, float, float]]:
-        execution_cost_carbon_runtime_cache = {}
-        transmission_cost_carbon_runtime_cache = {}
+        execution_cost_carbon_runtime_cache: dict[tuple[int, int, bool], tuple[float, float, float]] = {}
+        transmission_cost_carbon_runtime_cache: dict[tuple[int, int, int, int, bool], tuple[float, float, float]] = {}
 
         # Get the topological representation of a DAG
         prerequisites_dictionary = self._dag.get_prerequisites_dict()
@@ -508,7 +508,7 @@ class BFSFineGrainedSolver(Solver):
 
     def _find_common_elements(self, list_of_sets: list[set[int]]) -> set[int]:
         if not list_of_sets:
-            return {}
+            return set()
         return set.intersection(*list_of_sets)
 
     def _calculate_wc_pc_cost_carbon_cl_placements(
