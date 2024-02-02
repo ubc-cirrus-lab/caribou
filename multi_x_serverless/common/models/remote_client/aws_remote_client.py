@@ -285,6 +285,10 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
             return item["value"]["S"]
         return ""
 
+    def remove_value_from_table(self, table_name: str, key: str) -> None:
+        client = self._client("dynamodb")
+        client.delete_item(TableName=table_name, Key={"key": {"S": key}})
+
     def get_all_values_from_table(self, table_name: str) -> dict[str, Any]:
         client = self._client("dynamodb")
         response = client.scan(TableName=table_name)
@@ -317,3 +321,13 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
             ExpressionAttributeValues={":key": {"S": key}},
         )
         return response["Items"]
+
+    def get_keys(self, table_name: str) -> list[str]:
+        client = self._client("dynamodb")
+        response = client.scan(TableName=table_name)
+        if "Items" not in response:
+            return []
+        items = response.get("Items")
+        if items is not None:
+            return [item["key"] for item in items]
+        return []

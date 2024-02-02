@@ -213,7 +213,7 @@ class TestDeployer(unittest.TestCase):
         workflow.get_deployed_regions_initial_deployment = Mock(return_value={"test_function": [{"region": "region2"}]})
 
         with patch.object(AWSRemoteClient, "set_value_in_table") as set_value_in_table:
-            deployer._upload_workflow_to_deployer_server(workflow, "test_workflow_id")
+            deployer._upload_workflow_to_deployer_server(workflow)
 
             set_value_in_table.assert_called_once_with(
                 "deployment_manager_resources_table",

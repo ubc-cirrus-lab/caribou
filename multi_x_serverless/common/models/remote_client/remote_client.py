@@ -99,6 +99,10 @@ class RemoteClient(ABC):
         raise NotImplementedError()
 
     @abstractmethod
+    def remove_value_from_table(self, table_name: str, key: str) -> None:
+        raise NotImplementedError()
+
+    @abstractmethod
     def get_all_values_from_table(self, table_name: str) -> dict[str, Any]:
         raise NotImplementedError()
 
@@ -112,6 +116,10 @@ class RemoteClient(ABC):
 
     @abstractmethod
     def download_resource(self, key: str) -> bytes:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def get_keys(self, table_name: str) -> list[str]:
         raise NotImplementedError()
 
     @abstractmethod

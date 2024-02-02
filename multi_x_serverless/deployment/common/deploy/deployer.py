@@ -34,36 +34,55 @@ class Deployer:
 
     def re_deploy(
         self,
-        function_to_deployment_regions: dict[str, dict[str, str]],
         workflow_function_descriptions: list[dict],
         deployed_regions: dict[str, dict[str, str]],
     ) -> None:
-        if not isinstance(function_to_deployment_regions, dict):
-            raise TypeError("function_to_deployment_regions must be a dictionary")
         if not isinstance(workflow_function_descriptions, list):
             raise TypeError("workflow_function_descriptions must be a list")
         if not isinstance(deployed_regions, dict):
             raise TypeError("deployed_regions must be a dictionary")
         try:
-            self._re_deploy(function_to_deployment_regions, workflow_function_descriptions, deployed_regions)
+            self._re_deploy(workflow_function_descriptions, deployed_regions)
         except botocore.exceptions.ClientError as e:
             raise DeploymentError(e) from e
 
     def _re_deploy(
         self,
-        function_to_deployment_regions: dict[str, dict[str, str]],
         workflow_function_descriptions: list[dict],
         deployed_regions: dict[str, dict[str, str]],
     ) -> None:
         if self._config.workflow_id is None or self._config.workflow_id == "{}":
             raise RuntimeError("Workflow id is not set correctly")
 
-        workflow_deployed = self._get_workflow_already_deployed(self._config.workflow_id)
+        workflow_deployed = self._get_workflow_already_deployed()
 
         if not workflow_deployed:
             raise DeploymentError(
                 f"Workflow {self._config.workflow_name} with version {self._config.workflow_version} not deployed, something went wrong"  # pylint: disable=line-too-long
             )
+
+        staging_area_data = self._endpoints.get_solver_update_checker_client().get_value_from_table(
+            WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE, self._config.workflow_id
+        )
+
+        previous_workflow_placement_decision = self._endpoints.get_solver_update_checker_client().get_value_from_table(
+            WORKFLOW_PLACEMENT_DECISION_TABLE, self._config.workflow_id
+        )
+
+        if previous_workflow_placement_decision is None:
+            raise RuntimeError("Current workflow placement decision is None")
+
+        previous_workflow_placement_decision_json = json.loads(previous_workflow_placement_decision)
+
+        if staging_area_data is None:
+            raise RuntimeError("Staging area data is None")
+
+        staging_area_data_json = json.loads(staging_area_data)
+
+        if not isinstance(staging_area_data_json, dict):
+            raise RuntimeError("Staging area data is not a dictionary")
+
+        function_to_deployment_regions = self._get_function_to_deployment_regions(staging_area_data_json)
 
         filtered_function_to_deployment_regions = self._filter_function_to_deployment_regions(
             function_to_deployment_regions, deployed_regions
@@ -86,8 +105,27 @@ class Deployer:
             deployed_regions, filtered_function_to_deployment_regions
         )
 
-        self._update_workflow_to_deployer_server(workflow, self._config.workflow_id, merged_deployer_regions)
-        self._update_workflow_placement_decision(workflow)
+        self._update_workflow_to_deployer_server(workflow, merged_deployer_regions)
+        self._update_workflow_placement_decision(
+            workflow, staging_area_data, previous_workflow_placement_decision_json["instances"]
+        )
+
+    def _get_function_to_deployment_regions(self, staging_area_data: dict) -> dict[str, dict[str, str]]:
+        function_to_deployment_regions: dict[str, dict[str, str]] = {}
+        for instance_name, placement in staging_area_data["workflow_placement"].items():
+            function_name = (
+                instance_name.split(":", maxsplit=1)[0]
+                + "_"
+                + placement["provider_region"]["provider"]
+                + "-"
+                + placement["provider_region"]["region"]
+            )
+            if function_name not in function_to_deployment_regions:
+                function_to_deployment_regions[function_name] = {
+                    "provider": placement["provider_region"]["provider"],
+                    "region": placement["provider_region"]["region"],
+                }
+        return function_to_deployment_regions
 
     def _filter_function_to_deployment_regions(
         self,
@@ -124,14 +162,14 @@ class Deployer:
 
         self._set_workflow_id(workflow)
 
-        already_deployed = self._get_workflow_already_deployed(self._config.workflow_id)
+        already_deployed = self._get_workflow_already_deployed()
         if already_deployed:
             raise DeploymentError(
                 f"Workflow {self._config.workflow_name} with version {self._config.workflow_version} already deployed, please use a different version number"  # pylint: disable=line-too-long
             )
 
         # Upload the workflow to the solver
-        self._upload_workflow_to_solver_update_checker(workflow, self._config.workflow_id)
+        self._upload_workflow_to_solver_update_checker(workflow)
 
         # Build the workflow resources, e.g. deployment packages, iam roles, etc.
         self._deployment_packager.build(self._config, workflow)
@@ -145,7 +183,7 @@ class Deployer:
         # Execute the deployment plan
         self._executor.execute(deployment_plan)
 
-        self._upload_workflow_to_deployer_server(workflow, self._config.workflow_id)
+        self._upload_workflow_to_deployer_server(workflow)
         self._upload_deployment_package_resource(workflow)
         self._upload_workflow_placement_decision(workflow)
 
@@ -153,29 +191,28 @@ class Deployer:
         workflow_id = f"{workflow.name}-{workflow.version}"
         self._config.set_workflow_id(workflow_id)
 
-    def _upload_workflow_to_solver_update_checker(self, workflow: Workflow, workflow_id: str) -> None:
+    def _upload_workflow_to_solver_update_checker(self, workflow: Workflow) -> None:
         workflow_config = workflow.get_workflow_config().to_json()
 
         payload = {
-            "workflow_id": workflow_id,
+            "workflow_id": self._config.workflow_id,
             "workflow_config": workflow_config,
         }
 
         payload_json = json.dumps(payload)
 
         self._endpoints.get_solver_update_checker_client().set_value_in_table(
-            SOLVER_UPDATE_CHECKER_RESOURCE_TABLE, workflow_id, payload_json
+            SOLVER_UPDATE_CHECKER_RESOURCE_TABLE, self._config.workflow_id, payload_json
         )
 
-    def _get_workflow_already_deployed(self, workflow_id: str) -> bool:
+    def _get_workflow_already_deployed(self) -> bool:
         return self._endpoints.get_solver_update_checker_client().get_key_present_in_table(
-            SOLVER_UPDATE_CHECKER_RESOURCE_TABLE, workflow_id
+            SOLVER_UPDATE_CHECKER_RESOURCE_TABLE, self._config.workflow_id
         )
 
-    def _update_workflow_placement_decision(self, workflow: Workflow) -> None:
-        staging_area_data = self._endpoints.get_solver_workflow_placement_decision_client().get_value_from_table(
-            WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE, self._config.workflow_id
-        )
+    def _update_workflow_placement_decision(
+        self, workflow: Workflow, staging_area_data: str, previous_instances: list[dict]
+    ) -> None:
         if staging_area_data is None:
             raise RuntimeError("Staging area data is None")
 
@@ -188,12 +225,15 @@ class Deployer:
             raise RuntimeError("Cannot deploy with deletion deployer")
 
         workflow_placement_decision = workflow.get_workflow_placement_decision_extend_staging(
-            self._executor.resource_values, staging_area_data_json
+            self._executor.resource_values, staging_area_data_json, previous_instances
         )
         workflow_placement_decision_json = json.dumps(workflow_placement_decision)
 
         self._endpoints.get_solver_update_checker_client().set_value_in_table(
             WORKFLOW_PLACEMENT_DECISION_TABLE, self._config.workflow_id, workflow_placement_decision_json
+        )
+        self._endpoints.get_solver_workflow_placement_decision_client().remove_value_from_table(
+            WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE, self._config.workflow_id
         )
 
     def _upload_workflow_placement_decision(self, workflow: Workflow) -> None:
@@ -207,7 +247,7 @@ class Deployer:
             WORKFLOW_PLACEMENT_DECISION_TABLE, self._config.workflow_id, workflow_placement_decision_json
         )
 
-    def _upload_workflow_to_deployer_server(self, workflow: Workflow, workflow_id: str) -> None:
+    def _upload_workflow_to_deployer_server(self, workflow: Workflow) -> None:
         workflow_function_descriptions = workflow.get_function_description()
         workflow_function_descriptions_json = json.dumps(workflow_function_descriptions)
         deployment_config_json = self._config.to_json()
@@ -215,7 +255,7 @@ class Deployer:
         deployed_regions_json = json.dumps(deployed_regions)
 
         payload = {
-            "workflow_id": workflow_id,
+            "workflow_id": self._config.workflow_id,
             "workflow_function_descriptions": workflow_function_descriptions_json,
             "deployment_config": deployment_config_json,
             "deployed_regions": deployed_regions_json,
@@ -224,11 +264,11 @@ class Deployer:
         payload_json = json.dumps(payload)
 
         self._endpoints.get_deployment_manager_client().set_value_in_table(
-            DEPLOYMENT_MANAGER_RESOURCE_TABLE, workflow_id, payload_json
+            DEPLOYMENT_MANAGER_RESOURCE_TABLE, self._config.workflow_id, payload_json
         )
 
     def _update_workflow_to_deployer_server(
-        self, workflow: Workflow, workflow_id: str, deployed_regions: dict[str, dict[str, str]]
+        self, workflow: Workflow, deployed_regions: dict[str, dict[str, str]]
     ) -> None:
         workflow_function_descriptions = workflow.get_function_description()
         workflow_function_descriptions_json = json.dumps(workflow_function_descriptions)
@@ -236,7 +276,7 @@ class Deployer:
         deployed_regions_json = json.dumps(deployed_regions)
 
         payload = {
-            "workflow_id": workflow_id,
+            "workflow_id": self._config.workflow_id,
             "workflow_function_descriptions": workflow_function_descriptions_json,
             "deployment_config": deployment_config_json,
             "deployed_regions": deployed_regions_json,
@@ -245,7 +285,7 @@ class Deployer:
         payload_json = json.dumps(payload)
 
         self._endpoints.get_deployment_manager_client().set_value_in_table(
-            DEPLOYMENT_MANAGER_RESOURCE_TABLE, workflow_id, payload_json
+            DEPLOYMENT_MANAGER_RESOURCE_TABLE, self._config.workflow_id, payload_json
         )
 
     def _upload_deployment_package_resource(self, workflow: Workflow) -> None:
