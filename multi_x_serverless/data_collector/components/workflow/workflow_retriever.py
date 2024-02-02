@@ -17,8 +17,8 @@ class WorkflowRetriever(DataRetriever):
 
     def retrieve_workflow_summary(self, workflow_unique_id: str) -> dict[str, Any]:
         # Load the summarized logs from the workflow summary table
-        workflow_summarized_logs: dict[str, Any] = json.loads(
-            self._client.get_value_from_table(self._workflow_summary_table, workflow_unique_id)
+        workflow_summarized_logs: dict[str, Any] = self._client.get_values_from_complex_key_table(
+            self._workflow_summary_table, workflow_unique_id
         )
 
         # Consolidate all the timestamps together to one summary and return the result
