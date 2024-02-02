@@ -489,7 +489,7 @@ class BFSFineGrainedSolver(Solver):
         pc_cost = 0.0
         pc_carbon = 0.0
 
-        clean_placement_dict = {k: 0 for k in self._topological_order}
+        clean_placement_dict = dict()
 
         for (
             instance_index,
