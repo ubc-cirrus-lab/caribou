@@ -436,13 +436,12 @@ The Workflow Collector is responsible for extracting information from the `workf
       - Number of invocation (of this instance in this region)
       - Region Average/Tail Runtime.
     - To Instance `<instance_unique_id>`
-      - Number of calls from parent instance to this instance. 
+      - Number of calls from parent instance to this instance.
       - Average data transfer size between instance stages.
       - At Region `<provider_unique_id>:<region_name>`
         - To Region `<provider_unique_id>:<region_name>`
           - Number transmission
           - Region Average/Tail Latency.
-
 
 The `workflow_instance_table` is responsible for summarizing and collecting information regarding past instance invocation at various regions:
 

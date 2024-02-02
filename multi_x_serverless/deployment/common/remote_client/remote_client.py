@@ -129,9 +129,5 @@ class RemoteClient(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def get_values_from_complex_key_table(self, table_name: str, partition_key: str) -> dict[str, Any]:
-        raise NotImplementedError()
-
-    @abstractmethod
-    def get_value_from_complex_key_table(self, table_name: str, partition_key: str, sort_key) -> str:
+    def get_values_from_composite_key_table(self, table_name: str, key: str) -> list[dict[str, Any]]:
         raise NotImplementedError()

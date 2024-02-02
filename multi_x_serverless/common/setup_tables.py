@@ -38,10 +38,7 @@ def main():
         if attr.endswith("_TABLE"):
             table_name = getattr(constants, attr)
             print(f"Creating table: {table_name}")
-            if table_name == constants.AVAILABLE_REGIONS_TABLE:
-                create_composite_table(dynamodb, table_name)
-            else:
-                create_table(dynamodb, table_name)
+            create_table(dynamodb, table_name)
         # If the attribute name ends with '_BUCKET', create an S3 bucket
         elif attr.endswith("_BUCKET"):
             bucket_name = getattr(constants, attr)

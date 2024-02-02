@@ -308,3 +308,12 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         client = self._client("s3")
         response = client.get_object(Bucket="multi-x-serverless-resources", Key=key)
         return response["Body"].read()
+
+    def get_values_from_composite_key_table(self, table_name: str, key: str) -> list[dict[str, Any]]:
+        client = self._client("dynamodb")
+        response = client.query(
+            TableName=table_name,
+            KeyConditionExpression="key = :key ",
+            ExpressionAttributeValues={":key": {"S": key}},
+        )
+        return response["Items"]
