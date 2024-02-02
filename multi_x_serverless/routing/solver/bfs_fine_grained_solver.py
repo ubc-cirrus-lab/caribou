@@ -209,8 +209,9 @@ class BFSFineGrainedSolver(Solver):
                         if common_keys not in deployment_groups:
                             deployment_groups[common_keys] = [[] for _ in range(pred_index_counter + 1)]
                         else:
-                            while len(deployment_groups[common_keys]) <= pred_index_counter:
-                                deployment_groups[common_keys].append([])
+                            deployment_groups[common_keys] += [[]] * (
+                                pred_index_counter + 1 - len(deployment_groups[common_keys])
+                            )
 
                         deployment_groups[common_keys][pred_index_counter].append(
                             (previous_deployment, previous_instance_index)
@@ -221,7 +222,7 @@ class BFSFineGrainedSolver(Solver):
                     time_dic["prerequisites_indices_loop"] += e - s
                 if current_instance_index == -1:  # If this is the virtual end node
                     final_deployments: list[tuple[dict, float, float, float]] = []
-                    for common_keys, deployment_group in deployment_groups.items():
+                    for deployment_group in deployment_groups.values():
                         # Here is the format of the final deployment options
                         # In the future this will be using the average conditional dag results
                         # For now we just use the worse case (Until we implement conditional dag support)
@@ -234,15 +235,9 @@ class BFSFineGrainedSolver(Solver):
                                 (original_deployment_placement, wc_ccr, previous_pc_runtime),
                                 previous_instance_index,
                             ) in combination:
-                                from_region_index = original_deployment_placement.get(previous_instance_index, None)[
-                                    0
-                                ]  # Prev should always be either in the dag or be home region
-
                                 previous_wc_runtime = wc_ccr[2]
-
                                 # Merge the deployments information together
                                 combined_placements = combined_placements | original_deployment_placement
-
                                 if previous_wc_runtime > max_wc_runtime:
                                     max_wc_runtime = previous_wc_runtime
                                 if previous_pc_runtime > max_pc_runtime:
@@ -280,7 +275,7 @@ class BFSFineGrainedSolver(Solver):
                     if PROFILE:
                         s227 = time.time()
                     for to_region_index in permitted_regions_indices:
-                        for common_keys, deployment_group in deployment_groups.items():
+                        for deployment_group in deployment_groups.values():
                             for combination in itertools.product(*deployment_group):
                                 # For each combination of deployments, merge them together
                                 combined_placements = {}
@@ -468,8 +463,7 @@ class BFSFineGrainedSolver(Solver):
                                     wc_carbon_total,
                                     pc_cost_total,
                                     pc_carbon_total,
-                                    _,
-                                ) = self._calculate_wc_pc_cost_carbon_cl_placements(combined_placements)
+                                ) = self._calculate_wc_pc_cost_carbon(combined_placements)
                                 if PROFILE:
                                     e = time.time()
                                     time_dic["_calculate_wc_pc_cost_carbon_cl_placements"] += e - s
@@ -538,3 +532,22 @@ class BFSFineGrainedSolver(Solver):
             clean_placement_dict[instance_index] = region_index
 
         return wc_cost, wc_carbon, pc_cost, pc_carbon, clean_placement_dict
+
+    def _calculate_wc_pc_cost_carbon(
+        self, instance_placement_data: dict[int, tuple[int, tuple[float, float], tuple[float, float]]]
+    ) -> tuple[float, float, float, float]:
+        wc_cost = 0.0
+        wc_carbon = 0.0
+        pc_cost = 0.0
+        pc_carbon = 0.0
+
+        for (
+            _,
+            (_, (wc_cost_instance, wc_carbon_instance), (pc_cost_instance, pc_carbon_instance)),
+        ) in instance_placement_data.items():
+            wc_cost += wc_cost_instance
+            wc_carbon += wc_carbon_instance
+            pc_cost += pc_cost_instance
+            pc_carbon += pc_carbon_instance
+
+        return wc_cost, wc_carbon, pc_cost, pc_carbon
