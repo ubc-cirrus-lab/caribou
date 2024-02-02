@@ -27,19 +27,19 @@ class IAMRole(Resource):
                     raise RuntimeError(f"Policy is not a dictionary, check the policy ({policy_file})")
             except json.JSONDecodeError as e:
                 raise RuntimeError(f"Policy could not be parsed, check the policy ({policy_file})") from e
-        self.__policy: dict = policy
+        self._policy: dict = policy
 
     def dependencies(self) -> Sequence[Resource]:
         return []
 
     def get_policy(self, provider: Provider) -> str:
-        if provider.value in self.__policy:
-            return json.dumps(self.__policy[provider.value])
+        if provider.value in self._policy:
+            return json.dumps(self._policy[provider.value])
 
         raise RuntimeError(f"Provider {provider.value} not found in policy file")
 
     def to_json(self) -> dict[str, str]:
-        return {"policy_file": json.dumps(self.__policy), "role_name": self.name}
+        return {"policy_file": json.dumps(self._policy), "role_name": self.name}
 
     def __repr__(self) -> str:
-        return super().__repr__() + f"policy={self.__policy})"
+        return super().__repr__() + f"policy={self._policy})"

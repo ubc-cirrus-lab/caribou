@@ -488,6 +488,97 @@ class TestWorkflowBuilder(unittest.TestCase):
         ):
             self.builder._merge_and_verify_regions_and_providers(regions_and_providers, config)
 
+    def test_re_build_workflow(self):
+        config = Mock(spec=Config)
+        config.workflow_name = "workflow_name"
+        config.workflow_version = "workflow_version"
+        function_to_deployment_region = {
+            "function_name_provider1-region1": {"provider": "provider1", "region": "region1"}
+        }
+        workflow_function_descriptions = [
+            {
+                "name": "function_name_provider1-region1",
+                "environment_variables": {"var": "value"},
+                "runtime": "python3.8",
+                "handler": "handler",
+                "role": {"policy_file": "{}", "role_name": "role_name"},
+                "entry_point": "entry_point",
+                "providers": ["provider1"],
+            }
+        ]
+        deployed_regions = {"function_name_provider1-region1": {"provider": "provider1", "region": "region1"}}
+
+        workflow_builder = WorkflowBuilder()
+        workflow = workflow_builder.re_build_workflow(
+            config, function_to_deployment_region, workflow_function_descriptions, deployed_regions
+        )
+
+        self.assertEqual(workflow.name, "workflow_name")
+        self.assertEqual(workflow.version, "workflow_version")
+        self.assertEqual(len(workflow._resources), 1)
+
+        self.assertEqual(workflow._resources[0].name, "function_name_provider1-region1")
+        self.assertEqual(workflow._resources[0].environment_variables, {"var": "value"})
+        self.assertEqual(workflow._resources[0].runtime, "python3.8")
+        self.assertEqual(workflow._resources[0].handler, "handler")
+        self.assertEqual(workflow._resources[0].role._policy, {})
+        self.assertEqual(workflow._resources[0].role.name, "role_name")
+        self.assertEqual(workflow._resources[0].deploy_region, {"provider": "provider1", "region": "region1"})
+        self.assertEqual(workflow._resources[0].entry_point, "entry_point")
+        self.assertEqual(workflow._resources[0].providers, ["provider1"])
+
+    def test_re_build_workflow_with_matching_function_name(self):
+        config = Mock(spec=Config)
+        config.workflow_name = "workflow_name"
+        config.workflow_version = "workflow_version"
+        function_to_deployment_region = {
+            "function_name_provider1-region1": {"provider": "provider1", "region": "region1"},
+            "function_name_provider2-region2": {"provider": "provider2", "region": "region2"},
+        }
+        workflow_function_descriptions = [
+            {
+                "name": "function_name_provider1-region1",
+                "environment_variables": {"var": "value"},
+                "runtime": "python3.8",
+                "handler": "handler",
+                "role": {"policy_file": "{}", "role_name": "role_name"},
+                "entry_point": "entry_point",
+                "providers": ["provider1"],
+            }
+        ]
+        deployed_regions = {
+            "function_name_provider1-region1": {"provider": "provider1", "region": "region1"},
+        }
+
+        workflow_builder = WorkflowBuilder()
+        workflow = workflow_builder.re_build_workflow(
+            config, function_to_deployment_region, workflow_function_descriptions, deployed_regions
+        )
+
+        self.assertEqual(workflow.name, "workflow_name")
+        self.assertEqual(workflow.version, "workflow_version")
+        self.assertEqual(len(workflow._resources), 2)
+
+        self.assertEqual(workflow._resources[0].name, "function_name_provider2-region2")
+        self.assertEqual(workflow._resources[0].deploy_region, {"provider": "provider2", "region": "region2"})
+        self.assertEqual(workflow._resources[0].entry_point, "entry_point")
+        self.assertEqual(workflow._resources[0].environment_variables, {"var": "value"})
+        self.assertEqual(workflow._resources[0].handler, "handler")
+        self.assertEqual(workflow._resources[0].providers, ["provider1"])
+        self.assertEqual(workflow._resources[0].role._policy, {})
+        self.assertEqual(workflow._resources[0].role.name, "function_name_provider2-region2-role")
+        self.assertEqual(workflow._resources[0].runtime, "python3.8")
+
+        self.assertEqual(workflow._resources[1].name, "function_name_provider1-region1")
+        self.assertEqual(workflow._resources[1].deploy_region, {"provider": "provider1", "region": "region1"})
+        self.assertEqual(workflow._resources[1].entry_point, "entry_point")
+        self.assertEqual(workflow._resources[1].environment_variables, {"var": "value"})
+        self.assertEqual(workflow._resources[1].handler, "handler")
+        self.assertEqual(workflow._resources[1].providers, ["provider1"])
+        self.assertEqual(workflow._resources[1].role._policy, {})
+        self.assertEqual(workflow._resources[1].role.name, "role_name")
+        self.assertEqual(workflow._resources[1].runtime, "python3.8")
+
 
 if __name__ == "__main__":
     unittest.main()
