@@ -3,6 +3,7 @@ from unittest.mock import MagicMock
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
 from multi_x_serverless.data_collector.components.data_retriever import DataRetriever
 
+
 class TestDataRetriever(unittest.TestCase):
     def setUp(self):
         self.client = MagicMock(spec=RemoteClient)
@@ -22,5 +23,6 @@ class TestDataRetriever(unittest.TestCase):
         self.assertEqual(result, mock_regions)
         self.assertEqual(self.retriever._available_regions, mock_regions)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

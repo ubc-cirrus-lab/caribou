@@ -4,9 +4,10 @@ from multi_x_serverless.data_collector.components.workflow.workflow_exporter imp
 from multi_x_serverless.data_collector.components.workflow.workflow_retriever import WorkflowRetriever
 from multi_x_serverless.data_collector.components.workflow.workflow_collector import WorkflowCollector
 
+
 class TestWorkflowCollector(unittest.TestCase):
-    @patch.object(WorkflowRetriever, '__init__', return_value=None)
-    @patch.object(WorkflowExporter, '__init__', return_value=None)
+    @patch.object(WorkflowRetriever, "__init__", return_value=None)
+    @patch.object(WorkflowExporter, "__init__", return_value=None)
     def setUp(self, mock_retriever_init, mock_exporter_init):
         self.collector = WorkflowCollector()
         self.collector._data_retriever = MagicMock(spec=WorkflowRetriever)
@@ -38,5 +39,6 @@ class TestWorkflowCollector(unittest.TestCase):
         self.collector._data_retriever.retrieve_workflow_summary.assert_called_once_with("workflow1")
         self.collector._data_exporter.export_all_data.assert_called_once_with(mock_workflow_summary_data)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

@@ -28,7 +28,7 @@ class AWSLatencyRetriever:
             region_code = row.find("th", class_="region_title").find("em").get_text(strip=True)
             self.data[region_code] = [col.get_text(strip=True) for col in cols]
 
-    def get_latency(self, region_from: dict[str, Any], region_to: dict[str, Any]) -> float:
+    def get_latency(self, region_from: tuple, region_to: dict[str, Any]) -> float:
         region_from_code = region_from["code"]
         region_to_code = region_to["code"]
         try:

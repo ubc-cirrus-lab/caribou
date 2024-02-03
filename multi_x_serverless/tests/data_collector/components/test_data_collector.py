@@ -3,6 +3,7 @@ from unittest.mock import patch, MagicMock
 from multi_x_serverless.common.models.endpoints import Endpoints
 from multi_x_serverless.data_collector.components.data_collector import DataCollector
 
+
 class MockDataCollector(DataCollector):
     def __init__(self):
         super().__init__()
@@ -11,7 +12,7 @@ class MockDataCollector(DataCollector):
         pass
 
 class TestDataCollector(unittest.TestCase):
-    @patch.object(Endpoints, 'get_data_collector_client')
+    @patch.object(Endpoints, "get_data_collector_client")
     def test_init(self, mock_get_data_collector_client):
         mock_client = MagicMock()
         mock_get_data_collector_client.return_value = mock_client
@@ -29,5 +30,6 @@ class TestDataCollector(unittest.TestCase):
         except Exception as e:
             self.fail(f"run method raised an exception: {e}")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()
