@@ -16,7 +16,7 @@ class ProviderExporter(DataExporter):
 
     def export_all_data(self, provider_region_data: dict[str, Any], provider_data: dict[str, Any]) -> None:
         self._export_region_data(provider_region_data)
-        self._export_data(self.provider_table, provider_data, True)
+        self._export_data(self.provider_table, provider_data, False)
 
     def export_available_region_table(self, available_region_data: dict[str, dict[str, Any]]) -> None:
         self._export_data(self._available_region_table, available_region_data, True)

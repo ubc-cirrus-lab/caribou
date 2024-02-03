@@ -51,12 +51,8 @@ class TestDataExporter(unittest.TestCase):
         self.exporter._export_data("table_name", data, True)
 
         # Check that set_value_in_table was called with specific arguments
-        self.client.set_value_in_table.assert_any_call(
-            "table_name", "aws:region1", '{"data": "data1"}'
-        )
-        self.client.set_value_in_table.assert_any_call(
-            "table_name", "aws:region2", '{"data": "data2"}'
-        )
+        self.client.set_value_in_table.assert_any_call("table_name", "aws:region1", '{"data": "data1"}')
+        self.client.set_value_in_table.assert_any_call("table_name", "aws:region2", '{"data": "data2"}')
 
         # Check the total number of calls
         self.assertEqual(self.client.set_value_in_table.call_count, 2)

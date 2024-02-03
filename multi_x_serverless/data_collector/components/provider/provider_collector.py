@@ -26,10 +26,10 @@ class ProviderCollector(DataCollector):
         available_region_data = self._data_retriever.retrieve_available_regions()
         self._data_exporter.export_available_region_table(available_region_data)
 
-        provider_region_data: dict[str, Any] = {}
+        provider_region_data: dict[str, Any] = self._data_retriever.retrieve_provider_region_data()
 
         # TODO (#27): Implement free tier data collection
-        provider_data: dict[str, Any] = self._data_retriever.retrieve_provider_data()
+        provider_data: dict[str, Any] = {}
 
         self._data_exporter.export_all_data(provider_region_data, provider_data)
 

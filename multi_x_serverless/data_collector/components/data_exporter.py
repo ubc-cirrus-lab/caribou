@@ -39,7 +39,7 @@ class DataExporter(ABC):
         Every region based data dictionary needs to have keys in the followin
         format:
         - <provider>:<region>   (e.g. aws:region1)
-        
+
         All additional keys depend on the table being exported to.
         """
         for key, value in data.items():
@@ -50,5 +50,5 @@ class DataExporter(ABC):
                 provider, region = key.split(":")
                 if not provider or not region:
                     raise ValueError("Data dictionary key is in invalid format.")
-                
+
                 self._update_modified_regions(provider, region)

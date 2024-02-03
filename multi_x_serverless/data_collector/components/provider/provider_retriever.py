@@ -83,7 +83,7 @@ class ProviderRetriever(DataRetriever):
         self._available_regions = available_regions
         return available_regions
 
-    def retrieve_provider_data(self) -> dict[str, dict[str, Any]]:
+    def retrieve_provider_region_data(self) -> dict[str, dict[str, Any]]:
         provider_data = {}
 
         grouped_by_provider: dict[str, list[str]] = {}

@@ -11,6 +11,7 @@ class MockDataCollector(DataCollector):
     def run(self):
         pass
 
+
 class TestDataCollector(unittest.TestCase):
     @patch.object(Endpoints, "get_data_collector_client")
     def test_init(self, mock_get_data_collector_client):
