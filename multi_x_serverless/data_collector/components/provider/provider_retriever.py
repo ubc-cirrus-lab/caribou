@@ -136,6 +136,9 @@ class ProviderRetriever(DataRetriever):
         result_transmission_cost_dict = {}
 
         for region_key in available_region:
+            if ":" not in region_key:
+                raise ValueError(f"Invalid region key {region_key}")
+
             region_code = region_key.split(":")[1]
 
             global_data_transfer: float = 0.0

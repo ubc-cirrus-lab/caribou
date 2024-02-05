@@ -4,3 +4,4 @@ omit =
     */__init__.py
     */common/setup/*
     */tests/*
+    */main.py

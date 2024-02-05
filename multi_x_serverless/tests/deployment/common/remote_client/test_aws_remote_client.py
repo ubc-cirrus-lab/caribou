@@ -1,5 +1,6 @@
 import unittest
 from unittest.mock import patch
+from unittest.mock import MagicMock
 
 from multi_x_serverless.common.models.remote_client.aws_remote_client import AWSRemoteClient
 from multi_x_serverless.deployment.common.deploy.models.resource import Resource
@@ -369,6 +370,100 @@ class TestAWSRemoteClient(unittest.TestCase):
             self.fail("_wait_for_role_to_become_active raised RuntimeError unexpectedly!")
 
         mock_client.return_value.get_role.assert_called_with(RoleName=role_name)
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_set_value_in_table(self, mock_client):
+        table_name = "test_table"
+        key = "test_key"
+        value = "test_value"
+        self.aws_client.set_value_in_table(table_name, key, value)
+        mock_client.assert_called_with("dynamodb")
+        mock_client.return_value.put_item.assert_called_once_with(
+            TableName=table_name, Item={"key": {"S": key}, "value": {"S": value}}
+        )
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_set_value_in_table_column(self, mock_client):
+        table_name = "test_table"
+        key = "test_key"
+        column_type_value = [("column1", "S", "value1"), ("column2", "N", "123")]
+        self.aws_client.set_value_in_table_column(table_name, key, column_type_value)
+        mock_client.assert_called_with("dynamodb")
+        mock_client.return_value.update_item.assert_called_once()
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_get_value_from_table(self, mock_client):
+        table_name = "test_table"
+        key = "test_key"
+        mock_client.return_value.get_item.return_value = {"Item": {"key": {"S": key}, "value": {"S": "test_value"}}}
+        result = self.aws_client.get_value_from_table(table_name, key)
+        self.assertEqual(result, "test_value")
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_remove_value_from_table(self, mock_client):
+        table_name = "test_table"
+        key = "test_key"
+        self.aws_client.remove_value_from_table(table_name, key)
+        mock_client.assert_called_with("dynamodb")
+        mock_client.return_value.delete_item.assert_called_once_with(TableName=table_name, Key={"key": {"S": key}})
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_get_all_values_from_table(self, mock_client):
+        table_name = "test_table"
+        mock_client.return_value.scan.return_value = {
+            "Items": [{"key": {"S": "key1"}, "value": {"S": json.dumps("value1")}}]
+        }
+        result = self.aws_client.get_all_values_from_table(table_name)
+        self.assertEqual(result, {"key1": "value1"})
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_get_key_present_in_table(self, mock_client):
+        table_name = "test_table"
+        key = "test_key"
+        mock_client.return_value.get_item.return_value = {"Item": {"key": {"S": key}, "value": {"S": "test_value"}}}
+        result = self.aws_client.get_key_present_in_table(table_name, key)
+        self.assertTrue(result)
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_upload_resource(self, mock_client):
+        key = "test_key"
+        resource = b"test_resource"
+        self.aws_client.upload_resource(key, resource)
+        mock_client.assert_called_with("s3")
+        mock_client.return_value.put_object.assert_called_once_with(
+            Body=resource, Bucket="multi-x-serverless-resources", Key=key
+        )
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_download_resource(self, mock_client):
+        key = "test_key"
+        mock_client.return_value.get_object.return_value = {"Body": MagicMock(read=lambda: b"test_resource")}
+        result = self.aws_client.download_resource(key)
+        self.assertEqual(result, b"test_resource")
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_get_all_values_from_sort_key_table(self, mock_client):
+        table_name = "test_table"
+        key = "test_key"
+        mock_client.return_value.query.return_value = {
+            "Items": [
+                {"key": {"S": "key1"}, "value": {"S": "value1"}},
+                {"key": {"S": "key2"}, "value": {"S": "value2"}},
+            ]
+        }
+        result = self.aws_client.get_all_values_from_sort_key_table(table_name, key)
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0], "value1")
+        self.assertEqual(result[1], "value2")
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_get_keys(self, mock_client):
+        table_name = "test_table"
+        mock_client.return_value.scan.return_value = {"Items": [{"key": {"S": "key1"}}, {"key": {"S": "key2"}}]}
+        result = self.aws_client.get_keys(table_name)
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0], "key1")
+        self.assertEqual(result[1], "key2")
 
 
 if __name__ == "__main__":

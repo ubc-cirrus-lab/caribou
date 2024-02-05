@@ -296,7 +296,7 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
             return {}
         items = response.get("Items")
         if items is not None:
-            return {item["key"]: json.loads(item["value"]) for item in items}
+            return {item["key"]["S"]: json.loads(item["value"]["S"]) for item in items}
         return {}
 
     def get_key_present_in_table(self, table_name: str, key: str) -> bool:
@@ -320,7 +320,7 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
             KeyConditionExpression="key = :key ",
             ExpressionAttributeValues={":key": {"S": key}},
         )
-        return response["Items"]
+        return [item["value"]["S"] for item in response.get("Items", [])]
 
     def get_keys(self, table_name: str) -> list[str]:
         client = self._client("dynamodb")
@@ -329,5 +329,5 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
             return []
         items = response.get("Items")
         if items is not None:
-            return [item["key"] for item in items]
+            return [item["key"]["S"] for item in items]
         return []
