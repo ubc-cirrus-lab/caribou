@@ -523,6 +523,8 @@ The frequency with which this collector should run needs further investigation.
 This collector is responsible for managing the `carbon_region_table` database table.
 It is also responsible for updating the timestamp of carbon-updated regions in the Carbon Collector timestamp field of the `available_regions_table` table.
 
+#### Carbon Region Table
+
 The `carbon_region_table` is responsible for managing carbon region-specific information. The keys and information stored in this table are as follows:
 
 - Key: `<provider_unique_id>:<region_name>`
@@ -532,6 +534,22 @@ The `carbon_region_table` is responsible for managing carbon region-specific inf
     - Region-to-region Data Transfer Carbon Impact (gCO2e/GB)
 
 Note: Perhaps this may be expanded in the future if we are incorporating more execution or transmission carbon estimation techniques.
+
+##### Carbon Region Table Example
+
+```json
+{
+  "key": "aws:eu-south-1",
+  "value": {
+    "execution_carbon": 0.233,
+    "transmission_carbon": {
+      "aws:eu-south-1": 0.233,
+      "aws:us-east-1": 0.233,
+      "aws:us-west-1": 0.233
+    }
+  }
+}
+```
 
 ### Performance Collector
 

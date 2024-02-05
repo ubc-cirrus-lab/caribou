@@ -86,7 +86,7 @@ class CarbonRetriever(DataRetriever):
         response = requests.get(
             electricitymaps + "lat=" + str(latitude) + "&lon=" + str(longitude),
             headers={"auth-token": self._electricity_maps_auth_token},
-            timeout=5,
+            timeout=10,
         )
 
         self._last_request = datetime.datetime.now()
@@ -96,7 +96,8 @@ class CarbonRetriever(DataRetriever):
 
             if "carbonIntensity" in json_data:
                 return json_data["carbonIntensity"]
-            raise ValueError("Could not find carbon intensity in response")
+            else:
+                return self._global_average_worst_case_carbon_intensity
 
         if response.status_code == 404 and "No recent data for zone" in response.text:
             return self._global_average_worst_case_carbon_intensity
