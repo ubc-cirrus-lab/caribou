@@ -22,20 +22,14 @@ class DAG(Indexer):
 
     def topological_sort(self) -> list[int]:
         in_degree = np.sum(self._adj_matrix, axis=0)
-        queue: deque[int] = deque()
-
-        for i, _ in enumerate(self._nodes):
-            if in_degree[i] == 0:
-                queue.append(i)
+        queue = deque([i for i in range(self._num_nodes) if in_degree[i] == 0])
 
         result = []
         while queue:
             node_index = queue.popleft()
+            result.append(node_index)
 
-            instance_name = self._nodes[node_index]["instance_name"]
-            result.append(self._value_indices[instance_name])
-
-            for i in range(self.num_nodes):
+            for i in range(self._num_nodes):
                 if self._adj_matrix[node_index, i] == 1:
                     in_degree[i] -= 1
                     if in_degree[i] == 0:

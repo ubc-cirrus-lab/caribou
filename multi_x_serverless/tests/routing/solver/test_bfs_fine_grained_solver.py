@@ -81,11 +81,11 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
 
         # Test case 1: empty list_of_sets
         result = solver._find_common_elements([])
-        self.assertEqual(result, [])
+        self.assertEqual(result, set())
 
         # Test case 2: non-empty list_of_sets
         result = solver._find_common_elements([{1, 2, 3}, {2, 3, 4}, {3, 4, 5}])
-        self.assertEqual(result, [3])
+        self.assertEqual(result, {3})
 
     def test_calculate_wc_pc_cost_carbon_cl_placements(self):
         self.workflow_config.regions_and_providers = {"providers": {"p1": None, "p2": None}}
