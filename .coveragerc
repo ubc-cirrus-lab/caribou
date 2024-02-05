@@ -5,3 +5,6 @@ omit =
     */common/setup/*
     */tests/*
     */main.py
+    */common/models/remote_client/remote_client.py
+    */common/models/remote_client/mock_remote_client.py
+    */deployment/client/cli/cli.py

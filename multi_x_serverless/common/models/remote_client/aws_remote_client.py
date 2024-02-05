@@ -191,14 +191,19 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
                 client.delete_role_policy(RoleName=role_name, PolicyName=role_name)
                 self.put_role_policy(role_name=role_name, policy_name=role_name, policy_document=policy)
         except ClientError:
-            try:
-                current_trust_policy = client.get_role(RoleName=role_name)["Role"]["AssumeRolePolicyDocument"]
-                if current_trust_policy != trust_policy:
-                    client.delete_role(RoleName=role_name)
-                    client.create_role(RoleName=role_name, AssumeRolePolicyDocument=json.dumps(trust_policy))
-            except ClientError:
+            self.put_role_policy(role_name=role_name, policy_name=role_name, policy_document=policy)
+        try:
+            current_trust_policy = client.get_role(RoleName=role_name)["Role"]["AssumeRolePolicyDocument"]
+            if current_trust_policy != trust_policy:
+                client.delete_role(RoleName=role_name)
                 client.create_role(RoleName=role_name, AssumeRolePolicyDocument=json.dumps(trust_policy))
-        return self.get_iam_role(role_name)
+        except ClientError:
+            client.create_role(RoleName=role_name, AssumeRolePolicyDocument=json.dumps(trust_policy))
+        try:
+            return self.get_iam_role(role_name)
+        except ClientError:
+            self._wait_for_role_to_become_active(role_name)
+            return self.get_iam_role(role_name)
 
     def _create_lambda_function(self, kwargs: dict[str, Any]) -> tuple[str, str]:
         client = self._client("lambda")

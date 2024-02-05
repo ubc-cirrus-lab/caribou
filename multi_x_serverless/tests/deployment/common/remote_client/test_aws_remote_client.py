@@ -19,6 +19,8 @@ class TestAWSRemoteClient(unittest.TestCase):
         self.region = "region1"
         self.aws_client = AWSRemoteClient(self.region)
         self.mock_session = mock_session
+        self.aws_client.LAMBDA_CREATE_ATTEMPTS = 2
+        self.aws_client.DELAY_TIME = 0
 
     @patch("boto3.session.Session.client")
     def test_client(self, mock_client):
@@ -122,7 +124,7 @@ class TestAWSRemoteClient(unittest.TestCase):
         )
 
     @patch.object(AWSRemoteClient, "_client")
-    def test_update_role(self, mock_client):
+    def test_update_role_simple(self, mock_client):
         role_name = "test_role"
         policy = "test_policy"
         trust_policy = {"test_key": "test_value"}
@@ -137,6 +139,93 @@ class TestAWSRemoteClient(unittest.TestCase):
         mock_client.assert_called_with("iam")
         mock_client.return_value.get_role_policy.assert_called_once_with(RoleName=role_name, PolicyName=role_name)
         mock_client.return_value.get_role.assert_called_with(RoleName=role_name)
+        self.assertEqual(result, "test_role_arn")
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_update_role_same_policy(self, mock_client):
+        # Scenario 1: The current role policy matches the provided policy
+        role_name = "test_role"
+        policy = "test_policy"
+        trust_policy = {"test_key": "test_value"}
+
+        mock_client.return_value.get_role_policy.return_value = {"PolicyDocument": policy}
+        mock_client.return_value.get_role.return_value = {
+            "Role": {"AssumeRolePolicyDocument": trust_policy, "Arn": "test_role_arn"}
+        }
+
+        result = self.aws_client.update_role(role_name, policy, trust_policy)
+
+        mock_client.assert_called_with("iam")
+        mock_client.return_value.get_role_policy.assert_called_once_with(RoleName=role_name, PolicyName=role_name)
+        mock_client.return_value.get_role.assert_called_with(RoleName=role_name)
+        self.assertEqual(result, "test_role_arn")
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_update_role_different_role_policy(self, mock_client):
+        # Scenario 2: The current role policy does not match the provided policy
+        role_name = "test_role"
+        policy = "new_test_policy"
+        trust_policy = {"test_key": "test_value"}
+
+        mock_client.return_value.get_role_policy.return_value = {"PolicyDocument": "old_test_policy"}
+        mock_client.return_value.get_role.return_value = {
+            "Role": {"AssumeRolePolicyDocument": trust_policy, "Arn": "test_role_arn"}
+        }
+
+        result = self.aws_client.update_role(role_name, policy, trust_policy)
+
+        mock_client.assert_called_with("iam")
+        mock_client.return_value.get_role_policy.assert_called_once_with(RoleName=role_name, PolicyName=role_name)
+        mock_client.return_value.delete_role_policy.assert_called_once_with(RoleName=role_name, PolicyName=role_name)
+        mock_client.return_value.get_role.assert_called_with(RoleName=role_name)
+        self.assertEqual(result, "test_role_arn")
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_update_role_different_policy(self, mock_client):
+        # Scenario 3: The current trust policy does not match the provided trust policy
+        role_name = "test_role"
+        policy = "test_policy_here"
+        trust_policy = {"new_test_key": "new_test_value"}
+
+        mock_client.return_value.get_role_policy.return_value = {"PolicyDocument": policy}
+        mock_client.return_value.get_role.return_value = {
+            "Role": {"AssumeRolePolicyDocument": {"old_test_key": "old_test_value"}, "Arn": "test_role_arn"}
+        }
+
+        result = self.aws_client.update_role(role_name, policy, trust_policy)
+
+        mock_client.assert_called_with("iam")
+        mock_client.return_value.get_role_policy.assert_called_once_with(RoleName=role_name, PolicyName=role_name)
+        mock_client.return_value.get_role.assert_called_with(RoleName=role_name)
+        mock_client.return_value.delete_role.assert_called_once_with(RoleName=role_name)
+        mock_client.return_value.create_role.assert_called_once_with(
+            RoleName=role_name, AssumeRolePolicyDocument=json.dumps(trust_policy)
+        )
+        self.assertEqual(result, "test_role_arn")
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_update_role_no_role(self, mock_client):
+        # Scenario 4: The role does not exist
+        role_name = "test_role"
+        policy = "test_policy"
+        trust_policy = {"test_key": "test_value"}
+
+        mock_client.return_value.get_role_policy.side_effect = ClientError(
+            {"Error": {"Code": "NoSuchEntity"}}, "get_role_policy"
+        )
+        mock_client.return_value.get_role.side_effect = ClientError({"Error": {"Code": "NoSuchEntity"}}, "get_role")
+        mock_client.return_value.create_role.return_value = None
+        self.aws_client.get_iam_role = MagicMock()
+        self.aws_client.get_iam_role.return_value = "test_role_arn"
+
+        result = self.aws_client.update_role(role_name, policy, trust_policy)
+
+        mock_client.assert_called_with("iam")
+        mock_client.return_value.get_role_policy.assert_called_once_with(RoleName=role_name, PolicyName=role_name)
+        mock_client.return_value.get_role.assert_called_with(RoleName=role_name)
+        mock_client.return_value.create_role.assert_called_once_with(
+            RoleName=role_name, AssumeRolePolicyDocument=json.dumps(trust_policy)
+        )
         self.assertEqual(result, "test_role_arn")
 
     @patch.object(AWSRemoteClient, "_client")

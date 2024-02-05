@@ -1,7 +1,7 @@
 from typing import Any, Callable
 
 from multi_x_serverless.common.provider import Provider
-from multi_x_serverless.data_collector.components.carbon.carbon_transmission_cost_calculator.carbon_transmission_cost_calculator import (
+from multi_x_serverless.data_collector.components.carbon.carbon_transmission_cost_calculator.carbon_transmission_cost_calculator import (  # pylint: disable=line-too-long
     CarbonTransmissionCostCalculator,
 )
 from multi_x_serverless.data_collector.utils.aws_latency_retriever import AWSLatencyRetriever
@@ -28,6 +28,9 @@ class LatencyCarbonTransmissionCostCalculator(CarbonTransmissionCostCalculator):
             latitude_from, longitude_from, latitude_to, longitude_to
         )
 
+        if self._total_distance == 0.0:
+            raise ValueError("Total distance is 0.0, cannot calculate carbon intensity")
+
         total_carbon_intensity: float = 0.0
         for segment in carbon_intensity_segments:
             segment_relative_distance_weight = segment[0] / self._total_distance
@@ -36,10 +39,10 @@ class LatencyCarbonTransmissionCostCalculator(CarbonTransmissionCostCalculator):
 
         return total_carbon_intensity
 
-    def _calculate_carbon_intensity_segment(self, segment_latency_ms: float, gCO2e_per_kWh: float) -> float:
-        kWh_per_gb = self._kwh_per_gb_estimate + self._kwh_per_ms_gb_estimate * segment_latency_ms
-        gCO2e_per_gb = gCO2e_per_kWh * kWh_per_gb
-        return gCO2e_per_gb
+    def _calculate_carbon_intensity_segment(self, segment_latency_ms: float, gco2e_per_kwh: float) -> float:
+        kwh_per_gb = self._kwh_per_gb_estimate + self._kwh_per_ms_gb_estimate * segment_latency_ms
+        gco2e_per_gb = gco2e_per_kwh * kwh_per_gb
+        return gco2e_per_gb
 
     def _get_total_latency(self, region_from: dict[str, Any], region_to: dict[str, Any]) -> float:
         if region_from["provider"] == region_to["provider"] and region_from["provider"] == Provider.AWS.value:

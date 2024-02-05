@@ -1,7 +1,6 @@
-import math
 from typing import Any, Callable
 
-from multi_x_serverless.data_collector.components.carbon.carbon_transmission_cost_calculator.carbon_transmission_cost_calculator import (
+from multi_x_serverless.data_collector.components.carbon.carbon_transmission_cost_calculator.carbon_transmission_cost_calculator import (  # pylint: disable=line-too-long
     CarbonTransmissionCostCalculator,
 )
 
@@ -30,7 +29,7 @@ class DistanceCarbonTransmissionCostCalculator(CarbonTransmissionCostCalculator)
 
         return total_carbon_intensity
 
-    def _calculate_carbon_intensity_segment(self, segment_distance: float, gCO2e_per_kWh: float) -> float:
-        kWh_per_gb = self._kwh_per_gb_estimate + self._kwh_per_km_gb_estimate * segment_distance
-        gCO2e_per_gb = gCO2e_per_kWh * kWh_per_gb
-        return gCO2e_per_gb
+    def _calculate_carbon_intensity_segment(self, segment_distance: float, gco2e_per_kwh: float) -> float:
+        kwh_per_gb = self._kwh_per_gb_estimate + self._kwh_per_km_gb_estimate * segment_distance
+        gco2e_per_gb = gco2e_per_kwh * kwh_per_gb
+        return gco2e_per_gb

@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, MagicMock
 from multi_x_serverless.deployment.common.config.config import Config
 from multi_x_serverless.deployment.common.deploy.models.deployment_package import DeploymentPackage
 from multi_x_serverless.deployment.common.deploy.models.function import Function
@@ -47,6 +47,33 @@ class TestWorkflow(unittest.TestCase):
         self.assertEqual(self.workflow._functions, [self.function_instance, self.function_instance2])
         self.assertEqual(self.workflow._edges, [("function_instance_1::", "function_instance_2::")])
         self.assertEqual(self.workflow._config, self.config)
+
+    def test_repr(self):
+        self.assertEqual(
+            self.workflow.__repr__(),
+            f"Workflow(name=workflow_name, resources=[{self.function}], functions=[{self.function_instance}, {self.function_instance2}], edges=[('function_instance_1::', 'function_instance_2::')], config=Config(project_config={{'home_regions': [{{'provider': 'provider1', 'region': 'region1'}}]}}, project_dir={self.test_dir}))",
+        )
+
+    def test_get_function_description(self):
+        # Mock the to_json method to return a specific value
+        function = MagicMock()
+        function.to_json.return_value = {"name": "function1"}
+        self.workflow._resources = [function]
+
+        # Call the method and check the result
+        result = self.workflow.get_function_description()
+        self.assertEqual(result, [{"name": "function1"}])
+
+    def test_get_deployed_regions_initial_deployment(self):
+        # Mock the name and deploy_region attributes
+        function = MagicMock()
+        function.name = "function1"
+        function.deploy_region = "region1"
+        self.workflow._resources = [function]
+
+        # Call the method and check the result
+        result = self.workflow.get_deployed_regions_initial_deployment()
+        self.assertEqual(result, {"function1": "region1"})
 
     def test_dependencies(self):
         self.assertEqual(self.workflow.dependencies(), [self.function])

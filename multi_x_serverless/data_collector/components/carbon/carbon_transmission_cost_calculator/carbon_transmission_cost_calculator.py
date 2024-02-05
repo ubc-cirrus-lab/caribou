@@ -11,6 +11,9 @@ class CarbonTransmissionCostCalculator(ABC):
             self._kwh_per_gb_estimate = config["kwh_per_gb_estimate"]
         else:
             self._kwh_per_gb_estimate = 0.1
+        self._total_distance = 0.0
+        # Current resolution set to 250 km for one segment
+        self._step_size = 250
 
     @abstractmethod
     def calculate_transmission_carbon_intensity(self, region_from: dict[str, Any], region_to: dict[str, Any]) -> float:
@@ -19,7 +22,7 @@ class CarbonTransmissionCostCalculator(ABC):
     def _get_distance_between_coordinates(
         self, latitude_from: float, longitude_from: float, latitude_to: float, longitude_to: float
     ) -> float:
-        R = 6371.0
+        r = 6371.0
 
         lat1 = math.radians(latitude_from)
         lon1 = math.radians(longitude_from)
@@ -33,7 +36,7 @@ class CarbonTransmissionCostCalculator(ABC):
         # Haversine formula
         a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
         c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-        distance = R * c
+        distance = r * c
 
         return distance
 
@@ -45,14 +48,12 @@ class CarbonTransmissionCostCalculator(ABC):
         )
 
         current_location = (latitude_from, longitude_from)
-        current_distance: float = 0.0
+        current_distance: float = self._step_size
         current_carbon_intensity = self._get_carbon_intensity_from_coordinates(latitude_from, longitude_from)
-        segment_distance: float = 0.0
+
+        segment_distance: float = self._step_size
 
         segments: list[tuple[float, float]] = []
-
-        # Current resolution set to 250 km for one segment
-        step_size = 250
 
         while current_distance < self._total_distance:
             # Calculate the step size in degrees for latitude and longitude
@@ -72,11 +73,11 @@ class CarbonTransmissionCostCalculator(ABC):
                 segments.append((segment_distance, current_carbon_intensity))
                 current_carbon_intensity = next_carbon_intensity
                 current_location = next_location
-                segment_distance = 0
+                segment_distance = self._step_size
             else:
-                segment_distance += step_size
+                segment_distance += self._step_size
 
-            current_distance += step_size
+            current_distance += self._step_size
 
         # Calculate the remaining segment for the final location
         segment_distance = segment_distance - (current_distance - self._total_distance)
