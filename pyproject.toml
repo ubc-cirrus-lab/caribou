@@ -68,9 +68,6 @@ aggressive = 3
 
 [tool.coverage.run]
 branch = true
-omit = [
-    "**/*/__init__.py"
-    ]
 
 [tool.coverage.html]
 directory = "coverage_html_report"
@@ -85,8 +82,7 @@ ignore_missing_imports = true
 pretty = true
 exclude = [
     "multi_x_serverless/tests",
-    "multi_x_serverless/routing/legacy",
-    "multi_x_serverless/common/setup_tables.py",
+    "multi_x_serverless/common/setup",
     "multi_x_serverless/common/models/remote_client/mock_remote_client.py",
     ]
 
