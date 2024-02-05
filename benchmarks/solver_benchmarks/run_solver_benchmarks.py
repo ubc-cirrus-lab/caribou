@@ -317,8 +317,6 @@ for result in results:
         per_solver_results[solver] = []
     per_solver_results[solver].append(result)
 
-results_json = json.dumps(per_solver_results)
-
 # Get the directory of the current script
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
