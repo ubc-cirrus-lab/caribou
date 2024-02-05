@@ -1,5 +1,6 @@
 import unittest
 from unittest.mock import Mock, patch
+import os
 from multi_x_serverless.data_collector.components.carbon.carbon_exporter import CarbonExporter
 from multi_x_serverless.data_collector.components.carbon.carbon_retriever import CarbonRetriever
 from multi_x_serverless.data_collector.components.carbon.carbon_collector import CarbonCollector
@@ -8,7 +9,9 @@ from multi_x_serverless.data_collector.components.carbon.carbon_collector import
 class TestCarbonCollector(unittest.TestCase):
     def setUp(self):
         self.config = {"carbon_transmission_cost_calculator": "distance"}
-        self.carbon_collector = CarbonCollector(self.config)
+        with patch("os.environ.get") as mock_os_environ_get:
+            mock_os_environ_get.return_value = "mock_token"
+            self.carbon_collector = CarbonCollector(self.config)
 
     @patch.object(CarbonRetriever, "retrieve_available_regions")
     @patch.object(CarbonRetriever, "retrieve_carbon_region_data")

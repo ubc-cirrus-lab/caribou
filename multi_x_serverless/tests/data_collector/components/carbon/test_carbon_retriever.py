@@ -17,7 +17,9 @@ class TestCarbonRetriever(unittest.TestCase):
     def setUp(self):
         self.mock_client = Mock()
         self.config = {"carbon_transmission_cost_calculator": "distance"}
-        self.carbon_retriever = CarbonRetriever(self.mock_client, self.config)
+        with patch("os.environ.get") as mock_os_environ_get:
+            mock_os_environ_get.return_value = "mock_token"
+            self.carbon_retriever = CarbonRetriever(self.mock_client, self.config)
 
     @patch("requests.get")
     @patch.object(DistanceCarbonTransmissionCostCalculator, "calculate_transmission_carbon_intensity")

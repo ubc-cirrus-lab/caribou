@@ -23,7 +23,11 @@ class CarbonRetriever(DataRetriever):
 
     def __init__(self, client: RemoteClient, config: dict) -> None:
         super().__init__(client)
-        self._electricity_maps_auth_token = os.environ["ELECTRICITY_MAPS_AUTH_TOKEN"]
+        self._electricity_maps_auth_token = os.environ.get("ELECTRICITY_MAPS_AUTH_TOKEN")
+
+        if self._electricity_maps_auth_token is None:
+            raise ValueError("ELECTRICITY_MAPS_AUTH_TOKEN environment variable not set")
+
         self._request_backoff = 0.1
         self._last_request = datetime.datetime.now()
         self._global_average_worst_case_carbon_intensity = 475.0
@@ -75,6 +79,9 @@ class CarbonRetriever(DataRetriever):
 
         if (datetime.datetime.now() - self._last_request).total_seconds() < self._request_backoff:
             time.sleep(self._request_backoff)
+
+        if self._electricity_maps_auth_token is None:
+            raise ValueError("ELECTRICITY_MAPS_AUTH_TOKEN environment variable not set")
 
         response = requests.get(
             electricitymaps + "lat=" + str(latitude) + "&lon=" + str(longitude),
