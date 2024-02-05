@@ -37,3 +37,8 @@ class ProviderCollector(DataCollector):
         modified_regions: set[str] = self._data_exporter.get_modified_regions()
 
         self._data_exporter.update_available_region_timestamp(self._data_collector_name, modified_regions)
+
+
+if __name__ == "__main__":
+    provider_collector = ProviderCollector()
+    provider_collector.run()

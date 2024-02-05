@@ -399,6 +399,8 @@ The frequency with which this collector should run needs further investigation.
 
 This collector is responsible for managing the three database tables: `available_regions_table`, `at_provider_table`, and `provider_region_table`.
 
+#### Available Regions Table
+
 The `available_regions_table` is responsible for managing the list of available regions that may be viable for consideration by Solver instances and denotes which regions must be updated by the other Collectors.
 This table is primarily responsible for listing the basic information of regions needed for the other Data Collectors, as well as the timestamp of when the region was last updated by each Data Collector (with the exception of the Workflow Data Collector, as that is Workflow-specific).
 The Provider Collector must not override the timestamp of other Data Collectors.
@@ -415,11 +417,46 @@ The keys and information stored in this table are as follows:
 - Performance Collector timestamp (N):
   - Timestamp of when the Performance Collector was last run for this data center region.
 
+##### Available Regions Table Example
+
+The example will be one item in the available regions table with all its keys:
+
+```json
+{
+  "key": "aws:eu-south-1",
+  "provider_collector": 1620000000,
+  "carbon_collector": 1620000000,
+  "performance_collector": 1620000000,
+  "value": {
+    "name": "Europe (Milan)",
+    "provider": "aws",
+    "code": "eu-south-1",
+    "latitude": 45.4642035,
+    "longitude": 9.189982
+  }
+}
+```
+
+#### At Provider Table
+
 The `provider_table` is responsible for managing information regarding provider-level information. The keys and information stored in this table are as follows:
 
 - Key: `<provider_unique_id>`
 - Value (S):
   - Remaining free tier at provider (invocation/execution).
+
+##### At Provider Table Example
+
+The example will be one item in the available regions table with all its keys:
+
+```json
+{
+  "key": "aws:eu-south-1",
+  "value": {}
+}
+```
+
+#### Provider Region Table
 
 The `provider_region_table` is responsible for managing region specific information.
 The keys and information stored in this table are as follows:
@@ -435,6 +472,47 @@ The keys and information stored in this table are as follows:
     - Egress Provider Data Transfer Cost (outgoing to different regions within the same provider).
 
 Note: Data Transfer Cost and complexities of this warrant further investigation and thus associated storage information regarding such may be subject to change.
+
+##### Provider Region Table Example
+
+```json
+{
+  "key": "aws:eu-south-1",
+  "value": {
+    "execution_cost": {
+      "invocation_cost": {
+        "arm64": 2.3e-7,
+        "x86_64": 2.3e-7,
+        "free_tier_invocations": 1000000
+      },
+      "compute_cost": {
+        "arm64": [
+          { "beginRange": "0", "pricePerUnit": "0.0000156138" },
+          { "beginRange": "7500000000", "pricePerUnit": "0.0000140524" },
+          { "beginRange": "18750000000", "pricePerUnit": "0.0000124910" }
+        ],
+        "x86_64": [
+          { "beginRange": "0", "pricePerUnit": "0.0000195172" },
+          { "beginRange": "6000000000", "pricePerUnit": "0.0000175655" },
+          { "beginRange": "15000000000", "pricePerUnit": "0.0000156138" }
+        ],
+        "free_tier_compute_gb_s": 400000
+      },
+      "unit": "USD"
+    },
+    "transmission_cost": {
+      "global_data_transfer": 0.09,
+      "provider_data_transfer": 0.02,
+      "unit": "USD/GB"
+    },
+    "pue": 1.15,
+    "cfe": 0.9,
+    "average_memory_power": 3.92e-6,
+    "average_cpu_power": 0.00212,
+    "available_architectures": ["arm64", "x86_64"]
+  }
+}
+```
 
 ### Carbon Collector
 

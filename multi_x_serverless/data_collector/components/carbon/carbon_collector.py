@@ -28,3 +28,8 @@ class CarbonCollector(DataCollector):
         modified_regions: set[str] = self._data_exporter.get_modified_regions()
         # Important: Regions are stored as provider_region
         self._data_exporter.update_available_region_timestamp(self._data_collector_name, modified_regions)
+
+
+if __name__ == "__main__":
+    carbon_collector = CarbonCollector({})
+    carbon_collector.run()

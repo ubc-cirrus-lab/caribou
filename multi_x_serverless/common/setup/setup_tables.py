@@ -4,6 +4,13 @@ from multi_x_serverless.common import constants
 
 
 def create_table(dynamodb, table_name):
+    # Check if the table already exists
+    try:
+        dynamodb.describe_table(TableName=table_name)
+        print(f"Table {table_name} already exists")
+        return
+    except dynamodb.exceptions.ResourceNotFoundException:
+        pass
     dynamodb.create_table(
         TableName=table_name,
         AttributeDefinitions=[{"AttributeName": "key", "AttributeType": "S"}],
@@ -25,12 +32,12 @@ def create_composite_table(dynamodb, table_name):
 
 
 def create_bucket(s3, bucket_name):
-    s3.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": "us-east-1"})
+    s3.create_bucket(Bucket=bucket_name)
 
 
 def main():
     dynamodb = boto3.client("dynamodb")
-    s3 = boto3.client("s3")
+    s3 = boto3.client("s3", region_name="us-east-1")
 
     # Get all attributes of the constants module
     for attr in dir(constants):
