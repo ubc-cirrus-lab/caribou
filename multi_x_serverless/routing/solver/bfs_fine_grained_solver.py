@@ -259,12 +259,12 @@ class BFSFineGrainedSolver(Solver):
                                         (clean_combined_placements, pc_cost, max_pc_runtime, pc_carbon)
                                     )
                                     best_cost = pc_cost
-                                if pc_carbon < best_carbon:
+                                elif pc_carbon < best_carbon:
                                     final_deployments.append(
                                         (clean_combined_placements, pc_cost, max_pc_runtime, pc_carbon)
                                     )
                                     best_carbon = pc_carbon
-                                if max_pc_runtime < best_runtime:
+                                elif max_pc_runtime < best_runtime:
                                     final_deployments.append(
                                         (clean_combined_placements, pc_cost, max_pc_runtime, pc_carbon)
                                     )
