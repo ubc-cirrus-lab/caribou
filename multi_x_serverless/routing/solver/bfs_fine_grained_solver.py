@@ -252,23 +252,21 @@ class BFSFineGrainedSolver(Solver):
                             if not self._fail_hard_resource_constraints(
                                 self._workflow_config.constraints, wc_cost, max_wc_runtime, wc_carbon
                             ):
-                                # For now we use worse case, but when probability is implemented we will use that instead
-                                # Note to keep consistency with the other solvers, we save in cost, runtime, then carbon
-                                if pc_cost < best_cost:
+                                if self._objective_function.calculate(
+                                    cost=pc_cost,
+                                    runtime=max_pc_runtime,
+                                    carbon=pc_carbon,
+                                    best_cost=best_cost,
+                                    best_runtime=best_runtime,
+                                    best_carbon=best_carbon,
+                                ):
+                                    # Note to keep consistency with the other solvers, we save in cost, runtime, then carbon
                                     final_deployments.append(
                                         (clean_combined_placements, pc_cost, max_pc_runtime, pc_carbon)
                                     )
-                                    best_cost = pc_cost
-                                elif pc_carbon < best_carbon:
-                                    final_deployments.append(
-                                        (clean_combined_placements, pc_cost, max_pc_runtime, pc_carbon)
-                                    )
-                                    best_carbon = pc_carbon
-                                elif max_pc_runtime < best_runtime:
-                                    final_deployments.append(
-                                        (clean_combined_placements, pc_cost, max_pc_runtime, pc_carbon)
-                                    )
-                                    best_runtime = max_pc_runtime
+                                    best_cost = pc_cost if pc_cost < best_cost else best_cost
+                                    best_carbon = pc_carbon if pc_carbon < best_carbon else best_carbon
+                                    best_runtime = max_pc_runtime if max_pc_runtime < best_runtime else best_runtime
 
                     del deployments  # Clear all memory
                     return final_deployments
