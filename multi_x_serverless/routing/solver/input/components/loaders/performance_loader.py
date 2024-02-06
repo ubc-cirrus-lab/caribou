@@ -12,7 +12,16 @@ class PerformanceLoader(InputLoader):
         super().__init__(client, PERFORMANCE_REGION_TABLE)
 
     def setup(self, available_regions: list[tuple[str, str]]) -> None:
-        self._performance_data = self._retrieve_region_data(available_regions)
+        # self._performance_data = self._retrieve_region_data(available_regions)
+        self._performance_data = {
+            "aws:region1": {
+                "relative_performance": 1,
+                "transmission_latency": {
+                    "aws:region1": {"transmission_latency": 0.005, "unit": "s"},
+                    "aws:region2": {"transmission_latency": 0.05, "unit": "s"},
+                },
+            }
+        }
 
     def get_performance_data(self) -> dict[str, Any]:
         return self._performance_data
