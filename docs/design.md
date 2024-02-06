@@ -528,14 +528,19 @@ Note: Perhaps this may be expanded in the future if we are incorporating more ex
 
 ```json
 {
-  "key": "aws:eu-south-1",
-  "value": {
-    "execution_carbon": 0.233,
-    "transmission_carbon": {
-      "aws:eu-south-1": 0.233,
-      "aws:us-east-1": 0.233,
-      "aws:us-west-1": 0.233
-    }
+  "carbon_intensity": 482,
+  "unit": "gCO2eq/kWh",
+  "transmission_carbon": {
+    "aws:eu-south-1": { "carbon_intensity": 48.2, "unit": "gCO2eq/GB" },
+    "aws:eu-central-1": {
+      "carbon_intensity": 1337.9261964617801,
+      "unit": "gCO2eq/GB"
+    },
+    "aws:us-west-2": {
+      "carbon_intensity": 21269.19652594863,
+      "unit": "gCO2eq/GB"
+    },
+    ...
   }
 }
 ```
