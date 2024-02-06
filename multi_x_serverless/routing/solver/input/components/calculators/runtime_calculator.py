@@ -44,18 +44,25 @@ class RuntimeCalculator(InputCalculator):
             if favourite_home_region is not None:
                 # Get the performance of the instance in the favourite home region
                 favourite_region_runtime = self._workflow_loader.get_favourite_region_runtime(instance_name)
+                favourite_region_relative_performance = self._performance_loader.get_relative_performance(favourite_home_region)
 
-                # Right now we do not consider performance difference between regions
-                # Such that we can simply return the runtime of the favourite home region
-                # In the future, this should be considered.
-                pass
-                # performance = self._performance_loader.get_performance(instance_name, favourite_home_region)
-                # if performance is not None:
-                #     return performance
+                desired_region_relative_performance = self._performance_loader.get_relative_performance(region_name)
+
+                # Calculate the estimated runtime in the desired region
+                runtime = favourite_region_runtime * (desired_region_relative_performance / favourite_region_relative_performance)
             else:
-                return 0 # Instance was never invoked, so we assume it has no runtime
+                runtime = 0 # Instance was never invoked, so we assume it has no runtime
 
         return runtime
 
-    def _calculate_raw_latency(self, from_instance_name: str, to_instance_name: str, from_region_name: str, to_region_name: str, use_tail_runtime: bool = False) -> float:
-        return 0
+    def _calculate_raw_latency(self, from_instance_name: str, to_instance_name: str, from_region_name: str, to_region_name: str, use_tail_latency: bool = False) -> float:
+        latency = self._workflow_loader.get_latency(from_instance_name, to_instance_name, from_region_name, to_region_name, use_tail_latency)
+
+        # If the latency is not found, then we need to use the performance loader to estimate the relative latency
+        if latency < 0:
+            # Get the data transfer size from the workflow loader
+            data_transfer_size = self._workflow_loader.get_data_transfer_size(from_instance_name, to_instance_name)
+
+            latency = self._performance_loader.get_transmission_latency(from_region_name, to_region_name, data_transfer_size)
+
+        return latency

@@ -24,6 +24,9 @@ class WorkflowLoader(InputLoader):
         latency_type = "tail_latency" if use_tail_runtime else "average_latency"
         return self._workflow_data.get(from_instance_name, {}).get("invocation_summary", {}).get(to_instance_name, {}).get("transmission_summary", {}).get(from_region_name, {}).get(to_region_name, {}).get(latency_type, -1)
 
+    def get_data_transfer_size(self, from_instance_name: str, to_instance_name: str) -> float:
+        return self._workflow_data.get(from_instance_name, {}).get("invocation_summary", {}).get(to_instance_name, {}).get("average_data_transfer_size", 0)
+
     def get_invocation_probability(self, from_instance_name: str, to_instance_name: str) -> float:
         if from_instance_name == to_instance_name: # Special case for start node
             return 1

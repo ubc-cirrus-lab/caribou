@@ -26,7 +26,5 @@ class RegionViabilityLoader(InputLoader):
             provider, region_code = region.split(":")
             self._available_regions.append((provider, region_code))
 
-    
-
     def get_available_regions(self) -> list[tuple[str, str]]:
         return self._available_regions
