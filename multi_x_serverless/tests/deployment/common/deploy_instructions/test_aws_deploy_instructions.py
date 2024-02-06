@@ -36,12 +36,12 @@ class TestAWSDeployInstructions(unittest.TestCase):
         self.assertIsInstance(instructions, list)
         self.assertIsInstance(instructions[0], APICall)
         self.assertEqual(instructions[0].name, "create_sns_topic")
-        self.assertEqual(instructions[0].params["topic_name"], "test_sns_topic")
-        self.assertEqual(instructions[0].output_var, "test_sns_topic")
+        self.assertEqual(instructions[0].params["topic_name"], "test_messaging_topic")
+        self.assertEqual(instructions[0].output_var, "test_messaging_topic")
 
         self.assertIsInstance(instructions[1], RecordResourceVariable)
         self.assertEqual(instructions[1].name, "topic_identifier")
-        self.assertEqual(instructions[1].variable_name, "test_sns_topic")
+        self.assertEqual(instructions[1].variable_name, "test_messaging_topic")
         self.assertEqual(instructions[1].resource_name, "test")
         self.assertEqual(instructions[1].resource_type, "messaging_topic")
 
