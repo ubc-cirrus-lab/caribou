@@ -33,6 +33,6 @@ class PerformanceRetriever(DataRetriever):
 
     def _get_total_latency(self, region_from: dict[str, Any], region_to: dict[str, Any]) -> float:
         if region_from["provider"] == region_to["provider"] and region_from["provider"] == Provider.AWS.value:
-            return self._aws_latency_retriever.get_latency(region_from, region_to) / 1000 # Convert to seconds
+            return self._aws_latency_retriever.get_latency(region_from, region_to) / 1000  # Convert to seconds
 
         return 0.0  # Default value, maybe a better default or an error message will be desired

@@ -26,7 +26,7 @@ class TestWorkflowRetriever(unittest.TestCase):
         self.mock_client.get_all_values_from_sort_key_table.return_value = [
             {
                 "sort_key": "2021-2-10T10:10:10",
-                "value": '{"months_between_summary": 1, "instance_summary": {"instance1": {"invocation_count": 1, "execution_summary": {"aws:region1": {"invocation_count": 1, "average_runtime": 1, "tail_runtime": 1}}}}}'
+                "value": '{"months_between_summary": 1, "instance_summary": {"instance1": {"invocation_count": 1, "execution_summary": {"aws:region1": {"invocation_count": 1, "average_runtime": 1, "tail_runtime": 1}}}}}',
             }
         ]
         self.workflow_retriever._available_regions = {"aws:region1": {}}
@@ -50,135 +50,136 @@ class TestWorkflowRetriever(unittest.TestCase):
                 "sort_key": "2021-2-10T10:10:10",
                 "value": json.dumps(
                     {
-                    "months_between_summary": 8,
-                    "instance_summary": {
-                        "instance_1": {
-                            "invocation_count": 100,
-                            "execution_summary": {
-                                "provider_1:region_1": {
-                                    "invocation_count": 80,
-                                    "average_runtime": 25,  # In s
-                                    "tail_runtime": 30,  # In s
+                        "months_between_summary": 8,
+                        "instance_summary": {
+                            "instance_1": {
+                                "invocation_count": 100,
+                                "execution_summary": {
+                                    "provider_1:region_1": {
+                                        "invocation_count": 80,
+                                        "average_runtime": 25,  # In s
+                                        "tail_runtime": 30,  # In s
+                                    },
+                                    "provider_1:region_2": {
+                                        "invocation_count": 20,
+                                        "average_runtime": 30,  # In s
+                                        "tail_runtime": 35,  # In s
+                                    },
                                 },
-                                "provider_1:region_2": {
-                                    "invocation_count": 20,
-                                    "average_runtime": 30,  # In s
-                                    "tail_runtime": 35,  # In s
-                                },
-                            },
-                            "invocation_summary": {
-                                "instance_2": {
-                                    "invocation_count": 80,
-                                    "average_data_transfer_size": 0.0007,  # In GB
-                                    "transmission_summary": {
-                                        "provider_1:region_1": {
+                                "invocation_summary": {
+                                    "instance_2": {
+                                        "invocation_count": 80,
+                                        "average_data_transfer_size": 0.0007,  # In GB
+                                        "transmission_summary": {
                                             "provider_1:region_1": {
-                                                "transmission_count": 65,
-                                                "average_latency": 0.001,  # In s
-                                                "tail_latency": 0.002,  # In s
+                                                "provider_1:region_1": {
+                                                    "transmission_count": 65,
+                                                    "average_latency": 0.001,  # In s
+                                                    "tail_latency": 0.002,  # In s
+                                                },
+                                                "provider_1:region_2": {
+                                                    "transmission_count": 5,
+                                                    "average_latency": 0.12,  # In s
+                                                    "tail_latency": 0.15,  # In s
+                                                },
                                             },
                                             "provider_1:region_2": {
-                                                "transmission_count": 5,
-                                                "average_latency": 0.12,  # In s
-                                                "tail_latency": 0.15,  # In s
+                                                "provider_1:region_1": {
+                                                    "transmission_count": 10,
+                                                    "average_latency": 0.1,  # In s
+                                                    "tail_latency": 0.12,  # In s
+                                                }
                                             },
                                         },
-                                        "provider_1:region_2": {
-                                            "provider_1:region_1": {
-                                                "transmission_count": 10,
-                                                "average_latency": 0.1,  # In s
-                                                "tail_latency": 0.12,  # In s
-                                            }
-                                        },
+                                    }
+                                },
+                            },
+                            "instance_2": {
+                                "invocation_count": 100,
+                                "execution_summary": {
+                                    "provider_1:region_1": {
+                                        "invocation_count": 70,
+                                        "average_runtime": 10,  # In s
+                                        "tail_runtime": 15,  # In s
                                     },
-                                }
-                            },
-                        },
-                        "instance_2": {
-                            "invocation_count": 100,
-                            "execution_summary": {
-                                "provider_1:region_1": {
-                                    "invocation_count": 70,
-                                    "average_runtime": 10,  # In s
-                                    "tail_runtime": 15,  # In s
-                                },
-                                "provider_1:region_2": {
-                                    "invocation_count": 10,
-                                    "average_runtime": 15,  # In s
-                                    "tail_runtime": 10,  # In s
+                                    "provider_1:region_2": {
+                                        "invocation_count": 10,
+                                        "average_runtime": 15,  # In s
+                                        "tail_runtime": 10,  # In s
+                                    },
                                 },
                             },
                         },
-                    },
-                }
+                    }
                 ),
-            }, 
+            },
             {
                 "sort_key": "2021-3-10T10:10:20",
                 "value": json.dumps(
                     {
-                    "months_between_summary": 8,
-                    "instance_summary": {
-                        "instance_1": {
-                            "invocation_count": 100,
-                            "execution_summary": {
-                                "provider_1:region_1": {
-                                    "invocation_count": 20,
-                                    "average_runtime": 30,  # In s
-                                    "tail_runtime": 35,  # In s
+                        "months_between_summary": 8,
+                        "instance_summary": {
+                            "instance_1": {
+                                "invocation_count": 100,
+                                "execution_summary": {
+                                    "provider_1:region_1": {
+                                        "invocation_count": 20,
+                                        "average_runtime": 30,  # In s
+                                        "tail_runtime": 35,  # In s
+                                    },
+                                    "provider_1:region_2": {
+                                        "invocation_count": 80,
+                                        "average_runtime": 25,  # In s
+                                        "tail_runtime": 30,  # In s
+                                    },
                                 },
-                                "provider_1:region_2": {
-                                    "invocation_count": 80,
-                                    "average_runtime": 25,  # In s
-                                    "tail_runtime": 30,  # In s
-                                },
-                            },
-                            "invocation_summary": {
-                                "instance_2": {
-                                    "invocation_count": 80,
-                                    "average_data_transfer_size": 0.0007,  # In GB
-                                    "transmission_summary": {
-                                        "provider_1:region_1": {
+                                "invocation_summary": {
+                                    "instance_2": {
+                                        "invocation_count": 80,
+                                        "average_data_transfer_size": 0.0007,  # In GB
+                                        "transmission_summary": {
                                             "provider_1:region_1": {
-                                                "transmission_count": 65,
-                                                "average_latency": 0.0015,  # In s
-                                                "tail_latency": 0.0015,  # In s
+                                                "provider_1:region_1": {
+                                                    "transmission_count": 65,
+                                                    "average_latency": 0.0015,  # In s
+                                                    "tail_latency": 0.0015,  # In s
+                                                },
+                                                "provider_1:region_2": {
+                                                    "transmission_count": 5,
+                                                    "average_latency": 0.13,  # In s
+                                                    "tail_latency": 0.16,  # In s
+                                                },
                                             },
                                             "provider_1:region_2": {
-                                                "transmission_count": 5,
-                                                "average_latency": 0.13,  # In s
-                                                "tail_latency": 0.16,  # In s
+                                                "provider_1:region_1": {
+                                                    "transmission_count": 10,
+                                                    "average_latency": 0.09,  # In s
+                                                    "tail_latency": 0.13,  # In s
+                                                }
                                             },
                                         },
-                                        "provider_1:region_2": {
-                                            "provider_1:region_1": {
-                                                "transmission_count": 10,
-                                                "average_latency": 0.09,  # In s
-                                                "tail_latency": 0.13,  # In s
-                                            }
-                                        },
+                                    }
+                                },
+                            },
+                            "instance_2": {
+                                "invocation_count": 80,
+                                "execution_summary": {
+                                    "provider_1:region_1": {
+                                        "invocation_count": 70,
+                                        "average_runtime": 15,  # In s
+                                        "tail_runtime": 10,  # In s
                                     },
-                                }
-                            },
-                        },
-                        "instance_2": {
-                            "invocation_count": 80,
-                            "execution_summary": {
-                                "provider_1:region_1": {
-                                    "invocation_count": 70,
-                                    "average_runtime": 15,  # In s
-                                    "tail_runtime": 10,  # In s
-                                },
-                                "provider_1:region_2": {
-                                    "invocation_count": 10,
-                                    "average_runtime": 10,  # In s
-                                    "tail_runtime": 15,  # In s
+                                    "provider_1:region_2": {
+                                        "invocation_count": 10,
+                                        "average_runtime": 10,  # In s
+                                        "tail_runtime": 15,  # In s
+                                    },
                                 },
                             },
                         },
-                    },
-                })
-            }
+                    }
+                ),
+            },
         ]
 
         self.workflow_retriever._available_regions = {"provider_1:region_1": {}, "provider_1:region_2": {}}
@@ -186,64 +187,44 @@ class TestWorkflowRetriever(unittest.TestCase):
         result = self.workflow_retriever._consolidate_logs(logs=logs)
 
         expected_result = {
-            'instance_1': {
-                'favourite_home_region': 'provider_1:region_1',
-                'favourite_home_region_average_runtime': 26.0,
-                'favourite_home_region_tail_runtime': 31.0,
-                'projected_monthly_invocations': 12.5,
-                'execution_summary': {
-                    'provider_1:region_1': {
-                        'average_runtime': 26.0,
-                        'tail_runtime': 31.0
-                    },
-                    'provider_1:region_2': {
-                        'average_runtime': 26.0,
-                        'tail_runtime': 31.0
-                    }
+            "instance_1": {
+                "favourite_home_region": "provider_1:region_1",
+                "favourite_home_region_average_runtime": 26.0,
+                "favourite_home_region_tail_runtime": 31.0,
+                "projected_monthly_invocations": 12.5,
+                "execution_summary": {
+                    "provider_1:region_1": {"average_runtime": 26.0, "tail_runtime": 31.0},
+                    "provider_1:region_2": {"average_runtime": 26.0, "tail_runtime": 31.0},
                 },
-                'invocation_summary': {
-                    'probability_of_invocation': 0.8,
-                    'average_data_transfer_size': 0.0007,
-                    'transmission_summary': {
-                        'provider_1:region_1': {
-                            'provider_1:region_1': {
-                                'average_latency': 0.00125,
-                                'tail_latency': 0.00175
-                            },
-                            'provider_1:region_2': {
-                                'average_latency': 0.125,
-                                'tail_latency': 0.155
-                            }
+                "invocation_summary": {
+                    "probability_of_invocation": 0.8,
+                    "average_data_transfer_size": 0.0007,
+                    "transmission_summary": {
+                        "provider_1:region_1": {
+                            "provider_1:region_1": {"average_latency": 0.00125, "tail_latency": 0.00175},
+                            "provider_1:region_2": {"average_latency": 0.125, "tail_latency": 0.155},
                         },
-                        'provider_1:region_2': {
-                            'provider_1:region_1': {
-                                'average_latency': 0.095,
-                                'tail_latency': 0.125
-                            }
-                        }
-                    }
-                }
-            },
-            'instance_2': {
-                'favourite_home_region': 'provider_1:region_1',
-                'favourite_home_region_average_runtime': 12.5,
-                'favourite_home_region_tail_runtime': 12.5,
-                'projected_monthly_invocations': 11.25,
-                'execution_summary': {
-                    'provider_1:region_1': {
-                        'average_runtime': 12.5,
-                        'tail_runtime': 12.5
+                        "provider_1:region_2": {
+                            "provider_1:region_1": {"average_latency": 0.095, "tail_latency": 0.125}
+                        },
                     },
-                    'provider_1:region_2': {
-                        'average_runtime': 12.5,
-                        'tail_runtime': 12.5
-                    }
                 },
-                'invocation_summary': {}
-            }
+            },
+            "instance_2": {
+                "favourite_home_region": "provider_1:region_1",
+                "favourite_home_region_average_runtime": 12.5,
+                "favourite_home_region_tail_runtime": 12.5,
+                "projected_monthly_invocations": 11.25,
+                "execution_summary": {
+                    "provider_1:region_1": {"average_runtime": 12.5, "tail_runtime": 12.5},
+                    "provider_1:region_2": {"average_runtime": 12.5, "tail_runtime": 12.5},
+                },
+                "invocation_summary": {},
+            },
         }
 
         self.assertEqual(result, expected_result)
+
 
 if __name__ == "__main__":
     unittest.main()

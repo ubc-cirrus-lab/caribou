@@ -49,7 +49,9 @@ class TestPerformanceRetriever(unittest.TestCase):
     def test_get_total_latency(self):
         region_from = {"provider": "aws"}
         region_to = {"provider": "aws"}
-        with patch.object(self.retriever._aws_latency_retriever, "get_latency", return_value=(10.0 * 1000)) as mock_get_latency:
+        with patch.object(
+            self.retriever._aws_latency_retriever, "get_latency", return_value=(10.0 * 1000)
+        ) as mock_get_latency:
             result = self.retriever._get_total_latency(region_from, region_to)
             mock_get_latency.assert_called_once_with(region_from, region_to)
             self.assertEqual(result, 10.0)
