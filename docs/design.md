@@ -556,6 +556,8 @@ Again, the frequency with which this collector should run needs further investig
 This collector is responsible for managing the  `performance_region_table` database table.
 It is also responsible for updating the timestamp of performance-updated regions in the Performance Collector timestamp field of the `available_regions_table` table.
 
+#### Performance Region Table
+
 The `performance_region_table` is responsible for managing performance region-specific information of our benchmarking application.
 The keys and information stored in this table are as follows:
 
@@ -567,6 +569,18 @@ The keys and information stored in this table are as follows:
 
 Note: Perhaps in the future, we should also consider provider-level performance differences with a different database table.
 
+##### Performance Region Table Example
+
+```json
+ {
+    "relative_performance": 1,
+    "transmission_latency": {
+        "aws:region1": {"transmission_latency": 0.005, "unit": "s"},
+        "aws:region2": {"transmission_latency": 0.05, "unit": "s"},
+    },
+},
+```
+
 ### Workflow Collector
 
 The Workflow Collector is responsible for aggregating runtime and invocation probability of each instance of one or more workflows and also includes the actual execution and transmission time of running workflow instances in a given region.
@@ -576,6 +590,8 @@ This Collector should be run very frequently, and triggered by the Solver Update
 
 This collector is responsible for managing the "workflow_instance_table" database table.
 Unlike the other Data Collectors, the Workflow Collector should not and will not have or require updating any timestamp of the `available_regions_table` table.
+
+#### Workflow Collector Input Table
 
 The Workflow Collector is responsible for extracting information from the `workflow_summary_table`, which is managed by the Datastore Syncer. The Datastore Syncer should retrieve all the invocations log of the workflow from locally data centers and then remove the local entries only after finishing summarization. Below are the tentative expected formats of this table:
 
@@ -596,6 +612,82 @@ The Workflow Collector is responsible for extracting information from the `workf
           - Number transmission
           - Region Average/Tail Latency.
 
+
+##### Workflow Summary Table Example
+
+Below is an example of the `workflow_summary_table` for a workflow with 2 instances. The Partition Key is the ID of the workflow, and the Sort Key is the timestamp of when the summary was performed. All the runtime and latency are in units of seconds.
+
+```json
+{
+  "partition_key": "test_workflow_id",
+  "sort_key": "2021-2-10T10:10:10",
+  "value": {
+      "months_between_summary": 8,
+      "instance_summary": {
+          "instance_1": {
+              "invocation_count": 100,
+              "execution_summary": {
+                  "provider_1:region_1": {
+                      "invocation_count": 90,
+                      "average_runtime": 20,
+                      "tail_runtime": 30,
+                  },
+                  "provider_1:region_2": {
+                      "invocation_count": 10,
+                      "average_runtime": 17,
+                      "tail_runtime": 25,
+                  },
+              },
+              "invocation_summary": {
+                  "instance_2": {
+                      "invocation_count": 80,
+                      "average_data_transfer_size": 0.0007,
+                      "transmission_summary": {
+                          "provider_1:region_1": {
+                              "provider_1:region_1": {
+                                  "transmission_count": 50,
+                                  "average_latency": 0.001,
+                                  "tail_latency": 0.002,
+                              },
+                              "provider_1:region_2": {
+                                  "transmission_count": 22,
+                                  "average_latency": 0.12,
+                                  "tail_latency": 0.15,
+                              },
+                          },
+                          "provider_1:region_2": {
+                              "provider_1:region_1": {
+                                  "transmission_count": 8,
+                                  "average_latency": 0.1,
+                                  "tail_latency": 0.12,
+                              }
+                          },
+                      },
+                  }
+              },
+          },
+          "instance_2": {
+              "invocation_count": 80,
+              "execution_summary": {
+                  "provider_1:region_1": {
+                      "invocation_count": 58,
+                      "average_runtime": 10,
+                      "tail_runtime": 15,
+                  },
+                  "provider_1:region_2": {
+                      "invocation_count": 22,
+                      "average_runtime": 12,
+                      "tail_runtime": 17,
+                  },
+              },
+          },
+      },
+  },
+}
+```
+
+#### Workflow Collector Output Table
+
 The `workflow_instance_table` is responsible for summarizing and collecting information regarding past instance invocation at various regions:
 
 - Key: `<workflow_unique_id>`
@@ -612,6 +704,70 @@ The `workflow_instance_table` is responsible for summarizing and collecting info
       - At Region `<provider_unique_id>:<region_name>`
         - To Region `<provider_unique_id>:<region_name>`
           - Region Average/Tail Latency.
+
+##### Workflow Instance Table Example
+
+Below is an example of the `workflow_instance_table` output for a workflow with 2 instances. All the runtime and latency are in units of seconds.
+
+```json
+{
+  "instance_1": {
+    "favourite_home_region": "provider_1:region_1",
+    "favourite_home_region_average_runtime": 26.0,
+    "favourite_home_region_tail_runtime": 31.0,
+    "projected_monthly_invocations": 12.5,
+    "execution_summary": {
+      "provider_1:region_1": {
+        "average_runtime": 26.0,
+        "tail_runtime": 31.0
+      },
+      "provider_1:region_2": {
+        "average_runtime": 26.0,
+        "tail_runtime": 31.0
+      }
+    },
+    "invocation_summary": {
+      "probability_of_invocation": 0.8,
+      "average_data_transfer_size": 0.0007,
+      "transmission_summary": {
+        "provider_1:region_1": {
+          "provider_1:region_1": {
+            "average_latency": 0.00125,
+            "tail_latency": 0.00175
+          },
+          "provider_1:region_2": {
+            "average_latency": 0.125,
+            "tail_latency": 0.155
+          }
+        },
+        "provider_1:region_2": {
+          "provider_1:region_1": {
+            "average_latency": 0.095,
+            "tail_latency": 0.125
+          }
+        }
+      }
+    }
+  },
+  "instance_2": {
+    "favourite_home_region": "provider_1:region_1",
+    "favourite_home_region_average_runtime": 12.5,
+    "favourite_home_region_tail_runtime": 12.5,
+    "projected_monthly_invocations": 11.25,
+    "execution_summary": {
+      "provider_1:region_1": {
+        "average_runtime": 12.5,
+        "tail_runtime": 12.5
+      },
+      "provider_1:region_2": {
+        "average_runtime": 12.5,
+        "tail_runtime": 12.5
+      }
+    },
+    "invocation_summary": {}
+  }
+}
+```
 
 ## Solvers
 

@@ -15,9 +15,9 @@ class TestPerformanceRetriever(unittest.TestCase):
         def custom_get_latency(from_region, to_region):
             # Specify different return values based on the input region
             if from_region == {"provider": "aws", "code": "region1"}:
-                return 5.0
+                return 5.0 * 1000
             elif from_region == {"provider": "aws", "code": "region2"}:
-                return 15.0
+                return 15.0 * 1000
             else:
                 return 0.0
 
@@ -31,15 +31,15 @@ class TestPerformanceRetriever(unittest.TestCase):
             "aws:region1": {
                 "relative_performance": 1,
                 "transmission_latency": {
-                    "aws:region1": {"transmission_latency": 5.0, "unit": "ms"},
-                    "aws:region2": {"transmission_latency": 5.0, "unit": "ms"},
+                    "aws:region1": {"transmission_latency": 5.0, "unit": "s"},
+                    "aws:region2": {"transmission_latency": 5.0, "unit": "s"},
                 },
             },
             "aws:region2": {
                 "relative_performance": 1,
                 "transmission_latency": {
-                    "aws:region1": {"transmission_latency": 15.0, "unit": "ms"},
-                    "aws:region2": {"transmission_latency": 15.0, "unit": "ms"},
+                    "aws:region1": {"transmission_latency": 15.0, "unit": "s"},
+                    "aws:region2": {"transmission_latency": 15.0, "unit": "s"},
                 },
             },
         }
@@ -49,7 +49,7 @@ class TestPerformanceRetriever(unittest.TestCase):
     def test_get_total_latency(self):
         region_from = {"provider": "aws"}
         region_to = {"provider": "aws"}
-        with patch.object(self.retriever._aws_latency_retriever, "get_latency", return_value=10.0) as mock_get_latency:
+        with patch.object(self.retriever._aws_latency_retriever, "get_latency", return_value=(10.0 * 1000)) as mock_get_latency:
             result = self.retriever._get_total_latency(region_from, region_to)
             mock_get_latency.assert_called_once_with(region_from, region_to)
             self.assertEqual(result, 10.0)
