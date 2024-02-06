@@ -50,6 +50,8 @@ class CarbonRetriever(DataRetriever):
                 config, self._get_carbon_intensity_from_coordinates
             )
 
+        self._carbon_intensity_cache = {}
+
     def retrieve_carbon_region_data(self) -> dict[str, dict[str, Any]]:
         result_dict: dict[str, dict[str, Any]] = {}
         for region_key, available_region in self._available_regions.items():
@@ -75,6 +77,8 @@ class CarbonRetriever(DataRetriever):
         return result_dict
 
     def _get_carbon_intensity_from_coordinates(self, latitude: float, longitude: float) -> float:
+        if (latitude, longitude) in self._carbon_intensity_cache:
+            return self._carbon_intensity_cache[(latitude, longitude)]
         electricitymaps = "https://api-access.electricitymaps.com/free-tier/carbon-intensity/latest?"
 
         if (datetime.datetime.now() - self._last_request).total_seconds() < self._request_backoff:
@@ -91,15 +95,13 @@ class CarbonRetriever(DataRetriever):
 
         self._last_request = datetime.datetime.now()
 
+        result = self._global_average_worst_case_carbon_intensity
+
         if response.status_code == 200:
             json_data = response.json()
 
             if "carbonIntensity" in json_data:
-                return json_data["carbonIntensity"]
-            else:
-                return self._global_average_worst_case_carbon_intensity
+                result = json_data["carbonIntensity"]
 
-        if response.status_code == 404 and "No recent data for zone" in response.text:
-            return self._global_average_worst_case_carbon_intensity
-
-        raise ValueError(f"Could not retrieve carbon intensity from Electricity Maps API: {response.text}")
+        self._carbon_intensity_cache[(latitude, longitude)] = result
+        return result

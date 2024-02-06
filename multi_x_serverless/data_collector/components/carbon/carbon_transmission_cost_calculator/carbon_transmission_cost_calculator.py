@@ -13,7 +13,7 @@ class CarbonTransmissionCostCalculator(ABC):
             self._kwh_per_gb_estimate = 0.1
         self._total_distance = 0.0
         # Current resolution set to 250 km for one segment
-        self._step_size = 250
+        self._step_size = 500
 
     @abstractmethod
     def calculate_transmission_carbon_intensity(self, region_from: dict[str, Any], region_to: dict[str, Any]) -> float:
