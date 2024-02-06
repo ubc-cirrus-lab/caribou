@@ -1,7 +1,8 @@
 # Loader
 from multi_x_serverless.common.models.endpoints import Endpoints
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
-from multi_x_serverless.routing.models.indexer import Indexer
+from multi_x_serverless.routing.models.dag import DAG
+from multi_x_serverless.routing.models.region import Region
 
 # Calculators
 from multi_x_serverless.routing.solver.input.components.calculators.carbon_calculator import CarbonCalculator
@@ -38,11 +39,11 @@ class InputManager:
             self._region_viability_loader.setup()  # Setup the viability loader -> This loads data from the database
 
         # Calculators
-        self._carbon_calculator = CarbonCalculator()
-        self._cost_calculator = CostCalculator()
         self._runtime_calculator = RuntimeCalculator()
+        self._carbon_calculator = CarbonCalculator() # Depends on runtime as well
+        self._cost_calculator = CostCalculator() # Depends on runtime as well
 
-    def setup(self, regions_indexer: Indexer, instance_indexer: Indexer) -> bool:
+    def setup(self, regions_indexer: Region, instance_indexer: DAG) -> bool:
         # # Need to convert it back
         # for region in converted_regions:
         #     (region["provider"], region["region"])
