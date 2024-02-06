@@ -94,7 +94,7 @@ class AWSDeployInstructions(DeployInstructions):
             output_var=function_varname,
         )
 
-    def _get_messaging_topic_instruction_for_region(self, output_var: str, name: str) -> Instruction:
+    def _get_create_messaging_topic_instruction_for_region(self, output_var: str, name: str) -> Instruction:
         return APICall(
             name="create_sns_topic",
             params={
@@ -126,6 +126,3 @@ class AWSDeployInstructions(DeployInstructions):
                 "lambda_function_arn": Variable(function_varname),
             },
         )
-
-    def _get_config(self, providers: dict[str, Any], provider: str) -> dict[str, Any]:
-        return providers["aws"]["config"]

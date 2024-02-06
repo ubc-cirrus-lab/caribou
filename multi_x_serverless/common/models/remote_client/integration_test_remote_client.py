@@ -59,7 +59,9 @@ class IntegrationTestRemoteClient(RemoteClient):
             """
         )
         cursor.execute("""CREATE TABLE IF NOT EXISTS roles (name TEXT PRIMARY KEY, policy TEXT, trust_policy TEXT)""")
-        cursor.execute("""CREATE TABLE IF NOT EXISTS functions (name TEXT PRIMARY KEY, role_arn TEXT)""")
+        cursor.execute(
+            """CREATE TABLE IF NOT EXISTS functions (name TEXT PRIMARY KEY, function_identifier TEXT, runtime TEXT, handler TEXT, environment_variables TEXT, timeout INTEGER, memory_size INTEGER)"""
+        )
         cursor.execute(
             """
                 CREATE TABLE IF NOT EXISTS sync_node_data (
@@ -80,8 +82,47 @@ class IntegrationTestRemoteClient(RemoteClient):
                 )
             """
         )
+        cursor.execute(
+            """
+                CREATE TABLE IF NOT EXISTS messaging_topics (
+                    topic_identifier TEXT PRIMARY KEY
+                )
+            """
+        )
+        cursor.execute(
+            """
+                CREATE TABLE IF NOT EXISTS messaging_subscriptions (
+                    subscription_identifier TEXT,
+                    topic_identifier TEXT,
+                    function_identifier TEXT,
+                    PRIMARY KEY (subscription_identifier, topic_identifier, function_identifier)
+                )
+            """
+        )
         conn.commit()
         conn.close()
+
+    def add_function_permission(self, function_identifier: str, topic_identifier: str) -> None:
+        pass
+
+    def create_messaging_topic(self, topic_name: str) -> str:
+        conn = self._db_connection()
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO messaging_topics (topic_identifier) VALUES (?)", (topic_name,))
+        conn.commit()
+        conn.close()
+        return topic_name
+
+    def subscribe_messaging_topic(self, topic_identifier: str, function_identifier: str) -> str:
+        conn = self._db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO messaging_subscriptions (subscription_identifier, topic_identifier, function_identifier) VALUES (?, ?, ?)",
+            (f"{topic_identifier}_{function_identifier}", topic_identifier, function_identifier),
+        )
+        conn.commit()
+        conn.close()
+        return f"{topic_identifier}_{function_identifier}"
 
     def resource_exists(self, resource: Resource) -> bool:
         conn = self._db_connection()

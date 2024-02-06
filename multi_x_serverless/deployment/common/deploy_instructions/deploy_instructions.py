@@ -30,7 +30,7 @@ class DeployInstructions(ABC):
         messaging_topic_identifier_varname = f"{name}_messaging_topic"
         instructions.extend(
             [
-                self._get_messaging_topic_instruction_for_region(messaging_topic_identifier_varname, name),
+                self._get_create_messaging_topic_instruction_for_region(messaging_topic_identifier_varname, name),
                 RecordResourceVariable(
                     resource_type="messaging_topic",
                     resource_name=name,
@@ -169,7 +169,7 @@ class DeployInstructions(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def _get_messaging_topic_instruction_for_region(self, output_var: str, name: str) -> Instruction:
+    def _get_create_messaging_topic_instruction_for_region(self, output_var: str, name: str) -> Instruction:
         raise NotImplementedError
 
     @abstractmethod
@@ -178,6 +178,5 @@ class DeployInstructions(ABC):
     ) -> Instruction:
         raise NotImplementedError
 
-    @abstractmethod
     def _get_config(self, providers: dict[str, Any], provider: str) -> dict[str, Any]:
-        raise NotImplementedError
+        return providers[provider]["config"]
