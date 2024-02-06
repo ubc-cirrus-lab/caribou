@@ -214,6 +214,8 @@ class ProviderRetriever(DataRetriever):
 
         available_region_code_to_key = {region_key.split(":")[1]: region_key for region_key in available_region}
 
+        current_invocations = 0
+
         execution_cost_dict = {}
         for price_list in execution_cost_response["PriceLists"]:
             region_code = price_list["RegionCode"]
@@ -268,7 +270,7 @@ class ProviderRetriever(DataRetriever):
                 ]
 
                 compute_cost_arm64 = compute_cost_item_sku_arm64["priceDimensions"]
-                compute_cost_arm64_with_unit = self._get_compute_cost_with_unit(compute_cost_arm64)
+                compute_cost_arm64 = self._get_compute_cost(compute_cost_arm64, current_invocations)
 
             invocation_cost_item_x86_64 = price_list_file_json["terms"]["OnDemand"][invocation_call_sku_x86_64][
                 list(price_list_file_json["terms"]["OnDemand"][invocation_call_sku_x86_64].keys())[0]
@@ -285,7 +287,7 @@ class ProviderRetriever(DataRetriever):
 
             compute_cost_x86_64 = compute_cost_item_sku_x86_64["priceDimensions"]
 
-            compute_cost_x86_64_with_unit = self._get_compute_cost_with_unit(compute_cost_x86_64)
+            compute_cost_x86_64 = self._get_compute_cost(compute_cost_x86_64, current_invocations)
 
             execution_cost_dict[available_region_code_to_key[region_code]] = {
                 "invocation_cost": {
@@ -294,8 +296,8 @@ class ProviderRetriever(DataRetriever):
                     "free_tier_invocations": free_invocations,
                 },
                 "compute_cost": {
-                    "arm64": compute_cost_arm64_with_unit if len(invocation_call_sku_arm64) > 0 else [],
-                    "x86_64": compute_cost_x86_64_with_unit,
+                    "arm64": compute_cost_arm64 if len(invocation_call_sku_arm64) > 0 else 0,
+                    "x86_64": compute_cost_x86_64,
                     "free_tier_compute_gb_s": free_compute_gb_s,
                 },
                 "unit": "USD",
@@ -305,16 +307,11 @@ class ProviderRetriever(DataRetriever):
             raise ValueError("Not all regions have execution cost data")
         return execution_cost_dict
 
-    def _get_compute_cost_with_unit(self, compute_cost: dict) -> list[dict]:
-        result = []
+    def _get_compute_cost(self, compute_cost: dict, current_invocations: int) -> float:
         for value in compute_cost.values():
-            result.append(
-                {
-                    "beginRange": value["beginRange"],
-                    "pricePerUnit": value["pricePerUnit"]["USD"],
-                }
-            )
-        return result
+            if int(value["beginRange"]) <= current_invocations and (value["endRange"] == "Inf" or current_invocations <= int(value["endRange"])):
+                return float(value["pricePerUnit"]["USD"])
+        raise ValueError(f"Could not find compute cost for {current_invocations} invocations")
 
     def get_aws_product_skus(self, price_list_file_json: dict) -> tuple[str, str, str, str, str, str]:
         """
