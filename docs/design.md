@@ -477,40 +477,29 @@ Note: Data Transfer Cost and complexities of this warrant further investigation 
 
 ```json
 {
-  "key": "aws:eu-south-1",
-  "value": {
-    "execution_cost": {
-      "invocation_cost": {
-        "arm64": 2.3e-7,
-        "x86_64": 2.3e-7,
-        "free_tier_invocations": 1000000
-      },
-      "compute_cost": {
-        "arm64": [
-          { "beginRange": "0", "pricePerUnit": "0.0000156138" },
-          { "beginRange": "7500000000", "pricePerUnit": "0.0000140524" },
-          { "beginRange": "18750000000", "pricePerUnit": "0.0000124910" }
-        ],
-        "x86_64": [
-          { "beginRange": "0", "pricePerUnit": "0.0000195172" },
-          { "beginRange": "6000000000", "pricePerUnit": "0.0000175655" },
-          { "beginRange": "15000000000", "pricePerUnit": "0.0000156138" }
-        ],
-        "free_tier_compute_gb_s": 400000
-      },
-      "unit": "USD"
+  "execution_cost": {
+    "invocation_cost": {
+      "arm64": 2.3e-7,
+      "x86_64": 2.3e-7,
+      "free_tier_invocations": 1000000
     },
-    "transmission_cost": {
-      "global_data_transfer": 0.09,
-      "provider_data_transfer": 0.02,
-      "unit": "USD/GB"
+    "compute_cost": {
+      "arm64": 1.56138e-5,
+      "x86_64": 1.95172e-5,
+      "free_tier_compute_gb_s": 400000
     },
-    "pue": 1.15,
-    "cfe": 0.9,
-    "average_memory_power": 3.92e-6,
-    "average_cpu_power": 0.00212,
-    "available_architectures": ["arm64", "x86_64"]
-  }
+    "unit": "USD"
+  },
+  "transmission_cost": {
+    "global_data_transfer": 0.09,
+    "provider_data_transfer": 0.02,
+    "unit": "USD/GB"
+  },
+  "pue": 1.15,
+  "cfe": 0.9,
+  "average_memory_power": 3.92e-6,
+  "average_cpu_power": 0.00212,
+  "available_architectures": ["arm64", "x86_64"]
 }
 ```
 
