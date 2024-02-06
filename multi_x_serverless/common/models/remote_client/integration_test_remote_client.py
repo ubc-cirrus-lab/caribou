@@ -8,7 +8,7 @@ from multi_x_serverless.common.models.remote_client.remote_client import RemoteC
 from multi_x_serverless.deployment.common.deploy.models.resource import Resource
 
 
-class IntegrationTestRemoteClient(RemoteClient):
+class IntegrationTestRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
     def __init__(self) -> None:
         self._db_path = os.environ.get("DB_PATH", os.path.join(os.getcwd(), "db.sqlite3"))
         self._initialize_db()
@@ -60,7 +60,17 @@ class IntegrationTestRemoteClient(RemoteClient):
         )
         cursor.execute("""CREATE TABLE IF NOT EXISTS roles (name TEXT PRIMARY KEY, policy TEXT, trust_policy TEXT)""")
         cursor.execute(
-            """CREATE TABLE IF NOT EXISTS functions (name TEXT PRIMARY KEY, function_identifier TEXT, runtime TEXT, handler TEXT, environment_variables TEXT, timeout INTEGER, memory_size INTEGER)"""
+            """
+                CREATE TABLE IF NOT EXISTS functions (
+                    name TEXT PRIMARY KEY,
+                    function_identifier TEXT,
+                    runtime TEXT,
+                    handler TEXT,
+                    environment_variables TEXT, 
+                    timeout INTEGER, 
+                    memory_size INTEGER
+                )
+            """
         )
         cursor.execute(
             """
@@ -117,7 +127,14 @@ class IntegrationTestRemoteClient(RemoteClient):
         conn = self._db_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO messaging_subscriptions (subscription_identifier, topic_identifier, function_identifier) VALUES (?, ?, ?)",
+            """
+                INSERT INTO messaging_subscriptions (
+                    subscription_identifier,
+                    topic_identifier,
+                    function_identifier
+                )
+                VALUES (?, ?, ?)
+            """,
             (f"{topic_identifier}_{function_identifier}", topic_identifier, function_identifier),
         )
         conn.commit()

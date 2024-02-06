@@ -1,14 +1,12 @@
-from typing import Any
-
+from multi_x_serverless.common.provider import Provider
 from multi_x_serverless.deployment.common.deploy.models.iam_role import IAMRole
-from multi_x_serverless.deployment.common.deploy.models.instructions import Instruction
-from multi_x_serverless.deployment.common.deploy_instructions.deploy_instructions import DeployInstructions
+from multi_x_serverless.deployment.common.deploy.models.instructions import APICall, Instruction
 from multi_x_serverless.deployment.common.deploy.models.variable import Variable
-from multi_x_serverless.deployment.common.deploy.models.instructions import APICall
+from multi_x_serverless.deployment.common.deploy_instructions.deploy_instructions import DeployInstructions
 
 
 class IntegrationTestDeployInstructions(DeployInstructions):
-    def __init__(self, region: str, provider: str) -> None:
+    def __init__(self, region: str, provider: Provider) -> None:
         super().__init__(region, provider)
         self._test_policy = {
             "Version": "2012-10-17",
@@ -92,7 +90,7 @@ class IntegrationTestDeployInstructions(DeployInstructions):
             name="create_role",
             params={
                 "role_name": role.name,
-                "trust_policy": self._lambda_trust_policy,
+                "trust_policy": self._test_policy,
                 "policy": role.get_policy(self._provider),
             },
             output_var=iam_role_varname,

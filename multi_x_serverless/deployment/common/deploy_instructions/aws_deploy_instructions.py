@@ -1,5 +1,3 @@
-from typing import Any
-
 from multi_x_serverless.common.provider import Provider
 from multi_x_serverless.deployment.common.deploy.models.iam_role import IAMRole
 from multi_x_serverless.deployment.common.deploy.models.instructions import APICall, Instruction
