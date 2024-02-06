@@ -4,7 +4,10 @@ from multi_x_serverless.common.provider import Provider
 from multi_x_serverless.data_collector.components.carbon.carbon_transmission_cost_calculator.carbon_transmission_cost_calculator import (  # pylint: disable=line-too-long
     CarbonTransmissionCostCalculator,
 )
-from multi_x_serverless.data_collector.utils.aws_latency_retriever import AWSLatencyRetriever
+from multi_x_serverless.data_collector.utils.latency_retriever.aws_latency_retriever import AWSLatencyRetriever
+from multi_x_serverless.data_collector.utils.latency_retriever.integration_test_latency_retriever import (
+    IntegrationTestLatencyRetriever,
+)
 
 
 class LatencyCarbonTransmissionCostCalculator(CarbonTransmissionCostCalculator):
@@ -15,6 +18,7 @@ class LatencyCarbonTransmissionCostCalculator(CarbonTransmissionCostCalculator):
         else:
             self._kwh_per_ms_gb_estimate = 0.0000166667
         self._aws_latency_retriever = AWSLatencyRetriever()
+        self._integration_test_latency_retriever = IntegrationTestLatencyRetriever()
 
     def calculate_transmission_carbon_intensity(self, region_from: dict[str, Any], region_to: dict[str, Any]) -> float:
         total_latency = self._get_total_latency(region_from, region_to)
@@ -45,7 +49,10 @@ class LatencyCarbonTransmissionCostCalculator(CarbonTransmissionCostCalculator):
         return gco2e_per_gb
 
     def _get_total_latency(self, region_from: dict[str, Any], region_to: dict[str, Any]) -> float:
-        if region_from["provider"] == region_to["provider"] and region_from["provider"] == Provider.AWS.value:
-            return self._aws_latency_retriever.get_latency(region_from, region_to)
+        if region_from["provider"] == region_to["provider"]:
+            if region_from["provider"] == Provider.AWS.value:
+                return self._aws_latency_retriever.get_latency(region_from, region_to)
+            if region_from["provider"] == Provider.INTEGRATION_TEST_PROVIDER.value:
+                return self._integration_test_latency_retriever.get_latency(region_from, region_to)
 
         return 0.0  # Default value, maybe a better default or an error message will be desired

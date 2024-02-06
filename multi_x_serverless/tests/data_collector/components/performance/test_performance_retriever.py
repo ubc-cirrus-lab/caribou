@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import Mock, patch
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
-from multi_x_serverless.data_collector.utils.aws_latency_retriever import AWSLatencyRetriever
+from multi_x_serverless.data_collector.utils.latency_retriever.aws_latency_retriever import AWSLatencyRetriever
 from multi_x_serverless.data_collector.components.performance.performance_retriever import PerformanceRetriever
 
 

@@ -19,6 +19,35 @@ class ProviderRetriever(DataRetriever):
         self._aws_pricing_client = boto3.client("pricing", region_name="us-east-1")
         self._aws_region_name_to_code: dict[str, str] = {}
 
+    def retrieve_location(self, name: str) -> tuple[float, float]:
+        google_maps = googlemaps.Client(key=self._google_api_key)
+
+        if name == "Columbus":
+            name = "Columbus, Ohio"  # Somehow Google Maps doesn't know where Columbus, OH is
+        geocode_result = google_maps.geocode(name)
+        if geocode_result:
+            latitude = geocode_result[0]["geometry"]["location"]["lat"]
+            longitude = geocode_result[0]["geometry"]["location"]["lng"]
+        else:
+            raise ValueError(f"Could not find location {name}")
+        return (latitude, longitude)
+
+    def retrieve_available_regions(self) -> dict[str, dict[str, Any]]:
+        available_regions = {}
+        for provider in Provider:
+            if provider == Provider.AWS:
+                available_regions.update(self.retrieve_aws_regions())
+            elif provider == Provider.GCP:
+                pass
+            elif provider in (Provider.TEST_PROVIDER1, Provider.TEST_PROVIDER2):
+                pass
+            elif provider == Provider.INTEGRATION_TEST_PROVIDER:
+                available_regions.update(self.retrieve_integrationtest_regions())
+            else:
+                raise NotImplementedError(f"Provider {provider} not implemented")
+        self._available_regions = available_regions
+        return available_regions
+
     def retrieve_aws_regions(self) -> dict[str, dict[str, Any]]:
         amazon_region_url = "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html#concepts-available-regions"  # pylint: disable=line-too-long
         amazon_region_page = requests.get(amazon_region_url, timeout=5)
@@ -56,32 +85,37 @@ class ProviderRetriever(DataRetriever):
 
         return regions
 
-    def retrieve_location(self, name: str) -> tuple[float, float]:
-        google_maps = googlemaps.Client(key=self._google_api_key)
-
-        if name == "Columbus":
-            name = "Columbus, Ohio"  # Somehow Google Maps doesn't know where Columbus, OH is
-        geocode_result = google_maps.geocode(name)
-        if geocode_result:
-            latitude = geocode_result[0]["geometry"]["location"]["lat"]
-            longitude = geocode_result[0]["geometry"]["location"]["lng"]
-        else:
-            raise ValueError(f"Could not find location {name}")
-        return (latitude, longitude)
-
-    def retrieve_available_regions(self) -> dict[str, dict[str, Any]]:
-        available_regions = {}
-        for provider in Provider:
-            if provider == Provider.AWS:
-                available_regions.update(self.retrieve_aws_regions())
-            elif provider == Provider.GCP:
-                pass
-            elif provider in (Provider.TEST_PROVIDER1, Provider.TEST_PROVIDER2):
-                pass
-            else:
-                raise NotImplementedError(f"Provider {provider} not implemented")
-        self._available_regions = available_regions
-        return available_regions
+    def retrieve_integrationtest_regions(self) -> dict[str, dict[str, Any]]:
+        return {
+            f"{Provider.INTEGRATION_TEST_PROVIDER.value}:rivendell": {
+                "name": "Rivendell",
+                "provider": Provider.INTEGRATION_TEST_PROVIDER.value,
+                "code": "rivendell",
+                "latitude": 38.8895,
+                "longitude": -77.0353,
+            },
+            f"{Provider.INTEGRATION_TEST_PROVIDER.value}:lothlorien": {
+                "name": "Lothlorien",
+                "provider": Provider.INTEGRATION_TEST_PROVIDER.value,
+                "code": "lothlorien",
+                "latitude": 25.0343,
+                "longitude": 46.7565,
+            },
+            f"{Provider.INTEGRATION_TEST_PROVIDER.value}:anduin": {
+                "name": "Anduin",
+                "provider": Provider.INTEGRATION_TEST_PROVIDER.value,
+                "code": "anduin",
+                "latitude": 48.8566,
+                "longitude": 2.3522,
+            },
+            f"{Provider.INTEGRATION_TEST_PROVIDER.value}:fangorn": {
+                "name": "Fangorn",
+                "provider": Provider.INTEGRATION_TEST_PROVIDER.value,
+                "code": "fangorn",
+                "latitude": 52.9548,
+                "longitude": 1.1581,
+            },
+        }
 
     def retrieve_provider_region_data(self) -> dict[str, dict[str, Any]]:
         provider_data = {}
@@ -100,6 +134,8 @@ class ProviderRetriever(DataRetriever):
                 raise NotImplementedError("GCP not implemented")
             elif provider in (Provider.TEST_PROVIDER1.value, Provider.TEST_PROVIDER2.value):
                 pass
+            elif provider == Provider.INTEGRATION_TEST_PROVIDER.value:
+                provider_data.update(self._retrieve_provider_data_integrationtest(regions))
             else:
                 raise NotImplementedError(f"Provider {provider} not implemented")
         return provider_data
@@ -120,6 +156,64 @@ class ProviderRetriever(DataRetriever):
                 "available_architectures": self._retrieve_aws_available_architectures(execution_cost_dict[region_key]),
             }
             for region_key in aws_regions
+        }
+
+    def _retrieve_provider_data_integrationtest(self, regions: list[str]) -> dict[str, Any]:
+        execution_cost_dict = {
+            f"{Provider.INTEGRATION_TEST_PROVIDER.value}:rivendell": {
+                "invocation_cost": {"arm64": 2.4e-7, "x86_64": 2.3e-7, "free_tier_invocations": 1000000},
+                "compute_cost": {"arm64": 1.56138e-5, "x86_64": 1.95172e-5, "free_tier_compute_gb_s": 400000},
+                "unit": "USD",
+            },
+            f"{Provider.INTEGRATION_TEST_PROVIDER.value}:lothlorien": {
+                "invocation_cost": {"arm64": 2.3e-7, "x86_64": 2.2e-7, "free_tier_invocations": 1000000},
+                "compute_cost": {"arm64": 1.56118e-5, "x86_64": 1.93172e-5, "free_tier_compute_gb_s": 400000},
+                "unit": "USD",
+            },
+            f"{Provider.INTEGRATION_TEST_PROVIDER.value}:anduin": {
+                "invocation_cost": {"arm64": 2.2e-7, "x86_64": 2.1e-7, "free_tier_invocations": 1000000},
+                "compute_cost": {"arm64": 1.56128e-5, "x86_64": 1.91172e-5, "free_tier_compute_gb_s": 400000},
+                "unit": "USD",
+            },
+            f"{Provider.INTEGRATION_TEST_PROVIDER.value}:fangorn": {
+                "invocation_cost": {"arm64": 2.1e-7, "x86_64": 2.0e-7, "free_tier_invocations": 1000000},
+                "compute_cost": {"arm64": 1.56148e-5, "x86_64": 1.89172e-5, "free_tier_compute_gb_s": 400000},
+                "unit": "USD",
+            },
+        }
+        transmission_cost_dict = {
+            f"{Provider.INTEGRATION_TEST_PROVIDER.value}:rivendell": {
+                "global_data_transfer": 0.09,
+                "provider_data_transfer": 0.02,
+                "unit": "USD/GB",
+            },
+            f"{Provider.INTEGRATION_TEST_PROVIDER.value}:lothlorien": {
+                "global_data_transfer": 0.04,
+                "provider_data_transfer": 0.09,
+                "unit": "USD/GB",
+            },
+            f"{Provider.INTEGRATION_TEST_PROVIDER.value}:anduin": {
+                "global_data_transfer": 0.11,
+                "provider_data_transfer": 0.05,
+                "unit": "USD/GB",
+            },
+            f"{Provider.INTEGRATION_TEST_PROVIDER.value}:fangorn": {
+                "global_data_transfer": 0.07,
+                "provider_data_transfer": 0.03,
+                "unit": "USD/GB",
+            },
+        }
+        return {
+            region: {
+                "execution_cost": execution_cost_dict[region],
+                "transmission_cost": transmission_cost_dict[region],
+                "pue": 1.15,
+                "cfe": 0.9,
+                "average_memory_power": 0.00000392,
+                "average_cpu_power": (0.74 + 0.5 * (3.5 - 0.74)) / 1000,
+                "available_architectures": ["arm64", "x86_64"],
+            }
+            for region in regions
         }
 
     def _retrieve_aws_available_architectures(self, execution_cost: dict[str, Any]) -> list[str]:

@@ -3,15 +3,18 @@ from typing import Any
 import requests
 from bs4 import BeautifulSoup
 
+from multi_x_serverless.data_collector.utils.latency_retriever.latency_retriever import LatencyRetriever
 
-class AWSLatencyRetriever:
+
+class AWSLatencyRetriever(LatencyRetriever):
     def __init__(self) -> None:
+        super().__init__()
         # This url returns a table with the latency between all AWS regions
         # The latency is measured in ms
         # The 50th percentile is used and the time frame is 1 day
         cloudping_url = "https://www.cloudping.co/grid/p_50/timeframe/1D"
 
-        self._cloudping_page = requests.get(cloudping_url)
+        self._cloudping_page = requests.get(cloudping_url, timeout=10)
         self._soup = BeautifulSoup(self._cloudping_page.content, "html.parser")
         self._parse_table()
 
@@ -33,13 +36,13 @@ class AWSLatencyRetriever:
         region_to_code = region_to["code"]
         try:
             column_index = self.columns.index(region_to_code)
-        except ValueError:
-            raise ValueError(f"Destination region code {region_to_code} not found")
+        except ValueError as e:
+            raise ValueError(f"Destination region code {region_to_code} not found") from e
 
         try:
             latency_str = self.data[region_from_code][column_index]
             return float(latency_str)
-        except KeyError:
-            raise ValueError(f"Source region code {region_from_code} not found")
-        except ValueError:
-            raise ValueError("Invalid latency value")
+        except KeyError as e:
+            raise ValueError(f"Source region code {region_from_code} not found") from e
+        except ValueError as e:
+            raise ValueError("Invalid latency value") from e

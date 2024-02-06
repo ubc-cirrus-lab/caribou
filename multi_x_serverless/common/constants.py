@@ -18,6 +18,9 @@ MULTI_X_SERVERLESS_CODE_RESOURCES_BUCKET = "multi-x-serverless-code-resource-buc
 # Global System Region
 GLOBAL_SYSTEM_REGION = "us-west-2"
 
+# Integration Test System Region
+INTEGRATION_TEST_SYSTEM_REGION = "rivendell"
+
 # Data Collector Tables
 ## General Tables
 AVAILABLE_REGIONS_TABLE = "available_regions_table"
