@@ -10,7 +10,7 @@ from multi_x_serverless.routing.formatter.formatter import Formatter
 from multi_x_serverless.routing.models.dag import DAG
 from multi_x_serverless.routing.models.region import Region
 from multi_x_serverless.routing.ranker.ranker import Ranker
-from multi_x_serverless.routing.solver_inputs.input_manager import InputManager
+from multi_x_serverless.routing.solver.input.input_manager import InputManager
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
 
@@ -25,10 +25,10 @@ class Solver(ABC):  # pylint: disable=too-many-instance-attributes
         self._workflow_config = workflow_config
 
         # Declare the input manager
-        self._input_manager = InputManager(workflow_config)
+        self._input_manager = InputManager(workflow_config, all_available_regions is None)
 
         # Get all regions allowed for the workflow
-        if not all_available_regions:
+        if all_available_regions is None:
             all_available_regions = self._input_manager.get_all_regions()
 
         self._worklow_level_permitted_regions = self._filter_regions_global(all_available_regions)

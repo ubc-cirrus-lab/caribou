@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import Mock
 
 from multi_x_serverless.routing.solver.bfs_fine_grained_solver import BFSFineGrainedSolver
-from multi_x_serverless.routing.solver_inputs.input_manager import InputManager
+from multi_x_serverless.routing.solver.input.input_manager import InputManager
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
 from multi_x_serverless.routing.models.region import Region
 
