@@ -36,8 +36,26 @@ class RuntimeCalculator(InputCalculator):
             return self._calculate_raw_latency(from_instance_name, to_instance_name, from_region_name, to_region_name, False)
     
     def _calculate_raw_runtime(self, instance_name: str, region_name: str, use_tail_runtime: bool = False) -> float:
-        self._workflow_loader.get_runtime(instance_name, region_name, use_tail_runtime)
-        return 0
+        runtime = self._workflow_loader.get_runtime(instance_name, region_name, use_tail_runtime)
+
+        # If the runtime is not found, then we need to use the performance loader to estimate the relative runtime
+        if runtime < 0:
+            favourite_home_region = self._workflow_loader.get_favourite_region(instance_name)
+            if favourite_home_region is not None:
+                # Get the performance of the instance in the favourite home region
+                favourite_region_runtime = self._workflow_loader.get_favourite_region_runtime(instance_name)
+
+                # Right now we do not consider performance difference between regions
+                # Such that we can simply return the runtime of the favourite home region
+                # In the future, this should be considered.
+                pass
+                # performance = self._performance_loader.get_performance(instance_name, favourite_home_region)
+                # if performance is not None:
+                #     return performance
+            else:
+                return 0 # Instance was never invoked, so we assume it has no runtime
+
+        return runtime
 
     def _calculate_raw_latency(self, from_instance_name: str, to_instance_name: str, from_region_name: str, to_region_name: str, use_tail_runtime: bool = False) -> float:
         return 0
