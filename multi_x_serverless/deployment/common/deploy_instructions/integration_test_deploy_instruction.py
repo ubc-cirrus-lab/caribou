@@ -26,7 +26,7 @@ class IntegrationTestDeployInstructions(DeployInstructions):
             name="create_function",
             params={
                 "function_name": name,
-                "role_arn": Variable(iam_role_varname),
+                "role_identifier": Variable(iam_role_varname),
                 "zip_contents": zip_contents,
                 "runtime": runtime,
                 "handler": handler,

@@ -10,7 +10,7 @@ class RemoteClient(ABC):
     def create_function(
         self,
         function_name: str,
-        role_arn: str,
+        role_identifier: str,
         zip_contents: bytes,
         runtime: str,
         handler: str,
@@ -126,7 +126,7 @@ class RemoteClient(ABC):
     def update_function(
         self,
         function_name: str,
-        role_arn: str,
+        role_identifier: str,
         zip_contents: bytes,
         runtime: str,
         handler: str,

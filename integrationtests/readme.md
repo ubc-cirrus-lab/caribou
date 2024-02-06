@@ -1,6 +1,6 @@
 #  Integration tests
 
-The integrationtests work by running the `run_integration_tests.py` script. This script will run the `integration_tests` container and execute the tests inside it.
+The integrationtests work by running the `run_integration_tests.py` script.
 
 There are three scenarios that are tested:
 

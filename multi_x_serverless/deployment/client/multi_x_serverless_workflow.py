@@ -8,6 +8,7 @@ import uuid
 from types import FrameType
 from typing import Any, Callable, Optional
 
+from multi_x_serverless.common.utils import get_function_source
 from multi_x_serverless.common.constants import WORKFLOW_PLACEMENT_DECISION_TABLE
 from multi_x_serverless.common.models.endpoints import Endpoints
 from multi_x_serverless.deployment.client.multi_x_serverless_function import MultiXServerlessFunction
@@ -63,7 +64,7 @@ class MultiXServerlessWorkflow:
         """
         Get the functions that are called by this function.
         """
-        source_code = inspect.getsource(function.function_callable)
+        source_code = get_function_source(function.function_callable)
         function_calls = re.findall(r"invoke_serverless_function\((.*?)\)", source_code)
         successors: list[MultiXServerlessFunction] = []
         for call in function_calls:

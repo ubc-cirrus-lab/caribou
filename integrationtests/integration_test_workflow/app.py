@@ -3,7 +3,7 @@ from typing import Any
 from multi_x_serverless.deployment.client import MultiXServerlessWorkflow
 import pip_install_test
 
-from .src.fifth import fifth
+from integration_test_workflow.src.fifth import fifth
 
 workflow = MultiXServerlessWorkflow(name="integration_test_workflow", version="0.0.1")
 

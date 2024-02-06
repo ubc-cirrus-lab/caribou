@@ -102,7 +102,7 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
     def create_function(
         self,
         function_name: str,
-        role_arn: str,
+        role_identifier: str,
         zip_contents: bytes,
         runtime: str,
         handler: str,
@@ -115,7 +115,7 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
             "Runtime": runtime,
             "Code": {"ZipFile": zip_contents},
             "Handler": handler,
-            "Role": role_arn,
+            "Role": role_identifier,
             "Environment": {"Variables": environment_variables},
             "MemorySize": memory_size,
         }
@@ -130,7 +130,7 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
     def update_function(
         self,
         function_name: str,
-        role_arn: str,
+        role_identifier: str,
         zip_contents: bytes,
         runtime: str,
         handler: str,
@@ -147,7 +147,7 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
             "FunctionName": function_name,
             "Runtime": runtime,
             "Handler": handler,
-            "Role": role_arn,
+            "Role": role_identifier,
             "Environment": {"Variables": environment_variables},
             "MemorySize": memory_size,
         }

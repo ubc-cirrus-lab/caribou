@@ -10,7 +10,9 @@ from multi_x_serverless.deployment.common.deploy.models.resource import Resource
 
 class IntegrationTestRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
     def __init__(self) -> None:
-        self._db_path = os.environ.get("DB_PATH", os.path.join(os.getcwd(), "db.sqlite3"))
+        self._db_path = os.environ.get(
+            "MULTI_X_SERVERLESS_INTEGRATION_TEST_DB_PATH", os.path.join(os.getcwd(), "db.sqlite")
+        )
         self._initialize_db()
 
     def _db_connection(self) -> sqlite3.Connection:
@@ -64,6 +66,7 @@ class IntegrationTestRemoteClient(RemoteClient):  # pylint: disable=too-many-pub
                 CREATE TABLE IF NOT EXISTS functions (
                     name TEXT PRIMARY KEY,
                     function_identifier TEXT,
+                    role_identifier TEXT,
                     runtime TEXT,
                     handler TEXT,
                     environment_variables TEXT, 
@@ -308,7 +311,7 @@ class IntegrationTestRemoteClient(RemoteClient):  # pylint: disable=too-many-pub
     def create_function(
         self,
         function_name: str,
-        role_arn: str,
+        role_identifier: str,
         zip_contents: bytes,
         runtime: str,
         handler: str,
@@ -316,12 +319,41 @@ class IntegrationTestRemoteClient(RemoteClient):  # pylint: disable=too-many-pub
         timeout: int,
         memory_size: int,
     ) -> str:
-        return ""
+        conn = self._db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+                INSERT INTO functions (
+                    name,
+                    function_identifier,
+                    role_identifier,
+                    runtime,
+                    handler,
+                    environment_variables,
+                    timeout,
+                    memory_size
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                function_name,
+                f"{function_name}_identifier",
+                role_identifier,
+                runtime,
+                handler,
+                str(environment_variables),
+                timeout,
+                memory_size,
+            ),
+        )
+        conn.commit()
+        conn.close()
+        return function_name
 
     def update_function(
         self,
         function_name: str,
-        role_arn: str,
+        role_identifier: str,
         zip_contents: bytes,
         runtime: str,
         handler: str,
@@ -329,4 +361,25 @@ class IntegrationTestRemoteClient(RemoteClient):  # pylint: disable=too-many-pub
         timeout: int,
         memory_size: int,
     ) -> str:
-        return ""
+        conn = self._db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+                UPDATE functions
+                SET function_identifier=?, role_identifier=?, runtime=?, handler=?, environment_variables=?, timeout=?, memory_size=?
+                WHERE name=?
+            """,
+            (
+                f"{function_name}_identifier",
+                role_identifier,
+                runtime,
+                handler,
+                str(environment_variables),
+                timeout,
+                memory_size,
+                function_name,
+            ),
+        )
+        conn.commit()
+        conn.close()
+        return function_name
