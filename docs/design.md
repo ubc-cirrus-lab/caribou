@@ -619,7 +619,7 @@ Below is an example of the `workflow_summary_table` for a workflow with 2 instan
 
 ```json
 {
-  "partition_key": "test_workflow_id",
+  "key": "test_workflow_id",
   "sort_key": "2021-2-10T10:10:10",
   "value": {
       "months_between_summary": 8,
