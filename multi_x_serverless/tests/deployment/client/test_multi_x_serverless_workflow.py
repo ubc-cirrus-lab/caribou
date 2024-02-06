@@ -29,7 +29,9 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
 
     def test_serverless_function(self):
         self.workflow.register_function = Mock()
-        self.workflow.get_workflow_placement_decision_from_platform = Mock(return_value={"decision": 1})
+        self.workflow.get_workflow_placement_decision_from_platform = Mock(
+            return_value={"current_instance_name": "test_func", "instances": []}
+        )
 
         @self.workflow.serverless_function(
             name="test_func",
@@ -99,8 +101,10 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
 
         self.assertEqual(test_func(2), 4)
 
-        # Check if the workflow_placement_decision attribute was set correctly
-        self.assertEqual(test_func.workflow_placement_decision["decision"], 1)
+        self.assertEqual(
+            test_func.workflow_placement_decision["current_instance_name"],
+            "test_func",
+        )
 
     def test_serverless_function_with_environment_variables(self):
         self.workflow.register_function = Mock()
@@ -175,7 +179,7 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
 
         self.assertEqual(
             test_func(
-                '{"payload": 2, "workflow_placement_decision": {"workflow_placement": {"test_instance_1": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}}, "current_instance_name": "test_instance", "instances": [{"instance_name": "test_instance", "succeeding_instances": ["test_instance_1"]}]}}'
+                '{"payload": 2, "workflow_placement_decision": {"run_id": "123", "workflow_placement": {"test_instance_1": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}}, "current_instance_name": "test_instance", "instances": [{"instance_name": "test_instance", "succeeding_instances": ["test_instance_1"]}]}}'
             ),
             4,
         )
@@ -192,6 +196,7 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
                 },
                 "current_instance_name": "test_instance",
                 "instances": [{"instance_name": "test_instance", "succeeding_instances": ["test_instance_1"]}],
+                "run_id": "123",
             },
         )
 

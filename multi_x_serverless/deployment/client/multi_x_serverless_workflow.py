@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import inspect
 import json
+import logging
 import re
 import uuid
 from types import FrameType
@@ -11,6 +12,15 @@ from multi_x_serverless.common.constants import WORKFLOW_PLACEMENT_DECISION_TABL
 from multi_x_serverless.common.models.endpoints import Endpoints
 from multi_x_serverless.deployment.client.multi_x_serverless_function import MultiXServerlessFunction
 from multi_x_serverless.deployment.common.factories.remote_client_factory import RemoteClientFactory
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+formatter = logging.Formatter("%(asctime)s.%(msecs)03d %(message)s", datefmt="%s")
+handler = logging.StreamHandler()
+handler.setFormatter(formatter)
+
+logger.addHandler(handler)
 
 
 class MultiXServerlessWorkflow:
@@ -130,6 +140,14 @@ class MultiXServerlessWorkflow:
                 if instance["instance_name"] == successor_instance_name:
                     expected_counter = len(instance["preceding_instances"])
                     break
+
+        logger.info(
+            "%s: Instance %s calling %s with payload size %s GB",
+            workflow_placement_decision["run_id"],
+            current_instance_name,
+            successor_instance_name,
+            len(json_payload.encode("utf-8")) / (1024**3),
+        )
 
         RemoteClientFactory.get_remote_client(provider, region).invoke_function(
             message=json_payload,
@@ -446,7 +464,6 @@ class MultiXServerlessWorkflow:
                     wrapper.workflow_placement_decision = self.get_workflow_placement_decision_from_platform()  # type: ignore  # pylint: disable=line-too-long
                     # This is the first function to be called, so we need to generate a run id
                     # This run id will be used to identify the workflow instance
-                    # For example for the synchronization function, we need to know which workflow instance to sync
                     wrapper.workflow_placement_decision["run_id"] = uuid.uuid4().hex  # type: ignore
                     if len(args) == 0:
                         return func()
@@ -460,6 +477,12 @@ class MultiXServerlessWorkflow:
                     if "payload" not in argument:
                         return func()
                     payload = argument.get("payload", {})
+
+                logger.info(
+                    "%s: Function %s called",
+                    wrapper.workflow_placement_decision["run_id"],  # type: ignore
+                    wrapper.workflow_placement_decision["current_instance_name"],  # type: ignore
+                )
 
                 # Call the original function with the modified arguments
                 return func(payload)

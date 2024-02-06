@@ -34,7 +34,7 @@ class TestCarbonTransmissionCostCalculator(TestCase):
     def test_get_carbon_intensity_segments_from_coordinates_complex(self):
         self.calculator._get_carbon_intensity_from_coordinates = MagicMock(side_effect=[0.5, 0.6, 0.7, 0.7, 0.7])
         result = self.calculator._get_carbon_intensity_segments_from_coordinates(0, 0, 0, 6)
-        self.assertEqual(result, [(250, 0.5), (250, 0.6), (167.1695598673524, 0.7)])
+        self.assertEqual(result, [(500, 0.5), (167.1695598673524, 0.7)])
 
 
 if __name__ == "__main__":

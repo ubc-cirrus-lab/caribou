@@ -4,7 +4,7 @@ from multi_x_serverless.common import constants
 
 
 def create_table(dynamodb, table_name):
-    # Check if the table already exists
+    # Check if the table already exists
     try:
         dynamodb.describe_table(TableName=table_name)
         print(f"Table {table_name} already exists")

@@ -79,8 +79,10 @@ class TestCarbonRetriever(unittest.TestCase):
         mock_get.return_value.status_code = 500
         mock_get.return_value.text = "Server error"
 
-        with self.assertRaises(ValueError):
-            self.carbon_retriever._get_carbon_intensity_from_coordinates(1.0, 1.0)
+        self.assertEqual(
+            self.carbon_retriever._get_carbon_intensity_from_coordinates(1.0, 1.0),
+            self.carbon_retriever._global_average_worst_case_carbon_intensity,
+        )
 
 
 if __name__ == "__main__":

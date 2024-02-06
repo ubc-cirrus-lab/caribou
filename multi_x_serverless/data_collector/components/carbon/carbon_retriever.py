@@ -50,7 +50,7 @@ class CarbonRetriever(DataRetriever):
                 config, self._get_carbon_intensity_from_coordinates
             )
 
-        self._carbon_intensity_cache = {}
+        self._carbon_intensity_cache: dict[tuple[float, float], float] = {}
 
     def retrieve_carbon_region_data(self) -> dict[str, dict[str, Any]]:
         result_dict: dict[str, dict[str, Any]] = {}

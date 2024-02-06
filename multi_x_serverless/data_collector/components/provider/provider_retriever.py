@@ -309,7 +309,9 @@ class ProviderRetriever(DataRetriever):
 
     def _get_compute_cost(self, compute_cost: dict, current_invocations: int) -> float:
         for value in compute_cost.values():
-            if int(value["beginRange"]) <= current_invocations and (value["endRange"] == "Inf" or current_invocations <= int(value["endRange"])):
+            if int(value["beginRange"]) <= current_invocations and (
+                value["endRange"] == "Inf" or current_invocations <= int(value["endRange"])
+            ):
                 return float(value["pricePerUnit"]["USD"])
         raise ValueError(f"Could not find compute cost for {current_invocations} invocations")
 
