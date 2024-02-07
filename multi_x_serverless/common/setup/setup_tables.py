@@ -19,25 +19,13 @@ def create_table(dynamodb, table_name):
     )
 
 
-def create_composite_table(dynamodb, table_name):
-    dynamodb.create_table(
-        TableName=table_name,
-        AttributeDefinitions=[
-            {"AttributeName": "key", "AttributeType": "S"},
-            {"AttributeName": "timestamp", "AttributeType": "N"},
-        ],
-        KeySchema=[{"AttributeName": "key", "KeyType": "HASH"}, {"AttributeName": "timestamp", "KeyType": "RANGE"}],
-        BillingMode="PAY_PER_REQUEST",
-    )
-
-
 def create_bucket(s3, bucket_name):
     s3.create_bucket(Bucket=bucket_name)
 
 
 def main():
     dynamodb = boto3.client("dynamodb")
-    s3 = boto3.client("s3", region_name="us-east-1")
+    s3 = boto3.client("s3", region_name=constants.GLOBAL_SYSTEM_REGION)
 
     # Get all attributes of the constants module
     for attr in dir(constants):

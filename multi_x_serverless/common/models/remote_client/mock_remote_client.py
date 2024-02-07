@@ -82,3 +82,6 @@ class MockRemoteClient(RemoteClient):
 
     def remove_value_from_table(self, table_name: str, key: str) -> None:
         pass
+
+    def create_sync_tables(self) -> None:
+        pass

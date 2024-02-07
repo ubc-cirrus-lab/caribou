@@ -58,7 +58,7 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         client = self._client("dynamodb")
         response = client.update_item(
             TableName=SYNC_PREDECESSOR_COUNTER_TABLE,
-            Key={"workflow_instance_id": {"S": workflow_instance_id}},
+            Key={"id": {"S": workflow_instance_id}},
             UpdateExpression="SET #s = list_append(if_not_exists(#s, :empty_list), :new_predecessor)",
             ExpressionAttributeNames={"#s": sync_node_name},
             ExpressionAttributeValues={":new_predecessor": {"L": [{"S": predecessor_name}]}, ":empty_list": {"L": []}},
@@ -66,6 +66,20 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         )
 
         return len(response["Attributes"][sync_node_name]["L"])
+    
+    def create_sync_tables(self) -> None:
+        # Check if table exists
+        client = self._client("dynamodb")
+        for table in [SYNC_MESSAGES_TABLE, SYNC_PREDECESSOR_COUNTER_TABLE]:
+            try:
+                client.describe_table(TableName=table)
+            except client.exceptions.ResourceNotFoundException:
+                client.create_table(
+                    TableName=table,
+                    KeySchema=[{"AttributeName": "id", "KeyType": "HASH"}],
+                    AttributeDefinitions=[{"AttributeName": "id", "AttributeType": "S"}],
+                    BillingMode="PAY_PER_REQUEST",
+                )
 
     def upload_predecessor_data_at_sync_node(self, function_name: str, workflow_instance_id: str, message: str) -> None:
         client = self._client("dynamodb")

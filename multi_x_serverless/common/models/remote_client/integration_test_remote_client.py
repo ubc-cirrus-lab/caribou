@@ -412,3 +412,6 @@ class IntegrationTestRemoteClient(RemoteClient):  # pylint: disable=too-many-pub
         conn.commit()
         conn.close()
         return function_name
+
+    def create_sync_tables(self) -> None:
+        pass

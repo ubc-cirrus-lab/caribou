@@ -5,7 +5,7 @@ from typing import Any
 import boto3
 import googlemaps
 import requests
-from bs4 import BeautifulSoup 
+from bs4 import BeautifulSoup
 
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
 from multi_x_serverless.common.provider import Provider
@@ -17,7 +17,7 @@ class ProviderRetriever(DataRetriever):
     def __init__(self, client: RemoteClient) -> None:
         super().__init__(client)
         self._google_api_key = os.environ.get("GOOGLE_API_KEY")
-        self._aws_pricing_client = boto3.client("pricing", region_name="us-east-1")
+        self._aws_pricing_client = boto3.client("pricing", region_name="us-east-1")  # Must be in us-east-1
         self._aws_region_name_to_code: dict[str, str] = {}
         self._integration_test_on = str_to_bool(os.environ.get("INTEGRATIONTEST_ON", "False"))
 

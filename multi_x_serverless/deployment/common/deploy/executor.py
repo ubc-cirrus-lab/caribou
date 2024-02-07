@@ -15,9 +15,10 @@ class Executor:
         self._config = config
 
     def execute(self, deployment_plan: DeploymentPlan) -> None:
-        for home_region, instructions in deployment_plan.instructions.items():
-            provider, region = home_region.split(":")
+        for provider_region_to_deploy, instructions in deployment_plan.instructions.items():
+            provider, region = provider_region_to_deploy.split(":")
             client = RemoteClientFactory.get_remote_client(provider, region)
+            client.create_sync_tables()
             for instruction in instructions:
                 getattr(self, f"_do_{instruction.__class__.__name__.lower()}", self._default_handler)(
                     instruction,

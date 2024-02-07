@@ -1,6 +1,8 @@
 import inspect
 from typing import Any, Callable
 
+from multi_x_serverless.common.utils import get_function_source
+
 
 class MultiXServerlessFunction:
     """
@@ -34,5 +36,5 @@ class MultiXServerlessFunction:
         """
         Check whether this function is waiting for its predecessors to finish.
         """
-        source_code = inspect.getsource(self.function_callable)
+        source_code = get_function_source(self.function_callable)
         return "get_predecessor_data" in source_code

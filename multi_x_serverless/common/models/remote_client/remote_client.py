@@ -139,3 +139,7 @@ class RemoteClient(ABC):
     @abstractmethod
     def get_all_values_from_sort_key_table(self, table_name: str, key: str) -> list[dict[str, Any]]:
         raise NotImplementedError()
+    
+    @abstractmethod
+    def create_sync_tables(self) -> None:
+        raise NotImplementedError()
