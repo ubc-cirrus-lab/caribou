@@ -7,8 +7,6 @@ from multi_x_serverless.routing.solver.bfs_fine_grained_solver import BFSFineGra
 from multi_x_serverless.routing.solver.stochastic_heuristic_descent_solver import StochasticHeuristicDescentSolver
 
 class SolverUpdateChecker(UpdateChecker):
-    # TODO (#110): Implement SolverUpdateChecker
-
     def check(self) -> None:
         # add which solver to use
         workflow_ids = self._endpoints.get_solver_update_checker_client().get_keys(SOLVER_UPDATE_CHECKER_RESOURCE_TABLE)
@@ -28,16 +26,14 @@ class SolverUpdateChecker(UpdateChecker):
             # pass to solver
             workflow_config = WorkflowConfig(workflow_json)
 
+            # TODO (#128): Implement adaptive and stateful update checker
             # update workflow_config, then write back to SOLVER_UPDATE_CHECKER_RESOURCE_TABLE as string (to_json)
-            
 
             # check if solver should be run
             # very simple check for now, just check if the average invocations per month is greater than the threshold
             workflow_summary_json = json.loads(workflow_summary)
-            instance_summary = workflow_summary_json["value"]["instance_summary"]
-            months_between_summary = workflow_summary_json["value"]["months_between_summary"]
-
-            total_invocations = sum(details["invocation_count"] for details in instance_summary.values())
+            months_between_summary = workflow_summary_json["months_between_summary"]
+            total_invocations = workflow_summary_json["total_invocations"]
 
             if total_invocations / months_between_summary > workflow_config.num_calls_in_one_month:
                 solver_class = solver_mapping.get(workflow_config.solver)

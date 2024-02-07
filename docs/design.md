@@ -623,6 +623,7 @@ Below is an example of the `workflow_summary_table` for a workflow with 2 instan
   "sort_key": "2021-2-10T10:10:10",
   "value": {
       "months_between_summary": 8,
+      "total_invocations": 180,
       "instance_summary": {
           "instance_1": {
               "invocation_count": 100,
