@@ -24,7 +24,7 @@ class IntegrationTestRemoteClient(RemoteClient):  # pylint: disable=too-many-pub
         cursor = conn.cursor()
 
         for table in dir(constants):
-            if table == constants.AVAILABLE_REGIONS_TABLE:
+            if getattr(constants, table) == constants.AVAILABLE_REGIONS_TABLE:
                 cursor.execute(
                     f"""
                         CREATE TABLE IF NOT EXISTS {getattr(constants, table)} (
@@ -36,14 +36,14 @@ class IntegrationTestRemoteClient(RemoteClient):  # pylint: disable=too-many-pub
                         )
                     """
                 )
-            elif table == constants.WORKFLOW_SUMMARY_TABLE:
+            elif getattr(constants, table) == constants.WORKFLOW_SUMMARY_TABLE:
                 cursor.execute(
                     f"""
-                        CREATE TABLE IF NOT EXISTS {getattr(constants, table)} 
-                            key TEXT PRIMARY KEY,
-                            value TEXT,
-                            sort_key INTEGER
-                        )
+                    CREATE TABLE IF NOT EXISTS {getattr(constants, table)} (
+                        key TEXT PRIMARY KEY,
+                        value TEXT,
+                        sort_key INTEGER
+                    )
                     """
                 )
             elif table.endswith("_TABLE"):
@@ -277,14 +277,25 @@ class IntegrationTestRemoteClient(RemoteClient):  # pylint: disable=too-many-pub
     ) -> None:
         conn = self._db_connection()
         cursor = conn.cursor()
-        insert_query = f"INSERT INTO {table_name} (key"
-        for column, _, _ in column_type_value:
-            insert_query += f", {column}"
-        insert_query += ") VALUES (?, ?"
-        for _, _, value in column_type_value:
-            insert_query += ", ?"
-        insert_query += ")"
-        cursor.execute(insert_query, [key] + [value for _, _, value in column_type_value])
+
+        cursor.execute(f"SELECT * FROM {table_name} WHERE key=?", (key,))
+        result = cursor.fetchone()
+
+        if result:
+            update_query = f"UPDATE {table_name} SET"
+            for column, _, _ in column_type_value:
+                update_query += f" {column} = ?,"
+            update_query = update_query[:-1] + " WHERE key = ?"
+            cursor.execute(update_query, [value for _, _, value in column_type_value] + [key])
+        else:
+            insert_query = f"INSERT INTO {table_name} (key"
+            for column, _, _ in column_type_value:
+                insert_query += f", {column}"
+            insert_query += ") VALUES (?"
+            for _, _, _ in column_type_value:
+                insert_query += ", ?"
+            insert_query += ")"
+            cursor.execute(insert_query, [key] + [value for _, _, value in column_type_value])
         conn.commit()
         conn.close()
 

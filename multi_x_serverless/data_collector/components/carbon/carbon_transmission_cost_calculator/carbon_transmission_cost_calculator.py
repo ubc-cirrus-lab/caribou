@@ -1,13 +1,13 @@
 import math
 from abc import ABC, abstractmethod
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 
 class CarbonTransmissionCostCalculator(ABC):
-    def __init__(self, config: dict, get_carbon_intensity_from_coordinates: Callable) -> None:
+    def __init__(self, get_carbon_intensity_from_coordinates: Callable, config: Optional[dict] = None) -> None:
         self._config = config
         self._get_carbon_intensity_from_coordinates = get_carbon_intensity_from_coordinates
-        if "kwh_per_gb_estimate" in config:
+        if config is not None and "kwh_per_gb_estimate" in config:
             self._kwh_per_gb_estimate = config["kwh_per_gb_estimate"]
         else:
             self._kwh_per_gb_estimate = 0.1

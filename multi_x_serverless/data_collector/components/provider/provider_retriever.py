@@ -5,11 +5,12 @@ from typing import Any
 import boto3
 import googlemaps
 import requests
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup 
 
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
 from multi_x_serverless.common.provider import Provider
 from multi_x_serverless.data_collector.components.data_retriever import DataRetriever
+from multi_x_serverless.common.utils import str_to_bool
 
 
 class ProviderRetriever(DataRetriever):
@@ -18,6 +19,7 @@ class ProviderRetriever(DataRetriever):
         self._google_api_key = os.environ.get("GOOGLE_API_KEY")
         self._aws_pricing_client = boto3.client("pricing", region_name="us-east-1")
         self._aws_region_name_to_code: dict[str, str] = {}
+        self._integration_test_on = str_to_bool(os.environ.get("INTEGRATIONTEST_ON", "False"))
 
     def retrieve_location(self, name: str) -> tuple[float, float]:
         google_maps = googlemaps.Client(key=self._google_api_key)
@@ -34,17 +36,21 @@ class ProviderRetriever(DataRetriever):
 
     def retrieve_available_regions(self) -> dict[str, dict[str, Any]]:
         available_regions = {}
-        for provider in Provider:
-            if provider == Provider.AWS:
-                available_regions.update(self.retrieve_aws_regions())
-            elif provider == Provider.GCP:
-                pass
-            elif provider in (Provider.TEST_PROVIDER1, Provider.TEST_PROVIDER2):
-                pass
-            elif provider == Provider.INTEGRATION_TEST_PROVIDER:
-                available_regions.update(self.retrieve_integrationtest_regions())
-            else:
-                raise NotImplementedError(f"Provider {provider} not implemented")
+
+        if self._integration_test_on:
+            available_regions.update(self.retrieve_integrationtest_regions())
+        else:
+            for provider in Provider:
+                if provider == Provider.AWS:
+                    available_regions.update(self.retrieve_aws_regions())
+                elif provider == Provider.GCP:
+                    pass
+                elif provider in (Provider.TEST_PROVIDER1, Provider.TEST_PROVIDER2):
+                    pass
+                elif provider == Provider.INTEGRATION_TEST_PROVIDER:
+                    available_regions.update(self.retrieve_integrationtest_regions())
+                else:
+                    raise NotImplementedError(f"Provider {provider} not implemented")
         self._available_regions = available_regions
         return available_regions
 
@@ -91,29 +97,29 @@ class ProviderRetriever(DataRetriever):
                 "name": "Rivendell",
                 "provider": Provider.INTEGRATION_TEST_PROVIDER.value,
                 "code": "rivendell",
-                "latitude": 38.8895,
-                "longitude": -77.0353,
+                "latitude": 51.509865,
+                "longitude": -0.118092,
             },
             f"{Provider.INTEGRATION_TEST_PROVIDER.value}:lothlorien": {
                 "name": "Lothlorien",
                 "provider": Provider.INTEGRATION_TEST_PROVIDER.value,
                 "code": "lothlorien",
-                "latitude": 25.0343,
-                "longitude": 46.7565,
+                "latitude": 51.752022,
+                "longitude": -1.257726,
             },
             f"{Provider.INTEGRATION_TEST_PROVIDER.value}:anduin": {
                 "name": "Anduin",
                 "provider": Provider.INTEGRATION_TEST_PROVIDER.value,
                 "code": "anduin",
-                "latitude": 48.8566,
-                "longitude": 2.3522,
+                "latitude": 48.856613,
+                "longitude": 2.352222,
             },
             f"{Provider.INTEGRATION_TEST_PROVIDER.value}:fangorn": {
                 "name": "Fangorn",
                 "provider": Provider.INTEGRATION_TEST_PROVIDER.value,
                 "code": "fangorn",
-                "latitude": 52.9548,
-                "longitude": 1.1581,
+                "latitude": 52.370216,
+                "longitude": 4.895168,
             },
         }
 

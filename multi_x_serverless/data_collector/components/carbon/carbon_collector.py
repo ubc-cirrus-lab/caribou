@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 
 from multi_x_serverless.common.constants import CARBON_REGION_TABLE
 from multi_x_serverless.data_collector.components.carbon.carbon_exporter import CarbonExporter
@@ -7,7 +7,7 @@ from multi_x_serverless.data_collector.components.data_collector import DataColl
 
 
 class CarbonCollector(DataCollector):
-    def __init__(self, config: dict) -> None:
+    def __init__(self, config: Optional[dict] = None) -> None:
         super().__init__()
         self._data_collector_name: str = "carbon_collector"
 

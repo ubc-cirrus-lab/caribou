@@ -8,6 +8,7 @@ import shutil
 
 
 def test_deploy(workflow_dir: str):
+    # This test deploys the application to the integration test mock provider (an sqlite database)
     print("Test deploying the application.")
 
     deployer_factory = DeployerFactory(workflow_dir)
@@ -81,7 +82,3 @@ def test_deploy(workflow_dir: str):
         assert subscription[2] in expected_function_names
 
     print("Application deployed successfully.")
-
-
-if __name__ == "__main__":
-    test_deploy()

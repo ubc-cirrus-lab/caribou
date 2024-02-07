@@ -1,7 +1,7 @@
 import datetime
 import os
 import time
-from typing import Any
+from typing import Any, Optional
 
 import requests
 
@@ -16,12 +16,13 @@ from multi_x_serverless.data_collector.components.carbon.carbon_transmission_cos
     LatencyCarbonTransmissionCostCalculator,
 )
 from multi_x_serverless.data_collector.components.data_retriever import DataRetriever
+from multi_x_serverless.common.utils import str_to_bool
 
 
 class CarbonRetriever(DataRetriever):
     _carbon_transmission_cost_calculator: CarbonTransmissionCostCalculator
 
-    def __init__(self, client: RemoteClient, config: dict) -> None:
+    def __init__(self, client: RemoteClient, config: Optional[dict] = None) -> None:
         super().__init__(client)
         self._electricity_maps_auth_token = os.environ.get("ELECTRICITY_MAPS_AUTH_TOKEN")
 
@@ -32,14 +33,14 @@ class CarbonRetriever(DataRetriever):
         self._last_request = datetime.datetime.now()
         self._global_average_worst_case_carbon_intensity = 475.0
         self._kwh_per_gb_estimate = 1.0
-        if "carbon_transmission_cost_calculator" in config:
+        if config is not None and "carbon_transmission_cost_calculator" in config:
             if config["carbon_transmission_cost_calculator"] == "latency":
                 self._carbon_transmission_cost_calculator = LatencyCarbonTransmissionCostCalculator(
-                    config, self._get_carbon_intensity_from_coordinates
+                    self._get_carbon_intensity_from_coordinates, config
                 )
             elif config["carbon_transmission_cost_calculator"] == "distance":
                 self._carbon_transmission_cost_calculator = DistanceCarbonTransmissionCostCalculator(
-                    config, self._get_carbon_intensity_from_coordinates
+                    self._get_carbon_intensity_from_coordinates, config
                 )
             else:
                 raise ValueError(
@@ -47,10 +48,11 @@ class CarbonRetriever(DataRetriever):
                 )
         else:
             self._carbon_transmission_cost_calculator = DistanceCarbonTransmissionCostCalculator(
-                config, self._get_carbon_intensity_from_coordinates
+                self._get_carbon_intensity_from_coordinates, config
             )
 
         self._carbon_intensity_cache: dict[tuple[float, float], float] = {}
+        self._integration_test_on = str_to_bool(os.environ.get("INTEGRATIONTEST_ON", "False"))
 
     def retrieve_carbon_region_data(self) -> dict[str, dict[str, Any]]:
         result_dict: dict[str, dict[str, Any]] = {}
@@ -77,6 +79,9 @@ class CarbonRetriever(DataRetriever):
         return result_dict
 
     def _get_carbon_intensity_from_coordinates(self, latitude: float, longitude: float) -> float:
+        if self._integration_test_on:
+            return latitude + longitude
+
         if (latitude, longitude) in self._carbon_intensity_cache:
             return self._carbon_intensity_cache[(latitude, longitude)]
         electricitymaps = "https://api-access.electricitymaps.com/free-tier/carbon-intensity/latest?"
