@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -12,7 +12,6 @@ class Instance(BaseModel):
     succeeding_instances: List[str] = Field(..., title="List of succeeding instances")
     preceding_instances: List[str] = Field(..., title="List of preceding instances")
 
-
 class WorkflowConfigSchema(BaseModel):
     workflow_name: str = Field(..., title="The name of the workflow")
     workflow_version: str = Field(..., title="The version of the workflow")
@@ -21,3 +20,5 @@ class WorkflowConfigSchema(BaseModel):
     instances: List[Instance] = Field(..., title="List of instances")
     constraints: Constraints = Field(..., title="Constraints")
     start_hops: List[ProviderRegion] = Field(..., title="List of home regions")
+    num_calls_in_one_month: Optional[int] = Field(..., title="Number of function calls in 1 hour")
+    solver: Optional[str] = Field(..., title="The name of the solver")
