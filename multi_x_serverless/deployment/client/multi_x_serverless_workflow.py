@@ -8,9 +8,9 @@ import uuid
 from types import FrameType
 from typing import Any, Callable, Optional
 
-from multi_x_serverless.common.utils import get_function_source
 from multi_x_serverless.common.constants import WORKFLOW_PLACEMENT_DECISION_TABLE
 from multi_x_serverless.common.models.endpoints import Endpoints
+from multi_x_serverless.common.utils import get_function_source
 from multi_x_serverless.deployment.client.multi_x_serverless_function import MultiXServerlessFunction
 from multi_x_serverless.deployment.common.factories.remote_client_factory import RemoteClientFactory
 

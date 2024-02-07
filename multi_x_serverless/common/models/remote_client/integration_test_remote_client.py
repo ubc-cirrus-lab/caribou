@@ -366,7 +366,14 @@ class IntegrationTestRemoteClient(RemoteClient):  # pylint: disable=too-many-pub
         cursor.execute(
             """
                 UPDATE functions
-                SET function_identifier=?, role_identifier=?, runtime=?, handler=?, environment_variables=?, timeout=?, memory_size=?
+                SET 
+                    function_identifier=?, 
+                    role_identifier=?, 
+                    runtime=?, 
+                    handler=?, 
+                    environment_variables=?, 
+                    timeout=?, 
+                    memory_size=?
                 WHERE name=?
             """,
             (
