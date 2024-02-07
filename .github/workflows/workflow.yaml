@@ -63,7 +63,7 @@ jobs:
         run: |
           poetry run mypy --version
           poetry run mypy multi_x_serverless
-  
+
   isort:
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -75,3 +75,14 @@ jobs:
         run: |
           poetry run isort --version
           poetry run isort multi_x_serverless --check --diff
+
+  integration-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup poetry
+        uses: ./.github/actions/poetry
+      - name: Run integration tests
+        run: |
+          poetry run python integration_tests/run_integration_tests.py
