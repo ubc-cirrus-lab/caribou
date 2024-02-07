@@ -286,10 +286,13 @@ class MultiXServerlessWorkflow:
         `docs/design.md` file under `Workflow Placement Decision`.
         """
         # Get the workflow_placement decision from the wrapper function
-        if "wrapper" in frame.f_locals:
-            wrapper = frame.f_locals["wrapper"]
-            if hasattr(wrapper, "workflow_placement_decision"):
-                return wrapper.workflow_placement_decision
+        while "wrapper" not in frame.f_locals:
+            frame = frame.f_back
+            if not frame:
+                raise RuntimeError("Could not get workflow_placement decision")
+        wrapper = frame.f_locals["wrapper"]
+        if hasattr(wrapper, "workflow_placement_decision"):
+            return wrapper.workflow_placement_decision
 
         raise RuntimeError("Could not get workflow_placement decision")
 
