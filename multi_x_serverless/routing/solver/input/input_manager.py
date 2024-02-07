@@ -39,9 +39,9 @@ class InputManager:
             self._region_viability_loader.setup()  # Setup the viability loader -> This loads data from the database
 
         # Calculators
-        self._runtime_calculator = RuntimeCalculator()
-        self._carbon_calculator = CarbonCalculator() # Depends on runtime as well
-        self._cost_calculator = CostCalculator() # Depends on runtime as well
+        self._runtime_calculator = RuntimeCalculator(self._performance_loader, self._workflow_loader) # Depends on performance and workflow loaders
+        self._carbon_calculator = CarbonCalculator(self._carbon_loader, self._runtime_calculator) # Depends on carbon loader as well as the runtime calculator
+        self._cost_calculator = CostCalculator() # Depends on datacenter loader as well as the runtime calculator
 
     def setup(self, regions_indexer: Region, instance_indexer: DAG) -> bool:
         # # Need to convert it back
