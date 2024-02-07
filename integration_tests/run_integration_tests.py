@@ -1,4 +1,4 @@
-from integrationtests.deploy import test_deploy
+from integration_tests.deploy import test_deploy
 
 
 def main():
