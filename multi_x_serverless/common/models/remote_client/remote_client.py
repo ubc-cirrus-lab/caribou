@@ -66,7 +66,7 @@ class RemoteClient(ABC):
         try:
             self.send_message_to_messaging_service(identifier, message)
         except Exception as e:
-            raise RuntimeError("Could not invoke function through SNS") from e
+            raise RuntimeError(f"Could not invoke function through SNS: {e}")
 
     @abstractmethod
     def set_predecessor_reached(self, predecessor_name: str, sync_node_name: str, workflow_instance_id: str) -> int:

@@ -15,7 +15,14 @@
                 "Action": [
                     "sns:Publish"
                 ],
-                "Resource": "arn:aws:sns:::*",
+                "Resource": "arn:aws:sns:*:*:*",
+                "Effect": "Allow"
+            },
+            {
+                "Action": [
+                    "dynamodb:GetItem"
+                ],
+                "Resource": "arn:aws:dynamodb:*:*:*",
                 "Effect": "Allow"
             }
         ]

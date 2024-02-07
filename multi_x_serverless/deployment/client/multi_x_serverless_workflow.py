@@ -229,10 +229,7 @@ class MultiXServerlessWorkflow:
         is_entry_point = self.is_entry_point(wrapper_frame)
 
         # Set the current instance name based on whether it is the entry point or not
-        if is_entry_point:
-            current_instance_name = f"{current_function_name}:entry_point:0"
-        else:
-            current_instance_name = workflow_placement_decision["current_instance_name"]
+        current_instance_name = workflow_placement_decision["current_instance_name"]
 
         # Get the name of the next instance based on the current instance and successor function name
         next_instance_name = self.get_next_instance_name(
@@ -268,20 +265,20 @@ class MultiXServerlessWorkflow:
                 successor_instances = instance["succeeding_instances"]
                 # If there is only one successor instance, return it
                 if len(successor_instances) == 1:
-                    if successor_instances[0].startswith(successor_function_name):
+                    if successor_instances[0].split(":", maxsplit=1)[0].endswith(successor_function_name):
                         return successor_instances[0]
-                    raise RuntimeError("Could not find successor instance")
+                    raise RuntimeError(f"Could not find successor instance for successor function name {successor_function_name} in {successor_instances}")  # type: ignore
                 # If there are multiple successor instances, return the first one that matches the successor function
                 # name and has the correct index
                 for successor_instance in successor_instances:
-                    if successor_instance.startswith(successor_function_name):
+                    if successor_instance.split(":", maxsplit=1)[0].endswith(successor_function_name):
                         if successor_instance.split(":", maxsplit=2)[1] == "sync":
                             return successor_instance
                         if successor_instance.split(":", maxsplit=2)[1].split("_")[-1] == str(self._successor_index):
                             self._successor_index += 1
                             return successor_instance
-                raise RuntimeError("Could not find successor instance")
-        raise RuntimeError("Could not find current instance")
+                raise RuntimeError(f"Could not find successor instance for successor function name {successor_function_name} in {successor_instances}")  # type: ignore
+        raise RuntimeError(f"Could not find current instance {current_instance_name} in workflow_placement decision")
 
     def get_workflow_placement_decision(self, frame: FrameType) -> dict[str, Any]:
         """
@@ -471,7 +468,18 @@ class MultiXServerlessWorkflow:
                     payload = args[0]
                 else:
                     # Get the workflow_placement decision from the message received from the predecessor function
-                    argument = json.loads(args[0])
+                    argument_raw = args[0]
+                    print(argument_raw)
+                    if (
+                        "Records" not in argument_raw
+                        and len(argument_raw["Records"]) != 1
+                        and "Sns" not in argument_raw["Records"][0]
+                        and "Message" not in argument_raw["Records"][0]["Sns"]
+                    ):
+                        raise RuntimeError(
+                            f"Could not get message from argument {argument_raw}, there should be meta information in the message"
+                        )
+                    argument = json.loads(argument_raw["Records"][0]["Sns"]["Message"])
                     if "workflow_placement_decision" not in argument:
                         raise RuntimeError("Could not get workflow_placement decision from message")
                     wrapper.workflow_placement_decision = argument["workflow_placement_decision"]  # type: ignore
