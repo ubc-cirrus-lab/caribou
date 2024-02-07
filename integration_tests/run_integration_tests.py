@@ -1,5 +1,6 @@
 from integration_tests.run_test_deploy import test_deploy
 from integration_tests.run_test_data_collect import test_data_collect
+from integration_tests.run_function import test_run_function
 import tempfile
 import os
 import shutil
@@ -17,6 +18,7 @@ def main(workflow_dir: str):
     try:
         test_deploy(workflow_dir)
         test_data_collect()
+        test_run_function()
     finally:
         shutil.rmtree(workdir)
         os.environ.pop("MULTI_X_SERVERLESS_INTEGRATION_TEST_DB_PATH")

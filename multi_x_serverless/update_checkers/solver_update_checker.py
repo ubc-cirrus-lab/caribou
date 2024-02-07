@@ -6,7 +6,11 @@ from multi_x_serverless.routing.solver.coarse_grained_solver import CoarseGraine
 from multi_x_serverless.routing.solver.bfs_fine_grained_solver import BFSFineGrainedSolver
 from multi_x_serverless.routing.solver.stochastic_heuristic_descent_solver import StochasticHeuristicDescentSolver
 
+
 class SolverUpdateChecker(UpdateChecker):
+    def __init__(self) -> None:
+        super().__init__("solver_update_checker")
+
     def check(self) -> None:
         # add which solver to use
         workflow_ids = self._endpoints.get_solver_update_checker_client().get_keys(SOLVER_UPDATE_CHECKER_RESOURCE_TABLE)
@@ -15,18 +19,20 @@ class SolverUpdateChecker(UpdateChecker):
         solver_mapping = {
             "coarse_grained_solver": CoarseGrainedSolver,
             "fine_grained_solver": BFSFineGrainedSolver,
-            "stochastic_heuristic_solver": StochasticHeuristicDescentSolver
+            "stochastic_heuristic_solver": StochasticHeuristicDescentSolver,
         }
 
         for workflow_id in workflow_ids:
-            workflow_config_from_table = data_collector_client.get_value_from_table(SOLVER_UPDATE_CHECKER_RESOURCE_TABLE, workflow_id)
+            workflow_config_from_table = data_collector_client.get_value_from_table(
+                SOLVER_UPDATE_CHECKER_RESOURCE_TABLE, workflow_id
+            )
             workflow_json = json.loads(workflow_config_from_table)
             # determines whether we should run solver
             workflow_summary = data_collector_client.get_value_from_table(WORKFLOW_SUMMARY_TABLE, workflow_id)
             # pass to solver
             workflow_config = WorkflowConfig(workflow_json)
 
-            # TODO (#128): Implement adaptive and stateful update checker
+            # TODO (#128): Implement adaptive and stateful update checker
             # update workflow_config, then write back to SOLVER_UPDATE_CHECKER_RESOURCE_TABLE as string (to_json)
 
             # check if solver should be run
