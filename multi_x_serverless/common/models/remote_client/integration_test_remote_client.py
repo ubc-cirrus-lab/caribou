@@ -2,6 +2,7 @@ import os
 import sqlite3
 import time
 from typing import Any
+import json
 
 from multi_x_serverless.common import constants
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
@@ -81,7 +82,7 @@ class IntegrationTestRemoteClient(RemoteClient):  # pylint: disable=too-many-pub
                     sync_node_name TEXT,
                     workflow_instance_id TEXT,
                     message TEXT,
-                    PRIMARY KEY (sync_node_id, message)
+                    PRIMARY KEY (sync_node_name, message)
                 )
             """
         )
@@ -158,19 +159,21 @@ class IntegrationTestRemoteClient(RemoteClient):  # pylint: disable=too-many-pub
         return result is not None
 
     def create_role(self, role_name: str, policy: str, trust_policy: dict) -> str:
+        trust_policy_str = json.dumps(trust_policy)
         conn = self._db_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO roles (name, policy, trust_policy) VALUES (?, ?, ?)", (role_name, policy, trust_policy)
+            "INSERT INTO roles (name, policy, trust_policy) VALUES (?, ?, ?)", (role_name, policy, trust_policy_str)
         )
         conn.commit()
         conn.close()
         return role_name
 
     def update_role(self, role_name: str, policy: str, trust_policy: dict) -> str:
+        trust_policy_str = json.dumps(trust_policy)
         conn = self._db_connection()
         cursor = conn.cursor()
-        cursor.execute("UPDATE roles SET policy=?, trust_policy=? WHERE name=?", (policy, trust_policy, role_name))
+        cursor.execute("UPDATE roles SET policy=?, trust_policy=? WHERE name=?", (policy, trust_policy_str, role_name))
         conn.commit()
         conn.close()
         return role_name
