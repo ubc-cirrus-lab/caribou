@@ -1,7 +1,7 @@
 from typing import Any
 
 from multi_x_serverless.deployment.client import MultiXServerlessWorkflow
-from {{ workflow_name }}.src.fifth import fifth
+from src.fifth import fifth
 
 workflow = MultiXServerlessWorkflow(name="{{ workflow_name }}", version="0.0.1")
 
@@ -33,7 +33,7 @@ workflow = MultiXServerlessWorkflow(name="{{ workflow_name }}", version="0.0.1")
     },
     environment_variables=[{"key": "example_key", "value": "example_value"}],
 )
-def first_function(event: dict[str, Any]) -> dict[str, Any]:
+def first_function(event: dict[str, Any], context: Any) -> dict[str, Any]:
     print("Hello from first function")
 
     payload = "First Function says hello to second function"
@@ -53,7 +53,7 @@ def first_function(event: dict[str, Any]) -> dict[str, Any]:
 
 
 @workflow.serverless_function(name="Second-Function")
-def second_function(event: dict[str, Any]) -> dict[str, Any]:
+def second_function(event: dict[str, Any], context: Any) -> dict[str, Any]:
     print("Hello from second function")
 
     print(event)
@@ -69,7 +69,7 @@ def second_function(event: dict[str, Any]) -> dict[str, Any]:
 
 
 @workflow.serverless_function(name="Third-Function")
-def third_function(event: dict[str, Any]) -> dict[str, Any]:
+def third_function(event: dict[str, Any], context: Any) -> dict[str, Any]:
     print("Hello from third function")
 
     print(event)
@@ -85,7 +85,7 @@ def third_function(event: dict[str, Any]) -> dict[str, Any]:
 
 
 @workflow.serverless_function(name="Fourth-Function")
-def fourth_function(event: dict[str, Any]) -> dict[str, Any]:
+def fourth_function(event: dict[str, Any], context: Any) -> dict[str, Any]:
     print("Hello from fourth function")
     request = event["hello"]
 
@@ -102,12 +102,12 @@ def fourth_function(event: dict[str, Any]) -> dict[str, Any]:
 
 
 @workflow.serverless_function(name="Fifth-Function")
-def fifth_function(event: dict[str, Any]) -> dict[str, Any]:
+def fifth_function(event: dict[str, Any], context: Any) -> dict[str, Any]:
     return fifth(workflow, event, seventh_function)
 
 
 @workflow.serverless_function(name="Sixth-Function")
-def sixth_function(event: dict[str, Any]) -> dict[str, Any]:
+def sixth_function(event: dict[str, Any], context: Any) -> dict[str, Any]:
     print("Hello from sixth function")
 
     print(event)
@@ -123,7 +123,7 @@ def sixth_function(event: dict[str, Any]) -> dict[str, Any]:
 
 
 @workflow.serverless_function(name="Seventh-Function")
-def seventh_function(event: dict[str, Any]) -> dict[str, Any]:
+def seventh_function(event: dict[str, Any], context: Any) -> dict[str, Any]:
     print("Hello from seventh function")
     responses: list[dict[str, Any]] = workflow.get_predecessor_data()
 

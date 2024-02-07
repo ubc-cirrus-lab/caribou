@@ -187,6 +187,9 @@ class Deployer:
         self._upload_deployment_package_resource(workflow)
         self._upload_workflow_placement_decision(workflow)
 
+        print(f"Workflow {self._config.workflow_name} with version {self._config.workflow_version} deployed")
+        print(f"Workflow id: {self._config.workflow_id}")
+
     def _set_workflow_id(self, workflow: Workflow) -> None:
         workflow_id = f"{workflow.name}-{workflow.version}"
         self._config.set_workflow_id(workflow_id)

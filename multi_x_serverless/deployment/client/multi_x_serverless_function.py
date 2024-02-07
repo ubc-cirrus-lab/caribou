@@ -18,7 +18,7 @@ class MultiXServerlessFunction:
         self.function_callable = function_callable
         self.name = name
         self.entry_point = entry_point
-        self.handler = function_callable.__name__
+        self.handler = f"app.{function_callable.__name__}"
         self.regions_and_providers = regions_and_providers if len(regions_and_providers) > 0 else None
         self.environment_variables = environment_variables if len(environment_variables) > 0 else None
         self.validate_function_name()

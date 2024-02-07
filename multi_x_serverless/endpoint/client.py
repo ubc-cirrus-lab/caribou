@@ -1,5 +1,5 @@
 import json
-from typing import Any
+from typing import Any, Optional
 
 from multi_x_serverless.common.constants import WORKFLOW_PLACEMENT_DECISION_TABLE
 from multi_x_serverless.common.models.endpoints import Endpoints
@@ -7,17 +7,22 @@ from multi_x_serverless.deployment.common.factories.remote_client_factory import
 
 
 class Client:
-    def __init__(self, workflow_name: str) -> None:
-        self._workflow_name = workflow_name
+    def __init__(self, workflow_id: str) -> None:
+        self._workflow_id = workflow_id
         self._endpoints = Endpoints()
 
-    def run(self, input_data: dict) -> None:
+    def run(self, input_data: Optional[dict] = None) -> None:
         result = self._endpoints.get_solver_workflow_placement_decision_client().get_value_from_table(
-            WORKFLOW_PLACEMENT_DECISION_TABLE, self._workflow_name
+            WORKFLOW_PLACEMENT_DECISION_TABLE, self._workflow_id
         )
 
-        if result is None:
-            raise RuntimeError("No workflow placement decision found for workflow")
+        if input_data is None:
+            input_data = {}
+
+        if result is None or result == "":
+            raise RuntimeError(
+                f"No workflow placement decision found for workflow, did you deploy the workflow and is the workflow id ({self._workflow_id}) correct?"
+            )
 
         workflow_placement_decision = json.loads(result)
 
