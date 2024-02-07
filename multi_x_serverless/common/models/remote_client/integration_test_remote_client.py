@@ -311,6 +311,14 @@ class IntegrationTestRemoteClient(RemoteClient):  # pylint: disable=too-many-pub
         conn.commit()
         conn.close()
 
+    def select_all_from_table(self, table_name: str) -> list[list[Any]]:
+        conn = self._db_connection()
+        cursor = conn.cursor()
+        cursor.execute(f"SELECT * FROM {table_name}")
+        result = cursor.fetchall()
+        conn.close()
+        return result
+
     def create_function(
         self,
         function_name: str,

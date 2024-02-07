@@ -7,36 +7,80 @@ from multi_x_serverless.common.models.remote_client.integration_test_remote_clie
 import shutil
 
 
-def test_deploy():
+def test_deploy(workflow_dir: str):
     print("Test deploying the application.")
 
-    workdir = tempfile.mkdtemp()
+    deployer_factory = DeployerFactory(workflow_dir)
+    config: Config = deployer_factory.create_config_obj()
+    deployer: Deployer = deployer_factory.create_deployer(config=config)
 
-    try:
+    deployer.deploy(config.home_regions)
 
-        test_database_path = os.path.join(workdir, "test_database.sqlite")
+    remote_client = IntegrationTestRemoteClient()
 
-        os.environ["MULTI_X_SERVERLESS_INTEGRATION_TEST_DB_PATH"] = test_database_path
-        os.environ["INTEGRATIONTEST_ON"] = "True"
+    # Check that the functions are deployed
+    deployed_functions = remote_client.select_all_from_table("functions")
 
-        project_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "integration_test_workflow")
+    assert len(deployed_functions) == 7
 
-        deployer_factory = DeployerFactory(project_dir)
-        config: Config = deployer_factory.create_config_obj()
-        deployer: Deployer = deployer_factory.create_deployer(config=config)
+    expected_function_names = [
+        'integration_test_workflow-0_0_1-First-Function_integration_test_provider-rivendell',
+        'integration_test_workflow-0_0_1-Second-Function_integration_test_provider-rivendell',
+        'integration_test_workflow-0_0_1-Third-Function_integration_test_provider-rivendell',
+        'integration_test_workflow-0_0_1-Fourth-Function_integration_test_provider-rivendell',
+        'integration_test_workflow-0_0_1-Fifth-Function_integration_test_provider-rivendell',
+        'integration_test_workflow-0_0_1-Sixth-Function_integration_test_provider-rivendell',
+        'integration_test_workflow-0_0_1-Seventh-Function_integration_test_provider-rivendell'
+    ]
 
-        deployer.deploy(config.home_regions)
+    for function in deployed_functions:
+        assert function[0] in expected_function_names
+    
+    added_resources = remote_client.select_all_from_table("resources")
 
-        remote_client = IntegrationTestRemoteClient()
+    assert len(added_resources) == 1
 
-        # Check that the functions are deployed
-        deployed_functions = remote_client.get_all_values_from_table("functions")
+    assert added_resources[0][0] == "deployment_package_integration_test_workflow-0.0.1"
 
-        assert len(deployed_functions) == 7
-    finally:
-        shutil.rmtree(workdir)
-        os.environ.pop("MULTI_X_SERVERLESS_INTEGRATION_TEST_DB_PATH")
-        os.environ.pop("INTEGRATIONTEST_ON")
+    deployed_roles = remote_client.select_all_from_table("roles")
+
+    assert len(deployed_roles) == 7
+
+    expected_role_names = [
+        'integration_test_workflow-0_0_1-First-Function_integration_test_provider-rivendell-role',
+        'integration_test_workflow-0_0_1-Second-Function_integration_test_provider-rivendell-role',
+        'integration_test_workflow-0_0_1-Third-Function_integration_test_provider-rivendell-role',
+        'integration_test_workflow-0_0_1-Fourth-Function_integration_test_provider-rivendell-role',
+        'integration_test_workflow-0_0_1-Fifth-Function_integration_test_provider-rivendell-role',
+        'integration_test_workflow-0_0_1-Sixth-Function_integration_test_provider-rivendell-role',
+        'integration_test_workflow-0_0_1-Seventh-Function_integration_test_provider-rivendell-role'
+    ]
+
+    for role in deployed_roles:
+        assert role[0] in expected_role_names
+
+    deployed_messaging_topics = remote_client.select_all_from_table("messaging_topics")
+
+    expected_topic_names = [
+        'integration_test_workflow-0_0_1-First-Function_integration_test_provider-rivendell',
+        'integration_test_workflow-0_0_1-Second-Function_integration_test_provider-rivendell',
+        'integration_test_workflow-0_0_1-Third-Function_integration_test_provider-rivendell',
+        'integration_test_workflow-0_0_1-Fourth-Function_integration_test_provider-rivendell',
+        'integration_test_workflow-0_0_1-Fifth-Function_integration_test_provider-rivendell',
+        'integration_test_workflow-0_0_1-Sixth-Function_integration_test_provider-rivendell',
+        'integration_test_workflow-0_0_1-Seventh-Function_integration_test_provider-rivendell'
+    ]
+
+    for topic in deployed_messaging_topics:
+        assert topic[0] in expected_topic_names
+
+    deployed_messaging_subscriptions = remote_client.select_all_from_table("messaging_subscriptions")
+
+    for subscription in deployed_messaging_subscriptions:
+        assert subscription[1] in expected_topic_names
+        assert subscription[2] in expected_function_names
+
+    print("Application deployed successfully.")
 
 
 if __name__ == "__main__":
