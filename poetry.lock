@@ -1838,6 +1838,17 @@ files = [
 ]
 
 [[package]]
+name = "pip-install-test"
+version = "0.5"
+description = "A minimal stub package to test success of pip install"
+optional = false
+python-versions = "*"
+files = [
+    {file = "pip-install-test-0.5.tar.gz", hash = "sha256:c33c46ced9865b59963e86e54901947520bdb73bf91849cddbb000742598bb67"},
+    {file = "pip_install_test-0.5-py3-none-any.whl", hash = "sha256:623887f5ce0b4695ec3c0503aa4f394253a403e2bb952417b3a778f0802dbe0b"},
+]
+
+[[package]]
 name = "platformdirs"
 version = "4.1.0"
 description = "A small Python package for determining appropriate platform-specific dirs, e.g. a \"user data dir\"."
@@ -2949,4 +2960,4 @@ test = ["pytest (>=6.0.0)", "setuptools (>=65)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "025f63bab381ee44475b3744bf377f52119718194c7efb6b0377734086b4da5d"
+content-hash = "62c52e718023a2a52c0d30b67586dc48f7d69a28905f94ef22042dfa5d3ce3bf"

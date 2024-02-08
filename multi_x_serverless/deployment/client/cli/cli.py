@@ -1,4 +1,5 @@
 import os
+from typing import Optional
 
 import click
 
@@ -7,6 +8,7 @@ from multi_x_serverless.deployment.client.cli.new_workflow import create_new_wor
 from multi_x_serverless.deployment.common.config.config import Config
 from multi_x_serverless.deployment.common.deploy.deployer import Deployer
 from multi_x_serverless.deployment.common.factories.deployer_factory import DeployerFactory
+from multi_x_serverless.endpoint.client import Client
 
 
 @click.group()
@@ -42,6 +44,19 @@ def deploy(ctx: click.Context) -> None:
     config: Config = factory.create_config_obj()
     deployer: Deployer = factory.create_deployer(config=config)
     deployer.deploy(config.home_regions)
+
+
+@cli.command("run", help="Run the workflow.")
+@click.argument("workflow_id", required=True)
+@click.option("--input", "-i", help="The input to the workflow. Must be a valid JSON string.")
+@click.pass_context
+def run(ctx: click.Context, input: Optional[str], workflow_id: str) -> None:
+    client = Client(workflow_id)
+
+    if input:
+        client.run(input)
+    else:
+        client.run()
 
 
 __version__ = MULTI_X_SERVERLESS_VERSION
