@@ -72,11 +72,12 @@ class WorkflowLoader(InputLoader):
         return self._workflow_data.get(instance_name, {}).get("favourite_home_region", None)
 
     def get_favourite_region_runtime(self, instance_name: str, use_tail_runtime: bool = False) -> float:
+        runtime_type = (
+            "favourite_home_region_tail_runtime" if use_tail_runtime else "favourite_home_region_average_runtime"
+        )
+
         # This instance MUST exist in the workflow data for this to ever be called
-        if use_tail_runtime:
-            return self._workflow_data.get(instance_name, {}).get("favourite_home_region_tail_runtime")
-        else:
-            return self._workflow_data.get(instance_name, {}).get("favourite_home_region_average_runtime")
+        return self._workflow_data.get(instance_name, {}).get(runtime_type)
 
     def get_all_favorite_regions(self) -> set[str]:
         return {instance["favourite_home_region"] for instance in self._workflow_data.values()}

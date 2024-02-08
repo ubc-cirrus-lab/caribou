@@ -18,7 +18,7 @@ from multi_x_serverless.routing.solver.input.components.loaders.workflow_loader 
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
 
-class InputManager:
+class InputManager:  # pylint: disable=too-many-instance-attributes
     _region_indexer: Region
     _instance_indexer: DAG
 

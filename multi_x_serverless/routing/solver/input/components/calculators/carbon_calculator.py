@@ -1,5 +1,3 @@
-from typing import Any
-
 from multi_x_serverless.routing.solver.input.components.calculator import InputCalculator
 from multi_x_serverless.routing.solver.input.components.calculators.runtime_calculator import RuntimeCalculator
 from multi_x_serverless.routing.solver.input.components.loaders.carbon_loader import CarbonLoader
@@ -21,6 +19,7 @@ class CarbonCalculator(InputCalculator):
         self._workflow_loader: WorkflowLoader = workflow_loader
         self._runtime_calculator: RuntimeCalculator = runtime_calculator
 
+    # pylint: disable=no-else-raise
     def calculate_execution_carbon(
         self, instance_name: str, region_name: str, consider_probabilistic_invocations: bool = False
     ) -> float:
@@ -30,6 +29,7 @@ class CarbonCalculator(InputCalculator):
         else:
             return self._calculate_raw_execution_carbon(instance_name, region_name, False)
 
+    # pylint: disable=no-else-raise
     def calculate_transmission_carbon(
         self,
         from_instance_name: str,

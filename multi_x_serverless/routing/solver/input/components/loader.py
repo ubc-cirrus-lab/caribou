@@ -1,5 +1,5 @@
 import json
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import Any
 
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
@@ -9,10 +9,6 @@ class InputLoader(ABC):
     def __init__(self, client: RemoteClient, primary_table: str) -> None:
         self._client: RemoteClient = client
         self._primary_table: str = primary_table
-
-    @abstractmethod
-    def setup(self, *args: Any, **kwargs: Any) -> None:
-        raise NotImplementedError
 
     def _retrieve_region_data(self, available_regions: set[str]) -> dict[str, Any]:
         all_data: dict[str, Any] = {}

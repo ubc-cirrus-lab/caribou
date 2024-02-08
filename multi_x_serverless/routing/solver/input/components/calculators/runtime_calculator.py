@@ -1,5 +1,3 @@
-from typing import Any
-
 from multi_x_serverless.routing.models.dag import DAG
 from multi_x_serverless.routing.solver.input.components.calculator import InputCalculator
 from multi_x_serverless.routing.solver.input.components.loaders.performance_loader import PerformanceLoader
@@ -14,6 +12,7 @@ class RuntimeCalculator(InputCalculator):
         self._performance_loader: PerformanceLoader = performance_loader
         self._workflow_loader: WorkflowLoader = workflow_loader
 
+    # pylint: disable=no-else-raise
     def calculate_runtime(
         self, instance_name: str, region_name: str, consider_probabilistic_invocations: bool = False
     ) -> float:
@@ -23,6 +22,7 @@ class RuntimeCalculator(InputCalculator):
         else:
             return self.calculate_raw_runtime(instance_name, region_name, False)
 
+    # pylint: disable=no-else-raise
     def calculate_latency(
         self,
         from_instance_name: str,
@@ -30,7 +30,7 @@ class RuntimeCalculator(InputCalculator):
         from_region_name: str,
         to_region_name: str,
         consider_probabilistic_invocations: bool = False,
-    ) -> float:
+    ) -> float:  # pylint: disable=no-else-raise
         if consider_probabilistic_invocations:
             # TODO (#76): Implement probabilistic invocations
             raise NotImplementedError("Probabilistic invocations are not supported yet")
