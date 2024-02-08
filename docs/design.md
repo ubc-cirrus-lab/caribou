@@ -447,11 +447,11 @@ The `provider_table` is responsible for managing information regarding provider-
 
 ##### At Provider Table Example
 
-The example will be one item in the available regions table with all its keys:
+The example will be one item in the at provider table with all its keys:
 
 ```json
 {
-  "key": "aws:eu-south-1",
+  "key": "aws",
   "value": {}
 }
 ```
