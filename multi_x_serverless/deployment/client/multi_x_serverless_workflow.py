@@ -48,17 +48,15 @@ class MultiXServerlessWorkflow:
     def get_wrapper_frame(self, current_frame: Optional[FrameType]) -> FrameType:
         if not current_frame:
             raise RuntimeError("Could not get current frame")
-        # Get the frame of the function
-        function_frame = current_frame.f_back
-        if not function_frame:
-            raise RuntimeError("Could not get previous frame")
 
-        # Get the frame of the wrapper function
-        wrapper_frame = function_frame.f_back
-        if not wrapper_frame:
-            raise RuntimeError("Could not get previous frame")
+        frame = current_frame
 
-        return wrapper_frame
+        while "wrapper" not in frame.f_locals:
+            frame = frame.f_back  # type: ignore
+            if not frame:
+                raise RuntimeError("Could not get wrapper frame")
+
+        return frame
 
     def get_successors(self, function: MultiXServerlessFunction) -> list[MultiXServerlessFunction]:
         """
@@ -326,18 +324,10 @@ class MultiXServerlessWorkflow:
         return [json.loads(message) for message in response]
 
     def get_current_instance_provider_region_instance_name(self) -> tuple[str, str, str, str]:
-        this_frame = inspect.currentframe()
-        if not this_frame:
-            raise RuntimeError("Could not get current frame")
-
-        previous_frame = this_frame.f_back
-        if not previous_frame:
-            raise RuntimeError("Could not get previous frame")
-
         # We need to go back two frames to get the frame of the wrapper function that
         # stores the workflow_placement decision.
         # and the payload (see more on this in the explanation of the decorator `serverless_function`)
-        wrapper_frame = self.get_wrapper_frame(this_frame)
+        wrapper_frame = self.get_wrapper_frame(inspect.currentframe())
 
         workflow_placement_decision = self.get_workflow_placement_decision(wrapper_frame)
 

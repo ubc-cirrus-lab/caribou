@@ -18,6 +18,7 @@ def invoke_serverless_function(function_name, payload):
 class MockFrame:
     def __init__(self, f_back):
         self.f_back = f_back
+        self.f_locals = {}
 
 
 class TestMultiXServerlessWorkflow(unittest.TestCase):
