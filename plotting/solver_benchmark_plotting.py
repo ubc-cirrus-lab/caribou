@@ -15,12 +15,12 @@ def plot_single(ax1, ax2, data, x_key, y_left_key, y_right_key):
 
     for i, (solver, solver_data) in enumerate(data.items()):
         color = colormap(i / num_solvers)
-        x_values = sorted([d[x_key] + (i + 1) * spacing for d in solver_data])  # add offset        ax1.set_xlabel(x_key)
+        x_values = sorted([d[x_key] + (i + 1) * spacing for d in solver_data])
         ax1.set_ylabel(y_left_key)
         bars = ax1.bar(
             [
                 x - width / 2 + (i * 2) * width / num_solvers - 0.01 for x in x_values
-            ],  # subtract a small value for spacing
+            ],
             [d[y_left_key] for d in solver_data],
             width / num_solvers,
             color=color,
@@ -42,7 +42,7 @@ def plot_single(ax1, ax2, data, x_key, y_left_key, y_right_key):
 
         positions = sorted(
             list(set([x - width / 2 + (i * 2 + 1) * width / num_solvers + 0.01 for x in x_values]))
-        )  # add a small value for spacing
+        )
 
         ax2.boxplot(
             boxplot_data,

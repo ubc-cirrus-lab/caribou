@@ -276,6 +276,14 @@ result_1 = solverBenchmark.run_benchmark(BFSFineGrainedSolver, number_of_runs=1)
 result_2 = solverBenchmark.run_benchmark(StochasticHeuristicDescentSolver, number_of_runs=1)
 result_3 = solverBenchmark.run_benchmark(CoarseGrainedSolver, number_of_runs=1)
 
+rounding_decimals = 4
+# round results
+for dimension in ["best cost", "best runtime", "best carbon"]:
+    result_1[dimension] = round(result_1[dimension], rounding_decimals)
+    result_2[dimension] = round(result_2[dimension], rounding_decimals)
+    result_3[dimension] = round(result_3[dimension], rounding_decimals)
+    print(f"{dimension}: {result_1[dimension]} == {result_2[dimension]} == {result_3[dimension]}")
+
 assert result_1["best cost"] == result_2["best cost"] == result_3["best cost"]
 assert result_1["best runtime"] == result_2["best runtime"] == result_3["best runtime"]
 assert result_1["best carbon"] == result_2["best carbon"] == result_3["best carbon"]
@@ -309,8 +317,6 @@ for result in results:
         per_solver_results[solver] = []
     per_solver_results[solver].append(result)
 
-results_json = json.dumps(per_solver_results)
-
 # Get the directory of the current script
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
@@ -319,4 +325,4 @@ os.makedirs(os.path.join(dir_path, "results"), exist_ok=True)
 
 # Store the results in a file
 with open(os.path.join(dir_path, "results/results.json"), "w") as f:
-    f.write(results_json)
+    json.dump(per_solver_results, f, indent=4)
