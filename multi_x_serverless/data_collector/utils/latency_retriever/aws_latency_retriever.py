@@ -3,6 +3,7 @@ from typing import Any
 import requests
 from bs4 import BeautifulSoup
 
+from multi_x_serverless.data_collector.utils.constants import CLOUD_PING_AVG, CLOUD_PING_TAIL
 from multi_x_serverless.data_collector.utils.latency_retriever.latency_retriever import LatencyRetriever
 
 
@@ -13,10 +14,10 @@ class AWSLatencyRetriever(LatencyRetriever):
         # The latency is measured in ms
         if utilize_tail_latency:
             # The 90th percentile is used and the time frame is 1 day
-            cloudping_url = "https://www.cloudping.co/grid/p_90/timeframe/1D"
+            cloudping_url = CLOUD_PING_TAIL
         else:
             # The 50th percentile is used and the time frame is 1 day
-            cloudping_url = "https://www.cloudping.co/grid/p_50/timeframe/1D"
+            cloudping_url = CLOUD_PING_AVG
 
         self._cloudping_page = requests.get(cloudping_url, timeout=10)
         self._soup = BeautifulSoup(self._cloudping_page.content, "html.parser")
