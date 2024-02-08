@@ -10,7 +10,7 @@ from bs4 import BeautifulSoup
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
 from multi_x_serverless.common.provider import Provider
 from multi_x_serverless.common.utils import str_to_bool
-from multi_x_serverless.data_collector.components.data_retriever import data_retriever
+from multi_x_serverless.data_collector.components.data_retriever import DataRetriever
 from multi_x_serverless.data_collector.utils.constants import AMAZON_REGION_URL
 
 
@@ -230,10 +230,24 @@ class ProviderRetriever(DataRetriever):
             available_architectures.append("x86_64")
         return available_architectures
 
-    def _retrieve_aws_transmission_cost(  # pylint: disable=too-many-branches, too-many-statements
-        self, available_region: list[str]
-    ) -> dict[str, Any]:
+    def _retrieve_aws_transmission_cost(self, available_region: list[str]) -> dict[str, Any]:
         result_transmission_cost_dict = {}
+
+        exact_region_codes = {
+            "ap-east-1": (0.12, 0.09),
+            "ap-south-2": (0.1093, 0.086),
+            "ap-southeast-3": (0.132, 0.10),
+            "ap-southeast-4": (0.114, 0.10),
+            "ap-south-1": (0.1093, 0.086),
+            "ap-northeast-3": (0.114, 0.09),
+            "ap-northeast-2": (0.126, 0.08),
+            "ap-southeast-1": (0.12, 0.09),
+            "ap-southeast-2": (0.114, 0.098),
+            "ap-northeast-1": (0.114, 0.09),
+            "me-south-1": (0.117, 0.1105),
+            "me-central-1": (0.11, 0.085),
+            "sa-east-1": (0.15, 0.138),
+        }
 
         for region_key in available_region:
             if ":" not in region_key:
@@ -241,44 +255,15 @@ class ProviderRetriever(DataRetriever):
 
             region_code = region_key.split(":")[1]
 
-            global_data_transfer: float = 0.0
-            provider_data_transfer: float = 0.0
-            if region_code.startswith("us-"):
+            # Check if the region code is in the dictionary
+            if region_code in exact_region_codes:
+                global_data_transfer, provider_data_transfer = exact_region_codes[region_code]
+            elif region_code.startswith("us-"):
                 global_data_transfer = 0.09
                 provider_data_transfer = 0.02
             elif region_code.startswith("af-"):
                 global_data_transfer = 0.154
                 provider_data_transfer = 0.147
-            elif region_code == "ap-east-1":
-                global_data_transfer = 0.12
-                provider_data_transfer = 0.09
-            elif region_code == "ap-south-2":
-                global_data_transfer = 0.1093
-                provider_data_transfer = 0.086
-            elif region_code == "ap-southeast-3":
-                global_data_transfer = 0.132
-                provider_data_transfer = 0.10
-            elif region_code == "ap-southeast-4":
-                global_data_transfer = 0.114
-                provider_data_transfer = 0.10
-            elif region_code == "ap-south-1":
-                global_data_transfer = 0.1093
-                provider_data_transfer = 0.086
-            elif region_code == "ap-northeast-3":
-                global_data_transfer = 0.114
-                provider_data_transfer = 0.09
-            elif region_code == "ap-northeast-2":
-                global_data_transfer = 0.126
-                provider_data_transfer = 0.08
-            elif region_code == "ap-southeast-1":
-                global_data_transfer = 0.12
-                provider_data_transfer = 0.09
-            elif region_code == "ap-southeast-2":
-                global_data_transfer = 0.114
-                provider_data_transfer = 0.098
-            elif region_code == "ap-northeast-1":
-                global_data_transfer = 0.114
-                provider_data_transfer = 0.09
             elif region_code.startswith("ca-"):
                 global_data_transfer = 0.09
                 provider_data_transfer = 0.02
@@ -288,15 +273,6 @@ class ProviderRetriever(DataRetriever):
             elif region_code.startswith("il-"):
                 global_data_transfer = 0.11
                 provider_data_transfer = 0.08
-            elif region_code == "me-south-1":
-                global_data_transfer = 0.117
-                provider_data_transfer = 0.1105
-            elif region_code == "me-central-1":
-                global_data_transfer = 0.11
-                provider_data_transfer = 0.085
-            elif region_code == "sa-east-1":
-                global_data_transfer = 0.15
-                provider_data_transfer = 0.138
             else:
                 raise ValueError(f"Unknown region code {region_code}")
 
@@ -305,6 +281,7 @@ class ProviderRetriever(DataRetriever):
                 "provider_data_transfer": provider_data_transfer,
                 "unit": "USD/GB",
             }
+
         return result_transmission_cost_dict
 
     def _retrieve_aws_execution_cost(self, available_region: list[str]) -> dict[str, Any]:

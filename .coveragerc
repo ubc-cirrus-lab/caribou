@@ -1,6 +1,7 @@
 [run]
 omit = 
     */app.py
+    */src/*
     */__init__.py
     */common/setup/*
     */tests/*
