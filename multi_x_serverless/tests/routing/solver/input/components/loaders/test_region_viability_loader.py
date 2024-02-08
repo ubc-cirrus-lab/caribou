@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import MagicMock
 from multi_x_serverless.routing.solver.input.components.loaders.region_viability_loader import RegionViabilityLoader
 
+
 class TestRegionViabilityLoader(unittest.TestCase):
     def setUp(self):
         self.mock_client = MagicMock()
@@ -42,6 +43,7 @@ class TestRegionViabilityLoader(unittest.TestCase):
 
         # Assert that the returned available regions match the mocked ones
         self.assertEqual(available_regions, ["aws:eu-south-1", "gcp:us-west1"])
+
 
 if __name__ == "__main__":
     unittest.main()
