@@ -9,7 +9,7 @@ from multi_x_serverless.routing.solver.solver import Solver
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
 
-class BFSFineGrainedSolver(Solver):
+class BFSFineGrainedSolver(Solver):  # pylint: disable=all
     def __init__(
         self,
         workflow_config: WorkflowConfig,
@@ -267,6 +267,7 @@ class BFSFineGrainedSolver(Solver):
                                     final_deployments.append(
                                         (clean_combined_placements, pc_cost, max_pc_runtime, pc_carbon)
                                     )
+
                                     best_cost = pc_cost if pc_cost < best_cost else best_cost
                                     best_carbon = pc_carbon if pc_carbon < best_carbon else best_carbon
                                     best_runtime = max_pc_runtime if max_pc_runtime < best_runtime else best_runtime
@@ -475,8 +476,8 @@ class BFSFineGrainedSolver(Solver):
                                 (
                                     wc_cost_total,
                                     wc_carbon_total,
-                                    pc_cost_total,
-                                    pc_carbon_total,
+                                    _,
+                                    _,
                                 ) = self._calculate_wc_pc_cost_carbon(combined_placements)
 
                                 if not self._fail_hard_resource_constraints(

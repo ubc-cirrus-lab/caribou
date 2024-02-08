@@ -17,6 +17,7 @@ class SolverSubclass(Solver):
     def _instantiate_input_manager(self) -> None:
         pass
 
+
 class OtherSolverSubclass(Solver):
     def __init__(self, workflow_config, all_available_regions):
         super().__init__(workflow_config, all_available_regions, None)
@@ -26,6 +27,7 @@ class OtherSolverSubclass(Solver):
 
     def _instantiate_input_manager(self) -> None:
         pass
+
 
 class TestSolver(unittest.TestCase):
     def setUp(self):
