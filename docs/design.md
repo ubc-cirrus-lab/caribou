@@ -531,7 +531,7 @@ Note: Perhaps this may be expanded in the future if we are incorporating more ex
   "carbon_intensity": 482,
   "unit": "gCO2eq/kWh",
   "transmission_carbon": {
-    "aws:eu-south-1": { "carbon_intensity": 48.2, "unit": "gCO2eq/GB" },
+    "aws:eu-south-1": {"carbon_intensity": 48.2, "unit": "gCO2eq/GB"},
     "aws:eu-central-1": {
       "carbon_intensity": 1337.9261964617801,
       "unit": "gCO2eq/GB"
