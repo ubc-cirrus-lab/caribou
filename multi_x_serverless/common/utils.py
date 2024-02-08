@@ -1,4 +1,5 @@
 import ast
+import importlib
 import inspect
 import textwrap
 from typing import Any, Callable
@@ -9,6 +10,10 @@ def str_to_bool(s: str) -> bool:
 
 
 def get_function_source(function_callable: Callable[..., Any]) -> str:
+    module_name = inspect.getmodule(function_callable).__name__  # type: ignore
+    module = importlib.import_module(module_name)
+
+    context = vars(module)
     source_code = ""
 
     # Get the source of the initial function
@@ -23,7 +28,7 @@ def get_function_source(function_callable: Callable[..., Any]) -> str:
     included_functions = {}
 
     # Function to process each node in the AST
-    def process_node(node: ast.AST) -> None:
+    def process_node(node: ast.AST, context: dict) -> None:
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
             # Assuming the function is defined in the same file or imported directly
             name = node.func.id
@@ -31,22 +36,31 @@ def get_function_source(function_callable: Callable[..., Any]) -> str:
                 try:
                     # Retrieve the function object by name
                     # WARNING: This is not safe but since this is only ever executed
-                    # in a local environment, it is safe to use eval here.
-                    f = eval(name)  # pylint: disable=eval-used
+                    # at a client, it is safe to use eval here.
+                    f = eval(name, context)  # pylint: disable=eval-used
                     # Add the source code of the called function
                     func_source = inspect.getsource(f)
                     included_functions[name] = True
                     nonlocal source_code
                     source_code += f"\n# Source of {name}:\n{func_source}\n"
+
+                    # Parse the AST of the called function and process it
+                    func_tree = ast.parse(func_source)
+
+                    # Get the module name of the function
+                    module_name = inspect.getmodule(f).__name__  # type: ignore
+                    module = importlib.import_module(module_name)
+
+                    # Get the context of the module
+                    new_context = vars(module)
+
+                    for child in ast.walk(func_tree):
+                        process_node(child, new_context)
                 except Exception:  # pylint: disable=broad-except
                     pass
 
-        # Process all child nodes
-        for child in ast.iter_child_nodes(node):
-            process_node(child)
-
     # Process each node in the AST of the source code
     for node in ast.walk(tree):
-        process_node(node)
+        process_node(node, context)
 
     return source_code

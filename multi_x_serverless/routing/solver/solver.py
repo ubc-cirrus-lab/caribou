@@ -28,7 +28,7 @@ class Solver(ABC):  # pylint: disable=too-many-instance-attributes
         self._workflow_config = workflow_config
 
         # Declare the input manager
-        self._input_manager = InputManager(workflow_config, all_available_regions is None)
+        self._input_manager = InputManager(workflow_config)
 
         # Get all regions allowed for the workflow
         if all_available_regions is None:

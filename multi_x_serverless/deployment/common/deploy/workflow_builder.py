@@ -123,7 +123,7 @@ class WorkflowBuilder:
             function_instance_name = (
                 f"{self._get_function_name_without_provider_and_region(multi_x_serverless_function.name)}:{predecessor_instance_name_for_instance}_{predecessor_index}_{successor_of_predecessor_index}:{index_in_dag}"  # pylint: disable=line-too-long
                 if not multi_x_serverless_function.is_waiting_for_predecessors()
-                else f"{self._get_function_name_without_provider_and_region(multi_x_serverless_function.name)}:sync:{index_in_dag}"  # pylint: disable=line-too-long
+                else f"{self._get_function_name_without_provider_and_region(multi_x_serverless_function.name)}:sync:"  # pylint: disable=line-too-long
             )
 
             index_in_dag += 1

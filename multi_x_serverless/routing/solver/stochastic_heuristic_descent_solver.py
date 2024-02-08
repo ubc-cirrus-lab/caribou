@@ -3,8 +3,8 @@ from typing import Optional
 
 import numpy as np
 
-from multi_x_serverless.routing.solver.input.input_manager import InputManager
 from multi_x_serverless.routing.solver.solver import Solver
+from multi_x_serverless.routing.solver_inputs.input_manager import InputManager
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
 

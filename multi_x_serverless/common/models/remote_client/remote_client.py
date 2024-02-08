@@ -123,10 +123,6 @@ class RemoteClient(ABC):  # pylint: disable=too-many-public-methods
         raise NotImplementedError()
 
     @abstractmethod
-    def get_keys(self, table_name: str) -> list[str]:
-        raise NotImplementedError()
-
-    @abstractmethod
     def update_function(
         self,
         function_name: str,
