@@ -10,7 +10,8 @@ from bs4 import BeautifulSoup
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
 from multi_x_serverless.common.provider import Provider
 from multi_x_serverless.common.utils import str_to_bool
-from multi_x_serverless.data_collector.components.data_retriever import DataRetriever
+from multi_x_serverless.data_collector.components.data_retriever import data_retriever
+from multi_x_serverless.data_collector.utils.constants import AMAZON_REGION_URL
 
 
 class ProviderRetriever(DataRetriever):
@@ -55,8 +56,7 @@ class ProviderRetriever(DataRetriever):
         return available_regions
 
     def retrieve_aws_regions(self) -> dict[str, dict[str, Any]]:
-        amazon_region_url = "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html#concepts-available-regions"  # pylint: disable=line-too-long
-        amazon_region_page = requests.get(amazon_region_url, timeout=5)
+        amazon_region_page = requests.get(AMAZON_REGION_URL, timeout=5)
 
         amazon_region_page_soup = BeautifulSoup(amazon_region_page.content, "html.parser")
 
