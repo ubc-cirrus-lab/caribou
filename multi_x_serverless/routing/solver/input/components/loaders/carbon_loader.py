@@ -12,19 +12,11 @@ class CarbonLoader(InputLoader):
         super().__init__(client, CARBON_REGION_TABLE)
 
     def setup(self, available_regions: list[tuple[str, str]]) -> None:
-        # self._carbon_data = self._retrieve_region_data(available_regions)
+        self._carbon_data = self._retrieve_region_data(available_regions)
+    
+    def get_transmission_carbon_intensity(self, from_region_name: str, to_region_name: str) -> float:
+        return self._carbon_data.get(from_region_name, {}).get("transmission_carbon", {}).get(to_region_name, {}).get("carbon_intensity", 1000.0) # Default to 1000 gCO2eq/GB if not found
 
-        self._carbon_data = { 
-            "aws:eu-south-1": {
-                "carbon_intensity": 482,
-                "unit": "gCO2eq/kWh",
-                "transmission_carbon": {
-                    "aws:eu-south-1": {"carbon_intensity": 48.2, "unit": "gCO2eq/GB"},
-                    "aws:eu-central-1": {"carbon_intensity": 1337.9261964617801, "unit": "gCO2eq/GB"},
-                    "aws:us-west-2": {"carbon_intensity": 21269.19652594863, "unit": "gCO2eq/GB"},
-                },
-            }
-        }
+    def get_grid_carbon_intensity(self, region_name: str) -> float:
+        return self._carbon_data.get(region_name, {}).get("carbon_intensity", 1000.0) # Default to 1000 gCO2eq/kWh if not found
 
-    def get_carbon_data(self) -> dict[str, Any]:
-        return self._carbon_data

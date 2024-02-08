@@ -15,11 +15,11 @@ class PerformanceLoader(InputLoader):
         self._performance_data = self._retrieve_region_data(available_regions)
 
     def get_relative_performance(self, region_name: str) -> float:
-        return self._performance_data.get(region_name, {}).get("relative_performance", 1) # Default to 1 if not found
+        return self._performance_data.get(region_name, {}).get("relative_performance", 1.0) # Default to 1 if not found
 
     def get_transmission_latency(self, from_region_name: str, to_region_name: str, data_transfer_size: float) -> float:
         # Currently, performance data is not dependent on data transfer size, this should be implemented leter.
-        return self._performance_data.get(from_region_name, {}).get("transmission_latency", {}).get(to_region_name, {}).get("transmission_latency", 100) # Default to huge number if not found
+        return self._performance_data.get(from_region_name, {}).get("transmission_latency", {}).get(to_region_name, {}).get("transmission_latency", 100.0) # Default to huge number if not found
 
     def get_performance_data(self) -> dict[str, Any]:
         return self._performance_data

@@ -15,22 +15,7 @@ class DatacenterLoader(InputLoader):
         self._provider_table = PROVIDER_TABLE
 
     def setup(self, available_regions: list[tuple[str, str]]) -> None:
-        # self._datacenter_data = self._retrieve_region_data(available_regions)
-        self._datacenter_data = {
-            "aws:region1": {
-                "execution_cost": {
-                    "invocation_cost": {"arm64": 2.3e-7, "x86_64": 2.3e-7, "free_tier_invocations": 1000000},
-                    "compute_cost": {"arm64": 1.56138e-5, "x86_64": 1.95172e-5, "free_tier_compute_gb_s": 400000},
-                    "unit": "USD",
-                },
-                "transmission_cost": {"global_data_transfer": 0.09, "provider_data_transfer": 0.02, "unit": "USD/GB"},
-                "pue": 1.15,
-                "cfe": 0.9,
-                "average_memory_power": 3.92e-6,
-                "average_cpu_power": 0.00212,
-                "available_architectures": ["arm64", "x86_64"],
-            }
-        }
+        self._datacenter_data = self._retrieve_region_data(available_regions)
 
         # Get the set of providers from the available regions
         providers = set()
@@ -38,8 +23,28 @@ class DatacenterLoader(InputLoader):
             providers.add(provider)
         self._provider_data = self._retrieve_provider_data(providers)  # ignore as not yet implemented
 
-    def get_datacenter_data(self) -> dict[str, Any]:
-        return self._datacenter_data
+    def get_average_cpu_power(self, region_name: str) -> float:
+        return self._datacenter_data.get(region_name, {}).get("average_cpu_power", 100.0) # Default to 100 if not found
+    
+    def get_average_memory_power(self, region_name: str) -> float:
+        return self._datacenter_data.get(region_name, {}).get("average_memory_power", 100.0) # Default to 100 if not found
+    
+    def get_pue(self, region_name: str) -> float:
+        return self._datacenter_data.get(region_name, {}).get("pue", 1.0) # Default to 1 if not found
+    
+    def get_cfe(self, region_name: str) -> float:
+        return self._datacenter_data.get(region_name, {}).get("cfe", 0.0) # Default to 0 if not found
+
+    def get_compute_cost(self, region_name: str, architecture: str) -> float:
+        return self._datacenter_data.get(region_name, {}).get("execution_cost", {}).get("compute_cost", {}).get(architecture, 100.0) # Default to 100 if not found
+
+    def get_invocation_cost(self, region_name: str, architecture: str) -> float:
+        return self._datacenter_data.get(region_name, {}).get("execution_cost", {}).get("invocation_cost", {}).get(architecture, 100.0) # Default to 100 if not found
+
+    def get_transmission_cost(self, region_name: str, intra_provider_transfer: bool) -> float:
+        transfer_type = "provider_data_transfer" if intra_provider_transfer else "global_data_transfer"
+
+        return self._datacenter_data.get(region_name, {}).get("transmission_cost", {}).get(transfer_type, 100.0) # Default to 100 if not found
 
     def _retrieve_provider_data(self, available_providers: set[str]) -> dict[str, Any]:
         all_data: dict[str, Any] = {}
