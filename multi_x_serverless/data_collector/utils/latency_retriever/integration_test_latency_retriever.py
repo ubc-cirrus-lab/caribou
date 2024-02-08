@@ -4,10 +4,13 @@ from multi_x_serverless.data_collector.utils.latency_retriever.latency_retriever
 
 
 class IntegrationTestLatencyRetriever(LatencyRetriever):
-    def __init__(self) -> None:
+    def __init__(self, utilize_tail_latency: bool = False) -> None:
         super().__init__()
 
-        self._latency_matrix = [[10, 150, 80, 200], [150, 10, 100, 250], [80, 100, 10, 150], [200, 250, 150, 10]]
+        if utilize_tail_latency:
+            self._latency_matrix = [[12, 152, 82, 202], [152, 12, 102, 252], [82, 102, 12, 152], [202, 252, 152, 12]]
+        else:
+            self._latency_matrix = [[10, 150, 80, 200], [150, 10, 100, 250], [80, 100, 10, 150], [200, 250, 150, 10]]
 
         self._code_to_index = {"rivendell": 0, "lothlorien": 1, "anduin": 2, "fangorn": 3}
 

@@ -202,7 +202,11 @@ class TestWorkflowRetriever(unittest.TestCase):
                         "average_data_transfer_size": 0.0007,
                         "transmission_summary": {
                             "provider_1:region_1": {
-                                "provider_1:region_1": {"average_latency": 0.00125, "tail_latency": 0.00175, "unit": "s"},
+                                "provider_1:region_1": {
+                                    "average_latency": 0.00125,
+                                    "tail_latency": 0.00175,
+                                    "unit": "s",
+                                },
                                 "provider_1:region_2": {"average_latency": 0.125, "tail_latency": 0.155, "unit": "s"},
                             },
                             "provider_1:region_2": {

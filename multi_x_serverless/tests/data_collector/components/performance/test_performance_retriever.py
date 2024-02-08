@@ -31,15 +31,15 @@ class TestPerformanceRetriever(unittest.TestCase):
             "aws:region1": {
                 "relative_performance": 1,
                 "transmission_latency": {
-                    "aws:region1": {"transmission_latency": 5.0, "unit": "s"},
-                    "aws:region2": {"transmission_latency": 5.0, "unit": "s"},
+                    "aws:region1": {"average_latency": 5.0, "tail_latency": 5.0, "unit": "s"},
+                    "aws:region2": {"average_latency": 5.0, "tail_latency": 5.0, "unit": "s"},
                 },
             },
             "aws:region2": {
                 "relative_performance": 1,
                 "transmission_latency": {
-                    "aws:region1": {"transmission_latency": 15.0, "unit": "s"},
-                    "aws:region2": {"transmission_latency": 15.0, "unit": "s"},
+                    "aws:region1": {"average_latency": 15.0, "tail_latency": 15.0, "unit": "s"},
+                    "aws:region2": {"average_latency": 15.0, "tail_latency": 15.0, "unit": "s"},
                 },
             },
         }
@@ -50,7 +50,7 @@ class TestPerformanceRetriever(unittest.TestCase):
         region_from = {"provider": "aws"}
         region_to = {"provider": "aws"}
         with patch.object(
-            self.retriever._aws_latency_retriever, "get_latency", return_value=(10.0 * 1000)
+            self.retriever._aws_average_latency_retriever, "get_latency", return_value=(10.0 * 1000)
         ) as mock_get_latency:
             result = self.retriever._get_total_latency(region_from, region_to)
             mock_get_latency.assert_called_once_with(region_from, region_to)

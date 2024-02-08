@@ -174,7 +174,8 @@ class WorkflowRetriever(DataRetriever):
 
                     # Manage invocation summary
                     invocation_summary[child_instance] = {
-                        "probability_of_invocation": invocation_data["invocation_count"] / instance_data["invocation_count"],
+                        "probability_of_invocation": invocation_data["invocation_count"]
+                        / instance_data["invocation_count"],
                         "average_data_transfer_size": (
                             invocation_data["total_data_transfer_size"] / invocation_data["invocation_count"]
                         ),
