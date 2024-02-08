@@ -1,7 +1,8 @@
 import unittest
 from unittest.mock import patch
+from unittest.mock import MagicMock
 
-from multi_x_serverless.deployment.common.remote_client.aws_remote_client import AWSRemoteClient
+from multi_x_serverless.common.models.remote_client.aws_remote_client import AWSRemoteClient
 from multi_x_serverless.deployment.common.deploy.models.resource import Resource
 
 import json
@@ -15,9 +16,11 @@ from multi_x_serverless.common.constants import SYNC_MESSAGES_TABLE
 class TestAWSRemoteClient(unittest.TestCase):
     @patch("boto3.session.Session")
     def setUp(self, mock_session):
-        self.region = "us-west-2"
+        self.region = "region1"
         self.aws_client = AWSRemoteClient(self.region)
         self.mock_session = mock_session
+        self.aws_client.LAMBDA_CREATE_ATTEMPTS = 2
+        self.aws_client.DELAY_TIME = 0
 
     @patch("boto3.session.Session.client")
     def test_client(self, mock_client):
@@ -55,13 +58,13 @@ class TestAWSRemoteClient(unittest.TestCase):
         environment_variables = {"test_key": "test_value"}
         timeout = 10
         memory_size = 128
-        mock_create_lambda.return_value = ("arn:aws:lambda:us-west-2:123456789012:function:test_function", "Inactive")
+        mock_create_lambda.return_value = ("arn:aws:lambda:region1:123456789012:function:test_function", "Inactive")
         result = self.aws_client.create_function(
             function_name, role_arn, zip_contents, runtime, handler, environment_variables, timeout, memory_size
         )
         mock_create_lambda.assert_called_once()
         mock_wait_for_function.assert_called_once_with(function_name)
-        self.assertEqual(result, "arn:aws:lambda:us-west-2:123456789012:function:test_function")
+        self.assertEqual(result, "arn:aws:lambda:region1:123456789012:function:test_function")
 
     @patch.object(AWSRemoteClient, "_client")
     def test_update_function(self, mock_client):
@@ -121,7 +124,7 @@ class TestAWSRemoteClient(unittest.TestCase):
         )
 
     @patch.object(AWSRemoteClient, "_client")
-    def test_update_role(self, mock_client):
+    def test_update_role_simple(self, mock_client):
         role_name = "test_role"
         policy = "test_policy"
         trust_policy = {"test_key": "test_value"}
@@ -136,6 +139,93 @@ class TestAWSRemoteClient(unittest.TestCase):
         mock_client.assert_called_with("iam")
         mock_client.return_value.get_role_policy.assert_called_once_with(RoleName=role_name, PolicyName=role_name)
         mock_client.return_value.get_role.assert_called_with(RoleName=role_name)
+        self.assertEqual(result, "test_role_arn")
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_update_role_same_policy(self, mock_client):
+        # Scenario 1: The current role policy matches the provided policy
+        role_name = "test_role"
+        policy = "test_policy"
+        trust_policy = {"test_key": "test_value"}
+
+        mock_client.return_value.get_role_policy.return_value = {"PolicyDocument": policy}
+        mock_client.return_value.get_role.return_value = {
+            "Role": {"AssumeRolePolicyDocument": trust_policy, "Arn": "test_role_arn"}
+        }
+
+        result = self.aws_client.update_role(role_name, policy, trust_policy)
+
+        mock_client.assert_called_with("iam")
+        mock_client.return_value.get_role_policy.assert_called_once_with(RoleName=role_name, PolicyName=role_name)
+        mock_client.return_value.get_role.assert_called_with(RoleName=role_name)
+        self.assertEqual(result, "test_role_arn")
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_update_role_different_role_policy(self, mock_client):
+        # Scenario 2: The current role policy does not match the provided policy
+        role_name = "test_role"
+        policy = "new_test_policy"
+        trust_policy = {"test_key": "test_value"}
+
+        mock_client.return_value.get_role_policy.return_value = {"PolicyDocument": "old_test_policy"}
+        mock_client.return_value.get_role.return_value = {
+            "Role": {"AssumeRolePolicyDocument": trust_policy, "Arn": "test_role_arn"}
+        }
+
+        result = self.aws_client.update_role(role_name, policy, trust_policy)
+
+        mock_client.assert_called_with("iam")
+        mock_client.return_value.get_role_policy.assert_called_once_with(RoleName=role_name, PolicyName=role_name)
+        mock_client.return_value.delete_role_policy.assert_called_once_with(RoleName=role_name, PolicyName=role_name)
+        mock_client.return_value.get_role.assert_called_with(RoleName=role_name)
+        self.assertEqual(result, "test_role_arn")
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_update_role_different_policy(self, mock_client):
+        # Scenario 3: The current trust policy does not match the provided trust policy
+        role_name = "test_role"
+        policy = "test_policy_here"
+        trust_policy = {"new_test_key": "new_test_value"}
+
+        mock_client.return_value.get_role_policy.return_value = {"PolicyDocument": policy}
+        mock_client.return_value.get_role.return_value = {
+            "Role": {"AssumeRolePolicyDocument": {"old_test_key": "old_test_value"}, "Arn": "test_role_arn"}
+        }
+
+        result = self.aws_client.update_role(role_name, policy, trust_policy)
+
+        mock_client.assert_called_with("iam")
+        mock_client.return_value.get_role_policy.assert_called_once_with(RoleName=role_name, PolicyName=role_name)
+        mock_client.return_value.get_role.assert_called_with(RoleName=role_name)
+        mock_client.return_value.delete_role.assert_called_once_with(RoleName=role_name)
+        mock_client.return_value.create_role.assert_called_once_with(
+            RoleName=role_name, AssumeRolePolicyDocument=json.dumps(trust_policy)
+        )
+        self.assertEqual(result, "test_role_arn")
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_update_role_no_role(self, mock_client):
+        # Scenario 4: The role does not exist
+        role_name = "test_role"
+        policy = "test_policy"
+        trust_policy = {"test_key": "test_value"}
+
+        mock_client.return_value.get_role_policy.side_effect = ClientError(
+            {"Error": {"Code": "NoSuchEntity"}}, "get_role_policy"
+        )
+        mock_client.return_value.get_role.side_effect = ClientError({"Error": {"Code": "NoSuchEntity"}}, "get_role")
+        mock_client.return_value.create_role.return_value = None
+        self.aws_client.get_iam_role = MagicMock()
+        self.aws_client.get_iam_role.return_value = "test_role_arn"
+
+        result = self.aws_client.update_role(role_name, policy, trust_policy)
+
+        mock_client.assert_called_with("iam")
+        mock_client.return_value.get_role_policy.assert_called_once_with(RoleName=role_name, PolicyName=role_name)
+        mock_client.return_value.get_role.assert_called_with(RoleName=role_name)
+        mock_client.return_value.create_role.assert_called_once_with(
+            RoleName=role_name, AssumeRolePolicyDocument=json.dumps(trust_policy)
+        )
         self.assertEqual(result, "test_role_arn")
 
     @patch.object(AWSRemoteClient, "_client")
@@ -369,6 +459,100 @@ class TestAWSRemoteClient(unittest.TestCase):
             self.fail("_wait_for_role_to_become_active raised RuntimeError unexpectedly!")
 
         mock_client.return_value.get_role.assert_called_with(RoleName=role_name)
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_set_value_in_table(self, mock_client):
+        table_name = "test_table"
+        key = "test_key"
+        value = "test_value"
+        self.aws_client.set_value_in_table(table_name, key, value)
+        mock_client.assert_called_with("dynamodb")
+        mock_client.return_value.put_item.assert_called_once_with(
+            TableName=table_name, Item={"key": {"S": key}, "value": {"S": value}}
+        )
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_set_value_in_table_column(self, mock_client):
+        table_name = "test_table"
+        key = "test_key"
+        column_type_value = [("column1", "S", "value1"), ("column2", "N", "123")]
+        self.aws_client.set_value_in_table_column(table_name, key, column_type_value)
+        mock_client.assert_called_with("dynamodb")
+        mock_client.return_value.update_item.assert_called_once()
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_get_value_from_table(self, mock_client):
+        table_name = "test_table"
+        key = "test_key"
+        mock_client.return_value.get_item.return_value = {"Item": {"key": {"S": key}, "value": {"S": "test_value"}}}
+        result = self.aws_client.get_value_from_table(table_name, key)
+        self.assertEqual(result, "test_value")
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_remove_value_from_table(self, mock_client):
+        table_name = "test_table"
+        key = "test_key"
+        self.aws_client.remove_value_from_table(table_name, key)
+        mock_client.assert_called_with("dynamodb")
+        mock_client.return_value.delete_item.assert_called_once_with(TableName=table_name, Key={"key": {"S": key}})
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_get_all_values_from_table(self, mock_client):
+        table_name = "test_table"
+        mock_client.return_value.scan.return_value = {
+            "Items": [{"key": {"S": "key1"}, "value": {"S": json.dumps("value1")}}]
+        }
+        result = self.aws_client.get_all_values_from_table(table_name)
+        self.assertEqual(result, {"key1": "value1"})
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_get_key_present_in_table(self, mock_client):
+        table_name = "test_table"
+        key = "test_key"
+        mock_client.return_value.get_item.return_value = {"Item": {"key": {"S": key}, "value": {"S": "test_value"}}}
+        result = self.aws_client.get_key_present_in_table(table_name, key)
+        self.assertTrue(result)
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_upload_resource(self, mock_client):
+        key = "test_key"
+        resource = b"test_resource"
+        self.aws_client.upload_resource(key, resource)
+        mock_client.assert_called_with("s3")
+        mock_client.return_value.put_object.assert_called_once_with(
+            Body=resource, Bucket="multi-x-serverless-resources", Key=key
+        )
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_download_resource(self, mock_client):
+        key = "test_key"
+        mock_client.return_value.get_object.return_value = {"Body": MagicMock(read=lambda: b"test_resource")}
+        result = self.aws_client.download_resource(key)
+        self.assertEqual(result, b"test_resource")
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_get_all_values_from_sort_key_table(self, mock_client):
+        table_name = "test_table"
+        key = "test_key"
+        mock_client.return_value.query.return_value = {
+            "Items": [
+                {"key": {"S": "key1"}, "value": {"S": "value1"}},
+                {"key": {"S": "key2"}, "value": {"S": "value2"}},
+            ]
+        }
+        result = self.aws_client.get_all_values_from_sort_key_table(table_name, key)
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0], "value1")
+        self.assertEqual(result[1], "value2")
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_get_keys(self, mock_client):
+        table_name = "test_table"
+        mock_client.return_value.scan.return_value = {"Items": [{"key": {"S": "key1"}}, {"key": {"S": "key2"}}]}
+        result = self.aws_client.get_keys(table_name)
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0], "key1")
+        self.assertEqual(result[1], "key2")
 
 
 if __name__ == "__main__":

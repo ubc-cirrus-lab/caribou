@@ -1,9 +1,4 @@
-from typing import Any
-
-import numpy as np
-
 from multi_x_serverless.routing.models.indexer import Indexer
-from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
 
 class Region(Indexer):

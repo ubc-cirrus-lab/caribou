@@ -1,11 +1,11 @@
 from typing import Any
 
+from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
 from multi_x_serverless.deployment.common.config.config import Config
 from multi_x_serverless.deployment.common.deploy.models.deployment_plan import DeploymentPlan
 from multi_x_serverless.deployment.common.deploy.models.instructions import APICall, Instruction, RecordResourceVariable
 from multi_x_serverless.deployment.common.deploy.models.variable import Variable
 from multi_x_serverless.deployment.common.factories.remote_client_factory import RemoteClientFactory
-from multi_x_serverless.deployment.common.remote_client.remote_client import RemoteClient
 
 
 class Executor:
@@ -15,9 +15,10 @@ class Executor:
         self._config = config
 
     def execute(self, deployment_plan: DeploymentPlan) -> None:
-        for home_region, instructions in deployment_plan.instructions.items():
-            provider, region = home_region.split(":")
+        for provider_region_to_deploy, instructions in deployment_plan.instructions.items():
+            provider, region = provider_region_to_deploy.split(":")
             client = RemoteClientFactory.get_remote_client(provider, region)
+            client.create_sync_tables()
             for instruction in instructions:
                 getattr(self, f"_do_{instruction.__class__.__name__.lower()}", self._default_handler)(
                     instruction,

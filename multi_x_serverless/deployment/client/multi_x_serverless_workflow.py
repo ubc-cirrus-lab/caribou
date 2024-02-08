@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import inspect
 import json
+import logging
 import re
 import uuid
 from types import FrameType
@@ -9,8 +10,18 @@ from typing import Any, Callable, Optional
 
 from multi_x_serverless.common.constants import WORKFLOW_PLACEMENT_DECISION_TABLE
 from multi_x_serverless.common.models.endpoints import Endpoints
+from multi_x_serverless.common.utils import get_function_source
 from multi_x_serverless.deployment.client.multi_x_serverless_function import MultiXServerlessFunction
 from multi_x_serverless.deployment.common.factories.remote_client_factory import RemoteClientFactory
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+formatter = logging.Formatter("%(asctime)s.%(msecs)03d %(message)s", datefmt="%s")
+handler = logging.StreamHandler()
+handler.setFormatter(formatter)
+
+logger.addHandler(handler)
 
 
 class MultiXServerlessWorkflow:
@@ -34,26 +45,24 @@ class MultiXServerlessWorkflow:
         self._function_names: set[str] = set()
         self._endpoint = Endpoints()
 
-    def get_function_and_wrapper_frame(self, current_frame: Optional[FrameType]) -> tuple[FrameType, FrameType]:
+    def get_wrapper_frame(self, current_frame: Optional[FrameType]) -> FrameType:
         if not current_frame:
             raise RuntimeError("Could not get current frame")
-        # Get the frame of the function
-        function_frame = current_frame.f_back
-        if not function_frame:
-            raise RuntimeError("Could not get previous frame")
 
-        # Get the frame of the wrapper function
-        wrapper_frame = function_frame.f_back
-        if not wrapper_frame:
-            raise RuntimeError("Could not get previous frame")
+        frame = current_frame
 
-        return function_frame, wrapper_frame
+        while "wrapper" not in frame.f_locals:
+            frame = frame.f_back  # type: ignore
+            if not frame:
+                raise RuntimeError("Could not get wrapper frame")
+
+        return frame
 
     def get_successors(self, function: MultiXServerlessFunction) -> list[MultiXServerlessFunction]:
         """
         Get the functions that are called by this function.
         """
-        source_code = inspect.getsource(function.function_callable)
+        source_code = get_function_source(function.function_callable)
         function_calls = re.findall(r"invoke_serverless_function\((.*?)\)", source_code)
         successors: list[MultiXServerlessFunction] = []
         for call in function_calls:
@@ -90,14 +99,14 @@ class MultiXServerlessWorkflow:
         # We need to go back two frames to get the frame of the wrapper function that stores
         # the workflow_placement decision
         # and the payload (see more on this in the explanation of the decorator `serverless_function`)
-        function_frame, wrapper_frame = self.get_function_and_wrapper_frame(inspect.currentframe())
+        wrapper_frame = self.get_wrapper_frame(inspect.currentframe())
 
         workflow_placement_decision = self.get_workflow_placement_decision(wrapper_frame)
 
         current_instance_name = workflow_placement_decision["current_instance_name"]
 
         successor_instance_name, successor_workflow_placement_decision_dictionary = self.get_successor_instance_name(
-            function, workflow_placement_decision, wrapper_frame, function_frame
+            function, workflow_placement_decision
         )
 
         if not conditional:
@@ -130,6 +139,14 @@ class MultiXServerlessWorkflow:
                 if instance["instance_name"] == successor_instance_name:
                     expected_counter = len(instance["preceding_instances"])
                     break
+
+        logger.info(
+            "%s: Instance %s calling %s with payload size %s GB",
+            workflow_placement_decision["run_id"],
+            current_instance_name,
+            successor_instance_name,
+            len(json_payload.encode("utf-8")) / (1024**3),
+        )
 
         RemoteClientFactory.get_remote_client(provider, region).invoke_function(
             message=json_payload,
@@ -197,23 +214,12 @@ class MultiXServerlessWorkflow:
         self,
         function: Callable[..., Any],
         workflow_placement_decision: dict[str, Any],
-        wrapper_frame: FrameType,
-        function_frame: FrameType,
     ) -> tuple[str, dict[str, Any]]:
         # Get the name of the successor function
         successor_function_name = self.functions[function.original_function.__name__].name  # type: ignore
 
-        # Get the name of the current function
-        current_function_name = self.functions[self.get_function__name__from_frame(function_frame)].name
-
-        # Check if the current function is the entry point
-        is_entry_point = self.is_entry_point(wrapper_frame)
-
         # Set the current instance name based on whether it is the entry point or not
-        if is_entry_point:
-            current_instance_name = f"{current_function_name}:entry_point:0"
-        else:
-            current_instance_name = workflow_placement_decision["current_instance_name"]
+        current_instance_name = workflow_placement_decision["current_instance_name"]
 
         # Get the name of the next instance based on the current instance and successor function name
         next_instance_name = self.get_next_instance_name(
@@ -249,20 +255,27 @@ class MultiXServerlessWorkflow:
                 successor_instances = instance["succeeding_instances"]
                 # If there is only one successor instance, return it
                 if len(successor_instances) == 1:
-                    if successor_instances[0].startswith(successor_function_name):
+                    if (
+                        successor_instances[0].split(":", maxsplit=1)[0]
+                        == f"{self.name}-{self.version.replace('.', '_')}-{successor_function_name}"
+                    ):
                         return successor_instances[0]
-                    raise RuntimeError("Could not find successor instance")
+                    raise RuntimeError(f"Could not find successor instance for successor function name {successor_function_name} in {successor_instances}")  # type: ignore  # pylint: disable=line-too-long
                 # If there are multiple successor instances, return the first one that matches the successor function
                 # name and has the correct index
                 for successor_instance in successor_instances:
-                    if successor_instance.startswith(successor_function_name):
+                    if (
+                        successor_instance.split(":", maxsplit=1)[0]
+                        == f"{self.name}-{self.version.replace('.', '_')}-{successor_function_name}"
+                    ):
                         if successor_instance.split(":", maxsplit=2)[1] == "sync":
                             return successor_instance
                         if successor_instance.split(":", maxsplit=2)[1].split("_")[-1] == str(self._successor_index):
                             self._successor_index += 1
                             return successor_instance
-                raise RuntimeError("Could not find successor instance")
-        raise RuntimeError("Could not find current instance")
+                print(successor_instances, successor_function_name, self._successor_index)
+                raise RuntimeError(f"Could not find successor instance for successor function name {successor_function_name} in {successor_instances}")  # type: ignore  # pylint: disable=line-too-long
+        raise RuntimeError(f"Could not find current instance {current_instance_name} in workflow_placement decision")
 
     def get_workflow_placement_decision(self, frame: FrameType) -> dict[str, Any]:
         """
@@ -270,16 +283,15 @@ class MultiXServerlessWorkflow:
         `docs/design.md` file under `Workflow Placement Decision`.
         """
         # Get the workflow_placement decision from the wrapper function
-        if "wrapper" in frame.f_locals:
-            wrapper = frame.f_locals["wrapper"]
-            if hasattr(wrapper, "workflow_placement_decision"):
-                return wrapper.workflow_placement_decision
+        while "wrapper" not in frame.f_locals:
+            frame = frame.f_back  # type: ignore
+            if not frame:
+                raise RuntimeError("Could not get workflow_placement decision")
+        wrapper = frame.f_locals["wrapper"]
+        if hasattr(wrapper, "workflow_placement_decision"):
+            return wrapper.workflow_placement_decision
 
         raise RuntimeError("Could not get workflow_placement decision")
-
-    def get_function__name__from_frame(self, frame: FrameType) -> str:
-        # Get the name of the function from the frame
-        return frame.f_code.co_name
 
     def is_entry_point(self, frame: FrameType) -> bool:
         # Check if the function is the entry point
@@ -312,18 +324,10 @@ class MultiXServerlessWorkflow:
         return [json.loads(message) for message in response]
 
     def get_current_instance_provider_region_instance_name(self) -> tuple[str, str, str, str]:
-        this_frame = inspect.currentframe()
-        if not this_frame:
-            raise RuntimeError("Could not get current frame")
-
-        previous_frame = this_frame.f_back
-        if not previous_frame:
-            raise RuntimeError("Could not get previous frame")
-
         # We need to go back two frames to get the frame of the wrapper function that
         # stores the workflow_placement decision.
         # and the payload (see more on this in the explanation of the decorator `serverless_function`)
-        _, wrapper_frame = self.get_function_and_wrapper_frame(this_frame)
+        wrapper_frame = self.get_wrapper_frame(inspect.currentframe())
 
         workflow_placement_decision = self.get_workflow_placement_decision(wrapper_frame)
 
@@ -446,20 +450,40 @@ class MultiXServerlessWorkflow:
                     wrapper.workflow_placement_decision = self.get_workflow_placement_decision_from_platform()  # type: ignore  # pylint: disable=line-too-long
                     # This is the first function to be called, so we need to generate a run id
                     # This run id will be used to identify the workflow instance
-                    # For example for the synchronization function, we need to know which workflow instance to sync
                     wrapper.workflow_placement_decision["run_id"] = uuid.uuid4().hex  # type: ignore
                     if len(args) == 0:
                         return func()
                     payload = args[0]
                 else:
                     # Get the workflow_placement decision from the message received from the predecessor function
-                    argument = json.loads(args[0])
+                    argument_raw = args[0]
+
+                    if (
+                        "Records" in argument_raw
+                        and len(argument_raw["Records"]) == 1
+                        and "Sns" in argument_raw["Records"][0]
+                        and "Message" in argument_raw["Records"][0]["Sns"]
+                    ):
+                        argument = json.loads(argument_raw["Records"][0]["Sns"]["Message"])
+                    else:
+                        try:
+                            argument = json.loads(argument_raw)
+                        except json.JSONDecodeError as e:
+                            raise RuntimeError(
+                                f"Could not get message from argument {argument_raw}, there should be meta information in the message"  # pylint: disable=line-too-long
+                            ) from e
                     if "workflow_placement_decision" not in argument:
                         raise RuntimeError("Could not get workflow_placement decision from message")
                     wrapper.workflow_placement_decision = argument["workflow_placement_decision"]  # type: ignore
                     if "payload" not in argument:
                         return func()
                     payload = argument.get("payload", {})
+
+                logger.info(
+                    "%s: Function %s called",
+                    wrapper.workflow_placement_decision["run_id"],  # type: ignore
+                    wrapper.workflow_placement_decision["current_instance_name"],  # type: ignore
+                )
 
                 # Call the original function with the modified arguments
                 return func(payload)

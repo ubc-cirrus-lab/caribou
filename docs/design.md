@@ -1,4 +1,4 @@
-#  Design Document
+# Design Document
 
 In this document we will discuss the design decisions that have been made for the project.
 
@@ -13,15 +13,21 @@ In this document we will discuss the design decisions that have been made for th
 2. [Source Code Annotation](#source-code-annotation)
 3. [Synchronization Node](#synchronization-node)
     1. [Implementation](#implementation)
-4. [Workflow Placement Decision](#workflow-placement-decision)
+4. [Component Interaction](#component-interaction)
     1. [Component Interaction Order](#component-interaction-order)
-5. [Solvers](#solvers)
+    2. [Workflow Placement Decision](#workflow-placement-decision)
+5. [Data Collectors](#data-collectors)
+    1. [Provider Collector](#provider-collector)
+    2. [Carbon Collector](#carbon-collector)
+    3. [Performance Collector](#performance-collector)
+    4. [Workflow Collector](#workflow-collector)
+6. [Solvers](#solvers)
     1. [Coarse Grained](#coarse-grained)
     2. [Stochastic Heuristic Descent](#stochastic-heuristic-descent)
     3. [Brute Force](#brute-force)
-6. [References](#references)
+7. [References](#references)
 
-##  Dataflow DAG Model
+## Dataflow DAG Model
 
 Each workflow has two representations in our model.
 We distinguish between the physical and the logical representation of a workflow.
@@ -38,7 +44,7 @@ $P_f = \{n_1, n_2, ..., n_n\}$
 
 This representation is quite simple in our case as the source code for each function is the same, the full workflow folder, however, the handler name (the function name within the package) is different.
 
-###  Logical Representation
+### Logical Representation
 
 Our logical representation is, similar to a dataflow DAG [1], the representation of the data flow between the physical instances of our functions.
 The dataflow DAG in our case represents calls from functions to other functions with specific input data (thus the name dataflow).
@@ -88,7 +94,7 @@ There are two exceptions with regards to physical nodes in the logical represent
 - The initial node is present only once in the logical representation.
 - A synchronization node is present only once in the logical representation.
 
-###  Discussion
+### Discussion
 
 These representations gave been chosen because they are simple and easy to understand.
 The logical representation is a DAG, which is a well known data structure and easy to work with.
@@ -232,7 +238,30 @@ This ensures that the synchronization node is called even if some of the predece
 
 As previously mentioned, the code in the synchronization node is only executed once all predecessors have written their responses to the distributed key-value store and the counter has been incremented to the number of predecessors, i.e., the synchronization node is only called once all predecessors have called the synchronization node.
 
-## Workflow Placement Decision
+## Component Interaction
+
+The components of the system interact with each other in a specific order.
+As well as over defined interfaces.
+The following section will outline the order in which the components interact with each other and the interfaces that are used for the interaction.
+
+### Component Interaction Order
+
+![Component Interaction Order](./img/component_interaction_overview.png)
+
+The following is the order in which the different components interact with each other:
+
+1. The deployment client uploads an initial version of the [Workflow Placement Decision](#workflow-placement-decision), the [Deployment Manager Resource](#deployment-manager-resource) of this workflow, as well as the [Workflow Config](#workflow-config) for the solver update checker to the corresponding tables in the distributed key-value store.
+It aditionally uploads the [Deployment Package](#deployment-package) (source code) of the workflow to the distributed blob store.
+2. The solver update checker is informed of a new workflow to be solved.
+3. The solver update checker triggers the solver to solve the workflow.
+4. The solver updates the workflow placement decision with the current placement of the function instances in a staging distributed key-value store.
+5. The deployment update checker checks the staging distributed key-value store for updates to the workflow placement decision and re-deploys function instances if necessary.
+6. The deployment server uploads the updated workflow placement decision to the distributed key-value store.
+
+During a workflow execution, the initial function instance will download the workflow placement decision from the distributed key-value store and add the `run_id`.
+Subsequent functions will receive the workflow placement decision from the previous function instance which updated the `current_instance_name` to the name of the current function instance.
+
+### Workflow Placement Decision
 
 The workflow placement decision is a dictionary of information with regards to current function instance placement.
 This information is used both to determine the current function instance, as well as to determine where the next function instance is to be called.
@@ -248,27 +277,33 @@ The dictionary contains the following information:
         "provider": "aws",
         "region": "region"
       },
-      "identifier": "test_identifier"
+      "identifier": "test_identifier",
+      "function_identifier": "test_function_identifier"
     },
     "function_name_2:function_name_0_0:1": {
       "provider_region": {
         "provider": "aws",
         "region": "region"
       },
-      "identifier": "test_identifier"
+      "identifier": "test_identifier",
+      "function_identifier": "test_function_identifier"
     }
   },
   "current_instance_name": "function_name:entry_point:0",
   "instances": [
     {
-      "instance_name": "function_name:entry_point:0",
+      "instance_name": "workflow_id-function_name:entry_point:0",
+      "function_name": "workflow_id-function_name_provider-region",
       "succeeding_instances": ["function_name_2:function_name_0_0:1"],
-      "preceding_instances": []
+      "preceding_instances": [],
+      "dependent_sync_predecessors": [],
     },
     {
       "instance_name": "function_name_2:function_name_0_0:1",
+      "function_name": "workflow_id-function_name_2_provider-region",
       "succeeding_instances": [],
-      "preceding_instances": ["function_name:entry_point:0"]
+      "preceding_instances": ["function_name:entry_point:0"],
+      "dependent_sync_predecessors": [],
     }
   ]
 }
@@ -278,27 +313,443 @@ Different parts of this dictionary are provided by different components of the s
 
 - The `run_id` is set by the initial function of the workflow.
 - The `workflow_placement` is set by the solver and contains the current placement of the function instances.
-  The `identifier` is a unique identifier for the function instance at a provider.
-  This is provided by the deployment utilities.
+  - The `provider_region` is either set at initial deployment or is set by the solver  in the staging area and moved over at deployment and contains the provider and region of the function instance.
+  - The `identifier` is a unique identifier for the messaging queue instance at a provider.
+    This is used to identify the calling point of the function instance.
+    This is provided and updated by the deployment utilities.
+  - The `function_identifier` is a unique identifier for the function instance.
 - The `current_instance_name` is initially set by the deployment utilities as the name of the entry point function.
   It is then updated by the function instances to identify the successor function instance.
-- The `instances` is set by the deployment utilities and contains the information about the workflow DAG.
+- The `instances` is set and updated by the deployment utilities and contains the information about the workflow DAG.
+  - The `instance_name` is the name of the function instance.
+  - The `function_name` is the name of the function.
+    This name always contains the provider and region of the function that this instance is deployed to.
+    Thus this also has to be updated upon re-deployment.
+  - The `succeeding_instances` is a list of the names of the succeeding function instances.
+  - The `preceding_instances` is a list of the names of the preceding function instances.
+  - The `dependent_sync_predecessors` is a list of the names of the synchronization nodes that the function instance is required to update in case of a conditional call.
 
-### Component Interaction Order
+### Deployment Manager Resource
 
-![Component Interaction Order](./img/component_interaction_overview.png)
+The deployment manager resource is a dictionary of information with regards to the deployment of the workflow.
+This is used by the deployment utilities to facilitate the re-deployment of function instances.
+The structure of the deployment manager resource is as follows:
 
-The following is the order in which the different components interact with each other with regards to the workflow placement decision:
+```json
+{
+  "workflow_id": "test_workflow_id",
+  "workflow_function_descriptions": "[{\"name\": \"workflow_id-function_name_2_provider-region\", \"entry_point\":...}]",
+  "deployment_config": "{\"workflow_name\": \"workflow_name\",...}",
+  "deployed_regions": "{\"workflow_id-function_name_2_provider-region\": {\"provider\": \"provider\", \"region\": \"region\"},...}",
+}
+```
 
-1. The deployment client uploads an initial version of the workflow placement decision to the distributed key-value store.
-2. The solver update checker is informed of a new workflow to be solved.
-3. The solver update checker triggers the solver to solve the workflow.
-4. The solver updates the workflow placement decision with the current placement of the function instances in a staging distributed key-value store.
-5. The deployment client checks the staging distributed key-value store for updates to the workflow placement decision and re-deploys function instances if necessary.
-6. The deployment client uploads the updated workflow placement decision to the distributed key-value store.
+Different parts of this dictionary are provided by different components of the system.
 
-During a workflow execution, the initial function instance will download the workflow placement decision from the distributed key-value store and add the `run_id`.
-Subsequent functions will receive the workflow placement decision from the previous function instance which updated the `current_instance_name` to the name of the current function instance.
+- The `workflow_id` is set at initial deployment by the deployment utilities.
+  It is the concatenation of the workflow name and version.
+- The `workflow_function_descriptions` is a list of functions that are part of the workflow.
+  It is set at initial deployment by the deployment utilities.
+  At re-deployment, if a function was re-deployed to a new region, the new function (new in the sense that the name is updated to the new provider and region) is added to the list.
+- The `deployment_config` is the deployment config of the workflow.
+  It is set at initial deployment by the deployment utilities.
+- The `deployed_regions` is a dictionary of the deployed regions of the workflow.
+  It is set at initial deployment by the deployment utilities.
+  At re-deployment, if a function was re-deployed to a new region, the new region is added to the dictionary.
+  This is theoretically not necessary as the information is also contained in the `workflow_function_descriptions`, however, it is more efficient to have this information in a separate dictionary.
+
+### Workflow Config
+
+The workflow config is a dictionary of information with regards to the workflow.
+
+### Deployment Package
+
+The deployment package is the source code of the workflow.
+It is packaged as a zip file.
+And is uploaded to the distributed blob store.
+
+## Data Collectors
+
+The Data Collectors are responsible for aggregating information needed by various instances of Solvers to solve for the optimal cost, carbon, and/or runtime.
+This information is gathered through various different sources and both internal and external APIs.
+This section will outline the various Data Collectors, their responsibilities, and also the format of their outputs.
+
+![Data Collector High Level Architecture](./img/data_collector_architecture.png)
+
+There are four main types of data collectors, each accessing different sources of input data, managing their own output databases, and running or triggering at different intervals and/or trigger conditions.
+The four main collectors are the Provider Collector, Carbon Collector, Performance Collector, and Workflow Collector.
+
+All the following tables are stored in a DynamoDB database.
+In the following, we will outline the responsibilities of each Data Collector, the database tables they manage, and the information stored in each table.
+The information stored in each table has one key and one or more values.
+All keys are strings.
+The type of the key and values are denoted by the following abbreviations:
+
+- S: String
+- N: Number
+
+If a string type is used but it has multiple child values, the string is a JSON string.
+
+### Provider Collector
+
+The Provider Collector is responsible for collecting information through external APIs regarding the cost, location, and offered services of all available data center regions, as well as identifying which data center regions are currently available.
+This collector is pivotal for determining the availability of data centers, and it must be run at least once before the other data collectors can be functional, as it sets data center regions to be put under consideration.
+Since pricing information and offered services of data center regions rarely change, this Collector should be run very infrequently, likely once per week or longer.
+The frequency with which this collector should run needs further investigation.
+
+This collector is responsible for managing the three database tables: `available_regions_table`, `at_provider_table`, and `provider_region_table`.
+
+#### Available Regions Table
+
+The `available_regions_table` is responsible for managing the list of available regions that may be viable for consideration by Solver instances and denotes which regions must be updated by the other Collectors.
+This table is primarily responsible for listing the basic information of regions needed for the other Data Collectors, as well as the timestamp of when the region was last updated by each Data Collector (with the exception of the Workflow Data Collector, as that is Workflow-specific).
+The Provider Collector must not override the timestamp of other Data Collectors.
+The keys and information stored in this table are as follows:
+
+- Key: `<provider_unique_id>:<region_name>`
+- Value (S):
+  - Available services at the data center region.
+  - The geographical location of the data center region (in longitude and latitude).
+- Provider Collector timestamp (N):
+  - Timestamp of when the Provider Collector was last run for this data center region.
+- Carbon Collector timestamp (N):
+  - Timestamp of when the Carbon Collector was last run for this data center region.
+- Performance Collector timestamp (N):
+  - Timestamp of when the Performance Collector was last run for this data center region.
+
+##### Available Regions Table Example
+
+The example will be one item in the available regions table with all its keys:
+
+```json
+{
+  "key": "aws:eu-south-1",
+  "provider_collector": 1620000000,
+  "carbon_collector": 1620000000,
+  "performance_collector": 1620000000,
+  "value": {
+    "name": "Europe (Milan)",
+    "provider": "aws",
+    "code": "eu-south-1",
+    "latitude": 45.4642035,
+    "longitude": 9.189982
+  }
+}
+```
+
+#### At Provider Table
+
+The `provider_table` is responsible for managing information regarding provider-level information. The keys and information stored in this table are as follows:
+
+- Key: `<provider_unique_id>`
+- Value (S):
+  - Remaining free tier at provider (invocation/execution).
+
+##### At Provider Table Example
+
+The example will be one item in the at provider table with all its keys:
+
+```json
+{
+  "key": "aws",
+  "value": {}
+}
+```
+
+#### Provider Region Table
+
+The `provider_region_table` is responsible for managing region specific information.
+The keys and information stored in this table are as follows:
+
+- Key: `<provider_unique_id>:<region_name>`
+- Value (S):
+  - Execution Cost:
+    - Values for each configuration (or services).
+  - Power-efficiency-related information (PUE, CFE).
+  - Average Memory and CPU compute power.
+  - Transmission Cost:
+    - Egress Global Data Transfer Cost (outgoing to different providers).
+    - Egress Provider Data Transfer Cost (outgoing to different regions within the same provider).
+
+Note: Data Transfer Cost and complexities of this warrant further investigation and thus associated storage information regarding such may be subject to change.
+
+##### Provider Region Table Example
+
+```json
+{
+  "execution_cost": {
+    "invocation_cost": {
+      "arm64": 2.3e-7,
+      "x86_64": 2.3e-7,
+      "free_tier_invocations": 1000000
+    },
+    "compute_cost": {
+      "arm64": 1.56138e-5,
+      "x86_64": 1.95172e-5,
+      "free_tier_compute_gb_s": 400000
+    },
+    "unit": "USD"
+  },
+  "transmission_cost": {
+    "global_data_transfer": 0.09,
+    "provider_data_transfer": 0.02,
+    "unit": "USD/GB"
+  },
+  "pue": 1.15,
+  "cfe": 0.9,
+  "average_memory_power": 3.92e-6,
+  "average_cpu_power": 0.00212,
+  "available_architectures": ["arm64", "x86_64"]
+}
+```
+
+### Carbon Collector
+
+The Carbon Collector is responsible for calculating and refreshing carbon transmission and execution information for all available data center regions that are part of the `available_regions_table`, which was first populated by the Provider Collector.
+Since carbon information changes frequently (where the Electric Maps API refreshes grid carbon information every hour), this collector may be run frequently, perhaps in the order of hours.
+The frequency with which this collector should run needs further investigation.
+
+This collector is responsible for managing the `carbon_region_table` database table.
+It is also responsible for updating the timestamp of carbon-updated regions in the Carbon Collector timestamp field of the `available_regions_table` table.
+
+#### Carbon Region Table
+
+The `carbon_region_table` is responsible for managing carbon region-specific information. The keys and information stored in this table are as follows:
+
+- Key: `<provider_unique_id>:<region_name>`
+- Value (S):
+  - Execution Carbon per kWh (gCO2e/kWh)
+  - To Region `<provider_unique_id>:<region_name>`
+    - Region-to-region Data Transfer Carbon Impact (gCO2e/GB)
+
+Note: Perhaps this may be expanded in the future if we are incorporating more execution or transmission carbon estimation techniques.
+
+##### Carbon Region Table Example
+
+```json
+{
+  "carbon_intensity": 482,
+  "unit": "gCO2eq/kWh",
+  "transmission_carbon": {
+    "aws:eu-south-1": {"carbon_intensity": 48.2, "unit": "gCO2eq/GB"},
+    "aws:eu-central-1": {
+      "carbon_intensity": 1337.9261964617801,
+      "unit": "gCO2eq/GB"
+    },
+    "aws:us-west-2": {
+      "carbon_intensity": 21269.19652594863,
+      "unit": "gCO2eq/GB"
+    },
+    ...
+  }
+}
+```
+
+### Performance Collector
+
+The Performance Collector is responsible for aggregating performance benchmarks to determine the relative performance differences of running workloads between different data center regions.
+Similar to the Carbon Collector, this is only done for all available data center regions that are part of the `available_regions_table`, which was first populated by the Provider Collector.
+Depending on the results of our investigation into the change in performance variability between data center regions and across providers, the frequency of this collector may need to be considered.
+For now, this Collector should be run much more frequently than the Provider Collector but perhaps less frequently than the Carbon Collector.
+Again, the frequency with which this collector should run needs further investigation.
+
+This collector is responsible for managing the  `performance_region_table` database table.
+It is also responsible for updating the timestamp of performance-updated regions in the Performance Collector timestamp field of the `available_regions_table` table.
+
+#### Performance Region Table
+
+The `performance_region_table` is responsible for managing performance region-specific information of our benchmarking application.
+The keys and information stored in this table are as follows:
+
+- Key: `<provider_unique_id>:<region_name>`
+- Value (S):
+  - Execution time of performance tests in various regions.
+  - To Region `<provider_unique_id>:<region_name>`
+    - Region-to-region Estimated latency in terms of data transfer size (s/GB).
+
+Note: Perhaps in the future, we should also consider provider-level performance differences with a different database table.
+
+##### Performance Region Table Example
+
+```json
+ {
+    "relative_performance": 1,
+    "transmission_latency": {
+      "aws:region1": {"average_latency": 0.005, "tail_latency": 0.007, "unit": "s"},
+      "aws:region2": {"average_latency": 0.05, "tail_latency": 0.07, "unit": "s"},
+    },
+},
+```
+
+### Workflow Collector
+
+The Workflow Collector is responsible for aggregating runtime and invocation probability of each instance of one or more workflows and also includes the actual execution and transmission time of running workflow instances in a given region.
+Similar to the Carbon and Performance Collector, it should only consider regions that are part of the `available_regions_table` and discard any information of workflow running in regions not in the available region list.
+This Workflow Collector is different from the other collectors, as this Collector should not look at all workflows but perhaps for specific workflows that will soon need to have its deployment plan updated by the Solver.
+This Collector should be run very frequently, and triggered by the Solver Update Checker.
+
+This collector is responsible for managing the "workflow_instance_table" database table.
+Unlike the other Data Collectors, the Workflow Collector should not and will not have or require updating any timestamp of the `available_regions_table` table.
+
+#### Workflow Collector Input Table
+
+The Workflow Collector is responsible for extracting information from the `workflow_summary_table`, which is managed by the Datastore Syncer. The Datastore Syncer should retrieve all the invocations log of the workflow from locally data centers and then remove the local entries only after finishing summarization. Below are the tentative expected formats of this table:
+
+- Key: `<workflow_unique_id>`
+- Sort Key (N): Timestamp of last summary (last summarized by Datastore Syncer)
+- Value (S):
+  - Time between last summary to current summary (Months between summaries)
+  - At Instance `<instance_unique_id>`
+    Number of total invocation of this instance
+    - At Region `<provider_unique_id>:<region_name>`
+      - Number of invocation (of this instance in this region)
+      - Region Average/Tail Runtime.
+    - To Instance `<instance_unique_id>`
+      - Number of calls from parent instance to this instance.
+      - Average data transfer size between instance stages.
+      - At Region `<provider_unique_id>:<region_name>`
+        - To Region `<provider_unique_id>:<region_name>`
+          - Number transmission
+          - Region Average/Tail Latency.
+
+
+##### Workflow Summary Table Example
+
+Below is an example of the `workflow_summary_table` for a workflow with 2 instances. The Partition Key is the ID of the workflow, and the Sort Key is the timestamp of when the summary was performed. All the runtime and latency are in units of seconds.
+
+```json
+{
+  "key": "test_workflow_id",
+  "sort_key": "2021-2-10T10:10:10",
+  "value": {
+      "months_between_summary": 8,
+      "total_invocations": 180,
+      "instance_summary": {
+          "instance_1": {
+              "invocation_count": 100,
+              "execution_summary": {
+                  "provider_1:region_1": {
+                      "invocation_count": 90,
+                      "average_runtime": 20,
+                      "tail_runtime": 30,
+                  },
+                  "provider_1:region_2": {
+                      "invocation_count": 10,
+                      "average_runtime": 17,
+                      "tail_runtime": 25,
+                  },
+              },
+              "invocation_summary": {
+                  "instance_2": {
+                      "invocation_count": 80,
+                      "average_data_transfer_size": 0.0007,
+                      "transmission_summary": {
+                          "provider_1:region_1": {
+                              "provider_1:region_1": {
+                                  "transmission_count": 50,
+                                  "average_latency": 0.001,
+                                  "tail_latency": 0.002,
+                              },
+                              "provider_1:region_2": {
+                                  "transmission_count": 22,
+                                  "average_latency": 0.12,
+                                  "tail_latency": 0.15,
+                              },
+                          },
+                          "provider_1:region_2": {
+                              "provider_1:region_1": {
+                                  "transmission_count": 8,
+                                  "average_latency": 0.1,
+                                  "tail_latency": 0.12,
+                              }
+                          },
+                      },
+                  }
+              },
+          },
+          "instance_2": {
+              "invocation_count": 80,
+              "execution_summary": {
+                  "provider_1:region_1": {
+                      "invocation_count": 58,
+                      "average_runtime": 10,
+                      "tail_runtime": 15,
+                  },
+                  "provider_1:region_2": {
+                      "invocation_count": 22,
+                      "average_runtime": 12,
+                      "tail_runtime": 17,
+                  },
+              },
+          },
+      },
+  },
+}
+```
+
+#### Workflow Collector Output Table
+
+The `workflow_instance_table` is responsible for summarizing and collecting information regarding past instance invocation at various regions:
+
+- Key: `<workflow_unique_id>`
+- Value (S):
+  - At Instance `<instance_unique_id>`
+    - Favorite home region `<provider_unique_id>:<region_name>`
+    - Favourite home Region Average/Tail Runtime. (in units of seconds)
+    - Projected or estimated number of monthly invocations (For free tier considerations).
+    - At Region `<provider_unique_id>:<region_name>` (Execution Summary)
+      - Region Average/Tail Runtime.
+    - To Instance `<instance_unique_id>` (Invocation Summary)
+      - Probability of At Instance invoking To Instance (in Fractions)
+      - Average data transfer size between instance stages. (In GB)
+      - At Region `<provider_unique_id>:<region_name>`
+        - To Region `<provider_unique_id>:<region_name>`
+          - Region Average/Tail Latency.
+
+##### Workflow Instance Table Example
+
+Below is an example of the `workflow_instance_table` output for a workflow with 2 instances. All the runtime and latency are in units of seconds.
+
+```json
+{
+  "instance_1": {
+      "favourite_home_region": "provider_1:region_1",
+      "favourite_home_region_average_runtime": 26.0,
+      "favourite_home_region_tail_runtime": 31.0,
+      "projected_monthly_invocations": 12.5,
+      "execution_summary": {
+          "provider_1:region_1": {"average_runtime": 26.0, "tail_runtime": 31.0, "unit": "s"},
+          "provider_1:region_2": {"average_runtime": 26.0, "tail_runtime": 31.0, "unit": "s"},
+      },
+      "invocation_summary": {
+          "instance_2": {
+              "probability_of_invocation": 0.8,
+              "average_data_transfer_size": 0.0007,
+              "transmission_summary": {
+                  "provider_1:region_1": {
+                      "provider_1:region_1": {"average_latency": 0.00125, "tail_latency": 0.00175, "unit": "s"},
+                      "provider_1:region_2": {"average_latency": 0.125, "tail_latency": 0.155, "unit": "s"},
+                  },
+                  "provider_1:region_2": {
+                      "provider_1:region_1": {"average_latency": 0.095, "tail_latency": 0.125, "unit": "s"},
+                  },
+              },
+          },
+      },
+  },
+  "instance_2": {
+      "favourite_home_region": "provider_1:region_1",
+      "favourite_home_region_average_runtime": 12.5,
+      "favourite_home_region_tail_runtime": 12.5,
+      "projected_monthly_invocations": 11.25,
+      "execution_summary": {
+          "provider_1:region_1": {"average_runtime": 12.5, "tail_runtime": 12.5, "unit": "s"},
+          "provider_1:region_2": {"average_runtime": 12.5, "tail_runtime": 12.5, "unit": "s"},
+      },
+      "invocation_summary": {},
+  },
+}
+```
 
 ## Solvers
 
@@ -310,17 +761,11 @@ Prioritisation of the deployments is based on the average-case runtime.
 
 ### Coarse Grained
 
-The Coarse Grained Solver is a simplified optimization algorithm designed to quickly identify viable deployment configurations across a limited set of permitted regions. 
-It does this by evaluating each permitted region for all instances in a topologically ordered manner, ensuring that the deployment satisfies hard resource constraints such as cost, runtime, and carbon footprint. 
+The Coarse Grained Solver is a simplified optimization algorithm designed to quickly identify viable deployment configurations across a limited set of permitted regions.
+It does this by evaluating each permitted region for all instances in a topologically ordered manner, ensuring that the deployment satisfies hard resource constraints such as cost, runtime, and carbon footprint.
 Unlike more complex solvers, the Coarse Grained Solver does not iterate over multiple configurations per instance but rather selects a single region that is permissible for all instances, thereby simplifying the decision-making process.
 
-#### Key Features
-
-- **Simplified Region Selection**: Focuses on a limited set of regions that are permissible for all instances, reducing complexity.
-- **Hard Resource Constraint Compliance**: Ensures that deployments adhere to specified hard constraints like cost, runtime, and carbon footprint.
-- **Single Deployment Focus**: Generates a single deployment configuration, making it suitable for quick assessments or scenarios with less variability.
-
-#### Workflow
+#### Coarse Grained Workflow
 
 1. **Initialization**:
    - Identifies the set of regions permitted for all instances by intersecting the permissible regions of individual instances.
@@ -336,11 +781,6 @@ Unlike more complex solvers, the Coarse Grained Solver does not iterate over mul
 4. **Result Compilation**:
    - Compiles a list of valid deployment configurations that satisfies the constraints.
 
-#### Specialities
-- **Reduced Search Space**: By focusing on regions permissible for all instances, it significantly narrows down the search space.
-- **Quick Assessment**: Ideal for scenarios where a quick assessment of deployment viability across regions is needed.
-- **Simplified Decision Making**: With a focus on generating a single deployment configuration, it simplifies the decision-making process for scenarios with less variability or lower complexity requirements.
-
 ### Stochastic Heuristic Descent
 
 The Stochastic Heuristic Descent solver is a heuristic optimization algorithm that utilizes a stochastic approach to explore different deployment configurations.
@@ -351,14 +791,7 @@ It ensures that solutions adhere to specified resource constraints.
 Similar to the other solvers it uses worst-case estimates with regards to conditional calls (all conditional calls are assumed to be true) and the tail latency for the function runtimes and the network latencies to filter for hard constraints.
 The solver is implemented as a hill-climbing algorithm with a stochastic approach.
 
-#### Key Features
-
-- **Stochastic Approach**: Utilizes random selections and probability to explore different deployment configurations.
-- **Heuristic Optimization**: Employs heuristic methods for quick and efficient problem-solving.
-- **Multi-objective Focus**: Optimizes for multiple objectives including cost, runtime, and carbon footprint.
-- **Resource Constraint Compliance**: Ensures that solutions adhere to specified resource constraints.
-
-#### Workflow
+#### Stochastic Heuristic Descent Workflow
 
 1. **Initialization**:
    - Sets up critical parameters like learning rate and maximum iterations.
@@ -376,17 +809,9 @@ The solver is implemented as a hill-climbing algorithm with a stochastic approac
    - Upon completion of the iterations, compiles a list of valid and unique average case deployments.
    - These deployments represent the optimized configurations discovered by the solver.
 
-#### Specialities
-
-- **Adaptive Learning Rate**: Dynamically adjusts the number of instances to update in each iteration.
-- **Bias Towards Positive Regions**: Incorporates a bias towards regions that have previously resulted in improvements.
-- **Topology-Aware Optimizations**: Leverages the topological structure of the distributed system for more efficient optimization.
-- **Multi-Dimensional Evaluation**: Simultaneously considers multiple factors (cost, runtime, carbon footprint) in optimization.
-
 ### Brute Force
 
 TODO (#87)
-
 
 ##  References
 

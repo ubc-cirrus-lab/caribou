@@ -2,6 +2,8 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field, model_validator
 
+from multi_x_serverless.common.provider import Provider as ProviderEnum
+
 
 class EnvironmentVariable(BaseModel):
     key: str = Field(..., title="The name of the environment variable")
@@ -24,10 +26,11 @@ class RegionAndProviders(BaseModel):
 
     @model_validator(mode="after")
     def validate_config(cls: Any, values: Any) -> Any:  # pylint: disable=no-self-argument, unused-argument
+        provider_values = [provider.value for provider in ProviderEnum]
         for provider in values.providers.keys():
-            if provider not in ["aws", "gcp"]:
+            if provider not in provider_values:
                 raise ValueError(f"Provider {provider} is not supported")
-            if provider == "aws":
+            if provider in ("aws", "provider1"):
                 config = values.providers[provider].config
                 if "memory" not in config or not isinstance(config["memory"], int):
                     raise ValueError("The 'config' dictionary must contain 'memory' key with an integer value")

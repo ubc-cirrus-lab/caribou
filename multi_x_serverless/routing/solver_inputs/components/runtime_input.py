@@ -8,6 +8,9 @@ from multi_x_serverless.routing.solver_inputs.components.input import Input
 class RuntimeInput(Input):
     def __init__(self) -> None:
         self._runtime_calculator = RuntimeCalculator()
+        self._data_transfer_size_matrix = np.zeros((0, 0), dtype=float)
+        self._execution_matrix = np.zeros((0, 0), dtype=float)
+        self._transmission_times_dict: dict[int, dict[int, list[tuple[float, float]]]] = {}
 
     def setup(
         self, instances_indicies: list[int], regions_indicies: list[int], data_source_manager: DataSourceManager
@@ -26,7 +29,6 @@ class RuntimeInput(Input):
 
         # Matricies for calculating transmission
         # Non numerical values, must be a dictionary
-        self._transmission_times_dict: dict[int, dict[int, list[tuple[float, float]]]] = {}
         for from_region_index in regions_indicies:
             for to_region_index in regions_indicies:
                 transmission_times = self._data_source_manager.get_region_to_region_data(

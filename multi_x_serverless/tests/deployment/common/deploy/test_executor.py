@@ -6,7 +6,7 @@ from multi_x_serverless.deployment.common.deploy.models.instructions import APIC
 from multi_x_serverless.deployment.common.deploy.models.resource import Resource
 from multi_x_serverless.deployment.common.deploy.models.variable import Variable
 from multi_x_serverless.deployment.common.deploy.executor import Executor
-from multi_x_serverless.deployment.common.remote_client.remote_client import RemoteClient
+from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
 
 import tempfile
 import shutil
@@ -24,7 +24,7 @@ class TestExecutor(unittest.TestCase):
     def test_execute_apicall(self):
         deployment_plan = DeploymentPlan()
         deployment_plan.instructions = {
-            "aws:us-west-1": [APICall("test_method", {"param1": Variable("var1")}, "output_var")]
+            "provider1:region2": [APICall("test_method", {"param1": Variable("var1")}, "output_var")]
         }
         self.executor.variables = {"var1": "value1"}
 
@@ -38,7 +38,7 @@ class TestExecutor(unittest.TestCase):
 
             self.executor.execute(deployment_plan)
 
-            mock_get_remote_client.assert_called_once_with("aws", "us-west-1")
+            mock_get_remote_client.assert_called_once_with("provider1", "region2")
             mock_client.test_method.assert_called_once_with(param1="value1")
             self.assertEqual(self.executor.variables["output_var"], "response")
 

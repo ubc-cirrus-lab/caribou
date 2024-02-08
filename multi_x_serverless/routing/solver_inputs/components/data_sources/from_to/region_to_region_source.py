@@ -1,0 +1,30 @@
+from multi_x_serverless.routing.models.indexer import Indexer
+from multi_x_serverless.routing.solver_inputs.components.data_sources.from_to.from_to_source import FromToSource
+
+
+class RegionToRegionSource(FromToSource):
+    def setup(self, loaded_data: dict, items_to_source: list[tuple[str, str]], indexer: Indexer) -> None:
+        self._data = {}
+
+        # Known information
+        for from_region in items_to_source:
+            from_region_index = indexer.value_to_index(from_region)
+            for to_region in items_to_source:
+                to_region_index = indexer.value_to_index(to_region)
+
+                if from_region_index not in self._data:
+                    self._data[from_region_index] = {}
+
+                self._data[from_region_index][to_region_index] = {
+                    # Data Collector information
+                    ## CO2 information
+                    "data_transfer_co2e": loaded_data.get("data_transfer_co2e", {}).get((from_region, to_region), -1),
+                    ## Datacenter information
+                    "data_transfer_ingress_cost": loaded_data.get("data_transfer_ingress_cost", {}).get(
+                        (from_region, to_region), -1
+                    ),
+                    "data_transfer_egress_cost": loaded_data.get("data_transfer_egress_cost", {}).get(
+                        (from_region, to_region), -1
+                    ),
+                    "transmission_times": loaded_data.get("transmission_times", {}).get((from_region, to_region), []),
+                }

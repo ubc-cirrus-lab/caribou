@@ -3,12 +3,17 @@ from botocore.exceptions import ClientError
 from multi_x_serverless.deployment.common.config.config import Config
 from multi_x_serverless.deployment.common.deploy.models.resource import Resource
 from multi_x_serverless.deployment.common.deploy.models.workflow import Workflow
-from multi_x_serverless.deployment.common.remote_client.aws_remote_client import AWSRemoteClient
+from multi_x_serverless.common.models.remote_client.aws_remote_client import AWSRemoteClient
 from multi_x_serverless.deployment.common.deploy.deployer import Deployer, DeploymentError
-from multi_x_serverless.deployment.common.factories.remote_client_factory import RemoteClientFactory
 import unittest
 import tempfile
 import shutil
+import json
+from multi_x_serverless.common.constants import (
+    DEPLOYMENT_MANAGER_RESOURCE_TABLE,
+    WORKFLOW_PLACEMENT_DECISION_TABLE,
+    WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE,
+)
 
 
 class TestDeployer(unittest.TestCase):
@@ -25,7 +30,7 @@ class TestDeployer(unittest.TestCase):
         executor = Mock()
         deployer = Deployer(config, workflow_builder, deployment_packager, executor)
 
-        regions = [{"region": "us-west-1"}]
+        regions = [{"region": "region2"}]
         workflow = Workflow("test_workflow", "0.0.1", [], [], [], config)
         workflow_builder.build_workflow.return_value = workflow
         executor.get_deployed_resources.return_value = [Resource("test_resource", "test_resource")]
@@ -50,7 +55,7 @@ class TestDeployer(unittest.TestCase):
         executor = Mock()
         deployer = Deployer(config, workflow_builder, deployment_packager, executor)
 
-        regions = [{"region": "us-west-1"}]
+        regions = [{"region": "region2"}]
         workflow_builder.build_workflow.side_effect = ClientError({"Error": {}}, "operation")
 
         with patch.object(Deployer, "_upload_workflow_to_solver_update_checker", return_value=None), patch.object(
@@ -65,7 +70,7 @@ class TestDeployer(unittest.TestCase):
         deployment_packager = Mock()
         deployer = Deployer(config, workflow_builder, deployment_packager, None)
 
-        regions = [{"region": "us-west-1"}]
+        regions = [{"region": "region2"}]
         workflow = Workflow("test_workflow", "0.0.1", [], [], [], config)
         workflow_builder.build_workflow.return_value = workflow
 
@@ -84,7 +89,7 @@ class TestDeployer(unittest.TestCase):
         executor = Mock()
         deployer = Deployer(config, workflow_builder, deployment_packager, executor)
 
-        regions = [{"region": "us-west-1"}]
+        regions = [{"region": "region2"}]
         workflow = Workflow("test_workflow", "0.0.1", [], [], [], config)
         workflow_builder.build_workflow.return_value = workflow
         executor.get_deployed_resources.return_value = [Resource("test_resource", "test_resource")]
@@ -96,25 +101,6 @@ class TestDeployer(unittest.TestCase):
             with self.assertRaises(DeploymentError, msg="Workflow {} with version {} already deployed"):
                 deployer.deploy(regions)
 
-    def test_re_deploy_without_executor(self):
-        config = Config({}, self.test_dir)
-        workflow_builder = Mock()
-        deployment_packager = Mock()
-        deployer = Deployer(config, workflow_builder, deployment_packager, None)
-
-        function_to_deployment_regions = {"test_function": [{"region": "us-west-2"}]}
-        workflow_function_description = [{"name": "test_function", "version": "0.0.1"}]
-        deployed_regions = {"test_function": [{"region": "us-west-1"}]}
-        workflow = Workflow("test_workflow", "0.0.1", [], [], [], config)
-        workflow_builder.re_build_workflow.return_value = workflow
-
-        with patch.object(
-            Deployer, "_get_workflow_already_deployed", return_value=None
-        ) as get_workflow_already_deployed:
-            get_workflow_already_deployed.return_value = True
-            with self.assertRaises(RuntimeError, msg="Cannot deploy with deletion deployer"):
-                deployer.re_deploy(function_to_deployment_regions, workflow_function_description, deployed_regions)
-
     def test_re_deploy_workflow_not_deployed(self):
         config = Config({}, self.test_dir)
         workflow_builder = Mock()
@@ -122,9 +108,8 @@ class TestDeployer(unittest.TestCase):
         executor = Mock()
         deployer = Deployer(config, workflow_builder, deployment_packager, executor)
 
-        function_to_deployment_regions = {"test_function": [{"region": "us-west-2"}]}
         workflow_function_description = [{"name": "test_function", "version": "0.0.1"}]
-        deployed_regions = {"test_function": [{"region": "us-west-1"}]}
+        deployed_regions = {"test_function": [{"region": "region2"}]}
 
         with patch.object(
             Deployer, "_get_workflow_already_deployed", return_value=None
@@ -133,7 +118,7 @@ class TestDeployer(unittest.TestCase):
             with self.assertRaises(
                 DeploymentError, msg="Workflow {} with version {} not deployed, something went wrong"
             ):
-                deployer.re_deploy(function_to_deployment_regions, workflow_function_description, deployed_regions)
+                deployer.re_deploy(workflow_function_description, deployed_regions)
 
     def test_re_deploy_with_client_error(self):
         config = Config({}, self.test_dir)
@@ -141,14 +126,49 @@ class TestDeployer(unittest.TestCase):
         deployment_packager = Mock()
         executor = Mock()
         deployer = Deployer(config, workflow_builder, deployment_packager, executor)
-        deployed_regions = {"test_function": [{"region": "us-west-1"}]}
+        deployed_regions = {"test_function": [{"region": "region2"}]}
 
-        function_to_deployment_regions = {"test_function": [{"region": "us-west-2"}]}
         workflow_function_description = [{"name": "test_function", "version": "0.0.1"}]
 
         with patch.object(Deployer, "_re_deploy", side_effect=ClientError({}, "TestOperation")):
             with self.assertRaises(DeploymentError):
-                deployer.re_deploy(function_to_deployment_regions, workflow_function_description, deployed_regions)
+                deployer.re_deploy(workflow_function_description, deployed_regions)
+
+    def test_re_deploy(self):
+        config = Mock()
+        config.workflow_id = "workflow_id"
+        config.workflow_name = "workflow_name"
+        config.workflow_version = "workflow_version"
+        mock_workflow = Mock()
+        mock_workflow.get_deployment_instructions.return_value = []
+        workflow_builder = Mock()
+        workflow_builder.re_build_workflow.return_value = mock_workflow
+        deployment_packager = Mock()
+        executor = Mock()
+        deployer = Deployer(config, workflow_builder, deployment_packager, executor)
+        workflow_function_descriptions = [{"name": "test_function", "version": "0.0.1"}]
+        deployed_regions = {"test_function": {"region": "region2"}}
+        deployer._get_workflow_already_deployed = Mock(return_value=True)
+        deployer._get_function_to_deployment_regions = Mock(return_value=deployed_regions)
+        deployer._filter_function_to_deployment_regions = Mock(return_value=deployed_regions)
+        deployer._merge_deployed_regions = Mock(return_value=deployed_regions)
+        deployer._update_workflow_to_deployer_server = Mock()
+        deployer._update_workflow_placement_decision = Mock()
+        deployer._endpoints.get_solver_update_checker_client().get_value_from_table = Mock(
+            side_effect=['{"key": "value"}', '{"instances": []}']
+        )
+
+        deployer._re_deploy(workflow_function_descriptions, deployed_regions)
+
+        workflow_builder.re_build_workflow.assert_called_once_with(
+            config, deployed_regions, workflow_function_descriptions, deployed_regions
+        )
+        deployment_packager.re_build.assert_called_once_with(
+            mock_workflow, deployer._endpoints.get_deployment_manager_client()
+        )
+        executor.execute.assert_called_once()
+        deployer._update_workflow_to_deployer_server.assert_called_once_with(mock_workflow, deployed_regions)
+        deployer._update_workflow_placement_decision.assert_called_once_with(mock_workflow, '{"key": "value"}', [])
 
     def test_upload_workflow_to_solver_update_checker(self):
         config = Config({}, self.test_dir)
@@ -163,12 +183,12 @@ class TestDeployer(unittest.TestCase):
         workflow.get_workflow_config = Mock(return_value=workflow_config)
 
         with patch.object(AWSRemoteClient, "set_value_in_table") as set_value_in_table:
-            deployer._upload_workflow_to_solver_update_checker(workflow, "test_workflow_id")
+            deployer._upload_workflow_to_solver_update_checker(workflow)
 
             set_value_in_table.assert_called_once_with(
                 "solver_update_checker_resources_table",
-                "test_workflow_id",
-                '{"workflow_id": "test_workflow_id", "workflow_config": "test_workflow_description"}',
+                {},
+                '{"workflow_id": {}, "workflow_config": "test_workflow_description"}',
             )
 
     def test_upload_workflow_to_deployer_server(self):
@@ -180,17 +200,15 @@ class TestDeployer(unittest.TestCase):
 
         workflow = Mock(spec=Workflow)
         workflow.get_function_description = Mock(return_value=[{"name": "test_function", "version": "0.0.1"}])
-        workflow.get_deployed_regions_initial_deployment = Mock(
-            return_value={"test_function": [{"region": "us-west-1"}]}
-        )
+        workflow.get_deployed_regions_initial_deployment = Mock(return_value={"test_function": [{"region": "region2"}]})
 
         with patch.object(AWSRemoteClient, "set_value_in_table") as set_value_in_table:
-            deployer._upload_workflow_to_deployer_server(workflow, "test_workflow_id")
+            deployer._upload_workflow_to_deployer_server(workflow)
 
             set_value_in_table.assert_called_once_with(
                 "deployment_manager_resources_table",
-                "test_workflow_id",
-                '{"workflow_id": "test_workflow_id", "workflow_function_descriptions": "[{\\"name\\": \\"test_function\\", \\"version\\": \\"0.0.1\\"}]", "deployment_config": "{}", "deployed_regions": "{\\"test_function\\": [{\\"region\\": \\"us-west-1\\"}]}"}',
+                {},
+                '{"workflow_id": {}, "workflow_function_descriptions": "[{\\"name\\": \\"test_function\\", \\"version\\": \\"0.0.1\\"}]", "deployment_config": "{}", "deployed_regions": "{\\"test_function\\": [{\\"region\\": \\"region2\\"}]}"}',
             )
 
     def test_upload_deployment_package_resource(self):
@@ -210,6 +228,80 @@ class TestDeployer(unittest.TestCase):
 
             upload_resource.assert_called_once_with("deployment_package_test_id", b"test_deployment_package")
 
+    def test_get_workflow_already_deployed(self):
+        config = Mock()
+        config.workflow_id = "workflow_id"
+        workflow_builder = Mock()
+        deployment_packager = Mock()
+        executor = Mock()
+        deployer = Deployer(config, workflow_builder, deployment_packager, executor)
+
+        deployer._endpoints.get_solver_update_checker_client().get_key_present_in_table = Mock(return_value=True)
+        result = deployer._get_workflow_already_deployed()
+        self.assertTrue(result)
+
+    def test_update_workflow_placement_decision(self):
+        config = Mock()
+        config.workflow_id = "workflow_id"
+        workflow_builder = Mock()
+        deployment_packager = Mock()
+        executor = Mock()
+        executor.resource_values = {"resource_key": "resource_value"}
+        deployer = Deployer(config, workflow_builder, deployment_packager, executor)
+
+        mock_workflow = Mock()
+        mock_workflow.get_workflow_placement_decision_extend_staging = Mock(return_value={"key": "value"})
+        staging_area_data = '{"key": "value"}'
+        previous_instances = [{"instance_key": "instance_value"}]
+
+        deployer._endpoints.get_solver_workflow_placement_decision_client().remove_value_from_table = Mock()
+        deployer._endpoints.get_solver_update_checker_client().set_value_in_table = Mock()
+
+        deployer._update_workflow_placement_decision(mock_workflow, staging_area_data, previous_instances)
+
+        deployer._endpoints.get_solver_update_checker_client().set_value_in_table.assert_called_once_with(
+            WORKFLOW_PLACEMENT_DECISION_TABLE, "workflow_id", '{"key": "value"}'
+        )
+        deployer._endpoints.get_solver_workflow_placement_decision_client().remove_value_from_table.assert_called_once_with(
+            WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE, "workflow_id"
+        )
+
+    def test_upload_workflow_placement_decision(self):
+        config = Mock()
+        config.workflow_id = "workflow_id"
+        workflow_builder = Mock()
+        deployment_packager = Mock()
+        executor = Mock()
+        deployer = Deployer(config, workflow_builder, deployment_packager, executor)
+
+        mock_workflow = Mock()
+        mock_workflow.get_workflow_placement_decision = Mock(return_value={"key": "value"})
+        deployer._endpoints.get_solver_update_checker_client().set_value_in_table = Mock()
+        deployer._upload_workflow_placement_decision(mock_workflow)
+        deployer._endpoints.get_solver_update_checker_client().set_value_in_table.assert_called_once()
+
+    def test_update_workflow_to_deployer_server(self):
+        config = Mock()
+        config.workflow_id = "workflow_id"
+        config.to_json = Mock(return_value='{"config_key": "config_value"}')
+        workflow_builder = Mock()
+        deployment_packager = Mock()
+        executor = Mock()
+        deployer = Deployer(config, workflow_builder, deployment_packager, executor)
+
+        mock_workflow = Mock()
+        mock_workflow.get_function_description = Mock(return_value={"function_key": "function_value"})
+        deployed_regions = {"region_key": {"region_sub_key": "region_sub_value"}}
+
+        deployer._endpoints.get_deployment_manager_client().set_value_in_table = Mock()
+        deployer._update_workflow_to_deployer_server(mock_workflow, deployed_regions)
+
+        deployer._endpoints.get_deployment_manager_client().set_value_in_table.assert_called_once_with(
+            "deployment_manager_resources_table",
+            "workflow_id",
+            '{"workflow_id": "workflow_id", "workflow_function_descriptions": "{\\"function_key\\": \\"function_value\\"}", "deployment_config": "{\\"config_key\\": \\"config_value\\"}", "deployed_regions": "{\\"region_key\\": {\\"region_sub_key\\": \\"region_sub_value\\"}}"}',
+        )
+
     def test_merge_deployed_regions(self):
         config = Config({}, self.test_dir)
         workflow_builder = Mock()
@@ -217,15 +309,15 @@ class TestDeployer(unittest.TestCase):
         executor = Mock()
         deployer = Deployer(config, workflow_builder, deployment_packager, executor)
 
-        deployed_regions = {"test_function": [{"region": "us-west-1"}]}
+        deployed_regions = {"test_function": [{"region": "region2"}]}
         filtered_function_to_deployment_regions = {
-            "test_function": [{"region": "us-west-2"}],
-            "new_function": [{"region": "us-east-1"}],
+            "test_function": {"region": "region1"},
+            "new_function": {"region": "region3"},
         }
 
         expected_merged_regions = {
-            "test_function": [{"region": "us-west-1"}, {"region": "us-west-2"}],
-            "new_function": [{"region": "us-east-1"}],
+            "test_function": {"region": "region1"},
+            "new_function": {"region": "region3"},
         }
 
         merged_regions = deployer._merge_deployed_regions(deployed_regions, filtered_function_to_deployment_regions)
@@ -240,14 +332,13 @@ class TestDeployer(unittest.TestCase):
         deployer = Deployer(config, workflow_builder, deployment_packager, executor)
 
         function_to_deployment_regions = {
-            "test_function": [{"region": "us-west-1"}, {"region": "us-west-2"}],
-            "new_function": [{"region": "us-east-1"}],
+            "test_function": {"region": "region2"},
+            "new_function": {"region": "region3"},
         }
-        deployed_regions = {"test_function": [{"region": "us-west-1"}]}
+        deployed_regions = {"test_function": {"region": "region2"}}
 
         expected_filtered_regions = {
-            "test_function": [{"region": "us-west-2"}],
-            "new_function": [{"region": "us-east-1"}],
+            "new_function": {"region": "region3"},
         }
 
         filtered_regions = deployer._filter_function_to_deployment_regions(

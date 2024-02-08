@@ -15,9 +15,9 @@ import pip
 import yaml
 
 import multi_x_serverless
+from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
 from multi_x_serverless.deployment.common.config.config import Config
 from multi_x_serverless.deployment.common.deploy.models.workflow import Workflow
-from multi_x_serverless.deployment.common.remote_client.remote_client import RemoteClient
 
 
 class DeploymentPackager:
@@ -78,12 +78,10 @@ class DeploymentPackager:
             ("common", "__init__.py"),
             ("common", "factories", "__init__.py"),
             ("common", "factories", "remote_client_factory.py"),
-            ("common", "remote_client", "__init__.py"),
-            ("common", "remote_client", "aws_remote_client.py"),
-            ("common", "remote_client", "remote_client.py"),
+            ("common", "deploy", "__init__.py"),
             ("common", "deploy", "models", "__init__.py"),
             ("common", "deploy", "models", "resource.py"),
-            ("common", "provider.py"),
+            ("common", "deploy", "models", "instructions.py"),
         ]
 
         for deployment_path in deployment_paths:
@@ -96,15 +94,25 @@ class DeploymentPackager:
             else:
                 raise RuntimeError(f"Could not find file: {full_path}")
 
+        self._add_init_file(zip_file, multi_x_serverless_deployment_path, "deployment")
+
         common_paths = [
-            ("common", "models", "endpoints.py"),
-            ("common", "constants.py"),
+            ("models", "endpoints.py"),
+            ("models", "__init__.py"),
+            ("constants.py",),
+            ("provider.py",),
+            ("utils.py",),
+            ("models", "remote_client", "__init__.py"),
+            ("models", "remote_client", "aws_remote_client.py"),
+            ("models", "remote_client", "integration_test_remote_client.py"),
+            ("models", "remote_client", "mock_remote_client.py"),
+            ("models", "remote_client", "remote_client.py"),
         ]
 
         multi_x_serverless_path = os.path.dirname(multi_x_serverless_path)
 
         for common_path in common_paths:
-            full_path = os.path.join(multi_x_serverless_path, *common_path)
+            full_path = os.path.join(multi_x_serverless_path, "common", *common_path)
             if os.path.exists(full_path):
                 zip_file.write(
                     full_path,
@@ -112,6 +120,19 @@ class DeploymentPackager:
                 )
             else:
                 raise RuntimeError(f"Could not find file: {full_path}")
+
+        self._add_init_file(zip_file, multi_x_serverless_path, "common")
+        self._add_init_file(zip_file, multi_x_serverless_path, "")
+
+    def _add_init_file(self, zip_file: zipfile.ZipFile, path: str, destination_location: str) -> None:
+        super_init = os.path.join(path, "__init__.py")
+        if os.path.exists(super_init):
+            if destination_location != "":
+                zip_file.write(super_init, os.path.join("multi_x_serverless", destination_location, "__init__.py"))
+            else:
+                zip_file.write(super_init, os.path.join("multi_x_serverless", "__init__.py"))
+        else:
+            raise RuntimeError(f"Could not find file: {super_init}")
 
     def _add_py_dependencies(self, zip_file: zipfile.ZipFile, deps_dir: str) -> None:
         prefix_len = len(deps_dir) + 1
@@ -137,7 +158,9 @@ class DeploymentPackager:
     def _get_package_filename(self, project_dir: str, python_version: str) -> str:
         requirements = self._get_requirements_filename(project_dir)
         hashed_project_dir = self._hash_project_dir(requirements, project_dir)
-        filename = f"{hashed_project_dir}-{python_version}.zip"
+        filename = (
+            f"{hashed_project_dir}-{python_version}-{self._config.workflow_name}-{self._config.workflow_version}.zip"
+        )
         deployment_package_filename = os.path.join(project_dir, ".multi-x-serverless", "deployment-packages", filename)
         return deployment_package_filename
 

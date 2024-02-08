@@ -1,5 +1,6 @@
-import inspect
 from typing import Any, Callable
+
+from multi_x_serverless.common.utils import get_function_source
 
 
 class MultiXServerlessFunction:
@@ -18,7 +19,7 @@ class MultiXServerlessFunction:
         self.function_callable = function_callable
         self.name = name
         self.entry_point = entry_point
-        self.handler = function_callable.__name__
+        self.handler = f"app.{function_callable.__name__}"
         self.regions_and_providers = regions_and_providers if len(regions_and_providers) > 0 else None
         self.environment_variables = environment_variables if len(environment_variables) > 0 else None
         self.validate_function_name()
@@ -34,5 +35,5 @@ class MultiXServerlessFunction:
         """
         Check whether this function is waiting for its predecessors to finish.
         """
-        source_code = inspect.getsource(self.function_callable)
+        source_code = get_function_source(self.function_callable)
         return "get_predecessor_data" in source_code

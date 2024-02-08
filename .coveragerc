@@ -1,3 +1,14 @@
 [run]
 omit = 
     */app.py
+    */src/*
+    */__init__.py
+    */common/setup/*
+    */tests/*
+    */main.py
+    */common/models/remote_client/remote_client.py
+    */common/models/remote_client/mock_remote_client.py
+    */deployment/client/cli/cli.py
+    */common/models/remote_client/integration_test_remote_client.py
+    */data_collector/utils/latency_retriever/integration_test_latency_retriever.py
+    */deployment/common/deploy_instructions/integration_test_deploy_instruction.py

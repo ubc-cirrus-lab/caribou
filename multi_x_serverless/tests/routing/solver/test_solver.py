@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, patch, MagicMock
 import numpy as np
 
 from multi_x_serverless.routing.models.dag import DAG
@@ -131,6 +131,15 @@ class TestSolver(unittest.TestCase):
         regions = [{"provider": "provider1"}, {"provider": "provider2"}]
         filtered_regions = self.solver._filter_regions_instance(regions, 0)
         self.assertEqual(filtered_regions, [{"provider": "provider1"}])
+
+    def test_most_expensive_path(self):
+        self.solver._dag.topological_sort = MagicMock(return_value=[0, 1, 2])
+
+        edge_weights = np.array([[0, 1, 0], [0, 0, 1], [0, 0, 0]])
+        node_weights = np.array([1, 2, 3])
+
+        result = self.solver._most_expensive_path(edge_weights, node_weights)
+        self.assertEqual(result, 8.0)
 
 
 if __name__ == "__main__":

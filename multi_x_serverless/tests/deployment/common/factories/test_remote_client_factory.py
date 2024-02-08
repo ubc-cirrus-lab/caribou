@@ -1,5 +1,5 @@
 import unittest
-from multi_x_serverless.deployment.common.remote_client.aws_remote_client import AWSRemoteClient
+from multi_x_serverless.common.models.remote_client.aws_remote_client import AWSRemoteClient
 from multi_x_serverless.deployment.common.factories.remote_client_factory import RemoteClientFactory
 
 
@@ -7,7 +7,7 @@ class TestRemoteClientFactory(unittest.TestCase):
     def test_get_remote_client_aws(self):
         # Arrange
         provider = "aws"
-        region = "us-west-2"
+        region = "region1"
 
         # Act
         remote_client = RemoteClientFactory.get_remote_client(provider, region)
@@ -18,7 +18,7 @@ class TestRemoteClientFactory(unittest.TestCase):
     def test_get_remote_client_unknown(self):
         # Arrange
         provider = "unknown"
-        region = "us-west-2"
+        region = "region1"
 
         # Act & Assert
         with self.assertRaises(RuntimeError):
@@ -27,7 +27,7 @@ class TestRemoteClientFactory(unittest.TestCase):
     def test_get_remote_client_gcp(self):
         # Arrange
         provider = "gcp"
-        region = "us-west-2"
+        region = "region1"
 
         # Act & Assert
         with self.assertRaises(NotImplementedError):

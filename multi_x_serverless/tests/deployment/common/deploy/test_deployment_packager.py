@@ -103,7 +103,7 @@ class TestDeploymentPackager(unittest.TestCase):
         packager = DeploymentPackager(config)
         packager._add_multi_x_serverless_dependency(mock_zipfile)
 
-        self.assertEqual(mock_zipfile.write.call_count, 14)
+        self.assertEqual(mock_zipfile.write.call_count, 23)
 
     @patch.object(DeploymentPackager, "_download_deployment_package", return_value="test.zip")
     def test_re_build(self, mock_download_deployment_package):

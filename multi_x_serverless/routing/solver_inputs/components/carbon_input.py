@@ -9,6 +9,8 @@ from multi_x_serverless.routing.solver_inputs.components.runtime_input import Ru
 class CarbonInput(Input):
     def __init__(self) -> None:
         self._carbon_calculator = CarbonCalculator()
+        self._data_transfer_size_matrix = np.zeros((0, 0), dtype=float)
+        self._data_transfer_co2e_matrix = np.zeros((0, 0), dtype=float)
 
     def setup(
         self,

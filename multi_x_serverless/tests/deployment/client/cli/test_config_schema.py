@@ -38,18 +38,18 @@ def test_validate_config_unsupported_provider():
         RegionAndProviders(providers={"non-provider": Provider(config={})})
 
 
-def test_validate_config_aws_missing_memory():
+def test_validate_config_provider1_missing_memory():
     with pytest.raises(ValueError, match="The 'config' dictionary must contain 'memory' key with an integer value"):
-        RegionAndProviders(providers={"aws": Provider(config={"timeout": 10})})
+        RegionAndProviders(providers={"provider1": Provider(config={"timeout": 10})})
 
 
-def test_validate_config_aws_missing_timeout():
+def test_validate_config_provider1_missing_timeout():
     with pytest.raises(ValueError, match="The 'config' dictionary must contain 'timeout' key with an integer value"):
-        RegionAndProviders(providers={"aws": Provider(config={"memory": 512})})
+        RegionAndProviders(providers={"provider1": Provider(config={"memory": 512})})
 
 
-def test_validate_config_aws_valid_config():
-    RegionAndProviders(providers={"aws": Provider(config={"memory": 512, "timeout": 10})})
+def test_validate_config_provider1_valid_config():
+    RegionAndProviders(providers={"provider1": Provider(config={"memory": 512, "timeout": 10})})
 
 
 def test_validate_config_gcp_valid_config():

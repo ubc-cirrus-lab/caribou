@@ -14,18 +14,18 @@ class TestMultiXServerlessFunction(unittest.TestCase):
 
         name = "test_function"
         entry_point = True
-        providers = [{"name": "aws", "config": {"timeout": 60, "memory": 128}}]
+        providers = [{"name": "provider1", "config": {"timeout": 60, "memory": 128}}]
         regions_and_providers = {
             "allowed_regions": [
                 {
-                    "provider": "aws",
-                    "region": "us-east-1",
+                    "provider": "provider1",
+                    "region": "region2",
                 }
             ],
             "disallowed_regions": [
                 {
-                    "provider": "aws",
-                    "region": "us-east-2",
+                    "provider": "provider1",
+                    "region": "region3",
                 }
             ],
             "providers": providers,
@@ -39,7 +39,7 @@ class TestMultiXServerlessFunction(unittest.TestCase):
         self.assertEqual(function_obj.function_callable, function)
         self.assertEqual(function_obj.name, name)
         self.assertEqual(function_obj.entry_point, entry_point)
-        self.assertEqual(function_obj.handler, function.__name__)
+        self.assertEqual(function_obj.handler, "app.function")
         self.assertEqual(function_obj.regions_and_providers, regions_and_providers)
         self.assertEqual(function_obj.environment_variables, environment_variables)
 

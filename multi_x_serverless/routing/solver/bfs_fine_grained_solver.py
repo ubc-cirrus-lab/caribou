@@ -19,7 +19,9 @@ class BFSFineGrainedSolver(Solver):
     ) -> None:
         super().__init__(workflow_config, all_available_regions, input_manager, False)
 
-    def _solve(self, regions: list[dict]) -> list[tuple[dict, float, float, float]]:
+    def _solve(  # pylint: disable=too-many-branches, too-many-statements
+        self, regions: list[dict]
+    ) -> list[tuple[dict, float, float, float]]:
         execution_cost_carbon_runtime_cache: dict[str, tuple[float, float, float]] = {}
         transmission_cost_carbon_runtime_cache: dict[str, tuple[float, float, float]] = {}
 
@@ -43,7 +45,7 @@ class BFSFineGrainedSolver(Solver):
                 prerequisites_dictionary[-1].append(leaf_node)
                 successor_dictionary[leaf_node].append(-1)
         else:
-            raise Exception("There are no leaf nodes in the DAG")
+            raise ValueError("There are no leaf nodes in the DAG")
 
         # Where its in format of {instance_index:
         # [(deployment decisions (and cost and latency at that instance node),
@@ -52,7 +54,7 @@ class BFSFineGrainedSolver(Solver):
             int, list[tuple[dict[int, tuple[int, float, float, float, float]], float, float, float, float]]
         ] = {}
         all_regions_indices = self._region_indexer.get_value_indices()
-        for current_instance_index in self._topological_order:
+        for current_instance_index in self._topological_order:  # pylint: disable=too-many-nested-blocks
             # Instance flow related information
             prerequisites_indices: list[int] = prerequisites_dictionary[current_instance_index]
 
@@ -60,7 +62,7 @@ class BFSFineGrainedSolver(Solver):
             # Where start hop and end hop should be already integrated into restrictions
             permitted_regions: list[dict[(str, str)]] = self._filter_regions_instance(regions, current_instance_index)
             if len(permitted_regions) == 0:  # Should never happen in a valid DAG
-                raise Exception("There are no permitted regions for this instance")
+                raise ValueError("There are no permitted regions for this instance")
 
             permitted_regions_indices = np.array(
                 [all_regions_indices[(region["provider"], region["region"])] for region in permitted_regions]
@@ -86,7 +88,8 @@ class BFSFineGrainedSolver(Solver):
                         )
                         execution_cost_carbon_runtime_cache[exec_lookup_key] = (wc_e_cost, wc_e_carbon, wc_e_runtime)
 
-                    # Calculate the carbon/cost/runtime for transmission and execution # Do not consider start hop for now
+                    # Calculate the carbon/cost/runtime for transmission and execution
+                    # Do not consider start hop for now
                     # For probabilistic case (Using average latency and factor in invocation probability)
                     exec_lookup_key = str(current_instance_index) + "_" + str(to_region_index) + "_t"
                     if exec_lookup_key in execution_cost_carbon_runtime_cache:
@@ -214,7 +217,7 @@ class BFSFineGrainedSolver(Solver):
                             (previous_deployment, previous_instance_index)
                         )
                     pred_index_counter += 1
-                if current_instance_index == -1:  # If this is the virtual end node
+                if current_instance_index == -1:  # If this is the virtual end node  # pylint: disable=no-else-return
                     final_deployments: list[tuple[dict, float, float, float]] = []
                     best_cost = sys.float_info.max
                     best_carbon = sys.float_info.max
@@ -260,7 +263,8 @@ class BFSFineGrainedSolver(Solver):
                                     best_runtime=best_runtime,
                                     best_carbon=best_carbon,
                                 ):
-                                    # Note to keep consistency with the other solvers, we save in cost, runtime, then carbon
+                                    # Note to keep consistency with the other solvers,
+                                    # we save in cost, runtime, then carbon
                                     final_deployments.append(
                                         (clean_combined_placements, pc_cost, max_pc_runtime, pc_carbon)
                                     )
@@ -283,7 +287,8 @@ class BFSFineGrainedSolver(Solver):
                                 wc_runtime_total = 0.0
                                 pc_runtime_total = 0.0
 
-                                # Calculate the cost, carbon and runtime of execution (Just execution here as its a shared value)
+                                # Calculate the cost, carbon and runtime of execution
+                                # (Just execution here as its a shared value)
                                 exec_lookup_key = str(current_instance_index) + "_" + str(to_region_index) + "_f"
                                 if exec_lookup_key in execution_cost_carbon_runtime_cache:
                                     wc_e_cost, wc_e_carbon, wc_e_runtime = execution_cost_carbon_runtime_cache[
@@ -322,7 +327,8 @@ class BFSFineGrainedSolver(Solver):
                                         pc_e_runtime,
                                     )
 
-                                # Transmission is is how much it cost to get from EVERY previous instance to this instance
+                                # Transmission is is how much it cost to get from EVERY
+                                # previous instance to this instance
                                 # So we need to calculate the transmission cost for each previous instance
                                 current_cumulative_wc_t_cost = 0.0
                                 current_cumulative_wc_t_carbon = 0.0
@@ -389,7 +395,8 @@ class BFSFineGrainedSolver(Solver):
                                     current_cumulative_wc_t_cost += wc_t_cost
                                     current_cumulative_wc_t_carbon += wc_t_carbon
 
-                                    # For probabilistic case (Using average latency and factor in invocation probability)
+                                    # For probabilistic case
+                                    # (Using average latency and factor in invocation probability)
                                     lookup_key = (
                                         str(previous_instance_index)
                                         + "_"
@@ -450,7 +457,8 @@ class BFSFineGrainedSolver(Solver):
                                     if pc_t_runtime > current_max_pc_t_runtime:
                                         current_max_pc_t_runtime = pc_t_runtime
 
-                                # Get the current total cost and carbon for this specific transition (runtime doesn't matter for this)
+                                # Get the current total cost and carbon for this specific transition
+                                # (runtime doesn't matter for this)
                                 current_instance_wc_cost = current_cumulative_wc_t_cost + wc_e_cost
                                 current_instance_wc_carbon = current_cumulative_wc_t_carbon + wc_e_carbon
 
@@ -469,8 +477,8 @@ class BFSFineGrainedSolver(Solver):
                                 (
                                     wc_cost_total,
                                     wc_carbon_total,
-                                    pc_cost_total,
-                                    pc_carbon_total,
+                                    _,
+                                    _,
                                 ) = self._calculate_wc_pc_cost_carbon(combined_placements)
 
                                 if not self._fail_hard_resource_constraints(
@@ -507,7 +515,6 @@ class BFSFineGrainedSolver(Solver):
                     if all_successors_processed:
                         del deployments[previous_instance_index]
 
-        # print(time_dic)
         return final_deployments
 
     def _find_common_elements(self, list_of_sets: list[set[int]]) -> set[int]:
@@ -523,7 +530,7 @@ class BFSFineGrainedSolver(Solver):
         pc_cost = 0.0
         pc_carbon = 0.0
 
-        clean_placement_dict = dict()
+        clean_placement_dict = {}
 
         for (
             instance_index,

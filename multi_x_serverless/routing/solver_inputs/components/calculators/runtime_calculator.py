@@ -1,12 +1,7 @@
-import numpy as np
-
 from multi_x_serverless.routing.solver_inputs.components.calculators.calculator import Calculator
 
 
 class RuntimeCalculator(Calculator):
-    def __init__(self) -> None:
-        super().__init__()
-
     def calculate_execution_time(self, transmission_times: float, runtime_scaling_factor: float) -> float:
         return transmission_times * runtime_scaling_factor
 
@@ -25,7 +20,6 @@ class RuntimeCalculator(Calculator):
             test_transmitted_data = transmission_time[0]
             if current_transmission_size > test_transmitted_data:
                 continue
-            else:
-                return transmission_time[1]
+            return transmission_time[1]
 
         return worse_case_latency

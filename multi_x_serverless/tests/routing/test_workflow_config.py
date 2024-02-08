@@ -11,19 +11,19 @@ class TestWorkflowConfig(unittest.TestCase):
             "workflow_name": "test_workflow",
             "workflow_version": "1.0",
             "workflow_id": "test_id",
-            "regions_and_providers": {"providers": {"aws": {"config": {"timeout": 60, "memory": 128}}}},
+            "regions_and_providers": {"providers": {"provider1": {"config": {"timeout": 60, "memory": 128}}}},
             "instances": [
                 {
                     "function_name": "function1",
                     "instance_name": "instance1",
-                    "regions_and_providers": {"providers": {"aws": {"config": {"timeout": 120, "memory": 128}}}},
+                    "regions_and_providers": {"providers": {"provider1": {"config": {"timeout": 120, "memory": 128}}}},
                     "succeeding_instances": [],
                     "preceding_instances": [],
                 },
                 {
                     "function_name": "function2",
                     "instance_name": "instance2",
-                    "regions_and_providers": {"providers": {"aws": {"config": {"timeout": 120, "memory": 128}}}},
+                    "regions_and_providers": {"providers": {"provider1": {"config": {"timeout": 120, "memory": 128}}}},
                     "succeeding_instances": [],
                     "preceding_instances": [],
                 },
@@ -53,7 +53,7 @@ class TestWorkflowConfig(unittest.TestCase):
     def test_regions_and_providers(self):
         self.assertEqual(
             self.workflow_config.regions_and_providers,
-            {"providers": {"aws": {"config": {"memory": 128, "timeout": 60}}}},
+            {"providers": {"provider1": {"config": {"memory": 128, "timeout": 60}}}},
         )
 
     def test_instances(self):
@@ -64,14 +64,14 @@ class TestWorkflowConfig(unittest.TestCase):
                     "function_name": "function1",
                     "instance_name": "instance1",
                     "preceding_instances": [],
-                    "regions_and_providers": {"providers": {"aws": {"config": {"memory": 128, "timeout": 120}}}},
+                    "regions_and_providers": {"providers": {"provider1": {"config": {"memory": 128, "timeout": 120}}}},
                     "succeeding_instances": [],
                 },
                 {
                     "function_name": "function2",
                     "instance_name": "instance2",
                     "preceding_instances": [],
-                    "regions_and_providers": {"providers": {"aws": {"config": {"memory": 128, "timeout": 120}}}},
+                    "regions_and_providers": {"providers": {"provider1": {"config": {"memory": 128, "timeout": 120}}}},
                     "succeeding_instances": [],
                 },
             ],

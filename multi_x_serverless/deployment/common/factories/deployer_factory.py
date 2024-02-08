@@ -6,6 +6,7 @@ from typing import Optional
 import yaml
 from pydantic import ValidationError
 
+from multi_x_serverless.common.provider import Provider
 from multi_x_serverless.deployment.client import __version__ as MULTI_X_SERVERLESS_VERSION
 from multi_x_serverless.deployment.client.multi_x_serverless_workflow import MultiXServerlessWorkflow
 from multi_x_serverless.deployment.common.config.config import Config
@@ -15,7 +16,6 @@ from multi_x_serverless.deployment.common.deploy.deployer import (
     create_default_deployer,
     create_deletion_deployer,
 )
-from multi_x_serverless.deployment.common.provider import Provider
 
 
 class DeployerFactory:

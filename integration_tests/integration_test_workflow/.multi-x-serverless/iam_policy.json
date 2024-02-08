@@ -1,0 +1,5 @@
+{
+    "integration_test_provider": {
+        "integration_test": true
+    }
+}

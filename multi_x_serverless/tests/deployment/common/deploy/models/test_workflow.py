@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, MagicMock
 from multi_x_serverless.deployment.common.config.config import Config
 from multi_x_serverless.deployment.common.deploy.models.deployment_package import DeploymentPackage
 from multi_x_serverless.deployment.common.deploy.models.function import Function
@@ -16,7 +16,7 @@ class TestWorkflow(unittest.TestCase):
     def setUp(self):
         self.test_dir = tempfile.mkdtemp()
         self.config = Config({}, self.test_dir)
-        self.config.project_config["home_regions"] = [{"provider": "aws", "region": "region"}]
+        self.config.project_config["home_regions"] = [{"provider": "provider1", "region": "region1"}]
         self.function = Mock(spec=Function)
         self.function_instance = Mock(spec=FunctionInstance)
         self.function_instance.name = "function_instance_1::"
@@ -48,12 +48,39 @@ class TestWorkflow(unittest.TestCase):
         self.assertEqual(self.workflow._edges, [("function_instance_1::", "function_instance_2::")])
         self.assertEqual(self.workflow._config, self.config)
 
+    def test_repr(self):
+        self.assertEqual(
+            self.workflow.__repr__(),
+            f"Workflow(name=workflow_name, resources=[{self.function}], functions=[{self.function_instance}, {self.function_instance2}], edges=[('function_instance_1::', 'function_instance_2::')], config=Config(project_config={{'home_regions': [{{'provider': 'provider1', 'region': 'region1'}}]}}, project_dir={self.test_dir}))",
+        )
+
+    def test_get_function_description(self):
+        # Mock the to_json method to return a specific value
+        function = MagicMock()
+        function.to_json.return_value = {"name": "function1"}
+        self.workflow._resources = [function]
+
+        # Call the method and check the result
+        result = self.workflow.get_function_description()
+        self.assertEqual(result, [{"name": "function1"}])
+
+    def test_get_deployed_regions_initial_deployment(self):
+        # Mock the name and deploy_region attributes
+        function = MagicMock()
+        function.name = "function1"
+        function.deploy_region = "region1"
+        self.workflow._resources = [function]
+
+        # Call the method and check the result
+        result = self.workflow.get_deployed_regions_initial_deployment()
+        self.assertEqual(result, {"function1": "region1"})
+
     def test_dependencies(self):
         self.assertEqual(self.workflow.dependencies(), [self.function])
 
     def test_get_deployment_instructions(self):
-        self.function.get_deployment_instructions.return_value = {"region": [Instruction("test_instruction")]}
-        self.assertEqual(self.workflow.get_deployment_instructions(), {"region": [Instruction("test_instruction")]})
+        self.function.get_deployment_instructions.return_value = {"region1": [Instruction("test_instruction")]}
+        self.assertEqual(self.workflow.get_deployment_instructions(), {"region1": [Instruction("test_instruction")]})
 
     def test_get_deployment_packages(self):
         self.function.deployment_package = DeploymentPackage("package_name")
@@ -67,7 +94,7 @@ class TestWorkflow(unittest.TestCase):
         }
         self.config.project_config["regions_and_providers"] = {
             "providers": {
-                "aws": {
+                "provider1": {
                     "config": {"memory": 128, "timeout": 10},
                 }
             }
@@ -112,35 +139,45 @@ class TestWorkflow(unittest.TestCase):
 
     def test_get_workflow_placement(self):
         resource_values = {
-            "sns_topic": [
+            "messaging_topic": [
                 {"name": "function_resource_1", "topic_identifier": "identifier_1"},
                 {"name": "function_resource_2", "topic_identifier": "identifier_2"},
-            ]
+            ],
+            "function": [
+                {"name": "function_resource_1", "function_identifier": "function_identifier_1"},
+                {"name": "function_resource_2", "function_identifier": "function_identifier_2"},
+            ],
         }
         expected_output = {
             "function_instance_1::": {
                 "identifier": "identifier_1",
-                "provider_region": {"provider": "aws", "region": "region"},
+                "provider_region": {"provider": "provider1", "region": "region1"},
+                "function_identifier": "function_identifier_1",
             },
             "function_instance_2::": {
                 "identifier": "identifier_2",
-                "provider_region": {"provider": "aws", "region": "region"},
+                "provider_region": {"provider": "provider1", "region": "region1"},
+                "function_identifier": "function_identifier_2",
             },
         }
         self.assertEqual(self.workflow._get_workflow_placement(resource_values), expected_output)
 
     def test_extend_stage_area_placement(self):
         resource_values = {
-            "sns_topic": [
+            "messaging_topic": [
                 {"name": "function_resource_1", "topic_identifier": "identifier_1"},
                 {"name": "function_resource_2", "topic_identifier": "identifier_2"},
-            ]
+            ],
+            "function": [
+                {"name": "function_resource_1", "function_identifier": "function_identifier_1"},
+                {"name": "function_resource_2", "function_identifier": "function_identifier_2"},
+            ],
         }
         staging_area_placement = {"workflow_placement": {"function_instance_1::": {}, "function_instance_2::": {}}}
         expected_output = {
             "workflow_placement": {
-                "function_instance_1::": {"identifier": "identifier_1"},
-                "function_instance_2::": {"identifier": "identifier_2"},
+                "function_instance_1::": {"identifier": "identifier_1", "function_identifier": "function_identifier_1"},
+                "function_instance_2::": {"identifier": "identifier_2", "function_identifier": "function_identifier_2"},
             }
         }
         self.assertEqual(
@@ -150,20 +187,27 @@ class TestWorkflow(unittest.TestCase):
 
     def test_get_function_instance_to_identifier(self):
         resource_values = {
-            "sns_topic": [
+            "messaging_topic": [
                 {"name": "function_resource_1", "topic_identifier": "identifier_1"},
                 {"name": "function_resource_2", "topic_identifier": "identifier_2"},
             ]
         }
         expected_output = {"function_instance_1::": "identifier_1", "function_instance_2::": "identifier_2"}
-        self.assertEqual(self.workflow._get_function_instance_to_identifier(resource_values), expected_output)
+        self.assertEqual(
+            self.workflow._get_function_instance_to_identifier(resource_values["messaging_topic"], "topic_identifier"),
+            expected_output,
+        )
 
     def test_get_workflow_placement_decision(self):
         resource_values = {
-            "sns_topic": [
+            "messaging_topic": [
                 {"name": "function_resource_1", "topic_identifier": "identifier_1"},
                 {"name": "function_resource_2", "topic_identifier": "identifier_2"},
-            ]
+            ],
+            "function": [
+                {"name": "function_resource_1", "function_identifier": "function_identifier_1"},
+                {"name": "function_resource_2", "function_identifier": "function_identifier_2"},
+            ],
         }
         self.workflow.get_workflow_config = Mock(return_value=Mock(instances=["instance_1", "instance_2"]))
         self.workflow._Workflow__get_entry_point_instance_name = Mock(return_value="entry_point_instance")
@@ -188,11 +232,13 @@ class TestWorkflow(unittest.TestCase):
             "workflow_placement": {
                 "function_instance_1::": {
                     "identifier": "identifier_1",
-                    "provider_region": {"provider": "aws", "region": "region"},
+                    "provider_region": {"provider": "provider1", "region": "region1"},
+                    "function_identifier": "function_identifier_1",
                 },
                 "function_instance_2::": {
                     "identifier": "identifier_2",
-                    "provider_region": {"provider": "aws", "region": "region"},
+                    "provider_region": {"provider": "provider1", "region": "region1"},
+                    "function_identifier": "function_identifier_2",
                 },
             },
         }
@@ -200,23 +246,46 @@ class TestWorkflow(unittest.TestCase):
 
     def test_get_workflow_placement_decision_extend_staging(self):
         resource_values = {
-            "sns_topic": [
-                {"name": "function_resource_1", "topic_identifier": "identifier_1"},
-                {"name": "function_resource_2", "topic_identifier": "identifier_2"},
-            ]
+            "messaging_topic": [
+                {"name": "function_resource_1", "topic_identifier": "new_identifier_1"},
+                {"name": "function_resource_2", "topic_identifier": "new_identifier_2"},
+            ],
+            "function": [
+                {"name": "function_resource_1", "function_identifier": "new_function_identifier_1"},
+                {"name": "function_resource_2", "function_identifier": "new_function_identifier_2"},
+            ],
         }
         staging_area_placement = {
             "workflow_placement": {
-                "function_instance_1::": {},
-                "function_instance_2::": {},
+                "function_instance_1::": {"provider_region": {"provider": "new_provider1", "region": "new_region1"}},
+                "function_instance_2::": {"provider_region": {"provider": "new_provider2", "region": "new_region2"}},
             }
         }
         self.workflow.get_workflow_config = Mock(return_value=Mock(instances=["instance_1", "instance_2"]))
         self.workflow._Workflow__get_entry_point_instance_name = Mock(return_value="entry_point_instance")
+        previous_instances = [
+            {
+                "instance_name": "function_instance_1::",
+                "function_name": "function_resource_1",
+                "preceding_instances": [],
+                "regions_and_providers": {},
+                "succeeding_instances": ["function_instance_2::"],
+                "dependent_sync_predecessors": [],
+            },
+            {
+                "instance_name": "function_instance_2::",
+                "function_name": "function_resource_2",
+                "preceding_instances": ["function_instance_1::"],
+                "regions_and_providers": {},
+                "succeeding_instances": [],
+                "dependent_sync_predecessors": [],
+            },
+        ]
         expected_output = {
             "instances": [
                 {
                     "instance_name": "function_instance_1::",
+                    "function_name": "new_function_identifier_1",
                     "preceding_instances": [],
                     "regions_and_providers": {},
                     "succeeding_instances": ["function_instance_2::"],
@@ -224,6 +293,7 @@ class TestWorkflow(unittest.TestCase):
                 },
                 {
                     "instance_name": "function_instance_2::",
+                    "function_name": "new_function_identifier_2",
                     "preceding_instances": ["function_instance_1::"],
                     "regions_and_providers": {},
                     "succeeding_instances": [],
@@ -232,12 +302,23 @@ class TestWorkflow(unittest.TestCase):
             ],
             "current_instance_name": "function_instance_1::",
             "workflow_placement": {
-                "function_instance_1::": {"identifier": "identifier_1"},
-                "function_instance_2::": {"identifier": "identifier_2"},
+                "function_instance_1::": {
+                    "identifier": "new_identifier_1",
+                    "function_identifier": "new_function_identifier_1",
+                    "provider_region": {"provider": "new_provider1", "region": "new_region1"},
+                },
+                "function_instance_2::": {
+                    "identifier": "new_identifier_2",
+                    "function_identifier": "new_function_identifier_2",
+                    "provider_region": {"provider": "new_provider2", "region": "new_region2"},
+                },
             },
         }
+
         self.assertEqual(
-            self.workflow.get_workflow_placement_decision_extend_staging(resource_values, staging_area_placement),
+            self.workflow.get_workflow_placement_decision_extend_staging(
+                resource_values, staging_area_placement, previous_instances
+            ),
             expected_output,
         )
 

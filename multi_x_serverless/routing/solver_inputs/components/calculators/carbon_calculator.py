@@ -2,9 +2,6 @@ from multi_x_serverless.routing.solver_inputs.components.calculators.calculator 
 
 
 class CarbonCalculator(Calculator):
-    def __init__(self) -> None:
-        super().__init__()
-
     def calculate_execution_carbon(
         self,
         compute_configuration: dict[str, float],

@@ -1,0 +1,49 @@
+workflow_name: "integration_test_workflow"
+workflow_version: "0.0.1"
+environment_variables:
+  - key: "TEST_ENV_VAR_1"
+    value: "test_value_1"
+iam_policy_file: "iam_policy.json"
+home_regions:
+  - provider: "integration_test_provider"
+    region: "rivendell"
+estimated_invocations_per_month: 1000000
+constraints:
+  hard_resource_constraints:
+    cost:
+      type: "absolute"
+      value: 200
+    runtime:
+      type: "absolute"
+      value: 400
+    carbon:
+      type: "absolute"
+      value: 300
+  soft_resource_constraints:
+    cost:
+      type: "absolute"
+      value: 150
+    runtime: null
+    carbon:
+      type: "absolute"
+      value: 200
+  priority_order:
+    - cost
+    - runtime
+    - carbon
+regions_and_providers: # Either the user specify only allowed regions (which will override everything else)
+  allowed_regions:
+    - provider: "integration_test_provider"
+      region: "rivendell"
+    - provider: "integration_test_provider"
+      region: "lothlorien"
+    - provider: "integration_test_provider"
+      region: "anduin"
+  disallowed_regions:
+    - provider: "integration_test_provider"
+      region: "fangorn"
+  providers:
+    integration_test_provider:
+      config:
+        timeout: 60
+        memory: 128

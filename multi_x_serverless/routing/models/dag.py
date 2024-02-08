@@ -1,5 +1,4 @@
 from collections import deque
-from typing import Any
 
 import numpy as np
 
@@ -8,6 +7,7 @@ from multi_x_serverless.routing.models.indexer import Indexer
 
 class DAG(Indexer):
     def __init__(self, nodes: list[dict]) -> None:
+        super().__init__()
         self._nodes: list[dict] = nodes
         self._num_nodes: int = len(nodes)
         self._adj_matrix: np.ndarray = np.zeros((self.num_nodes, self.num_nodes), dtype=int)

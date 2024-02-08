@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -21,3 +21,5 @@ class WorkflowConfigSchema(BaseModel):
     instances: List[Instance] = Field(..., title="List of instances")
     constraints: Constraints = Field(..., title="Constraints")
     start_hops: List[ProviderRegion] = Field(..., title="List of home regions")
+    num_calls_in_one_month: Optional[int] = Field(None, title="Number of function calls in 1 hour")
+    solver: Optional[str] = Field(None, title="The name of the solver")

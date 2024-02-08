@@ -1,12 +1,7 @@
-import numpy as np
-
 from multi_x_serverless.routing.solver_inputs.components.calculators.calculator import Calculator
 
 
 class CostCalculator(Calculator):
-    def __init__(self) -> None:
-        super().__init__()
-
     def calculate_execution_cost(
         self,
         compute_cost: float,
