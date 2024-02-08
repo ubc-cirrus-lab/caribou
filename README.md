@@ -91,7 +91,7 @@ Currently we have the following system part benchmarks:
 To run the solver benchmarks, use:
 
 ```bash
-poetry run python benchmarks/solver_benchmarks/solver_benchmarks.py
+poetry run python benchmarks/solver_benchmarks/run_solver_benchmarks.py
 ```
 
 This will generate a JSON in `benchmarks/solver_benchmarks/results/results.json` with the results.
@@ -99,7 +99,7 @@ This will generate a JSON in `benchmarks/solver_benchmarks/results/results.json`
 To plot the results, use:
 
 ```bash
-poetry run python plotting/solver_benchmark.py benchmarks/solver_benchmarks/results/results.json
+poetry run python plotting/solver_benchmark_plotting.py benchmarks/solver_benchmarks/results/results.json
 ```
 
 This will generate a plot in `plotting/plots/`.

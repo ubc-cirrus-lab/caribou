@@ -10,6 +10,10 @@ from multi_x_serverless.routing.formatter.formatter import Formatter
 from multi_x_serverless.routing.models.dag import DAG
 from multi_x_serverless.routing.models.region import Region
 from multi_x_serverless.routing.ranker.ranker import Ranker
+from multi_x_serverless.routing.solver.objective_function.any_improvement_objective_function import (
+    AnyImprovementObjectiveFunction,
+)
+from multi_x_serverless.routing.solver.objective_function.objective_function import ObjectiveFunction
 from multi_x_serverless.routing.solver_inputs.input_manager import InputManager
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
@@ -66,6 +70,8 @@ class Solver(ABC):  # pylint: disable=too-many-instance-attributes
 
         if init_home_region_transmission_costs:
             self._init_home_region_transmission_costs(self._worklow_level_permitted_regions)
+
+        self._objective_function = AnyImprovementObjectiveFunction
 
     def _provider_region_dict_to_tuple(self, provider_region_dict: dict[str, str]) -> tuple[str, str]:
         return (provider_region_dict["provider"], provider_region_dict["region"])

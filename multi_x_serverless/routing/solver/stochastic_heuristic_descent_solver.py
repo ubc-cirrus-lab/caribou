@@ -253,13 +253,14 @@ class StochasticHeuristicDescentSolver(Solver):
             new_tail_edge_weights,
         )
 
-        if any(
-            [
-                average_cost < deployment[1][0],
-                average_runtime < deployment[2][0],
-                average_carbon < deployment[3][0],
-            ]
-        ):  # If any of the costs are better than the current deployment
+        if self._objective_function.calculate(
+            cost=average_cost,
+            runtime=average_runtime,
+            carbon=average_carbon,
+            best_cost=deployment[1][0],
+            best_runtime=deployment[2][0],
+            best_carbon=deployment[3][0],
+        ):
             return (
                 True,
                 (average_cost, tail_cost),
