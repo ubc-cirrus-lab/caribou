@@ -148,6 +148,7 @@ class WorkflowRetriever(DataRetriever):
                 execution_summary[region] = {
                     "average_runtime": region_data["total_runtime"] / region_data["invocation_count"],
                     "tail_runtime": region_data["total_tail_runtime"] / region_data["invocation_count"],
+                    "unit": "s",
                 }
 
             # Now for invocation summary
@@ -168,16 +169,17 @@ class WorkflowRetriever(DataRetriever):
                                             / to_provider_transmission_data["transmission_count"],
                                             "tail_latency": to_provider_transmission_data["total_tail_latency"]
                                             / to_provider_transmission_data["transmission_count"],
+                                            "unit": "s",
                                         }
 
                     # Manage invocation summary
-                    invocation_summary["probability_of_invocation"] = (
-                        invocation_data["invocation_count"] / instance_data["invocation_count"]
-                    )
-                    invocation_summary["average_data_transfer_size"] = (
-                        invocation_data["total_data_transfer_size"] / invocation_data["invocation_count"]
-                    )
-                    invocation_summary["transmission_summary"] = transmission_summary
+                    invocation_summary[child_instance] = {
+                        "probability_of_invocation": invocation_data["invocation_count"] / instance_data["invocation_count"],
+                        "average_data_transfer_size": (
+                            invocation_data["total_data_transfer_size"] / invocation_data["invocation_count"]
+                        ),
+                        "transmission_summary": transmission_summary,
+                    }
 
             # Final output
             workflow_summary_data[instance_id] = {
