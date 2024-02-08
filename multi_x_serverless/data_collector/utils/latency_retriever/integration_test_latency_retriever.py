@@ -8,7 +8,7 @@ class IntegrationTestLatencyRetriever(LatencyRetriever):
         super().__init__()
 
         if utilize_tail_latency:
-            self._latency_matrix = [[12, 152, 82, 202], [152, 12, 102, 252], [82, 102, 12, 152], [202, 252, 152, 12]]
+            self._latency_matrix = [[12, 152, 82, 220], [152, 12, 120, 252], [82, 120, 12, 152], [220, 252, 152, 12]]
         else:
             self._latency_matrix = [[10, 150, 80, 200], [150, 10, 100, 250], [80, 100, 10, 150], [200, 250, 150, 10]]
 

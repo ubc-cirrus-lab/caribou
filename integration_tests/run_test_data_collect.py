@@ -102,19 +102,19 @@ def run_data_collection():
     expected_performance_region_data = [
         (
             "integration_test_provider:rivendell",
-            '{"relative_performance": 1, "transmission_latency": {"integration_test_provider:rivendell": {"transmission_latency": 0.01, "unit": "s"}, "integration_test_provider:lothlorien": {"transmission_latency": 0.15, "unit": "s"}, "integration_test_provider:anduin": {"transmission_latency": 0.08, "unit": "s"}, "integration_test_provider:fangorn": {"transmission_latency": 0.2, "unit": "s"}}}',
+            '{"relative_performance": 1, "transmission_latency": {"integration_test_provider:rivendell": {"average_latency": 0.01, "tail_latency": 0.012, "unit": "s"}, "integration_test_provider:lothlorien": {"average_latency": 0.15, "tail_latency": 0.152, "unit": "s"}, "integration_test_provider:anduin": {"average_latency": 0.08, "tail_latency": 0.082, "unit": "s"}, "integration_test_provider:fangorn": {"average_latency": 0.2, "tail_latency": 0.22, "unit": "s"}}}',
         ),
         (
             "integration_test_provider:lothlorien",
-            '{"relative_performance": 1, "transmission_latency": {"integration_test_provider:rivendell": {"transmission_latency": 0.15, "unit": "s"}, "integration_test_provider:lothlorien": {"transmission_latency": 0.01, "unit": "s"}, "integration_test_provider:anduin": {"transmission_latency": 0.1, "unit": "s"}, "integration_test_provider:fangorn": {"transmission_latency": 0.25, "unit": "s"}}}',
+            '{"relative_performance": 1, "transmission_latency": {"integration_test_provider:rivendell": {"average_latency": 0.15, "tail_latency": 0.152, "unit": "s"}, "integration_test_provider:lothlorien": {"average_latency": 0.01, "tail_latency": 0.012, "unit": "s"}, "integration_test_provider:anduin": {"average_latency": 0.1, "tail_latency": 0.12, "unit": "s"}, "integration_test_provider:fangorn": {"average_latency": 0.25, "tail_latency": 0.252, "unit": "s"}}}',
         ),
         (
             "integration_test_provider:anduin",
-            '{"relative_performance": 1, "transmission_latency": {"integration_test_provider:rivendell": {"transmission_latency": 0.08, "unit": "s"}, "integration_test_provider:lothlorien": {"transmission_latency": 0.1, "unit": "s"}, "integration_test_provider:anduin": {"transmission_latency": 0.01, "unit": "s"}, "integration_test_provider:fangorn": {"transmission_latency": 0.15, "unit": "s"}}}',
+            '{"relative_performance": 1, "transmission_latency": {"integration_test_provider:rivendell": {"average_latency": 0.08, "tail_latency": 0.082, "unit": "s"}, "integration_test_provider:lothlorien": {"average_latency": 0.1, "tail_latency": 0.12, "unit": "s"}, "integration_test_provider:anduin": {"average_latency": 0.01, "tail_latency": 0.012, "unit": "s"}, "integration_test_provider:fangorn": {"average_latency": 0.15, "tail_latency": 0.152, "unit": "s"}}}',
         ),
         (
             "integration_test_provider:fangorn",
-            '{"relative_performance": 1, "transmission_latency": {"integration_test_provider:rivendell": {"transmission_latency": 0.2, "unit": "s"}, "integration_test_provider:lothlorien": {"transmission_latency": 0.25, "unit": "s"}, "integration_test_provider:anduin": {"transmission_latency": 0.15, "unit": "s"}, "integration_test_provider:fangorn": {"transmission_latency": 0.01, "unit": "s"}}}',
+            '{"relative_performance": 1, "transmission_latency": {"integration_test_provider:rivendell": {"average_latency": 0.2, "tail_latency": 0.22, "unit": "s"}, "integration_test_provider:lothlorien": {"average_latency": 0.25, "tail_latency": 0.252, "unit": "s"}, "integration_test_provider:anduin": {"average_latency": 0.15, "tail_latency": 0.152, "unit": "s"}, "integration_test_provider:fangorn": {"average_latency": 0.01, "tail_latency": 0.012, "unit": "s"}}}',
         ),
     ]
 
