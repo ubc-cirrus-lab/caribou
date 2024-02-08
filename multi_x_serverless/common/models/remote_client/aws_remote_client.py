@@ -66,9 +66,9 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         )
 
         return len(response["Attributes"][sync_node_name]["L"])
-    
+
     def create_sync_tables(self) -> None:
-        # Check if table exists
+        # Check if table exists
         client = self._client("dynamodb")
         for table in [SYNC_MESSAGES_TABLE, SYNC_PREDECESSOR_COUNTER_TABLE]:
             try:

@@ -1,6 +1,6 @@
+import json
 from abc import ABC
 from typing import Any
-import json
 
 from multi_x_serverless.common.constants import AVAILABLE_REGIONS_TABLE
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient

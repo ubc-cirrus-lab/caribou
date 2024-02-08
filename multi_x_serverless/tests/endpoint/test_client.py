@@ -52,7 +52,10 @@ class TestClient(unittest.TestCase):
         with self.assertRaises(RuntimeError) as context:
             client.run({"key": "value"})
 
-        self.assertEqual(str(context.exception), "No workflow placement decision found for workflow")
+        self.assertEqual(
+            str(context.exception),
+            "No workflow placement decision found for workflow, did you deploy the workflow and is the workflow id (workflow_name) correct?",
+        )
 
 
 if __name__ == "__main__":

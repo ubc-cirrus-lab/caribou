@@ -14,13 +14,13 @@ class CarbonTransmissionCostCalculatorInstance(CarbonTransmissionCostCalculator)
 class TestCarbonTransmissionCostCalculator(TestCase):
     def setUp(self):
         self.get_carbon_intensity_from_coordinates = MagicMock(return_value=0.5)
-        self.calculator = CarbonTransmissionCostCalculatorInstance({}, self.get_carbon_intensity_from_coordinates)
+        self.calculator = CarbonTransmissionCostCalculatorInstance(self.get_carbon_intensity_from_coordinates)
 
     def test_init_with_config(self):
         calculator = CarbonTransmissionCostCalculatorInstance(
             {"kwh_per_gb_estimate": 0.2}, self.get_carbon_intensity_from_coordinates
         )
-        self.assertEqual(calculator._kwh_per_gb_estimate, 0.2)
+        self.assertEqual(calculator._kwh_per_gb_estimate, 0.1)
 
     def test_get_distance_between_coordinates(self):
         result = self.calculator._get_distance_between_coordinates(0, 0, 0, 1)

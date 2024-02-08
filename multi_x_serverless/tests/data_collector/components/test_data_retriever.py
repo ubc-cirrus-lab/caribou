@@ -14,14 +14,16 @@ class TestDataRetriever(unittest.TestCase):
         self.assertEqual(self.retriever._available_regions, {})
 
     def test_retrieve_available_regions(self):
-        mock_regions = {"aws:region1": {"data": "data1"}, "aws:region2": {"data": "data2"}}
+        mock_regions = {"aws:region1": '{"data": "data1"}', "aws:region2": '{"data": "data2"}'}
         self.client.get_all_values_from_table.return_value = mock_regions
 
         result = self.retriever.retrieve_available_regions()
 
         self.client.get_all_values_from_table.assert_called_once_with(self.retriever._available_region_table)
-        self.assertEqual(result, mock_regions)
-        self.assertEqual(self.retriever._available_regions, mock_regions)
+        self.assertEqual(result, {"aws:region1": {"data": "data1"}, "aws:region2": {"data": "data2"}})
+        self.assertEqual(
+            self.retriever._available_regions, {"aws:region1": {"data": "data1"}, "aws:region2": {"data": "data2"}}
+        )
 
 
 if __name__ == "__main__":

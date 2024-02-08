@@ -5,7 +5,7 @@ from typing import Any, Optional
 from multi_x_serverless.deployment.common.deploy.models.resource import Resource
 
 
-class RemoteClient(ABC):
+class RemoteClient(ABC):  # pylint: disable=too-many-public-methods
     @abstractmethod
     def create_function(
         self,
@@ -66,7 +66,7 @@ class RemoteClient(ABC):
         try:
             self.send_message_to_messaging_service(identifier, message)
         except Exception as e:
-            raise RuntimeError(f"Could not invoke function through SNS: {e}")
+            raise RuntimeError(f"Could not invoke function through SNS: {str(e)}") from e
 
     @abstractmethod
     def set_predecessor_reached(self, predecessor_name: str, sync_node_name: str, workflow_instance_id: str) -> int:
@@ -139,7 +139,7 @@ class RemoteClient(ABC):
     @abstractmethod
     def get_all_values_from_sort_key_table(self, table_name: str, key: str) -> list[dict[str, Any]]:
         raise NotImplementedError()
-    
+
     @abstractmethod
     def create_sync_tables(self) -> None:
         raise NotImplementedError()

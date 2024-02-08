@@ -9,8 +9,8 @@ from bs4 import BeautifulSoup
 
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
 from multi_x_serverless.common.provider import Provider
-from multi_x_serverless.data_collector.components.data_retriever import DataRetriever
 from multi_x_serverless.common.utils import str_to_bool
+from multi_x_serverless.data_collector.components.data_retriever import DataRetriever
 
 
 class ProviderRetriever(DataRetriever):

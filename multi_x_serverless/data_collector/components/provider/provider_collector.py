@@ -5,6 +5,7 @@ from multi_x_serverless.data_collector.components.data_collector import DataColl
 from multi_x_serverless.data_collector.components.provider.provider_exporter import ProviderExporter
 from multi_x_serverless.data_collector.components.provider.provider_retriever import ProviderRetriever
 
+
 class ProviderCollector(DataCollector):
     def __init__(self) -> None:
         super().__init__()

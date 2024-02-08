@@ -1,4 +1,3 @@
-import inspect
 from typing import Any, Callable
 
 from multi_x_serverless.common.utils import get_function_source

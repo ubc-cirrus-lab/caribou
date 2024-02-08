@@ -6,6 +6,7 @@ from typing import Any, Optional
 import requests
 
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
+from multi_x_serverless.common.utils import str_to_bool
 from multi_x_serverless.data_collector.components.carbon.carbon_transmission_cost_calculator.carbon_transmission_cost_calculator import (  # pylint: disable=line-too-long
     CarbonTransmissionCostCalculator,
 )
@@ -16,10 +17,9 @@ from multi_x_serverless.data_collector.components.carbon.carbon_transmission_cos
     LatencyCarbonTransmissionCostCalculator,
 )
 from multi_x_serverless.data_collector.components.data_retriever import DataRetriever
-from multi_x_serverless.common.utils import str_to_bool
 
 
-class CarbonRetriever(DataRetriever):
+class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attributes
     _carbon_transmission_cost_calculator: CarbonTransmissionCostCalculator
 
     def __init__(self, client: RemoteClient, config: Optional[dict] = None) -> None:

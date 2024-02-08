@@ -39,7 +39,7 @@ class TestMultiXServerlessFunction(unittest.TestCase):
         self.assertEqual(function_obj.function_callable, function)
         self.assertEqual(function_obj.name, name)
         self.assertEqual(function_obj.entry_point, entry_point)
-        self.assertEqual(function_obj.handler, function.__name__)
+        self.assertEqual(function_obj.handler, "app.function")
         self.assertEqual(function_obj.regions_and_providers, regions_and_providers)
         self.assertEqual(function_obj.environment_variables, environment_variables)
 

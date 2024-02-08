@@ -59,8 +59,6 @@ class BFSFineGrainedSolver(Solver):
         ] = {}
         all_regions_indices = self._region_indexer.get_value_indices()
         for current_instance_index in self._topological_order:
-            # print("\nCurrent Instance Index:", current_instance_index)
-
             # Instance flow related information
             prerequisites_indices: list[int] = prerequisites_dictionary[current_instance_index]
 
@@ -481,7 +479,6 @@ class BFSFineGrainedSolver(Solver):
                     if all_successors_processed:
                         del deployments[previous_instance_index]
 
-        # print(time_dic)
         return final_deployments
 
     def _find_common_elements(self, list_of_sets: list[set[int]]) -> set[int]:

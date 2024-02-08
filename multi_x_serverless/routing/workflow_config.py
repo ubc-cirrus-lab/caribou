@@ -38,12 +38,12 @@ class WorkflowConfig:
     def solver(self) -> str:
         allowed_solvers = {"coarse_grained_solver", "fine_grained_solver", "stochastic_heuristic_solver"}
         result = self._lookup("solver")
-        
+
         if result not in allowed_solvers:
             if result is None:
                 return "coarse_grained_solver"
             raise ValueError(f"Invalid solver: {result}")
-        
+
         return result
 
     def write_back(self, key: str, value: Any) -> None:

@@ -12,6 +12,7 @@ class Instance(BaseModel):
     succeeding_instances: List[str] = Field(..., title="List of succeeding instances")
     preceding_instances: List[str] = Field(..., title="List of preceding instances")
 
+
 class WorkflowConfigSchema(BaseModel):
     workflow_name: str = Field(..., title="The name of the workflow")
     workflow_version: str = Field(..., title="The version of the workflow")

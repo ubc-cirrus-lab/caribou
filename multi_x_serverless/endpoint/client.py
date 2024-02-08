@@ -21,7 +21,7 @@ class Client:
 
         if result is None or result == "":
             raise RuntimeError(
-                f"No workflow placement decision found for workflow, did you deploy the workflow and is the workflow id ({self._workflow_id}) correct?"
+                f"No workflow placement decision found for workflow, did you deploy the workflow and is the workflow id ({self._workflow_id}) correct?"  # pylint: disable=line-too-long
             )
 
         workflow_placement_decision = json.loads(result)

@@ -1,7 +1,8 @@
 from typing import Any
 
-from multi_x_serverless.deployment.client import MultiXServerlessWorkflow
 from src.fifth import fifth
+
+from multi_x_serverless.deployment.client import MultiXServerlessWorkflow
 
 workflow = MultiXServerlessWorkflow(name="{{ workflow_name }}", version="0.0.1")
 
