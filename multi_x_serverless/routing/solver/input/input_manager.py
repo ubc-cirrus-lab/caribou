@@ -40,7 +40,9 @@ class InputManager:
 
         # Calculators
         self._runtime_calculator = RuntimeCalculator(self._performance_loader, self._workflow_loader)
-        self._carbon_calculator = CarbonCalculator(self._carbon_loader, self._datacenter_loader, self._workflow_loader, self._runtime_calculator)
+        self._carbon_calculator = CarbonCalculator(
+            self._carbon_loader, self._datacenter_loader, self._workflow_loader, self._runtime_calculator
+        )
         self._cost_calculator = CostCalculator(self._datacenter_loader, self._workflow_loader, self._runtime_calculator)
 
     def setup(self, regions_indexer: Region, instance_indexer: DAG) -> bool:

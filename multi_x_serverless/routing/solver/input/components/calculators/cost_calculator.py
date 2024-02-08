@@ -1,41 +1,51 @@
 from typing import Any
 
 from multi_x_serverless.routing.solver.input.components.calculator import InputCalculator
-
+from multi_x_serverless.routing.solver.input.components.calculators.runtime_calculator import RuntimeCalculator
 from multi_x_serverless.routing.solver.input.components.loaders.datacenter_loader import DatacenterLoader
 from multi_x_serverless.routing.solver.input.components.loaders.workflow_loader import WorkflowLoader
-from multi_x_serverless.routing.solver.input.components.calculators.runtime_calculator import RuntimeCalculator
 
 
 class CostCalculator(InputCalculator):
-    def __init__(self, datacenter_loader: DatacenterLoader, workflow_loader: WorkflowLoader, runtime_calculator: RuntimeCalculator) -> None:
+    def __init__(
+        self,
+        datacenter_loader: DatacenterLoader,
+        workflow_loader: WorkflowLoader,
+        runtime_calculator: RuntimeCalculator,
+    ) -> None:
         super().__init__()
         self._datacenter_loader: DatacenterLoader = datacenter_loader
         self._workflow_loader: WorkflowLoader = workflow_loader
         self._runtime_calculator: RuntimeCalculator = runtime_calculator
 
-    def calculate_execution_cost(self, instance_name: str, region_name: str, consider_probabilistic_invocations: bool = False) -> float:
+    def calculate_execution_cost(
+        self, instance_name: str, region_name: str, consider_probabilistic_invocations: bool = False
+    ) -> float:
         if consider_probabilistic_invocations:
             # TODO (#76): Implement probabilistic invocations
             raise NotImplementedError("Probabilistic invocations are not supported yet")
         else:
             return self._calculate_raw_execution_cost(instance_name, region_name, False)
-        
+
     def calculate_transmission_cost(
-        self, 
+        self,
         from_instance_name: str,
         to_instance_name: str,
         from_region_name: str,
         to_region_name: str,
-        consider_probabilistic_invocations: bool = False) -> float:
-
+        consider_probabilistic_invocations: bool = False,
+    ) -> float:
         if consider_probabilistic_invocations:
             # TODO (#76): Implement probabilistic invocations
             raise NotImplementedError("Probabilistic invocations are not supported yet")
         else:
-            return self._calculate_raw_transmission_cost(from_instance_name, to_instance_name, from_region_name, to_region_name)
-        
-    def _calculate_raw_execution_cost(self, instance_name: str, region_name: str, use_tail_latency: bool = False) -> float:
+            return self._calculate_raw_transmission_cost(
+                from_instance_name, to_instance_name, from_region_name, to_region_name
+            )
+
+    def _calculate_raw_execution_cost(
+        self, instance_name: str, region_name: str, use_tail_latency: bool = False
+    ) -> float:
         # Retrieve or format input information
 
         ## Get the runtime of the instance in the given region (s)
@@ -59,17 +69,14 @@ class CostCalculator(InputCalculator):
         cost_from_compute = compute_cost * gbs
 
         # Invocation cost is simply cost per invocation
-        cost_from_invocation = invocation_cost 
+        cost_from_invocation = invocation_cost
 
         total_execution_cost = cost_from_compute + cost_from_invocation
         return total_execution_cost
-    
+
     def _calculate_raw_transmission_cost(
-        self, 
-        from_instance_name: str,
-        to_instance_name: str,
-        from_region_name: str,
-        to_region_name: str) -> float:
+        self, from_instance_name: str, to_instance_name: str, from_region_name: str, to_region_name: str
+    ) -> float:
         # Retrieve or format input information
 
         ## Get the data transfer size from the workflow loader (In units of GB)
@@ -89,6 +96,5 @@ class CostCalculator(InputCalculator):
 
         # Both in units of gb
         transmission_cost = transmission_size * transmission_cost_gb
-        
+
         return transmission_cost
-    

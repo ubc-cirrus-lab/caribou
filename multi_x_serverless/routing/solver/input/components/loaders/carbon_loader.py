@@ -13,10 +13,16 @@ class CarbonLoader(InputLoader):
 
     def setup(self, available_regions: list[tuple[str, str]]) -> None:
         self._carbon_data = self._retrieve_region_data(available_regions)
-    
+
     def get_transmission_carbon_intensity(self, from_region_name: str, to_region_name: str) -> float:
-        return self._carbon_data.get(from_region_name, {}).get("transmission_carbon", {}).get(to_region_name, {}).get("carbon_intensity", 1000.0) # Default to 1000 gCO2eq/GB if not found
+        return (
+            self._carbon_data.get(from_region_name, {})
+            .get("transmission_carbon", {})
+            .get(to_region_name, {})
+            .get("carbon_intensity", 1000.0)
+        )  # Default to 1000 gCO2eq/GB if not found
 
     def get_grid_carbon_intensity(self, region_name: str) -> float:
-        return self._carbon_data.get(region_name, {}).get("carbon_intensity", 1000.0) # Default to 1000 gCO2eq/kWh if not found
-
+        return self._carbon_data.get(region_name, {}).get(
+            "carbon_intensity", 1000.0
+        )  # Default to 1000 gCO2eq/kWh if not found

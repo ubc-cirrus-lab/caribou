@@ -14,7 +14,6 @@ class RegionViabilityLoader(InputLoader):
     def setup(self) -> None:
         all_regions = self._client.get_all_values_from_table(self._primary_table)
 
-
         for region, region_data in all_regions.items():
             # TODO: Check if the available regions are updated
             # Now go through the available regions and only select the ones
