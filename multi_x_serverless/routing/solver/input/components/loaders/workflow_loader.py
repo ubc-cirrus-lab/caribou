@@ -123,4 +123,4 @@ class WorkflowLoader(InputLoader):
         )  # Default to x86_64
 
     def _retrieve_workflow_data(self, workflow_id: str) -> dict[str, Any]:
-        return self._retrive_data(self._primary_table, workflow_id)
+        return self._retrieve_data(self._primary_table, workflow_id)

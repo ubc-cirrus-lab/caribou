@@ -66,6 +66,6 @@ class DatacenterLoader(InputLoader):
         all_data: dict[str, Any] = {}
 
         for provider in available_providers:
-            all_data[provider] = self._retrive_data(self._provider_table, provider)
+            all_data[provider] = self._retrieve_data(self._provider_table, provider)
 
         return all_data

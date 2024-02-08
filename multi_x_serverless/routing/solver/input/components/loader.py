@@ -14,11 +14,11 @@ class InputLoader(ABC):
         all_data: dict[str, Any] = {}
 
         for region in available_regions:
-            all_data[region] = self._retrive_data(self._primary_table, region)
+            all_data[region] = self._retrieve_data(self._primary_table, region)
 
         return all_data
 
-    def _retrive_data(self, table_name: str, data_key: str) -> dict[str, Any]:
+    def _retrieve_data(self, table_name: str, data_key: str) -> dict[str, Any]:
         loaded_data: dict[str, Any] = json.loads(self._client.get_value_from_table(table_name, data_key))
         return loaded_data
 
