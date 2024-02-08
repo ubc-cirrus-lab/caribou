@@ -25,7 +25,7 @@ def get_function_source(function_callable: Callable[..., Any]) -> str:
     tree = ast.parse(source)
 
     # Dictionary to hold the functions we've already included
-    included_functions = {}
+    included_functions = {"invoke_serverless_function": True, "get_predecessor_data": True}
 
     # Function to process each node in the AST
     def process_node(node: ast.AST, context: dict) -> None:
