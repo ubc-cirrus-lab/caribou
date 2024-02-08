@@ -12,7 +12,7 @@ class StochasticHeuristicDescentSolver(Solver):
     def __init__(
         self,
         workflow_config: WorkflowConfig,
-        all_available_regions: Optional[list[dict]] = None,
+        all_available_regions: Optional[list[str]] = None,
         input_manager: Optional[InputManager] = None,
     ) -> None:
         super().__init__(workflow_config, all_available_regions, input_manager)
@@ -24,7 +24,7 @@ class StochasticHeuristicDescentSolver(Solver):
         if len(self._topological_order) == 0:
             raise ValueError("The DAG has no nodes")
 
-    def _solve(self, regions: list[dict]) -> list[tuple[dict[int, int], float, float, float]]:
+    def _solve(self, regions: list[str]) -> list[tuple[dict[int, int], float, float, float]]:
         average_case_deployments: list[tuple[dict[int, int], float, float, float]] = []
         current_deployment = self._init_deployment()
 
@@ -98,7 +98,7 @@ class StochasticHeuristicDescentSolver(Solver):
         return self.init_deployment_to_region(self._home_region_index)
 
     def select_random_instance_and_region(
-        self, previous_deployment: dict[int, int], regions: list[dict]
+        self, previous_deployment: dict[int, int], regions: list[str]
     ) -> tuple[int, int]:
         instance = random.choice(list(previous_deployment.keys()))
 

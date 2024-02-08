@@ -89,12 +89,12 @@ class TestCoarseGrainedSolver(unittest.TestCase):
             else (0, 0, 0)  # Do not consider start hop
         )
         workflow_config.workflow_id = "workflow_id"
-        workflow_config.start_hops = {"provider": "provider1", "region": "region1"}
+        workflow_config.start_hops = "provider1:region1"
         # Arrange
         mock_get_permitted_region_indices.return_value = [0, 1]
         mock_fail_hard_resource_constraints.return_value = False
         mock_init_deployment_to_region.return_value = ({0: 0}, (1, 1), (2, 2), (3, 3))
-        regions = [{"provider": "provider1", "region": "region1"}, {"provider": "provider2", "region": "region2"}]
+        regions = ["provider1:region1", "provider2:region2"]
         solver = CoarseGrainedSolver(workflow_config, all_available_regions=regions, input_manager=input_manager)
 
         # Act

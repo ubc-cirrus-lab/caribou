@@ -119,11 +119,5 @@ class InputManager:
 
         return [transmission_cost, transmission_carbon, transmission_runtime]
 
-    def get_all_regions(self) -> list[dict]:
-        # Need to convert the regions to a list of dictionaries
-        # Where the dict has the following keys: "region", "provider"
-        converted_regions: list[dict] = []
-        for region in self._region_viability_loader.get_available_regions():
-            converted_regions.append({"provider": region[0], "region": region[1]})
-
-        return converted_regions
+    def get_all_regions(self) -> list[str]:
+        return self._region_viability_loader.get_available_regions()

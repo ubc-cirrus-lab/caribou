@@ -21,7 +21,7 @@ class Solver(ABC):  # pylint: disable=too-many-instance-attributes
     def __init__(
         self,
         workflow_config: WorkflowConfig,
-        all_available_regions: Optional[list[dict]] = None,
+        all_available_regions: Optional[list[str]] = None,
         input_manager: Optional[InputManager] = None,
         init_home_region_transmission_costs: bool = True,
     ) -> None:
@@ -55,9 +55,7 @@ class Solver(ABC):  # pylint: disable=too-many-instance-attributes
 
         self._permitted_region_indices_cache: dict[int, list[int]] = {}
 
-        self._home_region_index = self._region_indexer.value_to_index(
-            self._provider_region_dict_to_tuple(self._workflow_config.start_hops)
-        )
+        self._home_region_index = self._region_indexer.value_to_index(self._workflow_config.start_hops)
         self._topological_order = self._dag.topological_sort()
         if len(self._topological_order) == 0:
             raise ValueError("DAG is empty")
@@ -72,9 +70,6 @@ class Solver(ABC):  # pylint: disable=too-many-instance-attributes
 
         self._objective_function = AnyImprovementObjectiveFunction
 
-    def _provider_region_dict_to_tuple(self, provider_region_dict: dict[str, str]) -> tuple[str, str]:
-        return (provider_region_dict["provider"], provider_region_dict["region"])
-
     def solve(self) -> None:
         solved_results = self._solve(self._worklow_level_permitted_regions)
         ranked_results = self.rank_solved_results(solved_results)
@@ -84,7 +79,7 @@ class Solver(ABC):  # pylint: disable=too-many-instance-attributes
         )
         self._upload_result(formatted_result)
 
-    def _init_home_region_transmission_costs(self, regions: list[dict]) -> None:
+    def _init_home_region_transmission_costs(self, regions: list[str]) -> None:
         home_region_transmissions_average = np.zeros((3, len(self._region_indexer.get_value_indices())))
         home_region_transmissions_tail = np.zeros((3, len(self._region_indexer.get_value_indices())))
 
@@ -122,14 +117,14 @@ class Solver(ABC):  # pylint: disable=too-many-instance-attributes
         self._home_region_transmission_costs_tail = home_region_transmissions_tail
 
     @abstractmethod
-    def _solve(self, regions: list[dict]) -> list[tuple[dict, float, float, float]]:
+    def _solve(self, regions: list[str]) -> list[tuple[dict, float, float, float]]:
         raise NotImplementedError
 
-    def _filter_regions(self, regions: list[dict], regions_and_providers: dict) -> list[dict]:
+    def _filter_regions(self, regions: list[str], regions_and_providers: dict) -> list[str]:
         # Take in a list of regions, then apply filters to remove regions that do not satisfy the constraints
         # First filter out regions that are not in the provider list
         provider_names = list(regions_and_providers["providers"].keys())
-        regions = [region for region in regions if region["provider"] in provider_names]
+        regions = [region for region in regions if region.split(":")[0] in provider_names]
 
         # Then if the user set a allowed_regions, only permit those regions and return
         if "allowed_regions" in regions_and_providers and regions_and_providers["allowed_regions"] is not None:
@@ -141,10 +136,10 @@ class Solver(ABC):  # pylint: disable=too-many-instance-attributes
 
         return regions
 
-    def _filter_regions_global(self, regions: list[dict]) -> list[dict]:
+    def _filter_regions_global(self, regions: list[str]) -> list[str]:
         return self._filter_regions(regions, self._workflow_config.regions_and_providers)
 
-    def _filter_regions_instance(self, regions: list[dict], instance_index: int) -> list[dict]:
+    def _filter_regions_instance(self, regions: list[str], instance_index: int) -> list[str]:
         return self._filter_regions(regions, self._workflow_config.instances[instance_index]["regions_and_providers"])
 
     def rank_solved_results(
@@ -341,17 +336,15 @@ class Solver(ABC):  # pylint: disable=too-many-instance-attributes
         max_cost: float = np.max(dist)
         return max_cost
 
-    def _get_permitted_region_indices(self, regions: list[dict], instance: int) -> list[int]:
+    def _get_permitted_region_indices(self, regions: list[str], instance: int) -> list[int]:
         if instance in self._permitted_region_indices_cache:
             return self._permitted_region_indices_cache[instance]
 
-        permitted_regions: list[dict[(str, str)]] = self._filter_regions_instance(regions, instance)
+        permitted_regions: list[str] = self._filter_regions_instance(regions, instance)
         if len(permitted_regions) == 0:  # Should never happen in a valid DAG
             raise ValueError("There are no permitted regions for this instance")
 
         all_regions_indices = self._region_indexer.get_value_indices()
-        permitted_regions_indices = [
-            all_regions_indices[(region["provider"], region["region"])] for region in permitted_regions
-        ]
+        permitted_regions_indices = [all_regions_indices[region] for region in permitted_regions]
         self._permitted_region_indices_cache[instance] = permitted_regions_indices
         return permitted_regions_indices
