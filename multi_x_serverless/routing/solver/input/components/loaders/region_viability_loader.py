@@ -4,10 +4,9 @@ from multi_x_serverless.routing.solver.input.components.loader import InputLoade
 
 
 class RegionViabilityLoader(InputLoader):
-    _available_regions: list[str]
-
     def __init__(self, client: RemoteClient) -> None:
         super().__init__(client, AVAILABLE_REGIONS_TABLE)
+        self._available_regions: list[str] = []
 
     def setup(self) -> None:
         all_regions = self._client.get_all_values_from_table(self._primary_table)
