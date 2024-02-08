@@ -9,7 +9,7 @@ from multi_x_serverless.routing.solver.solver import Solver
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
 
-class BFSFineGrainedSolver(Solver):  # pylint: disable=all
+class BFSFineGrainedSolver(Solver):
     def __init__(
         self,
         workflow_config: WorkflowConfig,
@@ -19,11 +19,11 @@ class BFSFineGrainedSolver(Solver):  # pylint: disable=all
     ) -> None:
         super().__init__(workflow_config, all_available_regions, input_manager, False)
 
-    def _solve(  # pylint: disable=too-many-locals, too-many-branches, too-many-nested-blocks, too-many-statements
+    def _solve(  # pylint: disable=too-many-locals, too-many-branches, too-many-nested-blocks, too-many-statements, line-too-long
         self, regions: list[dict]
     ) -> list[tuple[dict, float, float, float]]:
-        execution_cost_carbon_runtime_cache: dict[tuple[int, int, bool], tuple[float, float, float]] = {}
-        transmission_cost_carbon_runtime_cache: dict[tuple[int, int, int, int, bool], tuple[float, float, float]] = {}
+        execution_cost_carbon_runtime_cache: dict[str, tuple[float, float, float]] = {}
+        transmission_cost_carbon_runtime_cache: dict[str, tuple[float, float, float]] = {}
 
         # Get the topological representation of a DAG
         prerequisites_dictionary = self._dag.get_prerequisites_dict()
