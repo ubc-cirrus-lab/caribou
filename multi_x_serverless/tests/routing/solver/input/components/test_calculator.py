@@ -1,6 +1,7 @@
 import unittest
 from multi_x_serverless.routing.solver.input.components.calculator import InputCalculator
 
+
 class TestInputCalculator(unittest.TestCase):
     def setUp(self):
         self.calculator = InputCalculator()
@@ -15,5 +16,6 @@ class TestInputCalculator(unittest.TestCase):
     def test_repr(self):
         self.assertEqual(repr(self.calculator), "InputCalculator(name=InputCalculator)")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

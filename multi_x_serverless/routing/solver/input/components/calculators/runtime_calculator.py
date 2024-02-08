@@ -81,7 +81,7 @@ class RuntimeCalculator(InputCalculator):
             data_transfer_size = self._workflow_loader.get_data_transfer_size(from_instance_name, to_instance_name)
 
             latency = self._performance_loader.get_transmission_latency(
-                from_region_name, to_region_name, data_transfer_size
+                from_region_name, to_region_name, data_transfer_size, use_tail_latency
             )
 
         return latency

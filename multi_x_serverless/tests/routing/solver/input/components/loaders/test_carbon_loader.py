@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import Mock, patch
 from multi_x_serverless.routing.solver.input.components.loaders.carbon_loader import CarbonLoader
 
+
 class TestCarbonLoader(unittest.TestCase):
     def setUp(self):
         self.client = Mock()
@@ -21,7 +22,9 @@ class TestCarbonLoader(unittest.TestCase):
     def test_init(self):
         self.assertEqual(self.loader._client, self.client)
 
-    @patch('multi_x_serverless.routing.solver.input.components.loaders.carbon_loader.CarbonLoader._retrieve_region_data')
+    @patch(
+        "multi_x_serverless.routing.solver.input.components.loaders.carbon_loader.CarbonLoader._retrieve_region_data"
+    )
     def test_setup(self, mock_retrieve_region_data):
         mock_retrieve_region_data.return_value = self.loader._carbon_data
         self.loader.setup({"aws:eu-south-1"})
@@ -35,5 +38,6 @@ class TestCarbonLoader(unittest.TestCase):
         result = self.loader.get_grid_carbon_intensity("aws:eu-south-1")
         self.assertEqual(result, 482)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

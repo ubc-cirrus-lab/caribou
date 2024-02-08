@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import Mock, patch
 from multi_x_serverless.routing.solver.input.components.loader import InputLoader
 
+
 class TestInputLoader(unittest.TestCase):
     def setUp(self):
         self.client = Mock()
@@ -11,14 +12,14 @@ class TestInputLoader(unittest.TestCase):
         self.assertEqual(self.loader._client, self.client)
         self.assertEqual(self.loader._primary_table, "primary_table")
 
-    @patch('json.loads')
+    @patch("json.loads")
     def test_retrieve_data(self, mock_json_loads):
         mock_json_loads.return_value = {"key": "value"}
         self.client.get_value_from_table.return_value = '{"key": "value"}'
         result = self.loader._retrieve_data("table", "key")
         self.assertEqual(result, {"key": "value"})
 
-    @patch('multi_x_serverless.routing.solver.input.components.loader.InputLoader._retrieve_data')
+    @patch("multi_x_serverless.routing.solver.input.components.loader.InputLoader._retrieve_data")
     def test_retrieve_region_data(self, mock_retrieve_data):
         mock_retrieve_data.return_value = {"key": "value"}
         result = self.loader._retrieve_region_data({"provider1:region1", "provider1:region2"})
@@ -30,5 +31,6 @@ class TestInputLoader(unittest.TestCase):
     def test_repr(self):
         self.assertEqual(repr(self.loader), "InputLoader(name=InputLoader)")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

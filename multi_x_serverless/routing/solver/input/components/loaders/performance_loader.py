@@ -18,13 +18,17 @@ class PerformanceLoader(InputLoader):
         return self._performance_data.get(region_name, {}).get("relative_performance", 1.0)  # Default to 1 if not found
 
     # pylint: disable=unused-argument
-    def get_transmission_latency(self, from_region_name: str, to_region_name: str, data_transfer_size: float) -> float:
+    def get_transmission_latency(
+        self, from_region_name: str, to_region_name: str, data_transfer_size: float, use_tail_runtime: bool = False
+    ) -> float:
+        latency_type = "tail_latency" if use_tail_runtime else "average_latency"
+
         # Currently, performance data is not dependent on data transfer size, this should be implemented leter.
         return (
             self._performance_data.get(from_region_name, {})
             .get("transmission_latency", {})
             .get(to_region_name, {})
-            .get("transmission_latency", 100.0)
+            .get(latency_type, 100.0)
         )  # Default to huge number if not found
 
     def get_performance_data(self) -> dict[str, Any]:

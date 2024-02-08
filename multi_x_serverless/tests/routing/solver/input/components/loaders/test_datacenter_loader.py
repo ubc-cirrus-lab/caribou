@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import Mock, patch
 from multi_x_serverless.routing.solver.input.components.loaders.datacenter_loader import DatacenterLoader
 
+
 class TestDatacenterLoader(unittest.TestCase):
     def setUp(self):
         self.client = Mock()
@@ -25,8 +26,12 @@ class TestDatacenterLoader(unittest.TestCase):
     def test_init(self):
         self.assertEqual(self.loader._client, self.client)
 
-    @patch('multi_x_serverless.routing.solver.input.components.loaders.datacenter_loader.DatacenterLoader._retrieve_region_data')
-    @patch('multi_x_serverless.routing.solver.input.components.loaders.datacenter_loader.DatacenterLoader._retrieve_provider_data')
+    @patch(
+        "multi_x_serverless.routing.solver.input.components.loaders.datacenter_loader.DatacenterLoader._retrieve_region_data"
+    )
+    @patch(
+        "multi_x_serverless.routing.solver.input.components.loaders.datacenter_loader.DatacenterLoader._retrieve_provider_data"
+    )
     def test_setup(self, mock_retrieve_provider_data, mock_retrieve_region_data):
         mock_retrieve_region_data.return_value = self.loader._datacenter_data
         mock_retrieve_provider_data.return_value = {}
@@ -61,5 +66,6 @@ class TestDatacenterLoader(unittest.TestCase):
         result = self.loader.get_transmission_cost("aws:region1", True)
         self.assertEqual(result, 0.02)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()
