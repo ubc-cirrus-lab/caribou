@@ -13,7 +13,6 @@ from multi_x_serverless.routing.ranker.ranker import Ranker
 from multi_x_serverless.routing.solver.objective_function.any_improvement_objective_function import (
     AnyImprovementObjectiveFunction,
 )
-from multi_x_serverless.routing.solver.objective_function.objective_function import ObjectiveFunction
 from multi_x_serverless.routing.solver_inputs.input_manager import InputManager
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
 

@@ -19,7 +19,9 @@ class BFSFineGrainedSolver(Solver):
     ) -> None:
         super().__init__(workflow_config, all_available_regions, input_manager, False)
 
-    def _solve(self, regions: list[dict]) -> list[tuple[dict, float, float, float]]:
+    def _solve(  # pylint: disable=too-many-branches, too-many-statements
+        self, regions: list[dict]
+    ) -> list[tuple[dict, float, float, float]]:
         execution_cost_carbon_runtime_cache: dict[str, tuple[float, float, float]] = {}
         transmission_cost_carbon_runtime_cache: dict[str, tuple[float, float, float]] = {}
 
@@ -52,7 +54,7 @@ class BFSFineGrainedSolver(Solver):
             int, list[tuple[dict[int, tuple[int, float, float, float, float]], float, float, float, float]]
         ] = {}
         all_regions_indices = self._region_indexer.get_value_indices()
-        for current_instance_index in self._topological_order:
+        for current_instance_index in self._topological_order:  # pylint: disable=too-many-nested-blocks
             # Instance flow related information
             prerequisites_indices: list[int] = prerequisites_dictionary[current_instance_index]
 
@@ -261,7 +263,8 @@ class BFSFineGrainedSolver(Solver):
                                     best_runtime=best_runtime,
                                     best_carbon=best_carbon,
                                 ):
-                                    # Note to keep consistency with the other solvers, we save in cost, runtime, then carbon
+                                    # Note to keep consistency with the other solvers,
+                                    # we save in cost, runtime, then carbon
                                     final_deployments.append(
                                         (clean_combined_placements, pc_cost, max_pc_runtime, pc_carbon)
                                     )
@@ -284,7 +287,8 @@ class BFSFineGrainedSolver(Solver):
                                 wc_runtime_total = 0.0
                                 pc_runtime_total = 0.0
 
-                                # Calculate the cost, carbon and runtime of execution (Just execution here as its a shared value)
+                                # Calculate the cost, carbon and runtime of execution
+                                # (Just execution here as its a shared value)
                                 exec_lookup_key = str(current_instance_index) + "_" + str(to_region_index) + "_f"
                                 if exec_lookup_key in execution_cost_carbon_runtime_cache:
                                     wc_e_cost, wc_e_carbon, wc_e_runtime = execution_cost_carbon_runtime_cache[
@@ -473,8 +477,8 @@ class BFSFineGrainedSolver(Solver):
                                 (
                                     wc_cost_total,
                                     wc_carbon_total,
-                                    pc_cost_total,
-                                    pc_carbon_total,
+                                    _,
+                                    _,
                                 ) = self._calculate_wc_pc_cost_carbon(combined_placements)
 
                                 if not self._fail_hard_resource_constraints(
