@@ -78,6 +78,9 @@ class WorkflowLoader(InputLoader):
         else:
             return self._workflow_data.get(instance_name, {}).get("favourite_home_region_average_runtime")
 
+    def get_all_favorite_regions(self) -> set[str]:
+        return {instance["favourite_home_region"] for instance in self._workflow_data.values()}
+
     def get_projected_monthly_invocations(self, instance_name: str) -> float:
         return self._workflow_data.get(instance_name, {}).get("projected_monthly_invocations", 0.0)
 

@@ -11,7 +11,7 @@ class CarbonLoader(InputLoader):
     def __init__(self, client: RemoteClient) -> None:
         super().__init__(client, CARBON_REGION_TABLE)
 
-    def setup(self, available_regions: list[tuple[str, str]]) -> None:
+    def setup(self, available_regions: set[str]) -> None:
         self._carbon_data = self._retrieve_region_data(available_regions)
 
     def get_transmission_carbon_intensity(self, from_region_name: str, to_region_name: str) -> float:

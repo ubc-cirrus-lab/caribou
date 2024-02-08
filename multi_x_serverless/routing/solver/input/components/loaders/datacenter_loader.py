@@ -14,13 +14,15 @@ class DatacenterLoader(InputLoader):
         super().__init__(client, PROVIDER_REGION_TABLE)
         self._provider_table = PROVIDER_TABLE
 
-    def setup(self, available_regions: list[tuple[str, str]]) -> None:
+    def setup(self, available_regions: set[str]) -> None:
         self._datacenter_data = self._retrieve_region_data(available_regions)
 
         # Get the set of providers from the available regions
         providers = set()
-        for provider, _ in available_regions:
+        for region in available_regions:
+            provider, _ = region.split(":")
             providers.add(provider)
+
         self._provider_data = self._retrieve_provider_data(providers)  # ignore as not yet implemented
 
     def get_average_cpu_power(self, region_name: str) -> float:

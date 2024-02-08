@@ -11,7 +11,7 @@ class PerformanceLoader(InputLoader):
     def __init__(self, client: RemoteClient) -> None:
         super().__init__(client, PERFORMANCE_REGION_TABLE)
 
-    def setup(self, available_regions: list[tuple[str, str]]) -> None:
+    def setup(self, available_regions: set[str]) -> None:
         self._performance_data = self._retrieve_region_data(available_regions)
 
     def get_relative_performance(self, region_name: str) -> float:

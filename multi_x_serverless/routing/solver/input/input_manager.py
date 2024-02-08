@@ -19,6 +19,9 @@ from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
 
 class InputManager:
+    _region_indexer: Region
+    _instance_indexer: DAG
+
     def __init__(self, config: WorkflowConfig, setup_region_viability: bool = True) -> None:
         super().__init__()
         self._config = config
@@ -45,60 +48,49 @@ class InputManager:
         )
         self._cost_calculator = CostCalculator(self._datacenter_loader, self._workflow_loader, self._runtime_calculator)
 
-    def setup(self, regions_indexer: Region, instance_indexer: DAG) -> bool:
-        # # Need to convert it back
-        # for region in converted_regions:
-        #     (region["provider"], region["region"])
+    def setup(self, regions_indexer: Region, instance_indexer: DAG) -> None:
+        self._region_indexer = regions_indexer
+        self._instance_indexer = instance_indexer
 
-        # # Regions and instances under consideration
-        # regions: list[tuple[str, str]] = list(regions_indexer.get_value_indices().keys())
-        # instances: list[str] = list(instance_indexer.get_value_indices().keys())
+        # Get a set of all chosen regions (regions inside the region_indexer)
+        requested_regions: set[str] = set(regions_indexer.get_value_indices().keys())
 
-        # # Workflow loaders use the workfload unique ID from the config
-        # workflow_id = self._config.workflow_id
-        # if workflow_id is None:
-        #     return False
+        # Load the workflow loader
+        workflow_id = self._config.workflow_id
+        if workflow_id is None:
+            raise ValueError("Workflow ID is not set in the config")
+        self._workflow_loader.setup(workflow_id)
 
-        # # Utilize the Loaders to load the data from the database
-        # success = self._loader_manager.setup(regions, workflow_id)
-        # if not success:
-        #     return False
+        # Get the set of all favored regions
+        favored_regions: set[str] = self._workflow_loader.get_all_favorite_regions()
 
-        # # Get the retrieved information (From database or cache)
-        # all_loaded_informations = self._loader_manager.retrieve_data()
+        # Join the two sets to get the final set of regions
+        all_required_regions: set[str] = requested_regions.union(favored_regions)
 
-        # # Using those information, we can now setup the data sources
-        # instance_configuration = self._config.instances
-        # self._data_source_manager.setup(
-        #     all_loaded_informations, instance_configuration, regions, instances, regions_indexer, instance_indexer
-        # )
-
-        # # Now take the loaded data and send it to the data sources, which will be used in the component input managers
-        # instances_indicies: list[int] = list(instance_indexer.get_value_indices().values())
-        # regions_indicies: list[int] = list(regions_indexer.get_value_indices().values())
-
-        # # First initialize runtime manager, the runtime of this WILL be used in the carbon and cost input managers
-        # self._runtime_input.setup(instances_indicies, regions_indicies, self._data_source_manager)
-
-        # self._carbon_input.setup(instances_indicies, regions_indicies, self._data_source_manager, self._runtime_input)
-        # self._cost_input.setup(instances_indicies, regions_indicies, self._data_source_manager, self._runtime_input)
-
-        return True  # At this point we have successfully setup the input manager
+        # Now setup all appropriate loaders
+        self._datacenter_loader.setup(all_required_regions)
+        self._performance_loader.setup(all_required_regions)
+        self._carbon_loader.setup(all_required_regions)
 
     def get_execution_cost_carbon_runtime(
         self, instance_index: int, region_index: int, consider_probabilistic_invocations: bool = False
     ) -> list[float]:
-        # results = []
-        # calculators = ["Cost", "Carbon", "Runtime"]
-        # for calculator in calculators:
-        #     results.append(
-        #         self._get_input_component_manager(calculator).get_execution_value(
-        #             instance_index, region_index, consider_probabilistic_invocations
-        #         )
-        #     )
-        # return results
+        # Convert the instance and region index into the string representation
+        instance_name: str = self._instance_indexer.index_to_value(instance_index)
+        region_name: str = self._region_indexer.index_to_value(region_index)
 
-        return [0.0, 0.0, 0.0]
+        # Calculated the cost, carbon and runtime
+        execution_cost = self._cost_calculator.calculate_execution_cost(
+            instance_name, region_name, consider_probabilistic_invocations
+        )
+        execution_carbon = self._carbon_calculator.calculate_execution_carbon(
+            instance_name, region_name, consider_probabilistic_invocations
+        )
+        execution_runtime = self._runtime_calculator.calculate_runtime(
+            instance_name, region_name, consider_probabilistic_invocations
+        )
+
+        return [execution_cost, execution_carbon, execution_runtime]
 
     def get_transmission_cost_carbon_runtime(
         self,
@@ -108,19 +100,24 @@ class InputManager:
         to_region_index: int,
         consider_probabilistic_invocations: bool = False,
     ) -> list[float]:
-        # results = []
-        # calculators = ["Cost", "Carbon", "Runtime"]
-        # for calculator in calculators:
-        #     results.append(
-        #         self._get_input_component_manager(calculator).get_transmission_value(
-        #             from_instance_index,
-        #             to_instance_index,
-        #             from_region_index,
-        #             to_region_index,
-        #             consider_probabilistic_invocations,
-        #         )
-        #     )
-        return [0.0, 0.0, 0.0]
+        # Convert the instance and region index into the string representation
+        from_instance_name: str = self._instance_indexer.index_to_value(from_instance_index)
+        to_instance_name: str = self._instance_indexer.index_to_value(to_instance_index)
+        from_region_name: str = self._region_indexer.index_to_value(from_region_index)
+        to_region_name: str = self._region_indexer.index_to_value(to_region_index)
+
+        # Calculated the cost, carbon and runtime (latency)
+        transmission_cost = self._cost_calculator.calculate_transmission_cost(
+            from_instance_name, to_instance_name, from_region_name, to_region_name, consider_probabilistic_invocations
+        )
+        transmission_carbon = self._carbon_calculator.calculate_transmission_carbon(
+            from_instance_name, to_instance_name, from_region_name, to_region_name, consider_probabilistic_invocations
+        )
+        transmission_runtime = self._runtime_calculator.calculate_latency(
+            from_instance_name, to_instance_name, from_region_name, to_region_name, consider_probabilistic_invocations
+        )
+
+        return [transmission_cost, transmission_carbon, transmission_runtime]
 
     def get_all_regions(self) -> list[dict]:
         # Need to convert the regions to a list of dictionaries

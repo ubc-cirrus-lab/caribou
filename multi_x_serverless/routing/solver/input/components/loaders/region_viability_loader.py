@@ -6,7 +6,7 @@ from multi_x_serverless.routing.solver.input.components.loader import InputLoade
 
 
 class RegionViabilityLoader(InputLoader):
-    _available_regions: list[tuple[str, str]]
+    _available_regions: list[str]
 
     def __init__(self, client: RemoteClient) -> None:
         super().__init__(client, AVAILABLE_REGIONS_TABLE)
@@ -22,8 +22,7 @@ class RegionViabilityLoader(InputLoader):
 
             # Regions is int he format of: {provider}:{region_code}
             # We need to split this to get the provider and region code
-            provider, region_code = region.split(":")
-            self._available_regions.append((provider, region_code))
+            self._available_regions.append(region)
 
-    def get_available_regions(self) -> list[tuple[str, str]]:
+    def get_available_regions(self) -> list[str]:
         return self._available_regions

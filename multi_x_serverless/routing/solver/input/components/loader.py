@@ -14,12 +14,11 @@ class InputLoader(ABC):
     def setup(self, *args: Any, **kwargs: Any) -> None:
         raise NotImplementedError
 
-    def _retrieve_region_data(self, available_regions: list[tuple[str, str]]) -> dict[str, Any]:
+    def _retrieve_region_data(self, available_regions: set[str]) -> dict[str, Any]:
         all_data: dict[str, Any] = {}
 
-        for region_info in available_regions:
-            data_key = f"{region_info[0]}:{region_info[1]}"
-            all_data[data_key] = self._retrive_data(self._primary_table, data_key)
+        for region in available_regions:
+            all_data[region] = self._retrive_data(self._primary_table, region)
 
         return all_data
 
