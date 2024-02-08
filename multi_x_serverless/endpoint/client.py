@@ -11,13 +11,13 @@ class Client:
         self._workflow_id = workflow_id
         self._endpoints = Endpoints()
 
-    def run(self, input_data: Optional[dict] = None) -> None:
+    def run(self, input_data: Optional[str] = None) -> None:
         result = self._endpoints.get_solver_workflow_placement_decision_client().get_value_from_table(
             WORKFLOW_PLACEMENT_DECISION_TABLE, self._workflow_id
         )
 
         if input_data is None:
-            input_data = {}
+            input_data = ""
 
         if result is None or result == "":
             raise RuntimeError(
