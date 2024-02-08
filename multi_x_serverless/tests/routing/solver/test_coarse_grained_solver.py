@@ -5,7 +5,7 @@ import numpy as np
 # from multi_x_serverless.routing.solver.simple_solver import SimpleSolver
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
 from multi_x_serverless.routing.solver.coarse_grained_solver import CoarseGrainedSolver
-from multi_x_serverless.routing.solver.input.input_manager import InputManager
+from multi_x_serverless.routing.solver_inputs.input_manager import InputManager
 
 
 class TestCoarseGrainedSolver(unittest.TestCase):
