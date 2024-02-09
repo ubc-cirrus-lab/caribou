@@ -1,20 +1,20 @@
+import json
+import math
 import multiprocessing
 import os
+import random
 import time
 from unittest.mock import Mock
-import networkx as nx
-import matplotlib.pyplot as plt
-import numpy as np
-import random
-import math
-from multi_x_serverless.routing.models.region import Region
-from multi_x_serverless.routing.solver.bfs_fine_grained_solver import BFSFineGrainedSolver
-from multi_x_serverless.routing.solver.stochastic_heuristic_descent_solver import StochasticHeuristicDescentSolver
-from multi_x_serverless.routing.solver.coarse_grained_solver import CoarseGrainedSolver
-from multi_x_serverless.routing.solver_inputs.input_manager import InputManager
 
+import matplotlib.pyplot as plt
+import networkx as nx
+import numpy as np
+
+from multi_x_serverless.routing.solver.bfs_fine_grained_solver import BFSFineGrainedSolver
+from multi_x_serverless.routing.solver.coarse_grained_solver import CoarseGrainedSolver
+from multi_x_serverless.routing.solver.input.input_manager import InputManager
+from multi_x_serverless.routing.solver.stochastic_heuristic_descent_solver import StochasticHeuristicDescentSolver
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
-import json
 
 
 class SolverBenchmark:
@@ -202,7 +202,7 @@ class SolverBenchmark:
         config = {}
 
         # Generate regions
-        regions = [{"provider": f"p1", "region": f"r{i+1}"} for i in range(self._num_regions)]
+        regions = [f"p1:r{i+1}" for i in range(self._num_regions)]
         config["start_hops"] = regions[0]
         config["regions_and_providers"] = {"providers": {f"p1": None}}
 
@@ -307,14 +307,18 @@ for total_nodes in scenarios["total_nodes"]:
             continue
         for num_regions in scenarios["num_regions"]:
             inputs.append((total_nodes, sync_nodes, num_regions, seed))
-            solvers.append(SolverBenchmark(total_nodes=total_nodes, sync_nodes=sync_nodes, num_regions=num_regions, seed=seed))
+            solvers.append(
+                SolverBenchmark(total_nodes=total_nodes, sync_nodes=sync_nodes, num_regions=num_regions, seed=seed)
+            )
             counter += 1
 
 with multiprocessing.Pool(processes=len(inputs)) as pool:
     print("Starting CoarseGrainedSolver benchmarks at ", time.ctime())
     cg_results = pool.starmap(SolverBenchmark.run_benchmark, [(solver, CoarseGrainedSolver) for solver in solvers])
     print("Starting StochasticHeuristicDescentSolver benchmarks at ", time.ctime())
-    shd_results = pool.starmap(SolverBenchmark.run_benchmark, [(solver, StochasticHeuristicDescentSolver) for solver in solvers])
+    shd_results = pool.starmap(
+        SolverBenchmark.run_benchmark, [(solver, StochasticHeuristicDescentSolver) for solver in solvers]
+    )
     print("Starting BFSFineGrainedSolver benchmarks at ", time.ctime())
     bfs_results = pool.starmap(SolverBenchmark.run_benchmark, [(solver, BFSFineGrainedSolver) for solver in solvers])
     results = cg_results + shd_results + bfs_results
