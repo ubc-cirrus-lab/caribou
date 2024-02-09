@@ -109,10 +109,12 @@ class TestProviderRetriever(unittest.TestCase):
         with self.assertRaises(requests.exceptions.HTTPError):
             self.provider_retriever.retrieve_aws_regions()
 
+    @patch("multi_x_serverless.data_collector.components.provider.provider_retriever.str_to_bool")
     @patch("multi_x_serverless.data_collector.components.provider.provider_retriever.os.environ.get")
     @patch("multi_x_serverless.data_collector.components.provider.provider_retriever.boto3.client")
-    def test_aws_pricing_client_initialization_failure(self, mock_boto3_client, mock_os_environ_get):
+    def test_aws_pricing_client_initialization_failure(self, mock_boto3_client, mock_os_environ_get, mock_str_to_bool):
         mock_os_environ_get.return_value = None  # No AWS credentials
+        mock_str_to_bool.return_value = True  # Is integration test
         mock_boto3_client.side_effect = Exception("AWS client initialization failed")
 
         with self.assertRaises(Exception) as context:
@@ -140,7 +142,6 @@ class TestProviderRetriever(unittest.TestCase):
 
         result = self.provider_retriever.retrieve_provider_region_data()
         self.assertIn("aws:dummy_region", result)
-        print(result["aws:dummy_region"]["execution_cost"])
         self.assertEqual(
             result["aws:dummy_region"]["execution_cost"],
             {"compute_cost": {"arm64": 0.0001, "x86": 0.00006}, "invocation_cost": {"arm64": 0.002, "x86_64": 0.003}},

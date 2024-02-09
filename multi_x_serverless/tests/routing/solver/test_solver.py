@@ -11,12 +11,21 @@ class SolverSubclass(Solver):
     def _solve(self, regions):
         pass
 
-    def _init_home_region_transmission_costs(self, regions: list[dict]) -> None:
+    def _init_home_region_transmission_costs(self, regions) -> None:
+        pass
+
+    def _instantiate_input_manager(self) -> None:
         pass
 
 
 class OtherSolverSubclass(Solver):
+    def __init__(self, workflow_config, all_available_regions):
+        super().__init__(workflow_config, all_available_regions, None)
+
     def _solve(self, regions):
+        pass
+
+    def _instantiate_input_manager(self) -> None:
         pass
 
 
@@ -51,20 +60,14 @@ class TestSolver(unittest.TestCase):
             "providers": {"provider1": None, "provider2": None, "provider3": None},
         }
         self.workflow_config.workflow_id = "workflow_id"
-        self.workflow_config.start_hops = {"provider": "provider1", "region": "region1"}
-        self.solver = SolverSubclass(
-            self.workflow_config, all_available_regions=[{"provider": "provider1", "region": "region1"}]
-        )
+        self.workflow_config.start_hops = "provider1:region1"
+        self.solver = SolverSubclass(self.workflow_config, all_available_regions=["provider1:region1"])
 
     @patch.object(Solver, "_get_permitted_region_indices")
     def test_init_home_region_transmission_costs(self, mock_get_permitted_region_indices):
         solver = OtherSolverSubclass(
             self.workflow_config,
-            all_available_regions=[
-                {"provider": "provider1", "region": "region1"},
-                {"provider": "provider2", "region": "region2"},
-                {"provider": "provider3", "region": "region3"},
-            ],
+            all_available_regions=["provider1:region1", "provider2:region2", "provider3:region3"],
         )
 
         mock_get_permitted_region_indices.return_value = [0, 1, 2]
@@ -77,7 +80,7 @@ class TestSolver(unittest.TestCase):
             (1, 2, 3),  # for average
             (4, 5, 6),  # for tail
         ]
-        regions = [{"provider": "provider1"}, {"provider": "provider2"}]
+        regions = ["provider1:region1", "provider2:region2"]
 
         solver._input_manager = mock_input_manager
 
@@ -99,38 +102,38 @@ class TestSolver(unittest.TestCase):
         mock_add_edge.assert_called_once_with("node1", "node2")
 
     def test_filter_regions(self):
-        regions = [{"provider": "provider1"}, {"provider": "provider2"}]
+        regions = ["provider1:region1", "provider2:region2"]
         regions_and_providers = {
             "providers": {"provider1": {}},
-            "allowed_regions": [{"provider": "provider1"}],
-            "disallowed_regions": [{"provider": "provider2"}],
+            "allowed_regions": ["provider1:region1"],
+            "disallowed_regions": ["provider2:region2"],
         }
         filtered_regions = self.solver._filter_regions(regions, regions_and_providers)
-        self.assertEqual(filtered_regions, [{"provider": "provider1"}])
+        self.assertEqual(filtered_regions, ["provider1:region1"])
 
     def test_filter_regions_global(self):
         self.workflow_config.regions_and_providers = {
             "providers": {"provider1": {}},
-            "allowed_regions": [{"provider": "provider1"}],
-            "disallowed_regions": [{"provider": "provider2"}],
+            "allowed_regions": ["provider1:region1"],
+            "disallowed_regions": ["provider2:region2"],
         }
-        regions = [{"provider": "provider1"}, {"provider": "provider2"}]
+        regions = ["provider1:region1", "provider2:region2"]
         filtered_regions = self.solver._filter_regions_global(regions)
-        self.assertEqual(filtered_regions, [{"provider": "provider1"}])
+        self.assertEqual(filtered_regions, ["provider1:region1"])
 
     def test_filter_regions_instance(self):
         self.workflow_config.instances = [
             {
                 "regions_and_providers": {
                     "providers": {"provider1": {}},
-                    "allowed_regions": [{"provider": "provider1"}],
-                    "disallowed_regions": [{"provider": "provider2"}],
+                    "allowed_regions": ["provider1:region1"],
+                    "disallowed_regions": ["provider2:region2"],
                 }
             }
         ]
-        regions = [{"provider": "provider1"}, {"provider": "provider2"}]
+        regions = ["provider1:region1", "provider2:region2"]
         filtered_regions = self.solver._filter_regions_instance(regions, 0)
-        self.assertEqual(filtered_regions, [{"provider": "provider1"}])
+        self.assertEqual(filtered_regions, ["provider1:region1"])
 
     def test_most_expensive_path(self):
         self.solver._dag.topological_sort = MagicMock(return_value=[0, 1, 2])

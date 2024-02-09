@@ -2,7 +2,7 @@ from multi_x_serverless.routing.solver.solver import Solver
 
 
 class CoarseGrainedSolver(Solver):
-    def _solve(self, regions: list[dict]) -> list[tuple[dict, float, float, float]]:
+    def _solve(self, regions: list[str]) -> list[tuple[dict, float, float, float]]:
         average_case_deployments: list[tuple[dict[int, int], float, float, float]] = []
 
         # list of indices of regions that are permitted for all functions

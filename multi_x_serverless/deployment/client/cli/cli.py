@@ -3,6 +3,10 @@ from typing import Optional
 
 import click
 
+from multi_x_serverless.data_collector.components.carbon.carbon_collector import CarbonCollector
+from multi_x_serverless.data_collector.components.performance.performance_collector import PerformanceCollector
+from multi_x_serverless.data_collector.components.provider.provider_collector import ProviderCollector
+from multi_x_serverless.data_collector.components.workflow.workflow_collector import WorkflowCollector
 from multi_x_serverless.deployment.client import __version__ as MULTI_X_SERVERLESS_VERSION
 from multi_x_serverless.deployment.client.cli.new_workflow import create_new_workflow_directory
 from multi_x_serverless.deployment.common.config.config import Config
@@ -57,6 +61,29 @@ def run(_: click.Context, input_parameter: Optional[str], workflow_id: str) -> N
         client.run(input_parameter)
     else:
         client.run()
+
+
+@cli.command("data_collect", help="Run data collection.")
+@click.argument("collector", required=True, type=click.Choice(["carbon", "provider", "performance", "workflow", "all"]))
+@click.pass_context
+def data_collect(_: click.Context, collector: str) -> None:
+    if collector in ("provider", "all"):
+        provider_collector = ProviderCollector()
+        provider_collector.run()
+    if collector in ("carbon", "all"):
+        carbon_collector = CarbonCollector()
+        carbon_collector.run()
+    if collector in ("performance", "all"):
+        performance_collector = PerformanceCollector()
+        performance_collector.run()
+    if collector in ("workflow", "all"):
+        workflow_collector = WorkflowCollector()
+        workflow_collector.run()
+
+
+@cli.command("version", help="Print the version of multi_x_serverless.")
+def version() -> None:
+    click.echo(MULTI_X_SERVERLESS_VERSION)
 
 
 __version__ = MULTI_X_SERVERLESS_VERSION

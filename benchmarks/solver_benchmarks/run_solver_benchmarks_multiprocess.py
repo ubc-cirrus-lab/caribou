@@ -1,19 +1,21 @@
+import json
+import math
+import multiprocessing
 import os
+import random
 import time
 from unittest.mock import Mock
-import networkx as nx
+
 import matplotlib.pyplot as plt
+import networkx as nx
 import numpy as np
-import random
-import math
+
 from multi_x_serverless.routing.solver.bfs_fine_grained_solver import BFSFineGrainedSolver
-from multi_x_serverless.routing.solver.stochastic_heuristic_descent_solver import StochasticHeuristicDescentSolver
 from multi_x_serverless.routing.solver.coarse_grained_solver import CoarseGrainedSolver
 from multi_x_serverless.routing.solver.input.input_manager import InputManager
-
+from multi_x_serverless.routing.solver.stochastic_heuristic_descent_solver import StochasticHeuristicDescentSolver
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
-import json
 
 class SolverBenchmark:
     def __init__(self, total_nodes=10, sync_nodes=2, num_regions=2, seed=None):
@@ -84,10 +86,6 @@ class SolverBenchmark:
                     cost_value *= 2
                     runtime_value *= 2
                     carbon_value *= 2
-                if from_region_index == to_region_index:
-                    cost_value = cost_value / 20
-                    runtime_value = runtime_value / 20
-                    carbon_value = carbon_value / 20
             # Exception for start hop (if starting from home region, no need to add transmission cost ONLY in regards to start hop)
             if previous_instance_index == current_instance_index and from_region_index == to_region_index:
                 return (cost_value, runtime_value, carbon_value)
@@ -298,20 +296,32 @@ print("Validation successful")
 # Benchmark all solvers
 print("Running benchmarks")
 results = []
+inputs = []
+solvers = []
+scenarios = {"total_nodes": range(3, 9), "sync_nodes": range(1, 5), "num_regions": range(3, 10, 2)}
 
-for total_nodes in range(3, 16):
-    for sync_nodes in range(1, 4):
-        if sync_nodes > (total_nodes - 1):
+counter = 0
+for total_nodes in scenarios["total_nodes"]:
+    for sync_nodes in scenarios["sync_nodes"]:
+        if sync_nodes > total_nodes - 1:
             continue
-        for num_regions in range(3, 16):
-            print(f"Running benchmark with {total_nodes} nodes, {sync_nodes} sync nodes and {num_regions} regions")
-            solverBenchmark = SolverBenchmark(
-                total_nodes=total_nodes, sync_nodes=sync_nodes, num_regions=num_regions, seed=seed
+        for num_regions in scenarios["num_regions"]:
+            inputs.append((total_nodes, sync_nodes, num_regions, seed))
+            solvers.append(
+                SolverBenchmark(total_nodes=total_nodes, sync_nodes=sync_nodes, num_regions=num_regions, seed=seed)
             )
-            if total_nodes < 8 and num_regions < 8:
-                results.append(solverBenchmark.run_benchmark(BFSFineGrainedSolver, number_of_runs=3))
-            results.append(solverBenchmark.run_benchmark(StochasticHeuristicDescentSolver, number_of_runs=3))
-            results.append(solverBenchmark.run_benchmark(CoarseGrainedSolver, number_of_runs=3))
+            counter += 1
+
+with multiprocessing.Pool(processes=len(inputs)) as pool:
+    print("Starting CoarseGrainedSolver benchmarks at ", time.ctime())
+    cg_results = pool.starmap(SolverBenchmark.run_benchmark, [(solver, CoarseGrainedSolver) for solver in solvers])
+    print("Starting StochasticHeuristicDescentSolver benchmarks at ", time.ctime())
+    shd_results = pool.starmap(
+        SolverBenchmark.run_benchmark, [(solver, StochasticHeuristicDescentSolver) for solver in solvers]
+    )
+    print("Starting BFSFineGrainedSolver benchmarks at ", time.ctime())
+    bfs_results = pool.starmap(SolverBenchmark.run_benchmark, [(solver, BFSFineGrainedSolver) for solver in solvers])
+    results = cg_results + shd_results + bfs_results
 
 per_solver_results = {}
 

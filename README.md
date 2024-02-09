@@ -44,7 +44,7 @@ If you execute a file without `poetry run`, it will not find the dependencies as
 
 For more information, see the [poetry documentation](https://python-poetry.org/docs/).
 
-###   Deployment Server
+###  Deployment Server
 
 The deployment server can be found in `multi_x_serverless/deployment/server` and can be setup with:
 
@@ -52,7 +52,7 @@ The deployment server can be found in `multi_x_serverless/deployment/server` and
 poetry run ./multi_x_serverless/deployment/server/setup.sh
 ```
 
-###  Deployment Client
+### Deployment Client
 
 The deployment client can be found in `multi_x_serverless/deployment/client` and can be run with:
 
@@ -64,6 +64,23 @@ To see the available commands, use:
 
 ```bash
 poetry run multi_x_serverless --help
+```
+
+### Data Collecting
+
+The data collecting can be found in `multi_x_serverless/data_collector` and can be run individually with:
+
+```bash
+poetry run multi_x_serverless data_collect <collector>
+```
+
+Where `<collector>` is the name of the collector you want to run.
+
+Important: For the data collectors to work locally, you need to set some environment variables.
+
+```bash
+export ELECTRICITY_MAPS_AUTH_TOKEN=<your_token>
+export GOOGLE_API_KEY=<your_key>
 ```
 
 ### Testing

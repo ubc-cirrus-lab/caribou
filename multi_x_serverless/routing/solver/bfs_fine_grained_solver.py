@@ -4,8 +4,8 @@ from typing import Optional
 
 import numpy as np
 
+from multi_x_serverless.routing.solver.input.input_manager import InputManager
 from multi_x_serverless.routing.solver.solver import Solver
-from multi_x_serverless.routing.solver_inputs.input_manager import InputManager
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
 
@@ -13,14 +13,14 @@ class BFSFineGrainedSolver(Solver):
     def __init__(
         self,
         workflow_config: WorkflowConfig,
-        all_available_regions: Optional[list[dict]] = None,
+        all_available_regions: Optional[list[str]] = None,
         input_manager: Optional[InputManager] = None,
         init_home_region_transmission_costs: bool = True,
     ) -> None:
         super().__init__(workflow_config, all_available_regions, input_manager, False)
 
-    def _solve(  # pylint: disable=too-many-branches, too-many-statements
-        self, regions: list[dict]
+    def _solve(  # pylint: disable=too-many-locals, too-many-branches, too-many-nested-blocks, too-many-statements, line-too-long
+        self, regions: list[str]
     ) -> list[tuple[dict, float, float, float]]:
         execution_cost_carbon_runtime_cache: dict[str, tuple[float, float, float]] = {}
         transmission_cost_carbon_runtime_cache: dict[str, tuple[float, float, float]] = {}
@@ -33,7 +33,7 @@ class BFSFineGrainedSolver(Solver):
         # Get the home region index -> this is the region that the workflow starts from
         # For now the current implementation only supports one home region
         home_region = self._workflow_config.start_hops
-        home_region_index = self._region_indexer.get_value_indices()[(home_region["provider"], home_region["region"])]
+        home_region_index = self._region_indexer.get_value_indices()[home_region]
 
         # Add virtual leaf nodes to the DAG
         leaf_nodes = self._dag.get_leaf_nodes()
@@ -54,19 +54,17 @@ class BFSFineGrainedSolver(Solver):
             int, list[tuple[dict[int, tuple[int, float, float, float, float]], float, float, float, float]]
         ] = {}
         all_regions_indices = self._region_indexer.get_value_indices()
-        for current_instance_index in self._topological_order:  # pylint: disable=too-many-nested-blocks
+        for current_instance_index in self._topological_order:
             # Instance flow related information
             prerequisites_indices: list[int] = prerequisites_dictionary[current_instance_index]
 
             # serverless region related information - per instance level
             # Where start hop and end hop should be already integrated into restrictions
-            permitted_regions: list[dict[(str, str)]] = self._filter_regions_instance(regions, current_instance_index)
+            permitted_regions: list[str] = self._filter_regions_instance(regions, current_instance_index)
             if len(permitted_regions) == 0:  # Should never happen in a valid DAG
                 raise ValueError("There are no permitted regions for this instance")
 
-            permitted_regions_indices = np.array(
-                [all_regions_indices[(region["provider"], region["region"])] for region in permitted_regions]
-            )
+            permitted_regions_indices = np.array([all_regions_indices[region] for region in permitted_regions])
 
             # List of sets of previous calculated instances
             current_deployments: list[
@@ -263,11 +261,11 @@ class BFSFineGrainedSolver(Solver):
                                     best_runtime=best_runtime,
                                     best_carbon=best_carbon,
                                 ):
-                                    # Note to keep consistency with the other solvers,
-                                    # we save in cost, runtime, then carbon
+                                    # Note to keep consistency with the other solvers, we save in cost, runtime, then carbon
                                     final_deployments.append(
                                         (clean_combined_placements, pc_cost, max_pc_runtime, pc_carbon)
                                     )
+
                                     best_cost = pc_cost if pc_cost < best_cost else best_cost
                                     best_carbon = pc_carbon if pc_carbon < best_carbon else best_carbon
                                     best_runtime = max_pc_runtime if max_pc_runtime < best_runtime else best_runtime
@@ -287,8 +285,7 @@ class BFSFineGrainedSolver(Solver):
                                 wc_runtime_total = 0.0
                                 pc_runtime_total = 0.0
 
-                                # Calculate the cost, carbon and runtime of execution
-                                # (Just execution here as its a shared value)
+                                # Calculate the cost, carbon and runtime of execution (Just execution here as its a shared value)
                                 exec_lookup_key = str(current_instance_index) + "_" + str(to_region_index) + "_f"
                                 if exec_lookup_key in execution_cost_carbon_runtime_cache:
                                     wc_e_cost, wc_e_carbon, wc_e_runtime = execution_cost_carbon_runtime_cache[

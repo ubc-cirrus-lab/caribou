@@ -11,7 +11,10 @@ class TestWorkflowConfig(unittest.TestCase):
             "workflow_name": "test_workflow",
             "workflow_version": "1.0",
             "workflow_id": "test_id",
-            "regions_and_providers": {"providers": {"provider1": {"config": {"timeout": 60, "memory": 128}}}},
+            "regions_and_providers": {
+                "allowed_regions": [{"provider": "provider1", "region": "region1"}],
+                "providers": {"provider1": {"config": {"timeout": 60, "memory": 128}}},
+            },
             "instances": [
                 {
                     "function_name": "function1",
@@ -53,7 +56,10 @@ class TestWorkflowConfig(unittest.TestCase):
     def test_regions_and_providers(self):
         self.assertEqual(
             self.workflow_config.regions_and_providers,
-            {"providers": {"provider1": {"config": {"memory": 128, "timeout": 60}}}},
+            {
+                "providers": {"provider1": {"config": {"timeout": 60, "memory": 128}}},
+                "allowed_regions": ["provider1:region1"],
+            },
         )
 
     def test_instances(self):
@@ -84,7 +90,7 @@ class TestWorkflowConfig(unittest.TestCase):
         )
 
     def test_start_hops(self):
-        self.assertEqual(self.workflow_config.start_hops, {"provider": "provider1", "region": "region1"})
+        self.assertEqual(self.workflow_config.start_hops, "provider1:region1")
 
 
 if __name__ == "__main__":

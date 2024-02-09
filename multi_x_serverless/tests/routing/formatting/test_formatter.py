@@ -9,7 +9,7 @@ class TestFormatter(unittest.TestCase):
     def test_format(self):
         results = ({0: 1, 1: 0}, 0.0, 0.0, 0.0)
         index_to_instance_name = {0: "instance1", 1: "instance2"}
-        index_to_region_provider_name = {0: ("provider1", "region1"), 1: ("provider2", "region2")}
+        index_to_region_provider_name = {0: "provider1:region1", 1: "provider2:region2"}
 
         expected_output = {
             "workflow_placement": {
