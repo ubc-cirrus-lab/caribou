@@ -6,15 +6,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import random
 import math
-from multi_x_serverless.routing.models.region import Region
 from multi_x_serverless.routing.solver.bfs_fine_grained_solver import BFSFineGrainedSolver
 from multi_x_serverless.routing.solver.stochastic_heuristic_descent_solver import StochasticHeuristicDescentSolver
 from multi_x_serverless.routing.solver.coarse_grained_solver import CoarseGrainedSolver
-from multi_x_serverless.routing.solver_inputs.input_manager import InputManager
+from multi_x_serverless.routing.solver.input.input_manager import InputManager
 
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
-import json
 
+import json
 
 class SolverBenchmark:
     def __init__(self, total_nodes=10, sync_nodes=2, num_regions=2, seed=None):
@@ -205,7 +204,7 @@ class SolverBenchmark:
         config = {}
 
         # Generate regions
-        regions = [{"provider": f"p1", "region": f"r{i+1}"} for i in range(self._num_regions)]
+        regions = [f"p1:r{i+1}" for i in range(self._num_regions)]
         config["start_hops"] = regions[0]
         config["regions_and_providers"] = {"providers": {f"p1": None}}
 
