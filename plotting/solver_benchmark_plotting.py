@@ -9,9 +9,9 @@ import matplotlib.colors as mcolors
 
 
 def plot_single(ax1, ax2, data, x_key, y_left_key, y_right_key, only_fast=False):
-    colormap = colormaps["viridis"]
+    colormap = colormaps["tab10"]
     num_solvers = len(data)
-    width = 0.2
+    width = 0.4
     handles, labels = [], []
 
     for i, (solver, solver_data) in enumerate(data.items()):
@@ -24,7 +24,7 @@ def plot_single(ax1, ax2, data, x_key, y_left_key, y_right_key, only_fast=False)
             ax1_data_dict[d[x_key]].append(d[y_left_key])
         x_values = sorted(ax1_data_dict.keys())
         y_values = [ax1_data_dict[x] for x in x_values]
-        color = colormap(i / num_solvers)
+        color = colormap(i)
 
         parts = ax1.violinplot(
             y_values,
@@ -42,10 +42,10 @@ def plot_single(ax1, ax2, data, x_key, y_left_key, y_right_key, only_fast=False)
         labels.append(solver)
         handles.append(parts["bodies"][0])
 
-        parts['cbars'].set_color(darker_color)
-        parts['cmins'].set_color(darker_color)
-        parts['cmaxes'].set_color(darker_color)
-        parts['cmeans'].set_color(darker_color)
+        parts["cbars"].set_color(darker_color)
+        parts["cmins"].set_color(darker_color)
+        parts["cmaxes"].set_color(darker_color)
+        parts["cmeans"].set_color(darker_color)
 
         y_ax2_data_dict = defaultdict(list)
         for d in solver_data:

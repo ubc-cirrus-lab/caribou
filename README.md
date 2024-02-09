@@ -88,10 +88,16 @@ Currently we have the following system part benchmarks:
 
 #### Solver Benchmarks
 
-To run the solver benchmarks, use:
+To run the solver benchmarks, use either the following commands:
 
+* Single process (runs the benchmark scenarios one after the other):
 ```bash
 poetry run python benchmarks/solver_benchmarks/run_solver_benchmarks.py
+```
+
+* Multiprocess (uses all CPU cores to run the benchmark scenarios in parallel):
+```bash
+poetry run python benchmarks/solver_benchmarks/run_solver_benchmarks_multiprocess.py
 ```
 
 This will generate a JSON in `benchmarks/solver_benchmarks/results/results.json` with the results.
