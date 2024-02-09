@@ -754,9 +754,15 @@ Below is an example of the `workflow_instance_table` output for a workflow with 
 
 ## Solver Inputs
 
-Solver Inputs is a subcomponent of Solver responsible for accessing outputs of Data Collectors and using them in a proper method for calculations needed to determine optimal placement in Solver. It serves as an interface for Solver to obtain execution and transmission cost/carbon/runtime within or between instances and regions. It accesses the necessary information from tables created and managed by the Data Collectors, including workflow_instance_table, workflow_summary_table, performance_region_table, carbon_region_table, available_regions_table, provider_region_table, and provider_table.
+Solver Inputs is a subcomponent of Solver responsible for accessing outputs of Data Collectors and using them in a proper method for calculations needed to determine optimal placement in Solver. 
+It serves as an interface for Solver to obtain execution and transmission cost/carbon/runtime within or between instances and regions. 
+It accesses the necessary information from tables created and managed by the Data Collectors, including workflow_instance_table, workflow_summary_table, performance_region_table, carbon_region_table, available_regions_table, provider_region_table, and provider_table.
 
-It consists of the "Input Manager," responsible for managing and setting up all appropriate loaders and calculators. The Solver directly interacts with this component. The data loaders include the "Region Viability Loader", "Datacenter Loader", "Carbon Loader", "Performance Loader", and "Workflow Loader". Each is responsible for accessing one or more tables in a database, acquiring only the needed sets of data from each table to minimize database access cost. The data calculators, including the "Runtime Calculator", "Cost Calculator", and "Carbon Calculator", are responsible for accessing data from the necessary data loaders and/or other calculators in order to calculate the execution and transmission cost/carbon/runtime.
+It consists of the "Input Manager," responsible for managing and setting up all appropriate loaders and calculators. 
+The Solver directly interacts with this component. 
+The data loaders include the "Region Viability Loader", "Datacenter Loader", "Carbon Loader", "Performance Loader", and "Workflow Loader". 
+Each is responsible for accessing one or more tables in a database, acquiring only the needed sets of data from each table to minimize database access cost. 
+The data calculators, including the "Runtime Calculator", "Cost Calculator", and "Carbon Calculator", are responsible for accessing data from the necessary data loaders and/or other calculators in order to calculate the execution and transmission cost/carbon/runtime.
 
 Below is a diagram showing the overall access of data in the Solver Inputs:
 
@@ -765,7 +771,7 @@ Below is a diagram showing the overall access of data in the Solver Inputs:
 ## Solvers
 
 The solvers are responsible for determining the optimal placement of the function instances across the available regions.
-Every solver must create valid and unique deployments.
+Every solver must create valid and unique deAployments.
 A valid deployment is one that satisfies the hard constraints of the workflow in terms of resource requirements for the worst-case runtime (tail).
 The provided constraints will then be valid as quality of service (QoS) requirements for the average-case runtime.
 Prioritisation of the deployments is based on the average-case runtime.
