@@ -21,11 +21,12 @@ In this document we will discuss the design decisions that have been made for th
     2. [Carbon Collector](#carbon-collector)
     3. [Performance Collector](#performance-collector)
     4. [Workflow Collector](#workflow-collector)
-6. [Solvers](#solvers)
+6. [Solver Inputs](#solver-inputs)
+7. [Solvers](#solvers)
     1. [Coarse Grained](#coarse-grained)
     2. [Stochastic Heuristic Descent](#stochastic-heuristic-descent)
     3. [Brute Force](#brute-force)
-7. [References](#references)
+8. [References](#references)
 
 ## Dataflow DAG Model
 
@@ -750,6 +751,16 @@ Below is an example of the `workflow_instance_table` output for a workflow with 
   },
 }
 ```
+
+## Solver Inputs
+
+Solver Inputs is a subcomponent of Solver responsible for accessing outputs of Data Collectors and using them in a proper method for calculations needed to determine optimal placement in Solver. It serves as an interface for Solver to obtain execution and transmission cost/carbon/runtime within or between instances and regions. It accesses the necessary information from tables created and managed by the Data Collectors, including workflow_instance_table, workflow_summary_table, performance_region_table, carbon_region_table, available_regions_table, provider_region_table, and provider_table.
+
+It consists of the "Input Manager," responsible for managing and setting up all appropriate loaders and calculators. The Solver directly interacts with this component. The data loaders include the "Region Viability Loader", "Datacenter Loader", "Carbon Loader", "Performance Loader", and "Workflow Loader". Each is responsible for accessing one or more tables in a database, acquiring only the needed sets of data from each table to minimize database access cost. The data calculators, including the "Runtime Calculator", "Cost Calculator", and "Carbon Calculator", are responsible for accessing data from the necessary data loaders and/or other calculators in order to calculate the execution and transmission cost/carbon/runtime.
+
+Below is a diagram showing the overall access of data in the Solver Inputs:
+
+![Solver Input Data Flow](./img/solver_input_architecture.png)
 
 ## Solvers
 
