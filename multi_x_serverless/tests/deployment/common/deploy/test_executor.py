@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, patch, MagicMock
 from multi_x_serverless.deployment.common.config.config import Config
 from multi_x_serverless.deployment.common.deploy.models.deployment_plan import DeploymentPlan
 from multi_x_serverless.deployment.common.deploy.models.instructions import APICall, RecordResourceVariable
@@ -60,7 +60,12 @@ class TestExecutor(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 self.executor.execute(deployment_plan)
 
-    def test_execute_recordresourcevariable(self):
+    @patch("multi_x_serverless.deployment.common.factories.remote_client_factory.RemoteClientFactory.get_remote_client")
+    def test_execute_recordresourcevariable(self, mock_get_remote_client):
+        # Create a mock client and set its create_sync_tables method to a MagicMock
+        mock_client = MagicMock()
+        mock_get_remote_client.return_value = mock_client
+
         deployment_plan = DeploymentPlan()
         deployment_plan.instructions = {
             "aws:us-west-1": [RecordResourceVariable("var_name", "resource_type", "resource_name", "var_value")]
