@@ -100,6 +100,9 @@ class WorkflowConfig:
     def start_hops(self) -> str:
         raw_start_hops = self._lookup("start_hops")
 
+        if raw_start_hops is None or len(raw_start_hops) == 0:
+            raise ValueError("No start hops found")
+
         # TODO (#68): Allow for multiple "home region" or start hops
 
         # Start hop is in format of {"provider": "aws", "region": "us-west-2"}
@@ -108,6 +111,4 @@ class WorkflowConfig:
         for start_hop in raw_start_hops:
             start_hops.append(f"{start_hop['provider']}:{start_hop['region']}")
 
-        if start_hops is None or len(start_hops) == 0:
-            raise ValueError("No start hops found")
         return start_hops[0]
