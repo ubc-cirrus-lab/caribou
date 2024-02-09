@@ -9,7 +9,6 @@ import boto3
 from datetime import datetime
 from profanity import profanity
 from pydub import AudioSegment
-import numpy as np
 
 import tempfile
 
@@ -212,7 +211,7 @@ def censor(event: dict[str, Any]) -> dict[str, Any]:
     outputfile = BytesIO()
     speech = AudioSegment.from_wav(dlFile)
 
-    samples = np.array(speech.get_array_of_samples())
+    samples = speech.get_array_of_samples()
 
     for index, s in enumerate(samples):
         for start, end in indexes:
