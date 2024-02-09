@@ -20,32 +20,9 @@ workflow = MultiXServerlessWorkflow(name="regression_tuning", version="0.0.1")
 @workflow.serverless_function(
     name="GetInput",
     entry_point=True,
-    regions_and_providers={
-        "allowed_regions": [
-            {
-                "provider": "aws",
-                "region": "us-east-1",
-            }
-        ],
-        "disallowed_regions": [
-            {
-                "provider": "aws",
-                "region": "us-east-2",
-            }
-        ],
-        "providers": {
-            "aws": {
-                "config": {
-                    "timeout": 60,
-                    "memory": 128,
-                },
-            },
-        },
-    },
 )
 def get_input(event: dict[str, Any]) -> dict[str, Any]:
-    request = event["request"]
-    request_json = json.loads(request)
+    request_json = json.loads(event)
 
     if "message" in request_json:
         samplesNum = request_json["message"]

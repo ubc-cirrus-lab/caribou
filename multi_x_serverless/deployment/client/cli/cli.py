@@ -52,13 +52,13 @@ def deploy(ctx: click.Context) -> None:
 
 @cli.command("run", help="Run the workflow.")
 @click.argument("workflow_id", required=True)
-@click.option("--input", "-i", help="The input to the workflow. Must be a valid JSON string.")
+@click.option("--argument", "-a", help="The input to the workflow. Must be a valid JSON string.")
 @click.pass_context
-def run(_: click.Context, input_parameter: Optional[str], workflow_id: str) -> None:
+def run(_: click.Context, argument: Optional[str], workflow_id: str) -> None:
     client = Client(workflow_id)
 
-    if input_parameter:
-        client.run(input_parameter)
+    if argument:
+        client.run(argument)
     else:
         client.run()
 
