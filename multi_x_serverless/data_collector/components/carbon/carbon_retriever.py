@@ -24,9 +24,11 @@ class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attri
 
     def __init__(self, client: RemoteClient, config: Optional[dict] = None) -> None:
         super().__init__(client)
+        self._integration_test_on = str_to_bool(os.environ.get("INTEGRATIONTEST_ON", "False"))
+
         self._electricity_maps_auth_token = os.environ.get("ELECTRICITY_MAPS_AUTH_TOKEN")
 
-        if self._electricity_maps_auth_token is None:
+        if self._electricity_maps_auth_token is None and not self._integration_test_on:
             raise ValueError("ELECTRICITY_MAPS_AUTH_TOKEN environment variable not set")
 
         self._request_backoff = 0.1
@@ -52,7 +54,6 @@ class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attri
             )
 
         self._carbon_intensity_cache: dict[tuple[float, float], float] = {}
-        self._integration_test_on = str_to_bool(os.environ.get("INTEGRATIONTEST_ON", "False"))
 
     def retrieve_carbon_region_data(self) -> dict[str, dict[str, Any]]:
         result_dict: dict[str, dict[str, Any]] = {}

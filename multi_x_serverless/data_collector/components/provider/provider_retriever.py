@@ -17,10 +17,12 @@ from multi_x_serverless.data_collector.utils.constants import AMAZON_REGION_URL
 class ProviderRetriever(DataRetriever):
     def __init__(self, client: RemoteClient) -> None:
         super().__init__(client)
+        self._integration_test_on = str_to_bool(os.environ.get("INTEGRATIONTEST_ON", "False"))
         self._google_api_key = os.environ.get("GOOGLE_API_KEY")
+        if self._google_api_key is None and not self._integration_test_on:
+            raise ValueError("GOOGLE_API_KEY environment variable not set")
         self._aws_pricing_client = boto3.client("pricing", region_name="us-east-1")  # Must be in us-east-1
         self._aws_region_name_to_code: dict[str, str] = {}
-        self._integration_test_on = str_to_bool(os.environ.get("INTEGRATIONTEST_ON", "False"))
 
     def retrieve_location(self, name: str) -> tuple[float, float]:
         google_maps = googlemaps.Client(key=self._google_api_key)
