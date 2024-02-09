@@ -12,17 +12,15 @@ class RuntimeCalculator(InputCalculator):
         self._performance_loader: PerformanceLoader = performance_loader
         self._workflow_loader: WorkflowLoader = workflow_loader
 
-    # pylint: disable=no-else-raise
     def calculate_runtime(
         self, instance_name: str, region_name: str, consider_probabilistic_invocations: bool = False
     ) -> float:
         if consider_probabilistic_invocations:
             # TODO (#76): Implement probabilistic invocations
             raise NotImplementedError("Probabilistic invocations are not supported yet")
-        else:
-            return self.calculate_raw_runtime(instance_name, region_name, False)
 
-    # pylint: disable=no-else-raise
+        return self.calculate_raw_runtime(instance_name, region_name, False)
+
     def calculate_latency(
         self,
         from_instance_name: str,
@@ -34,10 +32,10 @@ class RuntimeCalculator(InputCalculator):
         if consider_probabilistic_invocations:
             # TODO (#76): Implement probabilistic invocations
             raise NotImplementedError("Probabilistic invocations are not supported yet")
-        else:
-            return self._calculate_raw_latency(
-                from_instance_name, to_instance_name, from_region_name, to_region_name, False
-            )
+
+        return self._calculate_raw_latency(
+            from_instance_name, to_instance_name, from_region_name, to_region_name, False
+        )
 
     def calculate_raw_runtime(self, instance_name: str, region_name: str, use_tail_runtime: bool = False) -> float:
         runtime = self._workflow_loader.get_runtime(instance_name, region_name, use_tail_runtime)

@@ -1,6 +1,16 @@
 from typing import Any
 
-from multi_x_serverless.common.constants import PROVIDER_REGION_TABLE, PROVIDER_TABLE
+from multi_x_serverless.common.constants import (
+    PROVIDER_REGION_TABLE,
+    PROVIDER_TABLE,
+    SOLVER_INPUT_AVERAGE_CPU_POWER_DEFAULT,
+    SOLVER_INPUT_AVERAGE_MEMORY_POWER_DEFAULT,
+    SOLVER_INPUT_CFE_DEFAULT,
+    SOLVER_INPUT_COMPUTE_COST_DEFAULT,
+    SOLVER_INPUT_INVOCATION_COST_DEFAULT,
+    SOLVER_INPUT_PUE_DEFAULT,
+    SOLVER_INPUT_TRANSMISSION_COST_DEFAULT,
+)
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
 from multi_x_serverless.routing.solver.input.components.loader import InputLoader
 
@@ -26,41 +36,45 @@ class DatacenterLoader(InputLoader):
         self._provider_data = self._retrieve_provider_data(providers)  # ignore as not yet implemented
 
     def get_average_cpu_power(self, region_name: str) -> float:
-        return self._datacenter_data.get(region_name, {}).get("average_cpu_power", 100.0)  # Default to 100 if not found
+        return self._datacenter_data.get(region_name, {}).get(
+            "average_cpu_power", SOLVER_INPUT_AVERAGE_CPU_POWER_DEFAULT
+        )
 
     def get_average_memory_power(self, region_name: str) -> float:
         return self._datacenter_data.get(region_name, {}).get(
-            "average_memory_power", 100.0
-        )  # Default to 100 if not found
+            "average_memory_power", SOLVER_INPUT_AVERAGE_MEMORY_POWER_DEFAULT
+        )
 
     def get_pue(self, region_name: str) -> float:
-        return self._datacenter_data.get(region_name, {}).get("pue", 1.0)  # Default to 1 if not found
+        return self._datacenter_data.get(region_name, {}).get("pue", SOLVER_INPUT_PUE_DEFAULT)
 
     def get_cfe(self, region_name: str) -> float:
-        return self._datacenter_data.get(region_name, {}).get("cfe", 0.0)  # Default to 0 if not found
+        return self._datacenter_data.get(region_name, {}).get("cfe", SOLVER_INPUT_CFE_DEFAULT)
 
     def get_compute_cost(self, region_name: str, architecture: str) -> float:
         return (
             self._datacenter_data.get(region_name, {})
             .get("execution_cost", {})
             .get("compute_cost", {})
-            .get(architecture, 100.0)
-        )  # Default to 100 if not found
+            .get(architecture, SOLVER_INPUT_COMPUTE_COST_DEFAULT)
+        )
 
     def get_invocation_cost(self, region_name: str, architecture: str) -> float:
         return (
             self._datacenter_data.get(region_name, {})
             .get("execution_cost", {})
             .get("invocation_cost", {})
-            .get(architecture, 100.0)
-        )  # Default to 100 if not found
+            .get(architecture, SOLVER_INPUT_INVOCATION_COST_DEFAULT)
+        )
 
     def get_transmission_cost(self, region_name: str, intra_provider_transfer: bool) -> float:
         transfer_type = "provider_data_transfer" if intra_provider_transfer else "global_data_transfer"
 
         return (
-            self._datacenter_data.get(region_name, {}).get("transmission_cost", {}).get(transfer_type, 100.0)
-        )  # Default to 100 if not found
+            self._datacenter_data.get(region_name, {})
+            .get("transmission_cost", {})
+            .get(transfer_type, SOLVER_INPUT_TRANSMISSION_COST_DEFAULT)
+        )
 
     def _retrieve_provider_data(self, available_providers: set[str]) -> dict[str, Any]:
         all_data: dict[str, Any] = {}

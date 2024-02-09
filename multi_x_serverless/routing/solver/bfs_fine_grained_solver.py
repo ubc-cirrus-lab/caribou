@@ -512,7 +512,6 @@ class BFSFineGrainedSolver(Solver):
                     if all_successors_processed:
                         del deployments[previous_instance_index]
 
-        # print(time_dic)
         return final_deployments
 
     def _find_common_elements(self, list_of_sets: list[set[int]]) -> set[int]:

@@ -16,17 +16,15 @@ class CostCalculator(InputCalculator):
         self._workflow_loader: WorkflowLoader = workflow_loader
         self._runtime_calculator: RuntimeCalculator = runtime_calculator
 
-    # pylint: disable=no-else-raise
     def calculate_execution_cost(
         self, instance_name: str, region_name: str, consider_probabilistic_invocations: bool = False
     ) -> float:
         if consider_probabilistic_invocations:
             # TODO (#76): Implement probabilistic invocations
             raise NotImplementedError("Probabilistic invocations are not supported yet")
-        else:
-            return self._calculate_raw_execution_cost(instance_name, region_name, False)
 
-    # pylint: disable=no-else-raise
+        return self._calculate_raw_execution_cost(instance_name, region_name, False)
+
     def calculate_transmission_cost(
         self,
         from_instance_name: str,
@@ -38,10 +36,10 @@ class CostCalculator(InputCalculator):
         if consider_probabilistic_invocations:
             # TODO (#76): Implement probabilistic invocations
             raise NotImplementedError("Probabilistic invocations are not supported yet")
-        else:
-            return self._calculate_raw_transmission_cost(
-                from_instance_name, to_instance_name, from_region_name, to_region_name
-            )
+
+        return self._calculate_raw_transmission_cost(
+            from_instance_name, to_instance_name, from_region_name, to_region_name
+        )
 
     def _calculate_raw_execution_cost(
         self, instance_name: str, region_name: str, use_tail_latency: bool = False
