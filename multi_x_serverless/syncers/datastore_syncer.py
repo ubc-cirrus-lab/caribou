@@ -28,7 +28,9 @@ class DatastoreSyncer:
         workflow_summary_instance = self.initialize_workflow_summary_instance()
 
         last_synced_time = self.get_last_synced_time(workflow_id)
-        workflow_summary_instance["time_since_last_sync"] = (datetime.now() - last_synced_time).total_seconds() / (24 * 60 * 60)
+        workflow_summary_instance["time_since_last_sync"] = (datetime.now() - last_synced_time).total_seconds() / (
+            24 * 60 * 60
+        )
 
         deployment_manager_config = json.loads(deployment_manager_config_json)
         self.validate_deployment_manager_config(deployment_manager_config, workflow_id)
