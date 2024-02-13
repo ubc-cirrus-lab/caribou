@@ -29,10 +29,10 @@ class WorkflowRetriever(DataRetriever):
         available_regions_set: set[str] = set(self._available_regions.keys())
 
         consolidated: dict[str, Any] = {}
-        total_months = 0
+        total_days = 0
         for data in logs:  # pylint: disable=too-many-nested-blocks
             loaded_data = json.loads(data["value"])
-            total_months += loaded_data["months_between_summary"]
+            total_days += loaded_data["time_since_last_sync"]
             for instance_id, instance_data in loaded_data["instance_summary"].items():
                 if instance_id not in consolidated:
                     consolidated[instance_id] = {
@@ -183,6 +183,7 @@ class WorkflowRetriever(DataRetriever):
                     }
 
             # Final output
+            total_months = total_days / 30
             workflow_summary_data[instance_id] = {
                 "favourite_home_region": favourite_home_region,
                 "favourite_home_region_average_runtime": filtered_execution_summary[favourite_home_region][

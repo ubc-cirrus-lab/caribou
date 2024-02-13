@@ -1,5 +1,6 @@
 import json
 import time
+from datetime import datetime
 from typing import Any
 
 from boto3.session import Session
@@ -350,3 +351,53 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         if items is not None:
             return [item["key"]["S"] for item in items]
         return []
+
+    def get_last_value_from_sort_key_table(self, table_name: str, key: str) -> tuple[str, str]:
+        client = self._client("dynamodb")
+        response = client.query(
+            TableName=table_name,
+            KeyConditionExpression="key = :key ",
+            ExpressionAttributeValues={":key": {"S": key}},
+            ScanIndexForward=False,
+            Limit=1,
+        )
+        if "Items" not in response:
+            return "", ""
+        items = response.get("Items")
+        if items is not None:
+            return (items[0]["sort_key"]["S"], items[0]["value"]["S"])
+        return "", ""
+
+    def put_value_to_sort_key_table(self, table_name: str, key: str, sort_key: str, value: str) -> None:
+        client = self._client("dynamodb")
+        client.put_item(
+            TableName=table_name,
+            Item={"key": {"S": key}, "sort_key": {"S": sort_key}, "value": {"S": value}},
+        )
+
+    def get_logs_since_last_sync(self, function_instance: str, last_synced_time: datetime) -> list[str]:
+        last_synced_time_ms_since_epoch = int(time.mktime(last_synced_time.timetuple())) * 1000
+        client = self._client("logs")
+
+        next_token = None
+
+        log_events: list[str] = []
+        while True:
+            if next_token:
+                response = client.filter_log_events(
+                    logGroupName=f"/aws/lambda/{function_instance}",
+                    startTime=last_synced_time_ms_since_epoch,
+                    nextToken=next_token,
+                )
+            else:
+                response = client.filter_log_events(
+                    logGroupName=f"/aws/lambda/{function_instance}", startTime=last_synced_time_ms_since_epoch
+                )
+
+            log_events.extend(event["message"] for event in response.get("events", []))
+
+            next_token = response.get("nextToken")
+            if not next_token:
+                break
+
+        return log_events

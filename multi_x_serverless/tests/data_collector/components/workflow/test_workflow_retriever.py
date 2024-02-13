@@ -8,6 +8,7 @@ class TestWorkflowRetriever(unittest.TestCase):
     def setUp(self):
         self.mock_client = Mock()
         self.workflow_retriever = WorkflowRetriever(self.mock_client)
+        self.maxDiff = None
 
     def test_retrieve_all_workflow_ids(self):
         self.mock_client.get_all_values_from_table.return_value = {"id1": "value1", "id2": "value2"}
@@ -26,7 +27,7 @@ class TestWorkflowRetriever(unittest.TestCase):
         self.mock_client.get_all_values_from_sort_key_table.return_value = [
             {
                 "sort_key": "2021-2-10T10:10:10",
-                "value": '{"months_between_summary": 1, "instance_summary": {"instance1": {"invocation_count": 1, "execution_summary": {"aws:region1": {"invocation_count": 1, "average_runtime": 1, "tail_runtime": 1}}}}}',
+                "value": '{"time_since_last_sync": 30, "instance_summary": {"instance1": {"invocation_count": 1, "execution_summary": {"aws:region1": {"invocation_count": 1, "average_runtime": 1, "tail_runtime": 1}}}}}',
             }
         ]
         self.workflow_retriever._available_regions = {"aws:region1": {}}
@@ -50,7 +51,7 @@ class TestWorkflowRetriever(unittest.TestCase):
                 "sort_key": "2021-2-10T10:10:10",
                 "value": json.dumps(
                     {
-                        "months_between_summary": 8,
+                        "time_since_last_sync": 240,
                         "instance_summary": {
                             "instance_1": {
                                 "invocation_count": 100,
@@ -117,7 +118,7 @@ class TestWorkflowRetriever(unittest.TestCase):
                 "sort_key": "2021-3-10T10:10:20",
                 "value": json.dumps(
                     {
-                        "months_between_summary": 8,
+                        "time_since_last_sync": 240,
                         "instance_summary": {
                             "instance_1": {
                                 "invocation_count": 100,

@@ -1,5 +1,5 @@
+from multi_x_serverless.common.models.remote_client.remote_client_factory import RemoteClientFactory
 from multi_x_serverless.deployment.common.deploy.models.resource import Resource
-from multi_x_serverless.deployment.common.factories.remote_client_factory import RemoteClientFactory
 
 
 class RemoteState:

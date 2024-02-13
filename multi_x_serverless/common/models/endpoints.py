@@ -2,9 +2,9 @@ import os
 
 from multi_x_serverless.common.constants import GLOBAL_SYSTEM_REGION, INTEGRATION_TEST_SYSTEM_REGION
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
+from multi_x_serverless.common.models.remote_client.remote_client_factory import RemoteClientFactory
 from multi_x_serverless.common.provider import Provider
 from multi_x_serverless.common.utils import str_to_bool
-from multi_x_serverless.deployment.common.factories.remote_client_factory import RemoteClientFactory
 
 
 class Endpoints:  # pylint: disable=too-many-instance-attributes
@@ -37,6 +37,9 @@ class Endpoints:  # pylint: disable=too-many-instance-attributes
         self._data_collector_region = global_system_region
         self._data_collector_client = RemoteClientFactory.get_remote_client(provider, self._data_collector_region)
 
+        self._data_store_region = global_system_region
+        self._data_store_client = RemoteClientFactory.get_remote_client(provider, self._data_store_region)
+
     def get_deployment_manager_client(self) -> RemoteClient:
         return self._deployment_manager_client
 
@@ -48,3 +51,6 @@ class Endpoints:  # pylint: disable=too-many-instance-attributes
 
     def get_data_collector_client(self) -> RemoteClient:
         return self._data_collector_client
+
+    def get_datastore_client(self) -> RemoteClient:
+        return self._data_store_client

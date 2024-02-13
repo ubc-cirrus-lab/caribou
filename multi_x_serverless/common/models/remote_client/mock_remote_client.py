@@ -1,9 +1,10 @@
+from datetime import datetime
 from typing import Any
 
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
 
 
-class MockRemoteClient(RemoteClient):
+class MockRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
     def create_function(
         self,
         function_name: str,
@@ -84,4 +85,13 @@ class MockRemoteClient(RemoteClient):
         pass
 
     def create_sync_tables(self) -> None:
+        pass
+
+    def get_last_value_from_sort_key_table(self, table_name: str, key: str) -> tuple[str, str]:
+        pass
+
+    def put_value_to_sort_key_table(self, table_name: str, key: str, sort_key: str, value: str) -> None:
+        pass
+
+    def get_logs_since_last_sync(self, function_instance: str, last_synced_time: datetime) -> list[str]:
         pass

@@ -22,7 +22,7 @@ class TestAWSDeployInstructions(unittest.TestCase):
         client_mock.get_predecessor_data.return_value = ['{"key": "value"}']
         client_mock.resource_exists.return_value = False
         with patch(
-            "multi_x_serverless.deployment.common.factories.remote_client_factory.RemoteClientFactory.get_remote_client",
+            "multi_x_serverless.common.models.remote_client.remote_client_factory.RemoteClientFactory.get_remote_client",
             return_value=client_mock,
         ):
             remote_state = RemoteState("aws", "region1")
