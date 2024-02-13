@@ -141,7 +141,7 @@ class MultiXServerlessWorkflow:
                     break
 
         logger.info(
-            "%s: Instance %s calling %s with payload size %s GB",
+            "INVOKING_SUCCESSOR: %s: Instance (%s) calling SUCCESSOR (%s) with PAYLOAD_SIZE (%s) GB",
             workflow_placement_decision["run_id"],
             current_instance_name,
             successor_instance_name,
@@ -487,7 +487,7 @@ class MultiXServerlessWorkflow:
                     payload = argument.get("payload", {})
 
                 logger.info(
-                    "CALLED: %s: Instance %s called",
+                    "INVOKED: %s: Instance %s called",
                     wrapper.workflow_placement_decision["run_id"],  # type: ignore
                     wrapper.workflow_placement_decision["current_instance_name"],  # type: ignore
                 )

@@ -37,9 +37,9 @@ class TestDatastoreSyncer(unittest.TestCase):
     def test_process_logs(self):
         logs = [
             "ENTRY_POINT",
-            "CALLED",
+            "INVOKED",
             "Billed Duration: 100",
-            "CALLED",
+            "INVOKED",
             "Billed Duration: 200",
         ]
         function_instance = "function1"
@@ -55,6 +55,7 @@ class TestDatastoreSyncer(unittest.TestCase):
                             "tail_runtime": 0,
                         }
                     },
+                    "invocation_summary": {},
                 }
             }
         }
@@ -73,13 +74,76 @@ class TestDatastoreSyncer(unittest.TestCase):
             workflow_summary_instance["instance_summary"][function_instance]["execution_summary"][
                 f'{provider_region["provider"]}:{provider_region["region"]}'
             ]["average_runtime"],
-            150,
+            0.15,
         )
         self.assertEqual(
             workflow_summary_instance["instance_summary"][function_instance]["execution_summary"][
                 f'{provider_region["provider"]}:{provider_region["region"]}'
             ]["tail_runtime"],
-            200,
+            0.2,
+        )
+
+    def test_process_logs_with_invocation_summary(self):
+        logs = [
+            "ENTRY_POINT",
+            "INVOKED",
+            "Billed Duration: 100",
+            "INVOKED",
+            "Billed Duration: 200",
+            "INVOKING_SUCCESSOR: Instance (function1) calling SUCCESSOR (function2) with PAYLOAD_SIZE (1) GB",
+            "INVOKING_SUCCESSOR: Instance (function1) calling SUCCESSOR (function2) with PAYLOAD_SIZE (2) GB",
+        ]
+        function_instance = "function1"
+        provider_region = {"provider": "aws", "region": "us-east-1"}
+        workflow_summary_instance = {
+            "instance_summary": {
+                function_instance: {
+                    "invocation_count": 0,
+                    "execution_summary": {
+                        f'{provider_region["provider"]}:{provider_region["region"]}': {
+                            "invocation_count": 0,
+                            "average_runtime": 0,
+                            "tail_runtime": 0,
+                        }
+                    },
+                    "invocation_summary": {},
+                }
+            }
+        }
+        entry_point_invocation_count = self.syncer.process_logs(
+            logs, function_instance, provider_region, workflow_summary_instance
+        )
+        self.assertEqual(entry_point_invocation_count, 1)
+        self.assertEqual(workflow_summary_instance["instance_summary"][function_instance]["invocation_count"], 2)
+        self.assertEqual(
+            workflow_summary_instance["instance_summary"][function_instance]["execution_summary"][
+                f'{provider_region["provider"]}:{provider_region["region"]}'
+            ]["invocation_count"],
+            2,
+        )
+        self.assertEqual(
+            workflow_summary_instance["instance_summary"][function_instance]["execution_summary"][
+                f'{provider_region["provider"]}:{provider_region["region"]}'
+            ]["average_runtime"],
+            0.15,
+        )
+        self.assertEqual(
+            workflow_summary_instance["instance_summary"][function_instance]["execution_summary"][
+                f'{provider_region["provider"]}:{provider_region["region"]}'
+            ]["tail_runtime"],
+            0.2,
+        )
+        self.assertEqual(
+            workflow_summary_instance["instance_summary"][function_instance]["invocation_summary"]["function2"][
+                "invocation_count"
+            ],
+            2,
+        )
+        self.assertEqual(
+            workflow_summary_instance["instance_summary"][function_instance]["invocation_summary"]["function2"][
+                "average_data_transfer_size"
+            ],
+            1.5,
         )
 
     @patch("multi_x_serverless.common.models.endpoints.Endpoints")

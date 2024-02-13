@@ -82,9 +82,9 @@ class DatastoreSyncer:
         self.initialize_instance_summary(function_instance, provider_region, workflow_summary_instance)
 
         if (provider_region["provider"], provider_region["region"]) not in self._region_clients:
-            self._region_clients[(provider_region["provider"], provider_region["region"])] = (
-                RemoteClientFactory.get_remote_client(provider_region["provider"], provider_region["region"])
-            )
+            self._region_clients[
+                (provider_region["provider"], provider_region["region"])
+            ] = RemoteClientFactory.get_remote_client(provider_region["provider"], provider_region["region"])
 
         logs: list[str] = self._region_clients[
             (provider_region["provider"], provider_region["region"])
@@ -105,6 +105,7 @@ class DatastoreSyncer:
                         "tail_runtime": 0,
                     }
                 },
+                "invocation_summary": {},
             }
         else:
             workflow_summary_instance["instance_summary"][function_instance]["execution_summary"][
@@ -126,15 +127,50 @@ class DatastoreSyncer:
         invocation_count = 0
         entry_point_invocation_count = 0
 
+        data_transfer_sizes: dict[str, list[float]] = {}
+
         for log_entry in logs:
             if "ENTRY_POINT" in log_entry:
                 entry_point_invocation_count += 1
-            if "CALLED" in log_entry:
+            if "INVOKED" in log_entry:
                 invocation_count += 1
             if "Billed Duration" in log_entry:
                 billed_duration = re.search(r"Billed Duration: (\d+(\.\d+)?)", log_entry)
                 if billed_duration:
                     runtimes.append(float(billed_duration.group(1)))
+            if "INVOKING_SUCCESSOR" in log_entry:
+                successor_function = re.search(r"SUCCESSOR \((.*?)\)", log_entry)
+                if successor_function:
+                    successor_function_str = successor_function.group(1)
+                    if not isinstance(successor_function_str, str):
+                        continue
+                    if (
+                        successor_function_str
+                        not in workflow_summary_instance["instance_summary"][function_instance]["invocation_summary"]
+                    ):
+                        workflow_summary_instance["instance_summary"][function_instance]["invocation_summary"][
+                            successor_function_str
+                        ] = {
+                            "invocation_count": 0,
+                            "average_data_transfer_size": 0,
+                            "transmission_summary": {},
+                        }
+                    workflow_summary_instance["instance_summary"][function_instance]["invocation_summary"][
+                        successor_function_str
+                    ]["invocation_count"] += 1
+                    if successor_function_str not in data_transfer_sizes:
+                        data_transfer_sizes[successor_function_str] = []
+                    data_transfer_size = re.search(r"PAYLOAD_SIZE \((.*?)\)", log_entry)
+                    if data_transfer_size:
+                        data_transfer_sizes[successor_function_str].append(float(data_transfer_size.group(1)))
+
+        for successor_function_str, data_transfer_size_list in data_transfer_sizes.items():
+            average_data_transfer_size = (
+                sum(data_transfer_size_list) / len(data_transfer_size_list) if data_transfer_size_list else 0
+            )
+            workflow_summary_instance["instance_summary"][function_instance]["invocation_summary"][
+                successor_function_str
+            ]["average_data_transfer_size"] = average_data_transfer_size
 
         workflow_summary_instance["instance_summary"][function_instance]["invocation_count"] += invocation_count
         workflow_summary_instance["instance_summary"][function_instance]["execution_summary"][
