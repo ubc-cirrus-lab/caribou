@@ -1,3 +1,9 @@
+from multi_x_serverless.common.constants import (
+    CARBON_TRANSMISSION_CARBON_METHOD,
+    KWH_PER_GB_ESTIMATE,
+    KWH_PER_KM_GB_ESTIMATE,
+    KWH_PER_S_GB_ESTIMATE,
+)
 from multi_x_serverless.routing.solver.input.components.calculator import InputCalculator
 from multi_x_serverless.routing.solver.input.components.calculators.runtime_calculator import RuntimeCalculator
 from multi_x_serverless.routing.solver.input.components.loaders.carbon_loader import CarbonLoader
@@ -92,10 +98,21 @@ class CarbonCalculator(InputCalculator):
         # Get the data transfer size from the workflow loader (In units of GB)
         data_transfer_size = self._workflow_loader.get_data_transfer_size(from_instance_name, to_instance_name)
 
+        data_latency = self._workflow_loader.get_latency(
+            from_instance_name, to_instance_name, from_region_name, to_region_name
+        )
+
         # Get the carbon intesnity of transmission in units of gCo2eq/GB
-        transmission_carbon_intensity = self._carbon_loader.get_transmission_carbon_intensity(
+        transmission_carbon_intensity, distance = self._carbon_loader.get_transmission_carbon_intensity(
             from_region_name, to_region_name
         )
+
+        if CARBON_TRANSMISSION_CARBON_METHOD == "distance":
+            kwh_per_gb = KWH_PER_GB_ESTIMATE + KWH_PER_KM_GB_ESTIMATE * distance
+            transmission_carbon_intensity *= kwh_per_gb
+        elif CARBON_TRANSMISSION_CARBON_METHOD == "latency":
+            kwh_per_gb = KWH_PER_GB_ESTIMATE + KWH_PER_S_GB_ESTIMATE * data_latency
+            transmission_carbon_intensity *= kwh_per_gb
 
         # Calculate the carbon emissions
         # Carbon emissions = Data transfer size (GB) * Transmission carbon intensity (gCo2eq/GB)

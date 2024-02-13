@@ -1,23 +1,36 @@
 import math
-from abc import ABC, abstractmethod
-from typing import Any, Callable, Optional
+from abc import ABC
+from typing import Any, Callable
 
 
 class CarbonTransmissionCostCalculator(ABC):
-    def __init__(self, get_carbon_intensity_from_coordinates: Callable, config: Optional[dict] = None) -> None:
-        self._config = config
+    def __init__(self, get_carbon_intensity_from_coordinates: Callable) -> None:
         self._get_carbon_intensity_from_coordinates = get_carbon_intensity_from_coordinates
-        if config is not None and "kwh_per_gb_estimate" in config:
-            self._kwh_per_gb_estimate = config["kwh_per_gb_estimate"]
-        else:
-            self._kwh_per_gb_estimate = 0.1
         self._total_distance = 0.0
-        # Current resolution set to 250 km for one segment
+        # Current resolution set to 500 km for one segment
         self._step_size = 500
 
-    @abstractmethod
-    def calculate_transmission_carbon_intensity(self, region_from: dict[str, Any], region_to: dict[str, Any]) -> float:
-        raise NotImplementedError
+    def calculate_transmission_carbon_intensity(
+        self, region_from: dict[str, Any], region_to: dict[str, Any]
+    ) -> tuple[float, float]:
+        latitude_from = region_from["latitude"]
+        longitude_from = region_from["longitude"]
+        latitude_to = region_to["latitude"]
+        longitude_to = region_to["longitude"]
+
+        carbon_intensity_segments = self._get_carbon_intensity_segments_from_coordinates(
+            latitude_from, longitude_from, latitude_to, longitude_to
+        )
+
+        if self._total_distance == 0.0:
+            raise ValueError("Total distance is 0.0, cannot calculate carbon intensity")
+
+        total_carbon_intensity: float = 0.0
+        for segment in carbon_intensity_segments:
+            segment_relative_distance_weight = segment[0] / self._total_distance
+            total_carbon_intensity += segment_relative_distance_weight * segment[1]
+
+        return total_carbon_intensity, self._total_distance
 
     def _get_distance_between_coordinates(
         self, latitude_from: float, longitude_from: float, latitude_to: float, longitude_to: float

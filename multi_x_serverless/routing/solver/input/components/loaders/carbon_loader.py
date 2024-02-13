@@ -18,12 +18,16 @@ class CarbonLoader(InputLoader):
     def setup(self, available_regions: set[str]) -> None:
         self._carbon_data = self._retrieve_region_data(available_regions)
 
-    def get_transmission_carbon_intensity(self, from_region_name: str, to_region_name: str) -> float:
+    def get_transmission_carbon_intensity(self, from_region_name: str, to_region_name: str) -> tuple[float, float]:
         return (
             self._carbon_data.get(from_region_name, {})
             .get("transmission_carbon", {})
             .get(to_region_name, {})
-            .get("carbon_intensity", SOLVER_INPUT_TRANSMISSION_CARBON_DEFAULT)
+            .get("carbon_intensity", SOLVER_INPUT_TRANSMISSION_CARBON_DEFAULT),
+            self._carbon_data.get(from_region_name, {})
+            .get("transmission_carbon", {})
+            .get(to_region_name, {})
+            .get("distance", SOLVER_INPUT_TRANSMISSION_CARBON_DEFAULT),
         )
 
     def get_grid_carbon_intensity(self, region_name: str) -> float:
