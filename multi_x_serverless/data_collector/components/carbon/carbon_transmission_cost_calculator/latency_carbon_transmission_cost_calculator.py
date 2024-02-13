@@ -21,8 +21,6 @@ class LatencyCarbonTransmissionCostCalculator(CarbonTransmissionCostCalculator):
         self._integration_test_latency_retriever = IntegrationTestLatencyRetriever()
 
     def calculate_transmission_carbon_intensity(self, region_from: dict[str, Any], region_to: dict[str, Any]) -> float:
-        total_latency = self._get_total_latency(region_from, region_to)
-
         latitude_from = region_from["latitude"]
         longitude_from = region_from["longitude"]
         latitude_to = region_to["latitude"]
@@ -38,21 +36,6 @@ class LatencyCarbonTransmissionCostCalculator(CarbonTransmissionCostCalculator):
         total_carbon_intensity: float = 0.0
         for segment in carbon_intensity_segments:
             segment_relative_distance_weight = segment[0] / self._total_distance
-            segment_relative_latency = segment_relative_distance_weight * total_latency
-            total_carbon_intensity += self._calculate_carbon_intensity_segment(segment_relative_latency, segment[1])
+            total_carbon_intensity += segment_relative_distance_weight * segment[1]
 
         return total_carbon_intensity
-
-    def _calculate_carbon_intensity_segment(self, segment_latency_ms: float, gco2e_per_kwh: float) -> float:
-        kwh_per_gb = self._kwh_per_gb_estimate + self._kwh_per_ms_gb_estimate * segment_latency_ms
-        gco2e_per_gb = gco2e_per_kwh * kwh_per_gb
-        return gco2e_per_gb
-
-    def _get_total_latency(self, region_from: dict[str, Any], region_to: dict[str, Any]) -> float:
-        if region_from["provider"] == region_to["provider"]:
-            if region_from["provider"] == Provider.AWS.value:
-                return self._aws_latency_retriever.get_latency(region_from, region_to)
-            if region_from["provider"] == Provider.INTEGRATION_TEST_PROVIDER.value:
-                return self._integration_test_latency_retriever.get_latency(region_from, region_to)
-
-        return 0.0  # Default value, maybe a better default or an error message will be desired
