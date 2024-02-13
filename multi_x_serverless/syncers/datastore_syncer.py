@@ -82,9 +82,9 @@ class DatastoreSyncer:
         self.initialize_instance_summary(function_instance, provider_region, workflow_summary_instance)
 
         if (provider_region["provider"], provider_region["region"]) not in self._region_clients:
-            self._region_clients[
-                (provider_region["provider"], provider_region["region"])
-            ] = RemoteClientFactory.get_remote_client(provider_region["provider"], provider_region["region"])
+            self._region_clients[(provider_region["provider"], provider_region["region"])] = (
+                RemoteClientFactory.get_remote_client(provider_region["provider"], provider_region["region"])
+            )
 
         logs: list[str] = self._region_clients[
             (provider_region["provider"], provider_region["region"])
@@ -143,6 +143,10 @@ class DatastoreSyncer:
 
         average_runtime = sum(runtimes) / len(runtimes) if runtimes else 0
         tail_runtime = max(runtimes) if runtimes else 0
+
+        # convert to seconds
+        average_runtime = average_runtime / 1000
+        tail_runtime = tail_runtime / 1000
 
         workflow_summary_instance["instance_summary"][function_instance]["execution_summary"][
             f"{provider_region['provider']}:{provider_region['region']}"
