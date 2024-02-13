@@ -28,7 +28,8 @@ class DatastoreSyncer:
         workflow_summary_instance = self.initialize_workflow_summary_instance()
 
         last_synced_time = self.get_last_synced_time(workflow_id)
-        workflow_summary_instance["time_since_last_sync"] = (datetime.now() - last_synced_time).total_seconds() / (
+        new_last_sync_time = datetime.now()
+        workflow_summary_instance["time_since_last_sync"] = (new_last_sync_time - last_synced_time).total_seconds() / (
             24 * 60 * 60
         )
 
@@ -46,12 +47,14 @@ class DatastoreSyncer:
             )
 
         workflow_summary_instance["total_invocations"] = total_invocations
-        new_last_sync_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
 
         workflow_summary_instance_json = json.dumps(workflow_summary_instance)
 
         self.endpoints.get_datastore_client().put_value_to_sort_key_table(
-            WORKFLOW_SUMMARY_TABLE, workflow_id, new_last_sync_time, workflow_summary_instance_json
+            WORKFLOW_SUMMARY_TABLE,
+            workflow_id,
+            new_last_sync_time.strftime("%Y-%m-%d %H:%M:%S.%f"),
+            workflow_summary_instance_json,
         )
 
     def initialize_workflow_summary_instance(self) -> dict[str, Any]:
@@ -84,9 +87,9 @@ class DatastoreSyncer:
         self.initialize_instance_summary(function_instance, provider_region, workflow_summary_instance)
 
         if (provider_region["provider"], provider_region["region"]) not in self._region_clients:
-            self._region_clients[
-                (provider_region["provider"], provider_region["region"])
-            ] = RemoteClientFactory.get_remote_client(provider_region["provider"], provider_region["region"])
+            self._region_clients[(provider_region["provider"], provider_region["region"])] = (
+                RemoteClientFactory.get_remote_client(provider_region["provider"], provider_region["region"])
+            )
 
         logs: list[str] = self._region_clients[
             (provider_region["provider"], provider_region["region"])
