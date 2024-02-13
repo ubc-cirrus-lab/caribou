@@ -29,7 +29,7 @@ class TestExecutor(unittest.TestCase):
         self.executor.variables = {"var1": "value1"}
 
         with patch(
-            "multi_x_serverless.deployment.common.factories.remote_client_factory.RemoteClientFactory.get_remote_client"
+            "multi_x_serverless.common.models.remote_client.remote_client_factory.RemoteClientFactory.get_remote_client"
         ) as mock_get_remote_client:
             mock_client = Mock(spec=RemoteClient)
             mock_client.test_method = Mock()
@@ -50,7 +50,7 @@ class TestExecutor(unittest.TestCase):
         self.executor.variables = {"var1": "value1"}
 
         with patch(
-            "multi_x_serverless.deployment.common.factories.remote_client_factory.RemoteClientFactory.get_remote_client"
+            "multi_x_serverless.common.models.remote_client.remote_client_factory.RemoteClientFactory.get_remote_client"
         ) as mock_get_remote_client:
             mock_client = Mock(spec=RemoteClient)
             mock_client.test_method = Mock()
@@ -60,7 +60,7 @@ class TestExecutor(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 self.executor.execute(deployment_plan)
 
-    @patch("multi_x_serverless.deployment.common.factories.remote_client_factory.RemoteClientFactory.get_remote_client")
+    @patch("multi_x_serverless.common.models.remote_client.remote_client_factory.RemoteClientFactory.get_remote_client")
     def test_execute_recordresourcevariable(self, mock_get_remote_client):
         # Create a mock client and set its create_sync_tables method to a MagicMock
         mock_client = MagicMock()

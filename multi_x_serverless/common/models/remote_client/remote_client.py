@@ -1,5 +1,6 @@
 import json
 from abc import ABC, abstractmethod
+from datetime import datetime
 from typing import Any, Optional
 
 from multi_x_serverless.deployment.common.deploy.models.resource import Resource
@@ -153,5 +154,5 @@ class RemoteClient(ABC):  # pylint: disable=too-many-public-methods
         raise NotImplementedError()
 
     @abstractmethod
-    def get_logs_since_last_sync(self, function_instance: str, last_synced_time: str) -> list[str]:
+    def get_logs_since_last_sync(self, function_instance: str, last_synced_time: datetime) -> list[str]:
         raise NotImplementedError()

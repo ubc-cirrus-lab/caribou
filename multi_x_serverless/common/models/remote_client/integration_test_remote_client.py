@@ -2,6 +2,7 @@ import json
 import os
 import sqlite3
 import time
+from datetime import datetime
 from typing import Any
 
 from multi_x_serverless.common import constants
@@ -431,5 +432,5 @@ class IntegrationTestRemoteClient(RemoteClient):  # pylint: disable=too-many-pub
         conn.commit()
         conn.close()
 
-    def get_logs_since_last_sync(self, function_instance: str, last_synced_time: str) -> list[str]:
-        pass
+    def get_logs_since_last_sync(self, function_instance: str, last_synced_time: datetime) -> list[str]:
+        return []

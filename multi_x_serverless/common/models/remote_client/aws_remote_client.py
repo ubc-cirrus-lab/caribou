@@ -1,5 +1,6 @@
 import json
 import time
+from datetime import datetime
 from typing import Any
 
 from boto3.session import Session
@@ -361,11 +362,11 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
             Limit=1,
         )
         if "Items" not in response:
-            return "", {}
+            return "", ""
         items = response.get("Items")
         if items is not None:
             return (items[0]["sort_key"]["S"], items[0]["value"]["S"])
-        return "", {}
+        return "", ""
 
     def put_value_to_sort_key_table(self, table_name: str, key: str, sort_key: str, value: str) -> None:
         client = self._client("dynamodb")
@@ -374,13 +375,13 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
             Item={"key": {"S": key}, "sort_key": {"S": sort_key}, "value": {"S": value}},
         )
 
-    def get_logs_since_last_sync(self, function_instance: str, last_synced_time: str) -> list[str]:
-        last_synced_time_ms_since_epoch = int(time.mktime(time.strptime(last_synced_time, "%Y-%m-%d %H:%M:%S.%f")))
+    def get_logs_since_last_sync(self, function_instance: str, last_synced_time: datetime) -> list[str]:
+        last_synced_time_ms_since_epoch = int(time.mktime(last_synced_time.timetuple())) * 1000
         client = self._client("logs")
 
         next_token = None
 
-        log_events = []
+        log_events: list[str] = []
         while True:
             if next_token:
                 response = client.filter_log_events(

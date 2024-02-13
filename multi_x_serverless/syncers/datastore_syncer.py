@@ -1,6 +1,6 @@
-import datetime
 import json
 import re
+from datetime import datetime
 from typing import Any
 
 from multi_x_serverless.common.constants import DEPLOYMENT_MANAGER_RESOURCE_TABLE, WORKFLOW_SUMMARY_TABLE
@@ -10,11 +10,11 @@ from multi_x_serverless.common.models.remote_client.remote_client_factory import
 
 
 class DatastoreSyncer:
-    def __init__(self):
+    def __init__(self) -> None:
         self.endpoints = Endpoints()
         self._region_clients: dict[tuple[str, str], RemoteClient] = {}
 
-    def sync(self):
+    def sync(self) -> None:
         currently_deployed_workflows = self.endpoints.get_deployment_manager_client().get_all_values_from_table(
             DEPLOYMENT_MANAGER_RESOURCE_TABLE
         )
@@ -37,8 +37,8 @@ class DatastoreSyncer:
         deployed_region: dict[str, dict[str, str]] = json.loads(deployed_region_json)
 
         total_invocations = 0
-        for function_physical_instance, provider_region in deployed_region.values():
-            function_instance = function_physical_instance.split("_")[:-1].join("_")
+        for function_physical_instance, provider_region in deployed_region.items():
+            function_instance = "_".join(function_physical_instance.split("_")[:-1])
             total_invocations += self.process_function_instance(
                 function_instance, provider_region, workflow_summary_instance, last_synced_time
             )
@@ -46,16 +46,18 @@ class DatastoreSyncer:
         workflow_summary_instance["total_invocations"] = total_invocations
         new_last_sync_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
 
+        workflow_summary_instance_json = json.dumps(workflow_summary_instance)
+
         self.endpoints.get_datastore_client().put_value_to_sort_key_table(
-            WORKFLOW_SUMMARY_TABLE, workflow_id, new_last_sync_time, workflow_summary_instance
+            WORKFLOW_SUMMARY_TABLE, workflow_id, new_last_sync_time, workflow_summary_instance_json
         )
 
-    def initialize_workflow_summary_instance(self) -> dict[str, any]:
-        workflow_summary_instance = {}
+    def initialize_workflow_summary_instance(self) -> dict[str, Any]:
+        workflow_summary_instance: dict[str, Any] = {}
         workflow_summary_instance["instance_summary"] = {}
         return workflow_summary_instance
 
-    def get_last_synced_time(self, workflow_id: str) -> datetime.datetime:
+    def get_last_synced_time(self, workflow_id: str) -> datetime:
         last_synced_log = self.endpoints.get_datastore_client().get_last_value_from_sort_key_table(
             WORKFLOW_SUMMARY_TABLE, workflow_id
         )
@@ -66,7 +68,7 @@ class DatastoreSyncer:
         else:
             return datetime.now() - datetime.timedelta(months=1)
 
-    def validate_deployment_manager_config(self, deployment_manager_config: dict[str, Any], workflow_id: str):
+    def validate_deployment_manager_config(self, deployment_manager_config: dict[str, Any], workflow_id: str) -> None:
         if "deployed_regions" not in deployment_manager_config:
             raise Exception(f"deployed_regions not found in deployment_manager_config for workflow_id: {workflow_id}")
 
@@ -75,7 +77,7 @@ class DatastoreSyncer:
         function_instance: str,
         provider_region: dict[str, str],
         workflow_summary_instance: dict[str, Any],
-        last_synced_time: datetime.datetime,
+        last_synced_time: datetime,
     ) -> int:
         self.initialize_instance_summary(function_instance, provider_region, workflow_summary_instance)
 

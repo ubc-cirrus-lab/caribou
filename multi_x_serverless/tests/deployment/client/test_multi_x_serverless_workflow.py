@@ -797,7 +797,7 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
         client_mock = Mock()
         client_mock.get_predecessor_data.return_value = ['{"key": "value"}']
         with patch(
-            "multi_x_serverless.deployment.common.factories.remote_client_factory.RemoteClientFactory.get_remote_client",
+            "multi_x_serverless.common.models.remote_client.remote_client_factory.RemoteClientFactory.get_remote_client",
             return_value=client_mock,
         ):
             result = self.workflow.get_predecessor_data()

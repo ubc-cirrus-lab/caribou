@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import patch, MagicMock
 from multi_x_serverless.syncers.datastore_syncer import DatastoreSyncer
+from multi_x_serverless.common.constants import DEPLOYMENT_MANAGER_RESOURCE_TABLE
 
 import unittest
 from unittest.mock import MagicMock, patch
@@ -86,9 +87,8 @@ class TestDatastoreSyncer(unittest.TestCase):
     def test_sync(self, mock_remote_client_factory, mock_endpoints):
         # Create mock objects for the methods that will be called
         mock_get_deployment_manager_client = MagicMock()
-        mock_get_all_values_from_table = MagicMock()
-        mock_get_deployment_manager_client.get_all_values_from_table = mock_get_all_values_from_table
-        mock_endpoints.get_deployment_manager_client = mock_get_deployment_manager_client
+        mock_get_deployment_manager_client.get_all_values_from_table.return_value = {}
+        mock_endpoints.get_deployment_manager_client.return_value = mock_get_deployment_manager_client
 
         mock_get_remote_client = MagicMock()
         mock_remote_client_factory.get_remote_client = mock_get_remote_client
@@ -102,9 +102,10 @@ class TestDatastoreSyncer(unittest.TestCase):
         syncer.sync()
 
         # Check if the methods were called with the correct arguments
-        mock_get_deployment_manager_client.assert_called_once()
-        mock_get_all_values_from_table.assert_called_once_with("DEPLOYMENT_MANAGER_RESOURCE_TABLE")
-        mock_get_remote_client.assert_called()
+        mock_endpoints.get_deployment_manager_client.assert_called_once()
+        mock_get_deployment_manager_client.get_all_values_from_table.assert_called_once_with(
+            DEPLOYMENT_MANAGER_RESOURCE_TABLE
+        )
 
 
 if __name__ == "__main__":

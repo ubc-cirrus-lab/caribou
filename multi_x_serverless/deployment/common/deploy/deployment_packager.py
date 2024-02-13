@@ -76,8 +76,6 @@ class DeploymentPackager:
             ("client", "multi_x_serverless_workflow.py"),
             ("client", "multi_x_serverless_function.py"),
             ("common", "__init__.py"),
-            ("common", "factories", "__init__.py"),
-            ("common", "factories", "remote_client_factory.py"),
             ("common", "deploy", "__init__.py"),
             ("common", "deploy", "models", "__init__.py"),
             ("common", "deploy", "models", "resource.py"),
@@ -107,6 +105,7 @@ class DeploymentPackager:
             ("models", "remote_client", "integration_test_remote_client.py"),
             ("models", "remote_client", "mock_remote_client.py"),
             ("models", "remote_client", "remote_client.py"),
+            ("models", "remote_client", "remote_client_factory.py"),
         ]
 
         multi_x_serverless_path = os.path.dirname(multi_x_serverless_path)
