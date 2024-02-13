@@ -85,3 +85,12 @@ class MockRemoteClient(RemoteClient):
 
     def create_sync_tables(self) -> None:
         pass
+
+    def get_last_value_from_sort_key_table(self, table_name: str, key: str) -> tuple[str, str]:
+        pass
+
+    def put_value_to_sort_key_table(self, table_name: str, key: str, sort_key: str, value: str) -> None:
+        pass
+
+    def get_logs_since_last_sync(self, function_instance: str, last_synced_time: str) -> list[str]:
+        pass

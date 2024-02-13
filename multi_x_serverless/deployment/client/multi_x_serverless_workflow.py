@@ -10,9 +10,9 @@ from typing import Any, Callable, Optional
 
 from multi_x_serverless.common.constants import WORKFLOW_PLACEMENT_DECISION_TABLE
 from multi_x_serverless.common.models.endpoints import Endpoints
+from multi_x_serverless.common.models.remote_client.remote_client_factory import RemoteClientFactory
 from multi_x_serverless.common.utils import get_function_source
 from multi_x_serverless.deployment.client.multi_x_serverless_function import MultiXServerlessFunction
-from multi_x_serverless.deployment.common.factories.remote_client_factory import RemoteClientFactory
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -454,6 +454,13 @@ class MultiXServerlessWorkflow:
                     if len(args) == 0:
                         return func()
                     payload = args[0]
+
+                    logger.info(
+                        "ENTRY_POINT: %s: Entry Point of workflow %s called with payload size %s GB",
+                        wrapper.workflow_placement_decision["run_id"],  # type: ignore
+                        f"{self.name}-{self.version}",
+                        len(json.dumps(payload).encode("utf-8")) / (1024**3),
+                    )
                 else:
                     # Get the workflow_placement decision from the message received from the predecessor function
                     argument_raw = args[0]
@@ -480,7 +487,7 @@ class MultiXServerlessWorkflow:
                     payload = argument.get("payload", {})
 
                 logger.info(
-                    "%s: Function %s called",
+                    "CALLED: %s: Instance %s called",
                     wrapper.workflow_placement_decision["run_id"],  # type: ignore
                     wrapper.workflow_placement_decision["current_instance_name"],  # type: ignore
                 )

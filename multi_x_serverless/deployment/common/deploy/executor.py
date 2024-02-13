@@ -1,11 +1,11 @@
 from typing import Any
 
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
+from multi_x_serverless.common.models.remote_client.remote_client_factory import RemoteClientFactory
 from multi_x_serverless.deployment.common.config.config import Config
 from multi_x_serverless.deployment.common.deploy.models.deployment_plan import DeploymentPlan
 from multi_x_serverless.deployment.common.deploy.models.instructions import APICall, Instruction, RecordResourceVariable
 from multi_x_serverless.deployment.common.deploy.models.variable import Variable
-from multi_x_serverless.deployment.common.factories.remote_client_factory import RemoteClientFactory
 
 
 class Executor:

@@ -3,7 +3,7 @@ from typing import Any, Optional
 
 from multi_x_serverless.common.constants import WORKFLOW_PLACEMENT_DECISION_TABLE
 from multi_x_serverless.common.models.endpoints import Endpoints
-from multi_x_serverless.deployment.common.factories.remote_client_factory import RemoteClientFactory
+from multi_x_serverless.common.models.remote_client.remote_client_factory import RemoteClientFactory
 
 
 class Client:
