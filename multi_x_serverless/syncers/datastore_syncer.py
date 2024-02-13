@@ -28,7 +28,7 @@ class DatastoreSyncer:
         workflow_summary_instance = self.initialize_workflow_summary_instance()
 
         last_synced_time = self.get_last_synced_time(workflow_id)
-        workflow_summary_instance["time_since_last_sync"] = datetime.now() - last_synced_time
+        workflow_summary_instance["time_since_last_sync"] = (datetime.now() - last_synced_time).total_seconds() / (24 * 60 * 60)
 
         deployment_manager_config = json.loads(deployment_manager_config_json)
         self.validate_deployment_manager_config(deployment_manager_config, workflow_id)
@@ -66,7 +66,7 @@ class DatastoreSyncer:
             last_synced_time_str = last_synced_log[0]
             return datetime.strptime(last_synced_time_str, "%Y-%m-%d %H:%M:%S.%f")
         else:
-            return datetime.now() - datetime.timedelta(months=1)
+            return datetime.now() - datetime.timedelta(days=1)
 
     def validate_deployment_manager_config(self, deployment_manager_config: dict[str, Any], workflow_id: str) -> None:
         if "deployed_regions" not in deployment_manager_config:
