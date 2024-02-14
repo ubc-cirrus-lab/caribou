@@ -86,4 +86,17 @@ def version() -> None:
     click.echo(MULTI_X_SERVERLESS_VERSION)
 
 
+@cli.command("list", help="List the workflows.")
+def list_workflows() -> None:
+    client = Client()
+    client.list_workflows()
+
+
+@cli.command("remove", help="Remove the workflow.")
+@click.argument("workflow_id", required=True)
+def remove(workflow_id: str) -> None:
+    client = Client(workflow_id)
+    client.remove()
+
+
 __version__ = MULTI_X_SERVERLESS_VERSION

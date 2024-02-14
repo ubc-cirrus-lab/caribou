@@ -316,7 +316,7 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
             return {}
         items = response.get("Items")
         if items is not None:
-            return {item["key"]["S"]: json.loads(item["value"]["S"]) for item in items}
+            return {item["key"]["S"]: item["value"]["S"] for item in items}
         return {}
 
     def get_key_present_in_table(self, table_name: str, key: str) -> bool:
@@ -401,3 +401,49 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
                 break
 
         return log_events
+
+    def remove_key(self, table_name: str, key: str) -> None:
+        client = self._client("dynamodb")
+        client.delete_item(TableName=table_name, Key={"key": {"S": key}})
+
+    def remove_function(self, function_name: str) -> None:
+        client = self._client("lambda")
+        client.delete_function(FunctionName=function_name)
+
+    def remove_role(self, role_name: str) -> None:
+        client = self._client("iam")
+
+        managed_policies = client.list_attached_role_policies(RoleName=role_name)
+        for policy in managed_policies.get("AttachedPolicies", []):
+            client.detach_role_policy(RoleName=role_name, PolicyArn=policy["PolicyArn"])
+
+        inline_policies = client.list_role_policies(RoleName=role_name)
+        for policy_name in inline_policies.get("PolicyNames", []):
+            client.delete_role_policy(RoleName=role_name, PolicyName=policy_name)
+
+        client.delete_role(RoleName=role_name)
+
+    def remove_messaging_topic(self, topic_identifier: str) -> None:
+        client = self._client("sns")
+        client.delete_topic(TopicArn=topic_identifier)
+
+    def get_topic_identifier(self, topic_name: str) -> str:
+        client = self._client("sns")
+        next_token = ""
+
+        while True:
+            response = client.list_topics(NextToken=next_token) if next_token else client.list_topics()
+
+            for topic in response["Topics"]:
+                if topic_name in topic["TopicArn"]:
+                    return topic["TopicArn"]
+
+            next_token = response.get("NextToken")
+            if not next_token:
+                break
+
+        raise RuntimeError(f"Topic {topic_name} not found")
+
+    def remove_resource(self, key: str) -> None:
+        client = self._client("s3")
+        client.delete_object(Bucket="multi-x-serverless-resources", Key=key)

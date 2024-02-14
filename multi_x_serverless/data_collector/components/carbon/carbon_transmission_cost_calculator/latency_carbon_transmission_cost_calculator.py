@@ -1,6 +1,5 @@
 from typing import Any, Callable, Optional
 
-from multi_x_serverless.common.provider import Provider
 from multi_x_serverless.data_collector.components.carbon.carbon_transmission_cost_calculator.carbon_transmission_cost_calculator import (  # pylint: disable=line-too-long
     CarbonTransmissionCostCalculator,
 )
