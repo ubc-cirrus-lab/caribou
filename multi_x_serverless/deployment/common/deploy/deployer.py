@@ -157,6 +157,7 @@ class Deployer:
             raise DeploymentError(e) from e
 
     def _deploy(self, regions: list[dict[str, str]]) -> None:
+        print(f"Deploying workflow {self._config.workflow_name} with version {self._config.workflow_version}")
         # Build the workflow (DAG of the workflow)
         workflow = self._workflow_builder.build_workflow(self._config, regions)
 
@@ -172,6 +173,7 @@ class Deployer:
         # self._upload_workflow_to_solver_update_checker(workflow)
 
         # Build the workflow resources, e.g. deployment packages, iam roles, etc.
+        print("Building deployment package")
         self._deployment_packager.build(self._config, workflow)
 
         # Chain the commands needed to deploy all the built resources to the serverless platform
@@ -181,11 +183,11 @@ class Deployer:
             raise RuntimeError("Cannot deploy with deletion deployer")
 
         # Execute the deployment plan
-        # self._executor.execute(deployment_plan)
+        self._executor.execute(deployment_plan)
 
         # self._upload_workflow_to_deployer_server(workflow)
         self._upload_deployment_package_resource(workflow)
-        # self._upload_workflow_placement_decision(workflow)
+        self._upload_workflow_placement_decision(workflow)
 
         print(f"Workflow {self._config.workflow_name} with version {self._config.workflow_version} deployed")
         print(f"Workflow id: {self._config.workflow_id}")

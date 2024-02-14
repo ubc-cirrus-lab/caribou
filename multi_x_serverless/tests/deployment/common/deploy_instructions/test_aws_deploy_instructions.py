@@ -31,7 +31,15 @@ class TestAWSDeployInstructions(unittest.TestCase):
         aws_deploy_instructions = AWSDeployInstructions("region1", Provider.AWS)
 
         instructions = aws_deploy_instructions.get_deployment_instructions(
-            name, role, providers, runtime, handler, environment_variables, filename, remote_state, function_exists, layer_filename
+            name,
+            role,
+            providers,
+            runtime,
+            handler,
+            environment_variables,
+            filename,
+            remote_state,
+            function_exists,
         )
 
         self.assertIsInstance(instructions, list)

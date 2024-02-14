@@ -39,6 +39,8 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
             return self.iam_role_exists(resource)
         if resource.resource_type == "function":
             return self.lambda_function_exists(resource)
+        if resource.resource_type == "messaging_topic":
+            return False
         raise RuntimeError(f"Unknown resource type {resource.resource_type}")
 
     def iam_role_exists(self, resource: Resource) -> bool:

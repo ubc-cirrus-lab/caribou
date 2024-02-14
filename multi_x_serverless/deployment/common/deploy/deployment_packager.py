@@ -27,23 +27,19 @@ class DeploymentPackager:
     def build(self, config: Config, workflow: Workflow) -> None:
         if config.project_dir is None:
             raise RuntimeError("project_dir must be defined")
-        zip_file_src_code = self._create_deployment_package(config.project_dir, config.python_version)
-        zip_file_layer = self._create_deployment_layer(config.project_dir, config.python_version)
+        zip_file = self._create_deployment_package(config.project_dir, config.python_version)
         for deployment_package in workflow.get_deployment_packages():
-            deployment_package.filename = zip_file_src_code
-            deployment_package.layer_filename = zip_file_layer
+            deployment_package.filename = zip_file
 
     def re_build(self, workflow: Workflow, remote_client: RemoteClient) -> None:
-        zip_file_src_code = self._download_deployment_package(remote_client, "deployment_package")
-        zip_file_layer = self._download_deployment_package(remote_client, "layer")
+        zip_file = self._download_deployment_package(remote_client)
         for deployment_package in workflow.get_deployment_packages():
-            deployment_package.filename = zip_file_src_code
-            deployment_package.layer_filename = zip_file_layer
+            deployment_package.filename = zip_file
 
-    def _download_deployment_package(self, remote_client: RemoteClient, file_prefix: str) -> str:
+    def _download_deployment_package(self, remote_client: RemoteClient) -> str:
         deployment_package_filename = tempfile.mktemp(suffix=".zip")
 
-        deployment_package_content = remote_client.download_resource(f"{file_prefix}_{self._config.workflow_id}")
+        deployment_package_content = remote_client.download_resource(f"deployment_package_{self._config.workflow_id}")
 
         if deployment_package_content is None:
             raise RuntimeError("Could not download deployment package")
@@ -58,24 +54,16 @@ class DeploymentPackager:
         self._create_deployment_package_dir(package_filename)
         if os.path.exists(package_filename):
             return package_filename
-        with zipfile.ZipFile(package_filename, "w", zipfile.ZIP_DEFLATED) as z:
-            self._add_application_files(z, project_dir)
-            self._add_multi_x_serverless_dependency(z)
-        return package_filename
-
-    def _create_deployment_layer(self, project_dir: str, python_version: str) -> str:
-        layer_filename = self._get_layer_filename(project_dir, python_version)
-        self._create_deployment_package_dir(layer_filename)
-        if os.path.exists(layer_filename):
-            return layer_filename
         with tempfile.TemporaryDirectory() as temp_dir:
             requirements_filename = self._get_requirements_filename(project_dir)
             if not os.path.exists(requirements_filename):
                 raise RuntimeError(f"Could not find requirements file: {requirements_filename}")
-            self._build_dependencies(requirements_filename, temp_dir, python_version)
-            with zipfile.ZipFile(layer_filename, "w", zipfile.ZIP_DEFLATED) as z:
+            self._build_dependencies(requirements_filename, temp_dir)
+            with zipfile.ZipFile(package_filename, "w", zipfile.ZIP_DEFLATED) as z:
                 self._add_py_dependencies(z, temp_dir)
-        return layer_filename
+                self._add_application_files(z, project_dir)
+                self._add_multi_x_serverless_dependency(z)
+        return package_filename
 
     def _add_multi_x_serverless_dependency(self, zip_file: zipfile.ZipFile) -> None:
         multi_x_serverless_path = inspect.getfile(multi_x_serverless)
@@ -151,7 +139,6 @@ class DeploymentPackager:
             for filename in files:
                 full_path = os.path.join(root, filename)
                 zip_path = full_path[prefix_len:]
-                zip_path = os.path.join("python", zip_path)
                 zip_file.write(full_path, zip_path)
 
     def _add_application_files(self, zip_file: zipfile.ZipFile, project_dir: str) -> None:
@@ -168,17 +155,11 @@ class DeploymentPackager:
                     zip_file.write(full_path, zip_path)
 
     def _get_package_filename(self, project_dir: str, python_version: str) -> str:
-        hashed_project_dir = self._hash_project_dir(project_dir)
+        requirements = self._get_requirements_filename(project_dir)
+        hashed_project_dir = self._hash_project_dir(requirements, project_dir)
         filename = (
             f"{hashed_project_dir}-{python_version}-{self._config.workflow_name}-{self._config.workflow_version}.zip"
         )
-        deployment_package_filename = os.path.join(project_dir, ".multi-x-serverless", "deployment-packages", filename)
-        return deployment_package_filename
-
-    def _get_layer_filename(self, project_dir: str, python_version: str) -> str:
-        requirements = self._get_requirements_filename(project_dir)
-        hashed_requirements = self._hash_requirements(requirements)
-        filename = f"{hashed_requirements}-{python_version}-{self._config.workflow_name}-{self._config.workflow_version}-layer.zip"
         deployment_package_filename = os.path.join(project_dir, ".multi-x-serverless", "deployment-packages", filename)
         return deployment_package_filename
 
@@ -186,16 +167,12 @@ class DeploymentPackager:
         requirements_filename = os.path.join(project_dir, "requirements.txt")
         return requirements_filename
 
-    def _hash_requirements(self, requirements: str) -> str:
+    def _hash_project_dir(self, requirements: str, project_dir: str) -> str:
         contents = b""
         if os.path.exists(requirements):
             with open(requirements, "rb") as f:
                 contents = f.read()
         hashed_content = hashlib.sha256(contents)
-        return hashed_content.hexdigest()
-
-    def _hash_project_dir(self, project_dir: str) -> str:
-        hashed_content = hashlib.sha256()
         for root, _, files in os.walk(project_dir):
             for file in files:
                 with open(os.path.join(root, file), "rb") as f:
@@ -207,7 +184,7 @@ class DeploymentPackager:
     def _create_deployment_package_dir(self, package_filename: str) -> None:
         os.makedirs(os.path.dirname(package_filename), exist_ok=True)
 
-    def _build_dependencies(self, requirements_filename: str, layer_dir: str, python_version: str) -> None:
+    def _build_dependencies(self, requirements_filename: str, temp_dir: str) -> None:
         with open(requirements_filename, "r", encoding="utf-8") as file:
             requirements = file.read().splitlines()
 
@@ -219,9 +196,18 @@ class DeploymentPackager:
         if "pyyaml" not in requirements:
             requirements.append(f"pyyaml=={yaml.__version__}")
 
-        # Install the packages to the target directory
-        pip_args = ["--target", layer_dir] + requirements
-        pip_execute("install", pip_args)
+        temp_install_dir = tempfile.mkdtemp(dir=temp_dir, prefix="temp_install_")
+
+        try:
+            pip_args = ["--target", temp_install_dir] + requirements
+            pip_execute("install", pip_args)
+
+            for item in os.listdir(temp_install_dir):
+                item_path = os.path.join(temp_install_dir, item)
+                if os.path.isdir(item_path):
+                    shutil.move(item_path, temp_dir)
+        finally:
+            shutil.rmtree(temp_install_dir)
 
 
 def pip_execute(command: str, args: list[str]) -> tuple[bytes, bytes]:
