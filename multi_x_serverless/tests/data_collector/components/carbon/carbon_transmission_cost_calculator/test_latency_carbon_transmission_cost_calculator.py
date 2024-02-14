@@ -11,5 +11,6 @@ class TestLatencyCarbonTransmissionCostCalculator(TestCase):
         self.get_carbon_intensity_from_coordinates = MagicMock(return_value=0.5)
         self.calculator = LatencyCarbonTransmissionCostCalculator({}, self.get_carbon_intensity_from_coordinates)
 
+
 if __name__ == "__main__":
     unittest.main()
