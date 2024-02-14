@@ -1,7 +1,7 @@
 import datetime
 import os
 import time
-from typing import Any, Optional
+from typing import Any
 
 import requests
 
@@ -10,19 +10,11 @@ from multi_x_serverless.common.utils import str_to_bool
 from multi_x_serverless.data_collector.components.carbon.carbon_transmission_cost_calculator.carbon_transmission_cost_calculator import (  # pylint: disable=line-too-long
     CarbonTransmissionCostCalculator,
 )
-from multi_x_serverless.data_collector.components.carbon.carbon_transmission_cost_calculator.distance_carbon_transmission_cost_calculator import (  # pylint: disable=line-too-long
-    DistanceCarbonTransmissionCostCalculator,
-)
-from multi_x_serverless.data_collector.components.carbon.carbon_transmission_cost_calculator.latency_carbon_transmission_cost_calculator import (  # pylint: disable=line-too-long
-    LatencyCarbonTransmissionCostCalculator,
-)
 from multi_x_serverless.data_collector.components.data_retriever import DataRetriever
 
 
 class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attributes
-    _carbon_transmission_cost_calculator: CarbonTransmissionCostCalculator
-
-    def __init__(self, client: RemoteClient, config: Optional[dict] = None) -> None:
+    def __init__(self, client: RemoteClient) -> None:
         super().__init__(client)
         self._integration_test_on = str_to_bool(os.environ.get("INTEGRATIONTEST_ON", "False"))
 
@@ -34,24 +26,9 @@ class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attri
         self._request_backoff = 0.1
         self._last_request = datetime.datetime.now()
         self._global_average_worst_case_carbon_intensity = 475.0
-        self._kwh_per_gb_estimate = 1.0
-        if config is not None and "carbon_transmission_cost_calculator" in config:
-            if config["carbon_transmission_cost_calculator"] == "latency":
-                self._carbon_transmission_cost_calculator = LatencyCarbonTransmissionCostCalculator(
-                    self._get_carbon_intensity_from_coordinates, config
-                )
-            elif config["carbon_transmission_cost_calculator"] == "distance":
-                self._carbon_transmission_cost_calculator = DistanceCarbonTransmissionCostCalculator(
-                    self._get_carbon_intensity_from_coordinates, config
-                )
-            else:
-                raise ValueError(
-                    f"Invalid carbon transmission cost calculator: {config['carbon_transmission_cost_calculator']}"
-                )
-        else:
-            self._carbon_transmission_cost_calculator = DistanceCarbonTransmissionCostCalculator(
-                self._get_carbon_intensity_from_coordinates, config
-            )
+        self._carbon_transmission_cost_calculator = CarbonTransmissionCostCalculator(
+            self._get_carbon_intensity_from_coordinates
+        )
 
         self._carbon_intensity_cache: dict[tuple[float, float], float] = {}
 
@@ -65,10 +42,15 @@ class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attri
             transmission_carbon_dict = {}
 
             for region_key_to, available_region_to in self._available_regions.items():
+                (
+                    intensity,
+                    distance,
+                ) = self._carbon_transmission_cost_calculator.calculate_transmission_carbon_intensity(  # pylint: disable=line-too-long
+                    available_region, available_region_to
+                )
                 transmission_carbon_dict[region_key_to] = {
-                    "carbon_intensity": self._carbon_transmission_cost_calculator.calculate_transmission_carbon_intensity(  # pylint: disable=line-too-long
-                        available_region, available_region_to
-                    ),
+                    "carbon_intensity": intensity,
+                    "distance": distance,
                     "unit": "gCO2eq/GB",
                 }
 

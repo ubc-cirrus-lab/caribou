@@ -33,9 +33,7 @@ class RuntimeCalculator(InputCalculator):
             # TODO (#76): Implement probabilistic invocations
             raise NotImplementedError("Probabilistic invocations are not supported yet")
 
-        return self._calculate_raw_latency(
-            from_instance_name, to_instance_name, from_region_name, to_region_name, False
-        )
+        return self.calculate_raw_latency(from_instance_name, to_instance_name, from_region_name, to_region_name, False)
 
     def calculate_raw_runtime(self, instance_name: str, region_name: str, use_tail_runtime: bool = False) -> float:
         runtime = self._workflow_loader.get_runtime(instance_name, region_name, use_tail_runtime)
@@ -61,7 +59,7 @@ class RuntimeCalculator(InputCalculator):
 
         return runtime
 
-    def _calculate_raw_latency(
+    def calculate_raw_latency(
         self,
         from_instance_name: str,
         to_instance_name: str,
