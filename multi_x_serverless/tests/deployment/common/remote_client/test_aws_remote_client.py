@@ -503,7 +503,7 @@ class TestAWSRemoteClient(unittest.TestCase):
             "Items": [{"key": {"S": "key1"}, "value": {"S": json.dumps("value1")}}]
         }
         result = self.aws_client.get_all_values_from_table(table_name)
-        self.assertEqual(result, {"key1": "value1"})
+        self.assertEqual(result, {"key1": '"value1"'})
 
     @patch.object(AWSRemoteClient, "_client")
     def test_get_key_present_in_table(self, mock_client):

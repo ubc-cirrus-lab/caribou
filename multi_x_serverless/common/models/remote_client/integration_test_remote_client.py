@@ -434,3 +434,46 @@ class IntegrationTestRemoteClient(RemoteClient):  # pylint: disable=too-many-pub
 
     def get_logs_since_last_sync(self, function_instance: str, last_synced_time: datetime) -> list[str]:
         return []
+
+    def remove_key(self, table_name: str, key: str) -> None:
+        conn = self._db_connection()
+        cursor = conn.cursor()
+        cursor.execute(f"DELETE FROM {table_name} WHERE key=?", (key,))
+        conn.commit()
+        conn.close()
+
+    def remove_function(self, function_name: str) -> None:
+        conn = self._db_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM functions WHERE name=?", (function_name,))
+        conn.commit()
+        conn.close()
+
+    def remove_role(self, role_name: str) -> None:
+        conn = self._db_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM roles WHERE name=?", (role_name,))
+        conn.commit()
+        conn.close()
+
+    def remove_messaging_topic(self, topic_identifier: str) -> None:
+        conn = self._db_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM messaging_topics WHERE topic_identifier=?", (topic_identifier,))
+        conn.commit()
+        conn.close()
+
+    def get_topic_identifier(self, topic_name: str) -> str:
+        conn = self._db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT topic_identifier FROM messaging_topics WHERE topic_identifier=?", (topic_name,))
+        result = cursor.fetchone()
+        conn.close()
+        return result[0] if result else ""
+
+    def remove_resource(self, key: str) -> None:
+        conn = self._db_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM resources WHERE key=?", (key,))
+        conn.commit()
+        conn.close()

@@ -156,3 +156,27 @@ class RemoteClient(ABC):  # pylint: disable=too-many-public-methods
     @abstractmethod
     def get_logs_since_last_sync(self, function_instance: str, last_synced_time: datetime) -> list[str]:
         raise NotImplementedError()
+
+    @abstractmethod
+    def remove_key(self, table_name: str, key: str) -> None:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def remove_function(self, function_name: str) -> None:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def remove_role(self, role_name: str) -> None:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def remove_messaging_topic(self, topic_identifier: str) -> None:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def get_topic_identifier(self, topic_name: str) -> str:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def remove_resource(self, key: str) -> None:
+        raise NotImplementedError()

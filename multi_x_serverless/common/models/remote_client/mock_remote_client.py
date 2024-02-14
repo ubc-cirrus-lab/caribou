@@ -95,3 +95,21 @@ class MockRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
 
     def get_logs_since_last_sync(self, function_instance: str, last_synced_time: datetime) -> list[str]:
         pass
+
+    def remove_key(self, table_name: str, key: str) -> None:
+        pass
+
+    def remove_function(self, function_name: str) -> None:
+        pass
+
+    def remove_role(self, role_name: str) -> None:
+        pass
+
+    def remove_messaging_topic(self, topic_identifier: str) -> None:
+        pass
+
+    def get_topic_identifier(self, topic_name: str) -> str:
+        pass
+
+    def remove_resource(self, key: str) -> None:
+        pass

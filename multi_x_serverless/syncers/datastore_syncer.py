@@ -41,9 +41,8 @@ class DatastoreSyncer:
 
         total_invocations = 0
         for function_physical_instance, provider_region in deployed_region.items():
-            function_instance = "_".join(function_physical_instance.split("_")[:-1])
             total_invocations += self.process_function_instance(
-                function_instance, provider_region, workflow_summary_instance, last_synced_time
+                function_physical_instance, provider_region, workflow_summary_instance, last_synced_time
             )
 
         workflow_summary_instance["total_invocations"] = total_invocations
@@ -87,9 +86,9 @@ class DatastoreSyncer:
         self.initialize_instance_summary(function_instance, provider_region, workflow_summary_instance)
 
         if (provider_region["provider"], provider_region["region"]) not in self._region_clients:
-            self._region_clients[(provider_region["provider"], provider_region["region"])] = (
-                RemoteClientFactory.get_remote_client(provider_region["provider"], provider_region["region"])
-            )
+            self._region_clients[
+                (provider_region["provider"], provider_region["region"])
+            ] = RemoteClientFactory.get_remote_client(provider_region["provider"], provider_region["region"])
 
         logs: list[str] = self._region_clients[
             (provider_region["provider"], provider_region["region"])
