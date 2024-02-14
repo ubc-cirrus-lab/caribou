@@ -170,21 +170,25 @@ class Deployer:
             )
 
         # Upload the workflow to the solver
-        # self._upload_workflow_to_solver_update_checker(workflow)
+        # self._upload_workflow_to_solver_update_checker(workflow)
 
         # Build the workflow resources, e.g. deployment packages, iam roles, etc.
         print("Building deployment package")
         self._deployment_packager.build(self._config, workflow)
 
         # Chain the commands needed to deploy all the built resources to the serverless platform
+        print("Building deployment plan")
         deployment_plan = DeploymentPlan(workflow.get_deployment_instructions())
 
         if self._executor is None:
             raise RuntimeError("Cannot deploy with deletion deployer")
 
         # Execute the deployment plan
+        print("Executing deployment plan")
         self._executor.execute(deployment_plan)
 
+        # Upload the workflow to the deployer server
+        print("Uploading workflow to configuration server")
         # self._upload_workflow_to_deployer_server(workflow)
         self._upload_deployment_package_resource(workflow)
         self._upload_workflow_placement_decision(workflow)
@@ -299,7 +303,7 @@ class Deployer:
 
         if deployment_packege_filename is None:
             raise RuntimeError("Deployment package filename is None")
-        
+
         if layer_filename is None:
             raise RuntimeError("Layer filename is None")
 
@@ -313,9 +317,7 @@ class Deployer:
             f"deployment_package_{self._config.workflow_id}", deployment_package
         )
 
-        self._endpoints.get_deployment_manager_client().upload_resource(
-            f"layer_{self._config.workflow_id}", layer
-        )
+        self._endpoints.get_deployment_manager_client().upload_resource(f"layer_{self._config.workflow_id}", layer)
 
 
 def create_default_deployer(config: Config) -> Deployer:

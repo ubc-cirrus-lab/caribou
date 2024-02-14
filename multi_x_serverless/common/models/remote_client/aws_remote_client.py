@@ -2,6 +2,10 @@ import json
 import time
 from datetime import datetime
 from typing import Any
+import os
+import tempfile
+import zipfile
+import subprocess
 
 from boto3.session import Session
 from botocore.exceptions import ClientError
@@ -127,22 +131,73 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         timeout: int,
         memory_size: int,
     ) -> str:
-        kwargs: dict[str, Any] = {
-            "FunctionName": function_name,
-            "Runtime": runtime,
-            "Code": {"ZipFile": zip_contents},
-            "Handler": handler,
-            "Role": role_identifier,
-            "Environment": {"Variables": environment_variables},
-            "MemorySize": memory_size,
-        }
-        if timeout >= 1:
-            kwargs["Timeout"] = timeout
-        arn, state = self._create_lambda_function(kwargs)
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            # Step 1: Unzip the ZIP file
+            zip_path = os.path.join(tmpdirname, "code.zip")
+            with open(zip_path, "wb") as f_zip:
+                f_zip.write(zip_contents)
+            with zipfile.ZipFile(zip_path, "r") as zip_ref:
+                zip_ref.extractall(tmpdirname)
 
-        if state != "Active":
-            self._wait_for_function_to_become_active(function_name)
-        return arn
+            # Step 2: Create a Dockerfile in the temporary directory
+            dockerfile_content = self.generate_dockerfile(runtime, handler, tmpdirname)
+            print(dockerfile_content)
+            with open(os.path.join(tmpdirname, "Dockerfile"), "w") as f_dockerfile:
+                f_dockerfile.write(dockerfile_content)
+
+            # Step 3: Build the Docker Image
+            image_name = f"{function_name.lower()}:latest"
+            self.build_docker_image(tmpdirname, image_name)
+
+            # Step 4: Upload the Image to ECR
+            image_uri = self.upload_image_to_ecr(image_name)
+
+            kwargs: dict[str, Any] = {
+                "FunctionName": function_name,
+                "Code": {"ImageUri": image_uri},
+                "PackageType": "Image",
+                "Role": role_identifier,
+                "Environment": {"Variables": environment_variables},
+                "MemorySize": memory_size,
+            }
+            if timeout >= 1:
+                kwargs["Timeout"] = timeout
+            arn, state = self._create_lambda_function(kwargs)
+
+            if state != "Active":
+                self._wait_for_function_to_become_active(function_name)
+            return arn
+
+    def generate_dockerfile(self, runtime: str, handler: str, tmpdirname: str):
+        return f"""
+        FROM public.ecr.aws/lambda/{runtime}
+        COPY {tmpdirname}/requirements.txt ./
+        RUN pip3 install --no-cache-dir -r requirements.txt
+        COPY {tmpdirname}/app.py ./
+        COPY {tmpdirname}/src ./
+        CMD ["{handler}"]
+        """
+
+    def upload_image_to_ecr(self, image_name):
+        # Assume AWS CLI is configured. Customize these commands based on your AWS setup.
+        repository_name = image_name.split(":")[0]
+        try:
+            self.ecr_client.create_repository(repositoryName=repository_name)
+        except self.ecr_client.exceptions.RepositoryAlreadyExistsException:
+            pass  # Repository already exists, proceed
+
+        # Get login command
+        login_command = subprocess.check_output(["aws", "ecr", "get-login-password"]).strip().decode("utf-8")
+        subprocess.run(login_command, shell=True, check=True)
+
+        # Tag and push the image
+        account_id = self._client("sts").get_caller_identity().get("Account")
+        region = self._session.region_name
+        image_uri = f"{account_id}.dkr.ecr.{region}.amazonaws.com/{repository_name}:latest"
+        subprocess.run(["docker", "tag", image_name, image_uri], check=True)
+        subprocess.run(["docker", "push", image_uri], check=True)
+
+        return image_uri
 
     def update_function(
         self,
@@ -156,24 +211,40 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         memory_size: int,
     ) -> str:
         client = self._client("lambda")
-        response = client.update_function_code(FunctionName=function_name, ZipFile=zip_contents)
+
+        # Process the ZIP contents to build and upload a Docker image, then update the function code with the image URI
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            zip_path = os.path.join(tmpdirname, "code.zip")
+            with open(zip_path, "wb") as f_zip:
+                f_zip.write(zip_contents)
+            with zipfile.ZipFile(zip_path, "r") as zip_ref:
+                zip_ref.extractall(tmpdirname)
+
+            dockerfile_content = self.generate_dockerfile(runtime, handler, tmpdirname)
+            with open(os.path.join(tmpdirname, "Dockerfile"), "w") as f_dockerfile:
+                f_dockerfile.write(dockerfile_content)
+
+            image_name = f"{function_name.lower()}:latest"
+            self.build_docker_image(tmpdirname, image_name)
+            image_uri = self.upload_image_to_ecr(image_name)
+
+            response = client.update_function_code(FunctionName=function_name, ImageUri=image_uri)
+
         time.sleep(self.DELAY_TIME)
-        if response["State"] != "Active":
+        if response.get("State") != "Active":
             self._wait_for_function_to_become_active(function_name)
-        kwargs: dict[str, Any] = {
+
+        kwargs = {
             "FunctionName": function_name,
-            "Runtime": runtime,
-            "Handler": handler,
             "Role": role_identifier,
             "Environment": {"Variables": environment_variables},
             "MemorySize": memory_size,
         }
-
         if timeout >= 1:
             kwargs["Timeout"] = timeout
-
         response = client.update_function_configuration(**kwargs)
-        if response["State"] != "Active":
+
+        if response.get("State") != "Active":
             self._wait_for_function_to_become_active(function_name)
 
         return response["FunctionArn"]
