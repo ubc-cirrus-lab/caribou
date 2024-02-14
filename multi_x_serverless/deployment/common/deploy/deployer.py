@@ -170,7 +170,7 @@ class Deployer:
             )
 
         # Upload the workflow to the solver
-        # self._upload_workflow_to_solver_update_checker(workflow)
+        self._upload_workflow_to_solver_update_checker(workflow)
 
         # Build the workflow resources, e.g. deployment packages, iam roles, etc.
         print("Building deployment package")
@@ -189,7 +189,7 @@ class Deployer:
 
         # Upload the workflow to the deployer server
         print("Uploading workflow to configuration server")
-        # self._upload_workflow_to_deployer_server(workflow)
+        self._upload_workflow_to_deployer_server(workflow)
         self._upload_deployment_package_resource(workflow)
         self._upload_workflow_placement_decision(workflow)
 

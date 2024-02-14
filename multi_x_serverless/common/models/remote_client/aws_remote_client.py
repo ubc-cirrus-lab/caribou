@@ -141,7 +141,6 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
 
             # Step 2: Create a Dockerfile in the temporary directory
             dockerfile_content = self.generate_dockerfile(runtime, handler, tmpdirname)
-            print(dockerfile_content)
             with open(os.path.join(tmpdirname, "Dockerfile"), "w") as f_dockerfile:
                 f_dockerfile.write(dockerfile_content)
 
@@ -170,32 +169,50 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
 
     def generate_dockerfile(self, runtime: str, handler: str, tmpdirname: str):
         return f"""
-        FROM public.ecr.aws/lambda/{runtime}
-        COPY {tmpdirname}/requirements.txt ./
+        FROM public.ecr.aws/lambda/{runtime.replace("python", "python:")}
+        COPY requirements.txt ./
         RUN pip3 install --no-cache-dir -r requirements.txt
-        COPY {tmpdirname}/app.py ./
-        COPY {tmpdirname}/src ./
+        COPY app.py ./
+        COPY src ./src
+        COPY multi_x_serverless ./multi_x_serverless
         CMD ["{handler}"]
         """
 
+    def build_docker_image(self, context_path, image_name):
+        try:
+            subprocess.run(["docker", "build", "-t", image_name, context_path], check=True)
+            print(f"Docker image {image_name} built successfully.")
+        except subprocess.CalledProcessError as e:
+            # This will catch errors from the subprocess and print a message.
+            print(f"Failed to build Docker image {image_name}. Error: {e}")
+
     def upload_image_to_ecr(self, image_name):
+        ecr_client = self._client("ecr")
         # Assume AWS CLI is configured. Customize these commands based on your AWS setup.
         repository_name = image_name.split(":")[0]
         try:
-            self.ecr_client.create_repository(repositoryName=repository_name)
-        except self.ecr_client.exceptions.RepositoryAlreadyExistsException:
+            ecr_client.create_repository(repositoryName=repository_name)
+        except ecr_client.exceptions.RepositoryAlreadyExistsException:
             pass  # Repository already exists, proceed
 
-        # Get login command
-        login_command = subprocess.check_output(["aws", "ecr", "get-login-password"]).strip().decode("utf-8")
-        subprocess.run(login_command, shell=True, check=True)
-
-        # Tag and push the image
+        # Retrieve an authentication token and authenticate your Docker client to your registry.
+        # Use the AWS CLI 'get-login-password' command to get the token.
         account_id = self._client("sts").get_caller_identity().get("Account")
-        region = self._session.region_name
-        image_uri = f"{account_id}.dkr.ecr.{region}.amazonaws.com/{repository_name}:latest"
-        subprocess.run(["docker", "tag", image_name, image_uri], check=True)
-        subprocess.run(["docker", "push", image_uri], check=True)
+        region = self._client("ecr").meta.region_name
+        ecr_registry = f"{account_id}.dkr.ecr.{region}.amazonaws.com"
+
+        login_password = subprocess.check_output(["aws", "ecr", "get-login-password", "--region", region]).strip().decode("utf-8")
+        subprocess.run(["docker", "login", "--username", "AWS", "--password", login_password, ecr_registry], check=True)
+
+        # Tag and push the image to ECR
+        image_uri = f"{ecr_registry}/{repository_name}:latest"
+        try:
+            subprocess.run(["docker", "tag", image_name, image_uri], check=True)
+            subprocess.run(["docker", "push", image_uri], check=True)
+            print(f"Successfully pushed Docker image {image_uri} to ECR.")
+        except subprocess.CalledProcessError as e:
+            print(f"Failed to push Docker image {image_name} to ECR. Error: {e}")
+            raise
 
         return image_uri
 
