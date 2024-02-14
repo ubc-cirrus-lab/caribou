@@ -11,7 +11,7 @@ class TestCarbonCollector(unittest.TestCase):
         self.config = {"carbon_transmission_cost_calculator": "distance"}
         with patch("os.environ.get") as mock_os_environ_get:
             mock_os_environ_get.return_value = "mock_token"
-            self.carbon_collector = CarbonCollector(self.config)
+            self.carbon_collector = CarbonCollector()
 
     @patch.object(CarbonRetriever, "retrieve_available_regions")
     @patch.object(CarbonRetriever, "retrieve_carbon_region_data")

@@ -32,7 +32,7 @@ class TestCarbonLoader(unittest.TestCase):
 
     def test_get_transmission_carbon_intensity(self):
         result = self.loader.get_transmission_carbon_intensity("aws:eu-south-1", "aws:eu-central-1")
-        self.assertEqual(result, 1337.9261964617801)
+        self.assertEqual(result, (1337.9261964617801, 1000.0))
 
     def test_get_grid_carbon_intensity(self):
         result = self.loader.get_grid_carbon_intensity("aws:eu-south-1")

@@ -38,12 +38,12 @@ class TestCarbonCalculator(unittest.TestCase):
 
     def test__calculate_raw_transmission_carbon(self):
         self.workflow_loader.get_data_transfer_size.return_value = 2
-        self.carbon_loader.get_transmission_carbon_intensity.return_value = 0.5
+        self.carbon_loader.get_transmission_carbon_intensity.return_value = (0.5, 100)
 
         result = self.carbon_calculator._calculate_raw_transmission_carbon(
             "instance1", "instance2", "provider1:region1", "provider1:region2"
         )
-        self.assertEqual(result, 1)
+        self.assertEqual(result, 0.6)
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 import datetime
 import os
 import time
-from typing import Any, Optional
+from typing import Any
 
 import requests
 
@@ -10,17 +10,11 @@ from multi_x_serverless.common.utils import str_to_bool
 from multi_x_serverless.data_collector.components.carbon.carbon_transmission_cost_calculator.carbon_transmission_cost_calculator import (  # pylint: disable=line-too-long
     CarbonTransmissionCostCalculator,
 )
-from multi_x_serverless.data_collector.components.carbon.carbon_transmission_cost_calculator.distance_carbon_transmission_cost_calculator import (  # pylint: disable=line-too-long
-    DistanceCarbonTransmissionCostCalculator,
-)
-from multi_x_serverless.data_collector.components.carbon.carbon_transmission_cost_calculator.latency_carbon_transmission_cost_calculator import (  # pylint: disable=line-too-long
-    LatencyCarbonTransmissionCostCalculator,
-)
 from multi_x_serverless.data_collector.components.data_retriever import DataRetriever
 
 
 class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attributes
-    def __init__(self, client: RemoteClient, config: Optional[dict] = None) -> None:
+    def __init__(self, client: RemoteClient) -> None:
         super().__init__(client)
         self._integration_test_on = str_to_bool(os.environ.get("INTEGRATIONTEST_ON", "False"))
 
@@ -32,7 +26,9 @@ class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attri
         self._request_backoff = 0.1
         self._last_request = datetime.datetime.now()
         self._global_average_worst_case_carbon_intensity = 475.0
-        self._carbon_transmission_cost_calculator = CarbonTransmissionCostCalculator()
+        self._carbon_transmission_cost_calculator = CarbonTransmissionCostCalculator(
+            self._get_carbon_intensity_from_coordinates
+        )
 
         self._carbon_intensity_cache: dict[tuple[float, float], float] = {}
 
