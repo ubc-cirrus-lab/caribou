@@ -9,9 +9,9 @@ class RegionViabilityLoader(InputLoader):
         self._available_regions: list[str] = []
 
     def setup(self) -> None:
-        all_regions = self._client.get_keys(self._primary_table)
+        all_regions = self._client.get_all_values_from_table(self._primary_table)
 
-        for region in all_regions:
+        for region, _ in all_regions.items():
             # TODO: Check if the available regions are updated
             # Now go through the available regions and only select the ones
             # With sufficiently updated timestamp on data collector columns.
