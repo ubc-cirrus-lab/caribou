@@ -47,7 +47,10 @@ class CarbonCalculator(InputCalculator):
             raise NotImplementedError("Probabilistic invocations are not supported yet")
 
         return self._calculate_raw_transmission_carbon(
-            from_instance_name, to_instance_name, from_region_name, to_region_name
+            from_instance_name,
+            to_instance_name,
+            from_region_name,
+            to_region_name,
         )
 
     def _calculate_raw_execution_carbon(
@@ -93,13 +96,21 @@ class CarbonCalculator(InputCalculator):
         return operational_emission  # gCO2e
 
     def _calculate_raw_transmission_carbon(
-        self, from_instance_name: str, to_instance_name: str, from_region_name: str, to_region_name: str
+        self,
+        from_instance_name: str,
+        to_instance_name: str,
+        from_region_name: str,
+        to_region_name: str,
     ) -> float:
         # Get the data transfer size from the workflow loader (In units of GB)
         data_transfer_size = self._workflow_loader.get_data_transfer_size(from_instance_name, to_instance_name)
 
-        data_latency = self._workflow_loader.get_latency(
-            from_instance_name, to_instance_name, from_region_name, to_region_name
+        data_latency = self._runtime_calculator.calculate_raw_latency(
+            from_instance_name=from_instance_name,
+            to_instance_name=to_instance_name,
+            from_region_name=from_region_name,
+            to_region_name=to_region_name,
+            use_tail_latency=False,
         )
 
         # Get the carbon intesnity of transmission in units of gCo2eq/GB

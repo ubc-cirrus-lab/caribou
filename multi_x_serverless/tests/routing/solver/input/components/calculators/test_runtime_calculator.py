@@ -16,7 +16,7 @@ class TestRuntimeCalculator(unittest.TestCase):
         self.assertEqual(result, 10.0)
 
     def test_calculate_latency(self):
-        self.runtime_calculator._calculate_raw_latency = Mock(return_value=20.0)
+        self.runtime_calculator.calculate_raw_latency = Mock(return_value=20.0)
         result = self.runtime_calculator.calculate_latency("instance1", "instance2", "region1", "region2")
         self.assertEqual(result, 20.0)
 
@@ -34,7 +34,7 @@ class TestRuntimeCalculator(unittest.TestCase):
         self.workflow_loader.get_data_transfer_size.return_value = 1.0
         self.performance_loader.get_transmission_latency.return_value = 1.0
 
-        result = self.runtime_calculator._calculate_raw_latency("instance1", "instance2", "region1", "region2")
+        result = self.runtime_calculator.calculate_raw_latency("instance1", "instance2", "region1", "region2")
         self.assertEqual(result, 1.0)
 
 
