@@ -7,3 +7,4 @@ from multi_x_serverless.deployment.common.deploy.models.resource import Resource
 @dataclass
 class DeploymentPackage(Resource):
     filename: Optional[str] = None
+    layer_filename: Optional[str] = None

@@ -24,6 +24,7 @@ class DeployInstructions(ABC):
         filename: str,
         remote_state: RemoteState,
         function_exists: bool,
+        layer_filename: str,
     ) -> list[Instruction]:
         self._config = self._get_config(providers, self._provider.value)
         instructions: list[Instruction] = []
@@ -109,6 +110,12 @@ class DeployInstructions(ABC):
                     ),
                 ]
             )
+
+        with open(layer_filename, "rb") as f:
+            layer_zip_contents = f.read()
+
+        # Check if layer exists
+
         subscription_varname = f"{name}_messaging_subscription"
         instructions.extend(
             [

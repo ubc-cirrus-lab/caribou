@@ -72,6 +72,7 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
             self.deployment_package.filename,
             self._remote_state,
             self._remote_state.resource_exists(self),
+            self.deployment_package.layer_filename,
         )
         return instructions
 

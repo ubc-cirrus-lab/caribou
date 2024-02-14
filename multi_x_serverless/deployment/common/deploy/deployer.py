@@ -169,7 +169,7 @@ class Deployer:
             )
 
         # Upload the workflow to the solver
-        self._upload_workflow_to_solver_update_checker(workflow)
+        # self._upload_workflow_to_solver_update_checker(workflow)
 
         # Build the workflow resources, e.g. deployment packages, iam roles, etc.
         self._deployment_packager.build(self._config, workflow)
@@ -181,11 +181,11 @@ class Deployer:
             raise RuntimeError("Cannot deploy with deletion deployer")
 
         # Execute the deployment plan
-        self._executor.execute(deployment_plan)
+        # self._executor.execute(deployment_plan)
 
-        self._upload_workflow_to_deployer_server(workflow)
+        # self._upload_workflow_to_deployer_server(workflow)
         self._upload_deployment_package_resource(workflow)
-        self._upload_workflow_placement_decision(workflow)
+        # self._upload_workflow_placement_decision(workflow)
 
         print(f"Workflow {self._config.workflow_name} with version {self._config.workflow_version} deployed")
         print(f"Workflow id: {self._config.workflow_id}")
@@ -293,15 +293,26 @@ class Deployer:
 
     def _upload_deployment_package_resource(self, workflow: Workflow) -> None:
         deployment_packege_filename = workflow.get_deployment_packages()[0].filename
+        layer_filename = workflow.get_deployment_packages()[0].layer_filename
 
         if deployment_packege_filename is None:
             raise RuntimeError("Deployment package filename is None")
+        
+        if layer_filename is None:
+            raise RuntimeError("Layer filename is None")
 
         with open(deployment_packege_filename, "rb") as deployment_package_file:
             deployment_package = deployment_package_file.read()
 
+        with open(layer_filename, "rb") as layer_file:
+            layer = layer_file.read()
+
         self._endpoints.get_deployment_manager_client().upload_resource(
             f"deployment_package_{self._config.workflow_id}", deployment_package
+        )
+
+        self._endpoints.get_deployment_manager_client().upload_resource(
+            f"layer_{self._config.workflow_id}", layer
         )
 
 

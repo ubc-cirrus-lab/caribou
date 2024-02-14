@@ -18,6 +18,7 @@ class TestAWSDeployInstructions(unittest.TestCase):
         handler = "handler"
         environment_variables = {"var": "value"}
         filename = "test.zip"
+        layer_filename = "layer.zip"
         client_mock = Mock()
         client_mock.get_predecessor_data.return_value = ['{"key": "value"}']
         client_mock.resource_exists.return_value = False
@@ -30,7 +31,7 @@ class TestAWSDeployInstructions(unittest.TestCase):
         aws_deploy_instructions = AWSDeployInstructions("region1", Provider.AWS)
 
         instructions = aws_deploy_instructions.get_deployment_instructions(
-            name, role, providers, runtime, handler, environment_variables, filename, remote_state, function_exists
+            name, role, providers, runtime, handler, environment_variables, filename, remote_state, function_exists, layer_filename
         )
 
         self.assertIsInstance(instructions, list)
