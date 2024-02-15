@@ -5,6 +5,8 @@ from multi_x_serverless.common.constants import DEPLOYMENT_MANAGER_RESOURCE_TABL
 
 import unittest
 from unittest.mock import MagicMock, patch
+import json
+from datetime import datetime
 
 
 class TestDatastoreSyncer(unittest.TestCase):
@@ -170,6 +172,70 @@ class TestDatastoreSyncer(unittest.TestCase):
         mock_get_deployment_manager_client.get_all_values_from_table.assert_called_once_with(
             DEPLOYMENT_MANAGER_RESOURCE_TABLE
         )
+
+    @patch.object(DatastoreSyncer, "process_workflow")
+    @patch.object(DatastoreSyncer, "get_last_synced_time")
+    @patch.object(DatastoreSyncer, "initialize_workflow_summary_instance")
+    @patch("multi_x_serverless.common.models.endpoints.Endpoints")
+    @patch("multi_x_serverless.common.models.remote_client.remote_client_factory.RemoteClientFactory")
+    def test_sync(
+        self,
+        mock_remote_client_factory,
+        mock_endpoints,
+        mock_initialize_workflow_summary_instance,
+        mock_get_last_synced_time,
+        mock_process_workflow,
+    ):
+        # Mocking the scenario where the sync method is called successfully
+        mock_get_deployment_manager_client = MagicMock()
+        mock_get_deployment_manager_client.get_all_values_from_table.return_value = {
+            "workflow_id": "deployment_manager_config_json"
+        }
+        mock_endpoints.get_deployment_manager_client.return_value = mock_get_deployment_manager_client
+
+        mock_get_remote_client = MagicMock()
+        mock_remote_client_factory.get_remote_client = mock_get_remote_client
+
+        mock_remote_client = MagicMock()
+        mock_get_remote_client.return_value = mock_remote_client
+
+        mock_initialize_workflow_summary_instance.return_value = {"instance_summary": {}}
+        mock_get_last_synced_time.return_value = datetime(2022, 1, 1)
+
+        # Create a DatastoreSyncer instance and call the sync method
+        syncer = DatastoreSyncer()
+        syncer.endpoints = mock_endpoints
+        syncer.sync()
+
+        # Check if the methods were called with the correct arguments
+        mock_endpoints.get_deployment_manager_client.assert_called_once()
+        mock_get_deployment_manager_client.get_all_values_from_table.assert_called_once_with(
+            DEPLOYMENT_MANAGER_RESOURCE_TABLE
+        )
+        mock_process_workflow.assert_called_once_with("workflow_id", "deployment_manager_config_json")
+
+    @patch.object(DatastoreSyncer, "process_function_instance")
+    @patch.object(DatastoreSyncer, "validate_deployment_manager_config")
+    def test_process_workflow(self, mock_validate_deployment_manager_config, mock_process_function_instance):
+        # Mocking the scenario where the process_workflow method is called successfully
+        syncer = DatastoreSyncer()
+        workflow_summary_instance = {"instance_summary": {}}
+        syncer.initialize_workflow_summary_instance = MagicMock(return_value=workflow_summary_instance)
+        syncer.get_last_synced_time = MagicMock(return_value=datetime(2022, 1, 1))
+        syncer.endpoints.get_datastore_client().put_value_to_sort_key_table = MagicMock()
+
+        deployment_manager_config_json = json.dumps(
+            {"deployed_regions": json.dumps({"function_physical_instance": {"provider": "aws", "region": "us-east-1"}})}
+        )
+
+        mock_process_function_instance.return_value = 1
+
+        # Call the method with test values
+        syncer.process_workflow("workflow_id", deployment_manager_config_json)
+
+        # Check that the validate_deployment_manager_config and process_function_instance methods were called
+        mock_validate_deployment_manager_config.assert_called()
+        mock_process_function_instance.assert_called()
 
 
 if __name__ == "__main__":

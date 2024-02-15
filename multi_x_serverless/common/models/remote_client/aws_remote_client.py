@@ -80,13 +80,16 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         for table in [SYNC_MESSAGES_TABLE, SYNC_PREDECESSOR_COUNTER_TABLE]:
             try:
                 client.describe_table(TableName=table)
-            except client.exceptions.ResourceNotFoundException:
-                client.create_table(
-                    TableName=table,
-                    KeySchema=[{"AttributeName": "id", "KeyType": "HASH"}],
-                    AttributeDefinitions=[{"AttributeName": "id", "AttributeType": "S"}],
-                    BillingMode="PAY_PER_REQUEST",
-                )
+            except ClientError as e:
+                if e.response["Error"]["Code"] == "ResourceNotFoundException":
+                    client.create_table(
+                        TableName=table,
+                        KeySchema=[{"AttributeName": "id", "KeyType": "HASH"}],
+                        AttributeDefinitions=[{"AttributeName": "id", "AttributeType": "S"}],
+                        BillingMode="PAY_PER_REQUEST",
+                    )
+                else:
+                    raise
 
     def upload_predecessor_data_at_sync_node(self, function_name: str, workflow_instance_id: str, message: str) -> None:
         client = self._client("dynamodb")
