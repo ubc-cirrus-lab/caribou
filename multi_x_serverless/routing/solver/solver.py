@@ -71,7 +71,9 @@ class Solver(ABC):  # pylint: disable=too-many-instance-attributes
         self._objective_function = AnyImprovementObjectiveFunction
 
     def solve(self) -> None:
+        # print(self._dag._indices_to_values)
         solved_results = self._solve(self._worklow_level_permitted_regions)
+        # print(solved_results)
         ranked_results = self.rank_solved_results(solved_results)
         selected_result = self._select_result(ranked_results)
         formatted_result = self._formatter.format(

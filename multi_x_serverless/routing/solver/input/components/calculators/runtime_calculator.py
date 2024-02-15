@@ -36,11 +36,13 @@ class RuntimeCalculator(InputCalculator):
         return self.calculate_raw_latency(from_instance_name, to_instance_name, from_region_name, to_region_name, False)
 
     def calculate_raw_runtime(self, instance_name: str, region_name: str, use_tail_runtime: bool = False) -> float:
+        # print(f"Calculating runtime for {instance_name} in {region_name}")
         runtime = self._workflow_loader.get_runtime(instance_name, region_name, use_tail_runtime)
 
         # If the runtime is not found, then we need to use the performance loader to estimate the relative runtime
         if runtime < 0:
             favourite_home_region = self._workflow_loader.get_favourite_region(instance_name)
+            # print(f"Favourite home region for {instance_name} is {favourite_home_region}")
             if favourite_home_region is not None:
                 # Get the performance of the instance in the favourite home region
                 favourite_region_runtime = self._workflow_loader.get_favourite_region_runtime(instance_name)
@@ -57,6 +59,10 @@ class RuntimeCalculator(InputCalculator):
             else:
                 runtime = 0  # Instance was never invoked, so we assume it has no runtime
 
+        # print(f"Runtime for {instance_name} in {region_name} is {runtime}")
+        # raise NotImplementedError("Probabilistic invocations are not supported yet")
+
+        # return 1.0
         return runtime
 
     def calculate_raw_latency(
