@@ -20,10 +20,13 @@ workflow = MultiXServerlessWorkflow(name="text_2_speech_censoring", version="0.0
     entry_point=True,
 )
 def get_input(event: dict[str, Any]) -> dict[str, Any]:
+    if isinstance(event, str):
+        event = json.loads(event)
+
     if "message" in event:
         message = event["message"]
     else:
-        raise ValueError("No image name provided")
+        raise ValueError("No message provided")
 
     payload = {
         "data": message,

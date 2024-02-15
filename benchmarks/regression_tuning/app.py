@@ -21,6 +21,9 @@ workflow = MultiXServerlessWorkflow(name="regression_tuning", version="0.0.1")
     entry_point=True,
 )
 def get_input(event: dict[str, Any]) -> dict[str, Any]:
+    if isinstance(event, str):
+        event = json.loads(event)
+
     if "message" in event:
         samplesNum = event["message"]
     else:

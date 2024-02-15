@@ -15,6 +15,7 @@ from multi_x_serverless.routing.solver.bfs_fine_grained_solver import BFSFineGra
 from multi_x_serverless.routing.solver.coarse_grained_solver import CoarseGrainedSolver
 from multi_x_serverless.routing.solver.stochastic_heuristic_descent_solver import StochasticHeuristicDescentSolver
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
+from multi_x_serverless.common.models.remote_client.aws_remote_client import AWSRemoteClient
 
 
 class Client:
@@ -89,6 +90,8 @@ class Client:
         )
 
         for workflow_id, deployment_manager_config_json in currently_deployed_workflows.items():
+            if workflow_id != self._workflow_id:
+                continue
             if not isinstance(deployment_manager_config_json, str):
                 raise RuntimeError(
                     f"The deployment manager resource value for workflow_id: {workflow_id} is not a string"
@@ -115,6 +118,12 @@ class Client:
         role_name = f"{identifier}-role"
         messaging_topic_name = f"{identifier}_messaging_topic"
         client = RemoteClientFactory.get_remote_client(provider, region)
+
+        try:
+            if isinstance(client, AWSRemoteClient):
+                client.remove_ecr_repository(identifier)
+        except RuntimeError as e:
+            print(f"Could not remove ecr repository {identifier}: {str(e)}")
 
         try:
             topic_identifier = client.get_topic_identifier(messaging_topic_name)

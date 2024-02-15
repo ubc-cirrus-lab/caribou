@@ -558,3 +558,8 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
     def remove_resource(self, key: str) -> None:
         client = self._client("s3")
         client.delete_object(Bucket="multi-x-serverless-resources", Key=key)
+
+    def remove_ecr_repository(self, repository_name: str) -> None:
+        repository_name = repository_name.lower()
+        client = self._client("ecr")
+        client.delete_repository(repositoryName=repository_name, force=True)
