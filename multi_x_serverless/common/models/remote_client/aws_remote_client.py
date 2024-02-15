@@ -180,7 +180,7 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
 
     def build_docker_image(self, context_path, image_name):
         try:
-            subprocess.run(["docker", "build", "-t", image_name, context_path], check=True)
+            subprocess.run(["docker", "build", "--platform", "linux/amd64", "-t", image_name, context_path], check=True)
             print(f"Docker image {image_name} built successfully.")
         except subprocess.CalledProcessError as e:
             # This will catch errors from the subprocess and print a message.
@@ -259,7 +259,11 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         }
         if timeout >= 1:
             kwargs["Timeout"] = timeout
-        response = client.update_function_configuration(**kwargs)
+        
+        try:
+            response = client.update_function_configuration(**kwargs)
+        except ClientError as e:
+            print(f"Error while updating function configuration: {e}")
 
         if response.get("State") != "Active":
             self._wait_for_function_to_become_active(function_name)

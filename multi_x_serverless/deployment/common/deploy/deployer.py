@@ -299,25 +299,20 @@ class Deployer:
 
     def _upload_deployment_package_resource(self, workflow: Workflow) -> None:
         deployment_packege_filename = workflow.get_deployment_packages()[0].filename
-        layer_filename = workflow.get_deployment_packages()[0].layer_filename
+
+        # Append zip extension if not present
+        if not deployment_packege_filename.endswith(".zip"):
+            deployment_packege_filename = f"{deployment_packege_filename}.zip"
 
         if deployment_packege_filename is None:
             raise RuntimeError("Deployment package filename is None")
 
-        if layer_filename is None:
-            raise RuntimeError("Layer filename is None")
-
         with open(deployment_packege_filename, "rb") as deployment_package_file:
             deployment_package = deployment_package_file.read()
-
-        with open(layer_filename, "rb") as layer_file:
-            layer = layer_file.read()
 
         self._endpoints.get_deployment_manager_client().upload_resource(
             f"deployment_package_{self._config.workflow_id}", deployment_package
         )
-
-        self._endpoints.get_deployment_manager_client().upload_resource(f"layer_{self._config.workflow_id}", layer)
 
 
 def create_default_deployer(config: Config) -> Deployer:
