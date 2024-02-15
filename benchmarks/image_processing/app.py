@@ -16,6 +16,7 @@ workflow = MultiXServerlessWorkflow(name="image_processing", version="0.0.1")
     entry_point=True,
 )
 def get_input(event: dict[str, Any]) -> dict[str, Any]:
+    print(event)
     if "message" in event:
         image_name = event["message"]
     else:
