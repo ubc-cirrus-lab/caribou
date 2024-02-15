@@ -13,6 +13,8 @@ from multi_x_serverless.deployment.common.config.config import Config
 from multi_x_serverless.deployment.common.deploy.deployer import Deployer
 from multi_x_serverless.deployment.common.factories.deployer_factory import DeployerFactory
 from multi_x_serverless.endpoint.client import Client
+from multi_x_serverless.syncers.datastore_syncer import DatastoreSyncer
+from multi_x_serverless.update_checkers.solver_update_checker import SolverUpdateChecker
 
 
 @click.group()
@@ -79,6 +81,32 @@ def data_collect(_: click.Context, collector: str) -> None:
     if collector in ("workflow", "all"):
         workflow_collector = WorkflowCollector()
         workflow_collector.run()
+
+
+@cli.command("data_sync", help="Run data synchronization.")
+def data_sync() -> None:
+    datastore_syncer = DatastoreSyncer()
+    datastore_syncer.sync()
+
+
+@cli.command("solve", help="Solve the workflow.")
+@click.argument("workflow_id", required=True)
+@click.option(
+    "--solver",
+    "-s",
+    help="The solver to use.",
+    required=False,
+    type=click.Choice(["fine-grained", "coarse-grained", "heuristic"]),
+)
+def solve(workflow_id: str, solver: Optional[str]) -> None:
+    client = Client(workflow_id)
+    client.solve(solver)
+
+
+@cli.command("update_check_solver", help="Check if the solver should be run.")
+def update_check_solver() -> None:
+    solver_update_checker = SolverUpdateChecker()
+    solver_update_checker.check()
 
 
 @cli.command("version", help="Print the version of multi_x_serverless.")

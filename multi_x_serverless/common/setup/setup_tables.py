@@ -4,6 +4,21 @@ from multi_x_serverless.common import constants
 
 
 def create_table(dynamodb, table_name):
+    if table_name == constants.WORKFLOW_SUMMARY_TABLE:
+        # Create the table with a sort key
+        dynamodb.create_table(
+            TableName=table_name,
+            AttributeDefinitions=[
+                {"AttributeName": "key", "AttributeType": "S"},
+                {"AttributeName": "sort_key", "AttributeType": "S"},
+            ],
+            KeySchema=[
+                {"AttributeName": "key", "KeyType": "HASH"},
+                {"AttributeName": "sort_key", "KeyType": "RANGE"},
+            ],
+            BillingMode="PAY_PER_REQUEST",
+        )
+        return
     # Check if the table already exists
     try:
         dynamodb.describe_table(TableName=table_name)
@@ -20,12 +35,20 @@ def create_table(dynamodb, table_name):
 
 
 def create_bucket(s3, bucket_name):
+    # Check if the bucket already exists
+    try:
+        s3.head_bucket(Bucket=bucket_name)
+        print(f"Bucket {bucket_name} already exists")
+        return
+    except s3.exceptions.ClientError as e:
+        if e.response["Error"]["Code"] != "404":
+            raise
     s3.create_bucket(Bucket=bucket_name)
 
 
 def main():
     dynamodb = boto3.client("dynamodb")
-    s3 = boto3.client("s3", region_name=constants.GLOBAL_SYSTEM_REGION)
+    s3 = boto3.client("s3", region_name="us-east-1")
 
     # Get all attributes of the constants module
     for attr in dir(constants):

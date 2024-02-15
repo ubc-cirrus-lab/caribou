@@ -431,12 +431,18 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
 
     def get_all_values_from_sort_key_table(self, table_name: str, key: str) -> list[dict[str, Any]]:
         client = self._client("dynamodb")
-        response = client.query(
-            TableName=table_name,
-            KeyConditionExpression="key = :key ",
-            ExpressionAttributeValues={":key": {"S": key}},
-        )
-        return [item["value"]["S"] for item in response.get("Items", [])]
+        try:
+            response = client.query(
+                TableName=table_name,
+                KeyConditionExpression="#pk = :pkValue",
+                ExpressionAttributeValues={":pkValue": {"S": key}},
+                ExpressionAttributeNames={"#pk": "key"},
+            )
+        except client.exceptions.DynamoDBError as e:
+            print(f"Error querying DynamoDB: {e}")
+            return []
+
+        return [item.get("value", {}).get("S", "") for item in response.get("Items", [])]
 
     def get_keys(self, table_name: str) -> list[str]:
         client = self._client("dynamodb")
@@ -450,18 +456,27 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
 
     def get_last_value_from_sort_key_table(self, table_name: str, key: str) -> tuple[str, str]:
         client = self._client("dynamodb")
-        response = client.query(
-            TableName=table_name,
-            KeyConditionExpression="key = :key ",
-            ExpressionAttributeValues={":key": {"S": key}},
-            ScanIndexForward=False,
-            Limit=1,
-        )
-        if "Items" not in response:
+        try:
+            response = client.query(
+                TableName=table_name,
+                KeyConditionExpression="#pk = :pkValue",
+                ExpressionAttributeValues={":pkValue": {"S": key}},
+                ExpressionAttributeNames={"#pk": "key"},
+                ScanIndexForward=False,  # Sorts the results in descending order based on the sort key
+                Limit=1,
+            )
+        except client.exceptions.DynamoDBError as e:
+            print(f"Error querying DynamoDB: {e}")
             return "", ""
-        items = response.get("Items")
-        if items is not None:
-            return (items[0]["sort_key"]["S"], items[0]["value"]["S"])
+
+        # Check if any items were returned
+        if response.get("Items"):
+            item = response["Items"][0]
+            sort_key = item.get("sort_key", {}).get("S", "")
+            value = item.get("value", {}).get("S", "")
+            return sort_key, value
+
+        # Return empty if no items found
         return "", ""
 
     def put_value_to_sort_key_table(self, table_name: str, key: str, sort_key: str, value: str) -> None:

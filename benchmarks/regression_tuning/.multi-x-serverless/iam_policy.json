@@ -23,7 +23,7 @@
       },
       {
         "Action": ["s3:GetObject", "s3:PutObject"],
-        "Resource": "arn:aws:s3:::*",
+        "Resource": "arn:aws:s3:::multi-x-serverless-regression-tuning/*",
         "Effect": "Allow"
       }
     ]

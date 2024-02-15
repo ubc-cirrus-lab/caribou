@@ -31,7 +31,7 @@ class WorkflowRetriever(DataRetriever):
         consolidated: dict[str, Any] = {}
         total_days = 0
         for data in logs:  # pylint: disable=too-many-nested-blocks
-            loaded_data = json.loads(data["value"])
+            loaded_data = json.loads(data)
             total_days += loaded_data["time_since_last_sync"]
             for instance_id, instance_data in loaded_data["instance_summary"].items():
                 if instance_id not in consolidated:

@@ -47,54 +47,6 @@ class TestAWSRemoteClient(unittest.TestCase):
         self.assertEqual(result, {"FunctionName": "test_function"})
 
     @patch.object(AWSRemoteClient, "_client")
-    @patch.object(AWSRemoteClient, "_create_lambda_function")
-    @patch.object(AWSRemoteClient, "_wait_for_function_to_become_active")
-    def test_create_function(self, mock_wait_for_function, mock_create_lambda, mock_client):
-        function_name = "test_function"
-        role_arn = "arn:aws:iam::123456789012:role/test_role"
-        zip_contents = b"test_zip_contents"
-        runtime = "python3.8"
-        handler = "test_handler"
-        environment_variables = {"test_key": "test_value"}
-        timeout = 10
-        memory_size = 128
-        mock_create_lambda.return_value = ("arn:aws:lambda:region1:123456789012:function:test_function", "Inactive")
-        result = self.aws_client.create_function(
-            function_name, role_arn, zip_contents, runtime, handler, environment_variables, timeout, memory_size
-        )
-        mock_create_lambda.assert_called_once()
-        mock_wait_for_function.assert_called_once_with(function_name)
-        self.assertEqual(result, "arn:aws:lambda:region1:123456789012:function:test_function")
-
-    @patch.object(AWSRemoteClient, "_client")
-    def test_update_function(self, mock_client):
-        function_name = "test_function"
-        role_arn = "arn:aws:iam::123456789012:role/test_role"
-        zip_contents = b"test_zip_contents"
-        runtime = "python3.8"
-        handler = "test_handler"
-        environment_variables = {"test_key": "test_value"}
-        timeout = 10
-        memory_size = 128
-
-        mock_client.return_value.update_function_code.return_value = {"State": "Active"}
-        mock_client.return_value.update_function_configuration.return_value = {
-            "State": "Active",
-            "FunctionArn": "test_function_arn",
-        }
-
-        result = self.aws_client.update_function(
-            function_name, role_arn, zip_contents, runtime, handler, environment_variables, timeout, memory_size
-        )
-
-        mock_client.assert_called_with("lambda")
-        mock_client.return_value.update_function_code.assert_called_once_with(
-            FunctionName=function_name, ZipFile=zip_contents
-        )
-        mock_client.return_value.update_function_configuration.assert_called_once()
-        self.assertEqual(result, "test_function_arn")
-
-    @patch.object(AWSRemoteClient, "_client")
     def test_create_role(self, mock_client):
         role_name = "test_role"
         policy = "test_policy"

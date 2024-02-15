@@ -1,6 +1,7 @@
 import json
 import re
 from datetime import datetime
+from datetime import timedelta
 from typing import Any
 
 from multi_x_serverless.common.constants import DEPLOYMENT_MANAGER_RESOURCE_TABLE, WORKFLOW_SUMMARY_TABLE
@@ -20,6 +21,7 @@ class DatastoreSyncer:
         )
 
         for workflow_id, deployment_manager_config_json in currently_deployed_workflows.items():
+            print(f"Processing workflow: {workflow_id}")
             if not isinstance(deployment_manager_config_json, str):
                 raise Exception(f"The deployment manager resource value for workflow_id: {workflow_id} is not a string")
             self.process_workflow(workflow_id, deployment_manager_config_json)
@@ -66,11 +68,11 @@ class DatastoreSyncer:
             WORKFLOW_SUMMARY_TABLE, workflow_id
         )
 
-        if last_synced_log:
+        if last_synced_log and len(last_synced_log[0]) > 0:
             last_synced_time_str = last_synced_log[0]
             return datetime.strptime(last_synced_time_str, "%Y-%m-%d %H:%M:%S.%f")
         else:
-            return datetime.now() - datetime.timedelta(days=1)
+            return datetime.now() - timedelta(days=1)
 
     def validate_deployment_manager_config(self, deployment_manager_config: dict[str, Any], workflow_id: str) -> None:
         if "deployed_regions" not in deployment_manager_config:

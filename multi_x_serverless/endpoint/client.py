@@ -11,6 +11,10 @@ from multi_x_serverless.common.constants import (
 )
 from multi_x_serverless.common.models.endpoints import Endpoints
 from multi_x_serverless.common.models.remote_client.remote_client_factory import RemoteClientFactory
+from multi_x_serverless.routing.solver.bfs_fine_grained_solver import BFSFineGrainedSolver
+from multi_x_serverless.routing.solver.coarse_grained_solver import CoarseGrainedSolver
+from multi_x_serverless.routing.solver.stochastic_heuristic_descent_solver import StochasticHeuristicDescentSolver
+from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
 
 class Client:
@@ -126,3 +130,36 @@ class Client:
             print(f"Could not remove role {role_name}: {str(e)}")
 
         print(f"Removed function {function_instance} from provider {provider} in region {region}")
+
+    def solve(self, solver: Optional[str] = None) -> None:
+        if self._workflow_id is None:
+            raise RuntimeError("No workflow id provided")
+
+        workflow_information = self._endpoints.get_solver_update_checker_client().get_value_from_table(
+            SOLVER_UPDATE_CHECKER_RESOURCE_TABLE, self._workflow_id
+        )
+
+        if workflow_information is None:
+            raise RuntimeError(f"No workflow with id {self._workflow_id} found")
+
+        workflow_information_dict = json.loads(workflow_information)
+
+        if "workflow_config" not in workflow_information_dict:
+            raise RuntimeError(f"Workflow with id {self._workflow_id} has no workflow_config")
+
+        workflow_config_json = workflow_information_dict["workflow_config"]
+
+        workflow_config = json.loads(workflow_config_json)
+
+        workflow_config_instance = WorkflowConfig(workflow_config)
+
+        if solver is None or solver == "coarse-grained":
+            solver_instance = CoarseGrainedSolver(workflow_config_instance)
+        elif solver == "fine-grained":
+            solver_instance = BFSFineGrainedSolver(workflow_config_instance)
+        elif solver == "heuristic":
+            solver_instance = StochasticHeuristicDescentSolver(workflow_config_instance)
+        else:
+            raise ValueError(f"Solver {solver} not supported")
+
+        solver_instance.solve()
