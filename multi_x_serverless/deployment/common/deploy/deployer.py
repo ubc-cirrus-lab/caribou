@@ -300,6 +300,9 @@ class Deployer:
     def _upload_deployment_package_resource(self, workflow: Workflow) -> None:
         deployment_packege_filename = workflow.get_deployment_packages()[0].filename
 
+        if deployment_packege_filename is None:
+            raise RuntimeError("Deployment package filename is None")
+
         # Append zip extension if not present
         if not deployment_packege_filename.endswith(".zip"):
             deployment_packege_filename = f"{deployment_packege_filename}.zip"

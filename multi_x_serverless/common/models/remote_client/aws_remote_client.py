@@ -1,11 +1,11 @@
 import json
+import os
+import subprocess
+import tempfile
 import time
+import zipfile
 from datetime import datetime
 from typing import Any
-import os
-import tempfile
-import zipfile
-import subprocess
 
 from boto3.session import Session
 from botocore.exceptions import ClientError
@@ -140,8 +140,8 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
                 zip_ref.extractall(tmpdirname)
 
             # Step 2: Create a Dockerfile in the temporary directory
-            dockerfile_content = self.generate_dockerfile(runtime, handler, tmpdirname)
-            with open(os.path.join(tmpdirname, "Dockerfile"), "w") as f_dockerfile:
+            dockerfile_content = self.generate_dockerfile(runtime, handler)
+            with open(os.path.join(tmpdirname, "Dockerfile"), "w", encoding="utf-8") as f_dockerfile:
                 f_dockerfile.write(dockerfile_content)
 
             # Step 3: Build the Docker Image
@@ -167,7 +167,7 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
                 self._wait_for_function_to_become_active(function_name)
             return arn
 
-    def generate_dockerfile(self, runtime: str, handler: str, tmpdirname: str):
+    def generate_dockerfile(self, runtime: str, handler: str) -> str:
         return f"""
         FROM public.ecr.aws/lambda/{runtime.replace("python", "python:")}
         COPY requirements.txt ./
@@ -178,7 +178,7 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         CMD ["{handler}"]
         """
 
-    def build_docker_image(self, context_path, image_name):
+    def build_docker_image(self, context_path: str, image_name: str) -> None:
         try:
             subprocess.run(["docker", "build", "--platform", "linux/amd64", "-t", image_name, context_path], check=True)
             print(f"Docker image {image_name} built successfully.")
@@ -186,7 +186,7 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
             # This will catch errors from the subprocess and print a message.
             print(f"Failed to build Docker image {image_name}. Error: {e}")
 
-    def upload_image_to_ecr(self, image_name):
+    def upload_image_to_ecr(self, image_name: str) -> str:
         ecr_client = self._client("ecr")
         # Assume AWS CLI is configured. Customize these commands based on your AWS setup.
         repository_name = image_name.split(":")[0]
@@ -201,7 +201,9 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         region = self._client("ecr").meta.region_name
         ecr_registry = f"{account_id}.dkr.ecr.{region}.amazonaws.com"
 
-        login_password = subprocess.check_output(["aws", "ecr", "get-login-password", "--region", region]).strip().decode("utf-8")
+        login_password = (
+            subprocess.check_output(["aws", "ecr", "get-login-password", "--region", region]).strip().decode("utf-8")
+        )
         subprocess.run(["docker", "login", "--username", "AWS", "--password", login_password, ecr_registry], check=True)
 
         # Tag and push the image to ECR
@@ -237,8 +239,8 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
             with zipfile.ZipFile(zip_path, "r") as zip_ref:
                 zip_ref.extractall(tmpdirname)
 
-            dockerfile_content = self.generate_dockerfile(runtime, handler, tmpdirname)
-            with open(os.path.join(tmpdirname, "Dockerfile"), "w") as f_dockerfile:
+            dockerfile_content = self.generate_dockerfile(runtime, handler)
+            with open(os.path.join(tmpdirname, "Dockerfile"), "w", encoding="utf-8") as f_dockerfile:
                 f_dockerfile.write(dockerfile_content)
 
             image_name = f"{function_name.lower()}:latest"
@@ -259,7 +261,7 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         }
         if timeout >= 1:
             kwargs["Timeout"] = timeout
-        
+
         try:
             response = client.update_function_configuration(**kwargs)
         except ClientError as e:
