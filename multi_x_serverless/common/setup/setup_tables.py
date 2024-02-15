@@ -41,7 +41,7 @@ def create_bucket(s3, bucket_name):
         print(f"Bucket {bucket_name} already exists")
         return
     except s3.exceptions.ClientError as e:
-        if e.response["Error"]["Code"] != "404":
+        if e.response["Error"]["Code"] != "404" or e.response["Error"]["Code"] != "403":
             raise
     s3.create_bucket(Bucket=bucket_name)
 
