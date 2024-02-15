@@ -138,7 +138,7 @@ class RemoteClient(ABC):  # pylint: disable=too-many-public-methods
         raise NotImplementedError()
 
     @abstractmethod
-    def get_all_values_from_sort_key_table(self, table_name: str, key: str) -> list[dict[str, Any]]:
+    def get_all_values_from_sort_key_table(self, table_name: str, key: str) -> list[str]:
         raise NotImplementedError()
 
     @abstractmethod

@@ -1,7 +1,6 @@
 import json
 import re
-from datetime import datetime
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Any
 
 from multi_x_serverless.common.constants import DEPLOYMENT_MANAGER_RESOURCE_TABLE, WORKFLOW_SUMMARY_TABLE

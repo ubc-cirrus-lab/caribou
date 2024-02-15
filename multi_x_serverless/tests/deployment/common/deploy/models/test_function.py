@@ -25,7 +25,7 @@ class TestFunction(unittest.TestCase):
         )
 
     def test_initialise_remote_states(self):
-        self.assertIsInstance(self.function.remote_state, RemoteState)
+        self.assertIsInstance(self.function._remote_state, RemoteState)
 
     def test_dependencies(self):
         dependencies = self.function.dependencies()
@@ -44,7 +44,7 @@ class TestFunction(unittest.TestCase):
             mock_resource = MockResource()
             mock_resource.resource_exists.return_value = False
 
-            self.function.remote_state = mock_resource
+            self.function._remote_state = mock_resource
             self.deployment_package.filename = "filename"
             instructions = self.function.get_deployment_instructions()
 
@@ -57,7 +57,7 @@ class TestFunction(unittest.TestCase):
                 self.function.handler,
                 self.function.environment_variables,
                 self.function.deployment_package.filename,
-                self.function.remote_state,
+                self.function._remote_state,
                 False,
             )
             self.assertEqual(instructions, {"provider1:region1": [Instruction("Some instruction")]})

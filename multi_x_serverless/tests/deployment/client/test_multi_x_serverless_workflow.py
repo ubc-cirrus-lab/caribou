@@ -97,7 +97,9 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
 
         self.assertEqual(test_func.workflow_placement_decision, {})
 
-        self.assertEqual(test_func(2), 4)
+        argument_raw = {"Records": [{"Sns": {"Message": "2"}}]}
+
+        self.assertEqual(test_func(argument_raw), 4)
 
         self.assertEqual(
             test_func.workflow_placement_decision["current_instance_name"],

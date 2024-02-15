@@ -3,6 +3,7 @@ from typing import Optional
 
 import click
 
+from multi_x_serverless.common.setup.setup_tables import main as setup_tables_func
 from multi_x_serverless.data_collector.components.carbon.carbon_collector import CarbonCollector
 from multi_x_serverless.data_collector.components.performance.performance_collector import PerformanceCollector
 from multi_x_serverless.data_collector.components.provider.provider_collector import ProviderCollector
@@ -15,7 +16,6 @@ from multi_x_serverless.deployment.common.factories.deployer_factory import Depl
 from multi_x_serverless.endpoint.client import Client
 from multi_x_serverless.syncers.datastore_syncer import DatastoreSyncer
 from multi_x_serverless.update_checkers.solver_update_checker import SolverUpdateChecker
-from multi_x_serverless.common.setup.setup_tables import main as setup_tables_func
 
 
 @click.group()

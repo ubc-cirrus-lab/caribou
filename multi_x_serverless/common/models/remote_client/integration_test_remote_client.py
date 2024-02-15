@@ -300,13 +300,13 @@ class IntegrationTestRemoteClient(RemoteClient):  # pylint: disable=too-many-pub
         conn.commit()
         conn.close()
 
-    def get_all_values_from_sort_key_table(self, table_name: str, key: str) -> list[dict[str, Any]]:
+    def get_all_values_from_sort_key_table(self, table_name: str, key: str) -> list[str]:
         conn = self._db_connection()
         cursor = conn.cursor()
         cursor.execute(f"SELECT value, sort_key FROM {table_name} WHERE key=?", (key,))
         result = cursor.fetchall()
         conn.close()
-        return [{"value": data[0], "sort_key": data[1]} for data in result]
+        return [data[0] for data in result]
 
     def get_keys(self, table_name: str) -> list[str]:
         conn = self._db_connection()

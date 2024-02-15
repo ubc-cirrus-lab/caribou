@@ -10,12 +10,13 @@ from multi_x_serverless.common.constants import (
     WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE,
 )
 from multi_x_serverless.common.models.endpoints import Endpoints
+from multi_x_serverless.common.models.remote_client.aws_remote_client import AWSRemoteClient
 from multi_x_serverless.common.models.remote_client.remote_client_factory import RemoteClientFactory
 from multi_x_serverless.routing.solver.bfs_fine_grained_solver import BFSFineGrainedSolver
 from multi_x_serverless.routing.solver.coarse_grained_solver import CoarseGrainedSolver
+from multi_x_serverless.routing.solver.solver import Solver
 from multi_x_serverless.routing.solver.stochastic_heuristic_descent_solver import StochasticHeuristicDescentSolver
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
-from multi_x_serverless.common.models.remote_client.aws_remote_client import AWSRemoteClient
 
 
 class Client:
@@ -162,6 +163,8 @@ class Client:
 
         workflow_config_instance = WorkflowConfig(workflow_config)
 
+        solver_instance: Optional[Solver] = None
+
         if solver is None or solver == "coarse-grained":
             solver_instance = CoarseGrainedSolver(workflow_config_instance)
         elif solver == "fine-grained":
@@ -170,5 +173,8 @@ class Client:
             solver_instance = StochasticHeuristicDescentSolver(workflow_config_instance)
         else:
             raise ValueError(f"Solver {solver} not supported")
+
+        if solver_instance is None:
+            raise RuntimeError("Solver instance is None")
 
         solver_instance.solve()

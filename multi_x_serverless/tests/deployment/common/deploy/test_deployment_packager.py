@@ -74,7 +74,7 @@ class TestDeploymentPackager(unittest.TestCase):
         # Make requirements.txt
         with open(os.path.join(tmp_dir, "requirements.txt"), "w") as f:
             f.write("requests\n")
-        packager._build_dependencies(os.path.join(tmp_dir, "requirements.txt"), tmp_dir, "3.8")
+        packager._build_dependencies(os.path.join(tmp_dir, "requirements.txt"), tmp_dir)
 
         mock_pip_execute.assert_called_once()
 
@@ -138,7 +138,7 @@ class TestDeploymentPackager(unittest.TestCase):
         remote_client.download_resource.return_value = b"test_content"
         packager = DeploymentPackager(config)
 
-        result = packager._download_deployment_package(remote_client, "test")
+        result = packager._download_deployment_package(remote_client)
 
         self.assertEqual(result, "test.zip")
         mock_open.assert_called_once_with("test.zip", "wb")
@@ -154,7 +154,7 @@ class TestDeploymentPackager(unittest.TestCase):
         packager = DeploymentPackager(config)
 
         with self.assertRaises(RuntimeError, msg="Could not download deployment package"):
-            packager._download_deployment_package(remote_client, "test")
+            packager._download_deployment_package(remote_client)
 
 
 if __name__ == "__main__":
