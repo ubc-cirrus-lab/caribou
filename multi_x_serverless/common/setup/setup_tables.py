@@ -4,6 +4,13 @@ from multi_x_serverless.common import constants
 
 
 def create_table(dynamodb, table_name):
+    # Check if the table already exists
+    try:
+        dynamodb.describe_table(TableName=table_name)
+        print(f"Table {table_name} already exists")
+        return
+    except dynamodb.exceptions.ResourceNotFoundException:
+        pass
     if table_name == constants.WORKFLOW_SUMMARY_TABLE:
         # Create the table with a sort key
         dynamodb.create_table(
@@ -19,13 +26,6 @@ def create_table(dynamodb, table_name):
             BillingMode="PAY_PER_REQUEST",
         )
         return
-    # Check if the table already exists
-    try:
-        dynamodb.describe_table(TableName=table_name)
-        print(f"Table {table_name} already exists")
-        return
-    except dynamodb.exceptions.ResourceNotFoundException:
-        pass
     dynamodb.create_table(
         TableName=table_name,
         AttributeDefinitions=[{"AttributeName": "key", "AttributeType": "S"}],

@@ -15,6 +15,7 @@ from multi_x_serverless.deployment.common.factories.deployer_factory import Depl
 from multi_x_serverless.endpoint.client import Client
 from multi_x_serverless.syncers.datastore_syncer import DatastoreSyncer
 from multi_x_serverless.update_checkers.solver_update_checker import SolverUpdateChecker
+from multi_x_serverless.common.setup.setup_tables import main as setup_tables_func
 
 
 @click.group()
@@ -31,7 +32,7 @@ def cli(ctx: click.Context, project_dir: str) -> None:
 
 
 @cli.command(
-    "new-workflow",
+    "new_workflow",
     help="Create a new workflow directory from template. The workflow name must be a valid, non-existing directory name in the current directory.",  # pylint: disable=line-too-long
 )
 @click.argument("workflow_name", required=True)
@@ -107,6 +108,11 @@ def solve(workflow_id: str, solver: Optional[str]) -> None:
 def update_check_solver() -> None:
     solver_update_checker = SolverUpdateChecker()
     solver_update_checker.check()
+
+
+@cli.command("setup_tables", help="Setup the tables.")
+def setup_tables() -> None:
+    setup_tables_func()
 
 
 @cli.command("version", help="Print the version of multi_x_serverless.")
