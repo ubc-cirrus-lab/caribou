@@ -24,11 +24,15 @@ class PerformanceRetriever(DataRetriever):
             transmission_latency_dict = {}
 
             for region_key_to, available_region_to in self._available_regions.items():
-                transmission_latency_dict[region_key_to] = {
-                    "average_latency": self._get_total_latency(available_region, available_region_to, False),
-                    "tail_latency": self._get_total_latency(available_region, available_region_to, True),
-                    "unit": "s",
-                }
+                average_latency = self._get_total_latency(available_region, available_region_to, False)
+                tail_latency = self._get_total_latency(available_region, available_region_to, True)
+
+                if average_latency >= 0.0 and tail_latency >= 0.0:
+                    transmission_latency_dict[region_key_to] = {
+                        "average_latency": average_latency,
+                        "tail_latency": tail_latency,
+                        "unit": "s",
+                    }
 
             result_dict[region_key] = {
                 "relative_performance": 1,
@@ -41,21 +45,24 @@ class PerformanceRetriever(DataRetriever):
     def _get_total_latency(
         self, region_from: dict[str, Any], region_to: dict[str, Any], utilize_tail_latency: bool = False
     ) -> float:
-        if region_from["provider"] == region_to["provider"]:
-            if region_from["provider"] == Provider.AWS.value:
-                if utilize_tail_latency:
+        try:
+            if region_from["provider"] == region_to["provider"]:
+                if region_from["provider"] == Provider.AWS.value:
+                    if utilize_tail_latency:
+                        return (
+                            self._aws_tail_latency_retriever.get_latency(region_from, region_to) / 1000
+                        )  # Convert to seconds
                     return (
-                        self._aws_tail_latency_retriever.get_latency(region_from, region_to) / 1000
+                        self._aws_average_latency_retriever.get_latency(region_from, region_to) / 1000
                     )  # Convert to seconds
-                return (
-                    self._aws_average_latency_retriever.get_latency(region_from, region_to) / 1000
-                )  # Convert to seconds
-            if region_from["provider"] == Provider.INTEGRATION_TEST_PROVIDER.value:
-                if utilize_tail_latency:
-                    return self._integration_test_tail_latency_retriever.get_latency(region_from, region_to) / 1000
+                if region_from["provider"] == Provider.INTEGRATION_TEST_PROVIDER.value:
+                    if utilize_tail_latency:
+                        return self._integration_test_tail_latency_retriever.get_latency(region_from, region_to) / 1000
 
-                return (
-                    self._integration_test_average_latency_retriever.get_latency(region_from, region_to) / 1000
-                )  # Convert to seconds
+                    return (
+                        self._integration_test_average_latency_retriever.get_latency(region_from, region_to) / 1000
+                    )  # Convert to seconds
+        except ValueError:
+            return -1.0
 
-        return 0.0  # Default value, maybe a better default or an error message will be desired
+        return -1.0  # Default value, maybe a better default or an error message will be desired

@@ -22,10 +22,10 @@ class WorkflowLoader(InputLoader):
     def __init__(self, client: RemoteClient, instances_data: list[dict]) -> None:
         super().__init__(client, WORKFLOW_INSTANCE_TABLE)
 
-        self._instance_regions_and_providers: dict[str, Any] = {}
+        self._instances_regions_and_providers = {}
         for instance in instances_data:
             providers = instance.get("regions_and_providers", {}).get("providers", {})
-            self._instance_regions_and_providers[instance["instance_name"]] = providers
+            self._instances_regions_and_providers[instance["instance_name"]] = providers
 
     def setup(self, workflow_id: str) -> None:
         self._workflow_data = self._retrieve_workflow_data(workflow_id)
