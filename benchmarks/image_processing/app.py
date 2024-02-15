@@ -8,7 +8,7 @@ import uuid
 
 from multi_x_serverless.deployment.client import MultiXServerlessWorkflow
 
-workflow = MultiXServerlessWorkflow(name="image_processing", version="0.0.3")
+workflow = MultiXServerlessWorkflow(name="image_processing", version="0.0.1")
 
 
 @workflow.serverless_function(
@@ -16,10 +16,8 @@ workflow = MultiXServerlessWorkflow(name="image_processing", version="0.0.3")
     entry_point=True,
 )
 def get_input(event: dict[str, Any]) -> dict[str, Any]:
-    request_json = json.loads(event)
-
-    if "message" in request_json:
-        image_name = request_json["message"]
+    if "message" in event:
+        image_name = event["message"]
     else:
         raise ValueError("No image name provided")
 
