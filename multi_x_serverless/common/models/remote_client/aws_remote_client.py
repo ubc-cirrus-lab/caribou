@@ -374,6 +374,16 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         client = self._client("dynamodb")
         client.put_item(TableName=table_name, Item={"key": {"S": key}, "value": {"S": value}})
 
+    def update_value_in_table(self, table_name: str, key: str, value: str) -> None:
+        client = self._client("dynamodb")
+        client.update_item(
+            TableName=table_name,
+            Key={"key": {"S": key}},
+            UpdateExpression="SET #v = :value",
+            ExpressionAttributeNames={"#v": "value"},
+            ExpressionAttributeValues={":value": {"S": value}},
+        )
+
     def set_value_in_table_column(
         self, table_name: str, key: str, column_type_value: list[tuple[str, str, str]]
     ) -> None:

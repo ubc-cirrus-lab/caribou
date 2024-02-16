@@ -477,3 +477,10 @@ class IntegrationTestRemoteClient(RemoteClient):  # pylint: disable=too-many-pub
         cursor.execute("DELETE FROM resources WHERE key=?", (key,))
         conn.commit()
         conn.close()
+
+    def update_value_in_table(self, table_name: str, key: str, value: str) -> None:
+        conn = self._db_connection()
+        cursor = conn.cursor()
+        cursor.execute(f"UPDATE {table_name} SET value=? WHERE key=?", (value, key))
+        conn.commit()
+        conn.close()

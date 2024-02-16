@@ -44,7 +44,11 @@ class DataExporter(ABC):
         """
         for key, value in data.items():
             data_json: str = json.dumps(value)
-            self._client.set_value_in_table(table_name, key, data_json)
+            is_key_in_table: bool = self._client.get_key_present_in_table(table_name, key)
+            if is_key_in_table:
+                self._client.update_value_in_table(table_name, key, data_json)
+            else:
+                self._client.set_value_in_table(table_name, key, data_json)
 
             if update_modified_regions:
                 provider, region = key.split(":")

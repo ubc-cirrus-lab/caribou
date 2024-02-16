@@ -112,3 +112,6 @@ class MockRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
 
     def remove_resource(self, key: str) -> None:
         pass
+
+    def update_value_in_table(self, table_name: str, key: str, value: str) -> None:
+        pass
