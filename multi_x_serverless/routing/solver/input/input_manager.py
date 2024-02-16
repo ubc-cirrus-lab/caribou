@@ -92,8 +92,6 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
             instance_name, region_name, consider_probabilistic_invocations
         )
 
-        # print(f"Execution cost: {execution_cost}, Execution carbon:
-        # {execution_carbon}, Execution runtime: {execution_runtime}")
         return [execution_cost, execution_carbon, execution_runtime]
 
     def get_transmission_cost_carbon_runtime(
@@ -122,9 +120,6 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         transmission_runtime = self._runtime_calculator.calculate_latency(
             from_instance_name, to_instance_name, from_region_name, to_region_name, consider_probabilistic_invocations
         )
-
-        # print(f"Transmission cost: {transmission_cost}, Transmission carbon:
-        # {transmission_carbon}, Transmission runtime: {transmission_runtime}")
 
         return [transmission_cost, transmission_carbon, transmission_runtime]
 
