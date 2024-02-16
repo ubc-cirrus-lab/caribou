@@ -1,3 +1,4 @@
 gtts
 boto3
 profanity
+pydub

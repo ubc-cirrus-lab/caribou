@@ -1,4 +1,4 @@
-# Text to speech censoring benchmark
+# Text to speech censoring benchmark
 
 This benchmark requires an s3 bucket with the name `multi-x-serverless-text-2-speech-censoring`.
 
