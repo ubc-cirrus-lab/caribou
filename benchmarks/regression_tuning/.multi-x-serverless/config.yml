@@ -30,10 +30,14 @@ constraints:
 regions_and_providers: # Either the user specify only allowed regions (which will override everything else)
   allowed_regions:
     - provider: "aws"
-      region: "us-west-2"
-  disallowed_regions:
+      region: "us-east-1"
     - provider: "aws"
       region: "us-east-2"
+    - provider: "aws"
+      region: "us-west-1"
+    - provider: "aws"
+      region: "us-west-2"
+  disallowed_regions:
   providers:
     aws:
       config:
