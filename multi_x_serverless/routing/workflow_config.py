@@ -45,12 +45,16 @@ class WorkflowConfig:
         # We want to change the format of the internal data of
         # regions_and_providers to be in format of "provider_name:region_name"
         # We will start with the allowed regions
+        if "allowed_regions" not in regions_and_providers or regions_and_providers["allowed_regions"] is None:
+            regions_and_providers["allowed_regions"] = []
         for provider_regions in regions_and_providers.get("allowed_regions", []):
             provider = provider_regions["provider"]
             region = provider_regions["region"]
             allowed_regions.append(f"{provider}:{region}")
 
         # Now we will do the same for the disallowed regions
+        if "disallowed_regions" not in regions_and_providers or regions_and_providers["disallowed_regions"] is None:
+            regions_and_providers["disallowed_regions"] = []
         for provider_regions in regions_and_providers.get("disallowed_regions", []):
             provider = provider_regions["provider"]
             region = provider_regions["region"]

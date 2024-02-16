@@ -1,5 +1,5 @@
 workflow_name: "image_processing"
-workflow_version: "0.0.1"
+workflow_version: "0.0.2"
 environment_variables:
   - key: "ENV_VAR_1"
     value: "value_1"
