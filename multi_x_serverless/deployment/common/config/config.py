@@ -37,8 +37,18 @@ class Config:
     def set_workflow_id(self, workflow_id: str) -> None:
         self.project_config["workflow_id"] = workflow_id
 
-    def _lookup(self, key: str) -> Any:
-        return self.project_config.get(key, {})
+    def _lookup(self, key: str, default: Optional[Any] = None) -> Any:
+        if default is None:
+            default = {}
+        return self.project_config.get(key, default)
+
+    @property
+    def solver(self) -> str:
+        return self._lookup("solver", "")
+
+    @property
+    def num_calls_in_one_month(self) -> int:
+        return self._lookup("num_calls_in_one_month", 0)
 
     @property
     def python_version(self) -> str:

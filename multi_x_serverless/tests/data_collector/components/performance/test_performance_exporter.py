@@ -7,6 +7,7 @@ from multi_x_serverless.data_collector.components.performance.performance_export
 class TestPerformanceExporter(unittest.TestCase):
     def setUp(self):
         self.mock_client = Mock()
+        self.mock_client.get_key_present_in_table.return_value = False
         self.performance_exporter = PerformanceExporter(self.mock_client, "performance_region_table")
 
     def test_export_all_data(self):

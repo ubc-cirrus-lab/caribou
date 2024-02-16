@@ -77,26 +77,21 @@ class WorkflowConfig:
 
     @property
     def num_calls_in_one_month(self) -> int:
-        result = self._lookup("num_calls_in_one_month")
-        return result if result is not None else 100
+        return self._lookup("num_calls_in_one_month", 100)
 
     @property
     def solver(self) -> str:
         allowed_solvers = {"coarse_grained_solver", "fine_grained_solver", "stochastic_heuristic_solver"}
-        result = self._lookup("solver")
-
+        result = self._lookup("solver", "coarse_grained_solver")
         if result not in allowed_solvers:
-            if result is None:
-                return "coarse_grained_solver"
             raise ValueError(f"Invalid solver: {result}")
-
         return result
 
     def write_back(self, key: str, value: Any) -> None:
         self._workflow_config[key] = value
 
-    def _lookup(self, key: str) -> Any:
-        return self._workflow_config.get(key)
+    def _lookup(self, key: str, default: Any = None) -> Any:
+        return self._workflow_config.get(key, default)
 
     def to_json(self) -> str:
         return json.dumps(self._workflow_config)
