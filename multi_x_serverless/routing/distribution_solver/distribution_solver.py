@@ -6,11 +6,11 @@ import numpy as np
 
 from multi_x_serverless.common.constants import WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE
 from multi_x_serverless.common.models.endpoints import Endpoints
+from multi_x_serverless.routing.distribution_solver.input.distribution_input_manager import DistributionInputManager
 from multi_x_serverless.routing.formatter.formatter import Formatter
 from multi_x_serverless.routing.models.dag import DAG
 from multi_x_serverless.routing.models.region import Region
 from multi_x_serverless.routing.ranker.ranker import Ranker
-from multi_x_serverless.routing.solver.input.input_manager import InputManager
 from multi_x_serverless.routing.solver.objective_function.any_improvement_objective_function import (
     AnyImprovementObjectiveFunction,
 )
@@ -22,13 +22,12 @@ class DistributionSolver(ABC):  # pylint: disable=too-many-instance-attributes
         self,
         workflow_config: WorkflowConfig,
         all_available_regions: Optional[list[str]] = None,
-        input_manager: Optional[InputManager] = None,
-        init_home_region_transmission_costs: bool = True,
+        input_manager: Optional[DistributionInputManager] = None,
     ) -> None:
         self._workflow_config = workflow_config
 
         # Declare the input manager
-        self._input_manager = InputManager(workflow_config, all_available_regions is None)
+        self._input_manager = DistributionInputManager(workflow_config, all_available_regions is None)
 
         # Get all regions allowed for the workflow
         if all_available_regions is None:
@@ -65,9 +64,6 @@ class DistributionSolver(ABC):  # pylint: disable=too-many-instance-attributes
 
         self._first_instance_index = self._topological_order[0]
 
-        if init_home_region_transmission_costs:
-            self._init_home_region_transmission_costs(self._worklow_level_permitted_regions)
-
         self._objective_function = AnyImprovementObjectiveFunction
 
     def solve(self) -> None:
@@ -78,43 +74,6 @@ class DistributionSolver(ABC):  # pylint: disable=too-many-instance-attributes
             selected_result, self._dag.indicies_to_values(), self._region_indexer.indicies_to_values()
         )
         self._upload_result(formatted_result)
-
-    def _init_home_region_transmission_costs(self, regions: list[str]) -> None:
-        home_region_transmissions_average = np.zeros((3, len(self._region_indexer.get_value_indices())))
-        home_region_transmissions_tail = np.zeros((3, len(self._region_indexer.get_value_indices())))
-
-        valid_region_indices_for_start_hop = self._get_permitted_region_indices(regions, self._first_instance_index)
-
-        for region_index in valid_region_indices_for_start_hop:
-            (
-                home_region_transmission_costs,
-                home_region_transmission_carbon,
-                home_region_transmission_runtime,
-            ) = self._input_manager.get_transmission_cost_carbon_runtime(
-                self._first_instance_index,
-                self._first_instance_index,
-                self._home_region_index,
-                region_index,
-                consider_probabilistic_invocations=True,
-            )
-            home_region_transmissions_average[0, region_index] = home_region_transmission_costs
-            home_region_transmissions_average[1, region_index] = home_region_transmission_runtime
-            home_region_transmissions_average[2, region_index] = home_region_transmission_carbon
-
-            (
-                home_region_transmission_costs,
-                home_region_transmission_carbon,
-                home_region_transmission_runtime,
-            ) = self._input_manager.get_transmission_cost_carbon_runtime(
-                self._first_instance_index, self._first_instance_index, self._home_region_index, region_index
-            )
-
-            home_region_transmissions_tail[0, region_index] = home_region_transmission_costs
-            home_region_transmissions_tail[1, region_index] = home_region_transmission_runtime
-            home_region_transmissions_tail[2, region_index] = home_region_transmission_carbon
-
-        self._home_region_transmission_costs_average = home_region_transmissions_average
-        self._home_region_transmission_costs_tail = home_region_transmissions_tail
 
     @abstractmethod
     def _solve(self, regions: list[str]) -> list[tuple[dict, float, float, float]]:
@@ -188,153 +147,6 @@ class DistributionSolver(ABC):  # pylint: disable=too-many-instance-attributes
             or "carbon" in hard_resource_constraints
             and carbon > hard_resource_constraints["carbon"]["value"]
         )
-
-    def init_deployment_to_region(
-        self, region_index: int
-    ) -> tuple[
-        dict[int, int],
-        tuple[float, float],
-        tuple[float, float],
-        tuple[float, float],
-        tuple[np.ndarray, np.ndarray],
-        tuple[np.ndarray, np.ndarray],
-    ]:
-        deployment: dict[int, int] = {}
-        average_node_weights = np.empty((3, len(self._topological_order)))
-        tail_node_weights = np.empty((3, len(self._topological_order)))
-
-        average_edge_weights = np.zeros((3, len(self._topological_order), len(self._topological_order)))
-        tail_edge_weights = np.zeros((3, len(self._topological_order), len(self._topological_order)))
-
-        for instance in self._workflow_config.instances:
-            instance_index = self._dag.value_to_index(instance["instance_name"])
-            deployment[instance_index] = region_index
-
-            (
-                tail_execution_cost,
-                tail_execution_carbon,
-                tail_execution_runtime,
-            ) = self._input_manager.get_execution_cost_carbon_runtime(instance_index, region_index)
-
-            tail_node_weights[0, instance_index] = tail_execution_cost
-            tail_node_weights[1, instance_index] = tail_execution_runtime
-            tail_node_weights[2, instance_index] = tail_execution_carbon
-
-            (
-                average_execution_cost,
-                average_execution_carbon,
-                average_execution_runtime,
-            ) = self._input_manager.get_execution_cost_carbon_runtime(
-                instance_index, region_index, consider_probabilistic_invocations=True
-            )
-
-            average_node_weights[0, instance_index] = average_execution_cost
-            average_node_weights[1, instance_index] = average_execution_runtime
-            average_node_weights[2, instance_index] = average_execution_carbon
-
-        for i, j in zip(self._adjacency_indexes[0], self._adjacency_indexes[1]):
-            (
-                tail_transmission_cost,
-                tail_transmission_carbon,
-                tail_transmission_runtime,
-            ) = self._input_manager.get_transmission_cost_carbon_runtime(i, j, region_index, region_index)
-
-            tail_edge_weights[0, i, j] = tail_transmission_cost
-            tail_edge_weights[1, i, j] = tail_transmission_runtime
-            tail_edge_weights[2, i, j] = tail_transmission_carbon
-
-            (
-                average_transmission_cost,
-                average_transmission_carbon,
-                average_transmission_runtime,
-            ) = self._input_manager.get_transmission_cost_carbon_runtime(
-                i, j, region_index, region_index, consider_probabilistic_invocations=True
-            )
-
-            average_edge_weights[0, i, j] = average_transmission_cost
-            average_edge_weights[1, i, j] = average_transmission_runtime
-            average_edge_weights[2, i, j] = average_transmission_carbon
-
-        (
-            (average_cost, tail_cost),
-            (average_runtime, tail_runtime),
-            (average_carbon, tail_carbon),
-        ) = self._calculate_cost_of_deployment(
-            average_node_weights, tail_node_weights, average_edge_weights, tail_edge_weights, deployment
-        )
-
-        return (
-            deployment,
-            (average_cost, tail_cost),
-            (average_runtime, tail_runtime),
-            (average_carbon, tail_carbon),
-            (average_node_weights, tail_node_weights),
-            (average_edge_weights, tail_edge_weights),
-        )
-
-    def _calculate_cost_of_deployment(
-        self,
-        average_node_weights: np.ndarray,
-        tail_node_weights: np.ndarray,
-        average_edge_weights: np.ndarray,
-        tail_edge_weights: np.ndarray,
-        deployment: dict[int, int],
-    ) -> tuple[tuple[float, float], tuple[float, float], tuple[float, float]]:
-        (
-            average_cost,
-            average_runtime,
-            average_carbon,
-        ) = self._calculate_cost_of_deployment_case(
-            average_node_weights, average_edge_weights, deployment, average=True
-        )
-
-        (
-            tail_cost,
-            tail_runtime,
-            tail_carbon,
-        ) = self._calculate_cost_of_deployment_case(tail_node_weights, tail_edge_weights, deployment)
-
-        return (
-            (average_cost, tail_cost),
-            (average_runtime, tail_runtime),
-            (average_carbon, tail_carbon),
-        )
-
-    def _calculate_cost_of_deployment_case(
-        self, node_weights: np.ndarray, edge_weights: np.ndarray, deployment: dict[int, int], average: bool = True
-    ) -> tuple[float, float, float]:
-        initial_node_region = deployment[self._first_instance_index]
-        start_hop_transmission_cost = 0
-        start_hop_transmission_runtime = 0
-        start_hop_transmission_carbon = 0
-        if average:
-            start_hop_transmission_cost = self._home_region_transmission_costs_average[0, initial_node_region]
-            start_hop_transmission_runtime = self._home_region_transmission_costs_average[1, initial_node_region]
-            start_hop_transmission_carbon = self._home_region_transmission_costs_average[2, initial_node_region]
-        else:
-            start_hop_transmission_cost = self._home_region_transmission_costs_tail[0, initial_node_region]
-            start_hop_transmission_runtime = self._home_region_transmission_costs_tail[1, initial_node_region]
-            start_hop_transmission_carbon = self._home_region_transmission_costs_tail[2, initial_node_region]
-
-        cost = np.sum(node_weights[0]) + np.sum(edge_weights[0]) + start_hop_transmission_cost  # type: ignore
-        runtime = self._most_expensive_path(edge_weights[1], node_weights[1]) + start_hop_transmission_runtime  # type: ignore  # pylint: disable=line-too-long
-        carbon = np.sum(node_weights[2]) + np.sum(edge_weights[2]) + start_hop_transmission_carbon  # type: ignore
-
-        return cost, runtime, carbon
-
-    def _most_expensive_path(self, edge_weights: np.ndarray, node_weights: np.ndarray) -> float:
-        topological_order = self._dag.topological_sort()
-        dist = np.full(len(topological_order), -np.inf)
-        dist[topological_order[0]] = node_weights[topological_order[0]]
-
-        for node in topological_order:
-            outgoing_edges = edge_weights[node, :] != 0
-            dist[outgoing_edges] = np.maximum(
-                dist[outgoing_edges], dist[node] + edge_weights[node, outgoing_edges] + node_weights[outgoing_edges]
-            )
-
-        max_cost: float = np.max(dist)
-        return max_cost
 
     def _get_permitted_region_indices(self, regions: list[str], instance: int) -> list[int]:
         if instance in self._permitted_region_indices_cache:

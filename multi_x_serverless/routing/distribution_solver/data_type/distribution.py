@@ -1,7 +1,10 @@
 from typing import TypeVar
+
 import numpy as np
 
-T = TypeVar('T', bound='Distribution')
+T = TypeVar("T", bound="Distribution")
+
+
 class Distribution:
     _samples: np.array[float]
     _max_sample_size: int
@@ -9,8 +12,17 @@ class Distribution:
     def __init__(self, samples: np.array[float], max_sample_size: int = 1000):
         self._samples = samples
         self._max_sample_size = max_sample_size
+    
+    def get_mean(self) -> float:
+        return np.mean(self._samples)
+    
+    def get_median(self) -> float:
+        return np.median(self._samples)
+    
+    def get_percentile(self, percentile: int) -> float:
+        return np.percentile(self._samples, percentile)
 
-    def get_combined_merged_distribution(self, parent_distributions: list[T], max_sample_size: int = -1) -> T:
+    def get_merged_distribution(self, parent_distributions: list[T], max_sample_size: int = -1) -> T:
         max_sample_size = self._consider_sample_size(max_sample_size)
 
         # Here we should combine the distributions in a merged manner
@@ -55,14 +67,15 @@ class Distribution:
         return np.random.choice(samples, size=max_sample_size, replace=False)
 
     def _consider_sample_size(self, sample_size: int) -> int:
-        if sample_size <= 0: # Default sample sizes
+        if sample_size <= 0:  # Default sample sizes
             sample_size = self._max_sample_size
-        
+
         return sample_size
-    
+
     def __add__(self, other: T) -> T:
         if isinstance(other, T):
             return self._combine_sequential(self, other)
         else:
-            raise TypeError("Unsupported operand type for +: '{}' and '{}'".format(
-                type(self).__name__, type(other).__name__))
+            raise TypeError(
+                "Unsupported operand type for +: '{}' and '{}'".format(type(self).__name__, type(other).__name__)
+            )

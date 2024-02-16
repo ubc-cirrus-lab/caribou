@@ -4,27 +4,23 @@ from typing import Optional
 
 import numpy as np
 
-from multi_x_serverless.routing.solver.input.input_manager import InputManager
-from multi_x_serverless.routing.solver.solver import Solver
+from multi_x_serverless.routing.distribution_solver.distribution_solver import DistributionSolver
+from multi_x_serverless.routing.distribution_solver.input.distribution_input_manager import DistributionInputManager
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
+from multi_x_serverless.routing.distribution_solver.data_type.distribution import Distribution
 
-
-class DistributionBFSFineGrainedSolver(Solver):
+class DistributionBFSFineGrainedSolver(DistributionSolver):
     def __init__(
         self,
         workflow_config: WorkflowConfig,
         all_available_regions: Optional[list[str]] = None,
-        input_manager: Optional[InputManager] = None,
-        init_home_region_transmission_costs: bool = True,
+        input_manager: Optional[DistributionInputManager] = None,
     ) -> None:
-        super().__init__(workflow_config, all_available_regions, input_manager, False)
+        super().__init__(workflow_config, all_available_regions, input_manager)
 
     def _solve(  # pylint: disable=too-many-locals, too-many-branches, too-many-nested-blocks, too-many-statements, line-too-long
         self, regions: list[str]
     ) -> list[tuple[dict, float, float, float]]:
-        execution_cost_carbon_runtime_cache: dict[str, tuple[float, float, float]] = {}
-        transmission_cost_carbon_runtime_cache: dict[str, tuple[float, float, float]] = {}
-
         # Get the topological representation of a DAG
         prerequisites_dictionary = self._dag.get_prerequisites_dict()
         successor_dictionary = self._dag.get_preceeding_dict()
@@ -47,9 +43,9 @@ class DistributionBFSFineGrainedSolver(Solver):
         else:
             raise ValueError("There are no leaf nodes in the DAG")
 
-        # Where its in format of {instance_index:
-        # [(deployment decisions (and cost and latency at that instance node),
-        # cumulative worse case cost/co2/runtime, probabilistic case runtime)]}
+    
+
+
         deployments: dict[
             int, list[tuple[dict[int, tuple[int, float, float, float, float]], float, float, float, float]]
         ] = {}
