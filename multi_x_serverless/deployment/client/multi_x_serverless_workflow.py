@@ -4,6 +4,7 @@ import inspect
 import json
 import logging
 import re
+import time
 import uuid
 from types import FrameType
 from typing import Any, Callable, Optional
@@ -141,7 +142,7 @@ class MultiXServerlessWorkflow:
                     break
 
         logger.info(
-            "INVOKING_SUCCESSOR: %s: Instance (%s) calling SUCCESSOR (%s) with PAYLOAD_SIZE (%s) GB",
+            "INVOKING_SUCCESSOR: %s: INSTANCE (%s) calling SUCCESSOR (%s) with PAYLOAD_SIZE (%s) GB",
             workflow_placement_decision["run_id"],
             current_instance_name,
             successor_instance_name,
@@ -486,13 +487,24 @@ class MultiXServerlessWorkflow:
                     payload = argument.get("payload", {})
 
                 logger.info(
-                    "INVOKED: %s: Instance %s called",
+                    "INVOKED: %s: INSTANCE (%s) called",
                     wrapper.workflow_placement_decision["run_id"],  # type: ignore
                     wrapper.workflow_placement_decision["current_instance_name"],  # type: ignore
                 )
 
                 # Call the original function with the modified arguments
-                return func(payload)
+                start_time = time.time()
+                result = func(payload)
+                end_time = time.time()
+
+                logger.info(
+                    "EXECUTED: %s: INSTANCE (%s) executed TIME (%s) seconds",
+                    wrapper.workflow_placement_decision["run_id"],  # type: ignore
+                    wrapper.workflow_placement_decision["current_instance_name"],  # type: ignore
+                    end_time - start_time,
+                )
+
+                return result
 
             wrapper.workflow_placement_decision = {}  # type: ignore
             wrapper.entry_point = entry_point  # type: ignore
