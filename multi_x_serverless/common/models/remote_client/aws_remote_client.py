@@ -514,9 +514,13 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
                     nextToken=next_token,
                 )
             else:
-                response = client.filter_log_events(
-                    logGroupName=f"/aws/lambda/{function_instance}", startTime=last_synced_time_ms_since_epoch
-                )
+                try:
+                    response = client.filter_log_events(
+                        logGroupName=f"/aws/lambda/{function_instance}", startTime=last_synced_time_ms_since_epoch
+                    )
+                except client.exceptions.ResourceNotFoundException:
+                    # No logs found
+                    return []
 
             log_events.extend(event["message"] for event in response.get("events", []))
 
