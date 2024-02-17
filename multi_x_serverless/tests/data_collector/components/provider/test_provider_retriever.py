@@ -48,7 +48,6 @@ class TestProviderRetriever(unittest.TestCase):
             {"geometry": {"location": {"lat": 37.7749, "lng": -122.4194}}}
         ]
 
-
         with patch("os.environ.get") as mock_os_environ_get, patch("boto3.client") as mock_boto3, patch(
             "multi_x_serverless.common.utils.str_to_bool"
         ) as mock_str_to_bool:
