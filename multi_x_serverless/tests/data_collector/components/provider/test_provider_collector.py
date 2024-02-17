@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 from multi_x_serverless.data_collector.components.provider.provider_exporter import ProviderExporter
 from multi_x_serverless.data_collector.components.provider.provider_retriever import ProviderRetriever
 from multi_x_serverless.data_collector.components.provider.provider_collector import ProviderCollector
@@ -7,7 +7,16 @@ from multi_x_serverless.data_collector.components.provider.provider_collector im
 
 class TestProviderCollector(unittest.TestCase):
     def setUp(self):
-        self.provider_collector = ProviderCollector()
+        with patch(
+            "multi_x_serverless.data_collector.components.provider.provider_retriever.ProviderRetriever"
+        ) as mock_provider_retriever, patch(
+            "multi_x_serverless.data_collector.components.provider.provider_exporter.ProviderExporter"
+        ) as mock_provider_exporter:
+            # Set up mock ProviderRetriever and ProviderExporter
+            mock_provider_retriever.return_value = MagicMock()
+            mock_provider_exporter.return_value = MagicMock()
+
+            self.provider_collector = ProviderCollector()
 
     @patch.object(ProviderRetriever, "retrieve_available_regions")
     @patch.object(ProviderRetriever, "retrieve_provider_region_data")

@@ -146,8 +146,16 @@ export GOOGLE_API_KEY=<your_key>
 To solve for a workflow you can either do it manually by using the following command:
 
 ```bash
-poetry run multi_x_serverless solve <workflow_id>
+poetry run multi_x_serverless solve <workflow_id> -s <solver>
 ```
+
+Where `<workflow_id>` is the id of the workflow you want to run. And the `-s` flag is used to denote running a specific solver. 
+Where `<solver>` is the name of the solver you want to run. 
+The available solver are:
+
+- `fine-grained`
+- `coarse-grained`
+- `heuristic`
 
 Or use the update checker to solve for all workflows that have been invoked enough (100 times in last month):
 
