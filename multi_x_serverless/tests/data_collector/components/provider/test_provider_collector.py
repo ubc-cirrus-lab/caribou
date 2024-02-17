@@ -7,15 +7,15 @@ from multi_x_serverless.data_collector.components.provider.provider_collector im
 
 class TestProviderCollector(unittest.TestCase):
     def setUp(self):
-        with patch(
-            "multi_x_serverless.data_collector.components.provider.provider_retriever.ProviderRetriever"
-        ) as mock_provider_retriever, patch(
-            "multi_x_serverless.data_collector.components.provider.provider_exporter.ProviderExporter"
-        ) as mock_provider_exporter:
-            # Set up mock ProviderRetriever and ProviderExporter
-            mock_provider_retriever.return_value = MagicMock()
-            mock_provider_exporter.return_value = MagicMock()
+        with patch("os.environ.get") as mock_os_environ_get, patch("boto3.client") as mock_boto3, patch(
+            "multi_x_serverless.common.utils.str_to_bool"
+        ) as mock_str_to_bool:
+            mock_boto3.return_value = MagicMock()
+            mock_os_environ_get.return_value = "test_key"
+            mock_str_to_bool.return_value = False
 
+            # Need to do the above as issue with Provider Retriever constructor
+            # Maybe a better way to do this is warrented
             self.provider_collector = ProviderCollector()
 
     @patch.object(ProviderRetriever, "retrieve_available_regions")
