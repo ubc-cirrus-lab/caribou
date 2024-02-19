@@ -4,6 +4,11 @@ from multi_x_serverless.routing.distribution_solver.distribution_solver import D
 
 
 class DistributionBFSFineGrainedSolver(DistributionSolver):
+    def _solve(self, regions: list[str]) -> list[tuple[dict, float, float, float]]:
+        # Placeholder solve function
+        print(regions)
+        return []
+
     def _distribution_solve(
         self, regions: list[str]
     ) -> list[
@@ -202,6 +207,8 @@ class DistributionBFSFineGrainedSolver(DistributionSolver):
                     prerequisites_dictionary[-1] = []
                 prerequisites_dictionary[-1].append(leaf_node)
                 successor_dictionary[leaf_node].append(-1)
+
+            successor_dictionary[-1] = []
         else:
             raise ValueError("There are no leaf nodes in the DAG")
 

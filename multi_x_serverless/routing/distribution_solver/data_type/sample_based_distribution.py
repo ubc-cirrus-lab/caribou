@@ -10,7 +10,7 @@ T = TypeVar("T", bound="Distribution")
 class SampleBasedDistribution(Distribution):
     _max_sample_size: int
 
-    def __init__(self, samples: np.ndarray = np.empty((0.0,)), max_sample_size: int = 1000):
+    def __init__(self, samples: np.ndarray = np.zeros(1, dtype=float), max_sample_size: int = 100):
         super().__init__()
         samples.sort()
         self._samples: np.ndarray = samples
@@ -94,10 +94,14 @@ class SampleBasedDistribution(Distribution):
 
     def get_average(self, ignore_zeros: bool) -> float:
         samples = self._samples if not ignore_zeros else self._non_zero_samples
+        if len(samples) == 0:
+            return 0.0
         return float(np.mean(samples))
 
     def get_median(self, ignore_zeros: bool) -> float:
         samples = self._samples if not ignore_zeros else self._non_zero_samples
+        if len(samples) == 0:
+            return 0.0
         return float(np.median(samples))
 
     def get_tail_latency(self, ignore_zeros: bool) -> float:
@@ -105,12 +109,18 @@ class SampleBasedDistribution(Distribution):
 
     def get_min(self, ignore_zeros: bool) -> float:
         samples = self._samples if not ignore_zeros else self._non_zero_samples
+        if len(samples) == 0:
+            return 0.0
         return float(np.min(samples))
 
     def get_max(self, ignore_zeros: bool) -> float:
         samples = self._samples if not ignore_zeros else self._non_zero_samples
+        if len(samples) == 0:
+            return 0.0
         return float(np.max(samples))
 
     def get_percentile(self, percentile: int, ignore_zeros: bool) -> float:
         samples = self._samples if not ignore_zeros else self._non_zero_samples
+        if len(samples) == 0:
+            return 0.0
         return float(np.percentile(samples, percentile))
