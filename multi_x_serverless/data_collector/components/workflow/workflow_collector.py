@@ -30,6 +30,8 @@ class WorkflowCollector(DataCollector):
         # Retrieve available regions
         self._data_retriever.retrieve_available_regions()
 
-        workflow_summary_data: dict[str, Any] = self._data_retriever.retrieve_workflow_summary(workflow_unique_id)
+        workflow_summary_data: dict[str, Any] = {
+            workflow_unique_id: self._data_retriever.retrieve_workflow_summary(workflow_unique_id)
+        }
 
         self._data_exporter.export_all_data(workflow_summary_data)

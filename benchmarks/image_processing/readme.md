@@ -5,11 +5,17 @@ This benchmark requires an s3 bucket with the name `multi-x-serverless-image-pro
 You can deploy the benchmark with the following command:
 
 ```bash
-poetry run multi-x-serverless deploy
+poetry run multi_x_serverless deploy
 ```
 
 And then run the benchmark with the following command:
 
 ```bash
-poetry run multi-x-serverless run image_processing-version_number -i '{"message": "image_name.jpeg"}'
+poetry run multi_x_serverless run image_processing-version_number -a '{"message": "image_name.jpeg"}'
+```
+
+To remove the benchmark, you can use the following command:
+
+```bash
+poetry run multi_x_serverless remove image_processing-version_number
 ```

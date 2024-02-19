@@ -82,6 +82,8 @@ class Workflow(Resource):
             "estimated_invocations_per_month": self._config.estimated_invocations_per_month,
             "constraints": self._config.constraints,
             "regions_and_providers": self._config.regions_and_providers,
+            "num_calls_in_one_month": self._config.num_calls_in_one_month,
+            "solver": self._config.solver,
         }
 
         workflow_config = WorkflowConfig(workflow_description)

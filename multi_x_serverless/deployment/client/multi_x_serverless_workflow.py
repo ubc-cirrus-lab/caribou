@@ -4,11 +4,12 @@ import inspect
 import json
 import logging
 import re
+import time
 import uuid
 from types import FrameType
 from typing import Any, Callable, Optional
 
-from multi_x_serverless.common.constants import WORKFLOW_PLACEMENT_DECISION_TABLE
+from multi_x_serverless.common.constants import LOG_VERSION, WORKFLOW_PLACEMENT_DECISION_TABLE
 from multi_x_serverless.common.models.endpoints import Endpoints
 from multi_x_serverless.common.models.remote_client.remote_client_factory import RemoteClientFactory
 from multi_x_serverless.common.utils import get_function_source
@@ -17,7 +18,9 @@ from multi_x_serverless.deployment.client.multi_x_serverless_function import Mul
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-formatter = logging.Formatter("%(asctime)s.%(msecs)03d %(message)s", datefmt="%s")
+formatter = logging.Formatter(
+    f"TIME (%(asctime)s) LEVEL (%(levelname)s) MESSAGE (%(message)s) LOG_VERSION ({LOG_VERSION})"
+)
 handler = logging.StreamHandler()
 handler.setFormatter(formatter)
 
@@ -141,7 +144,7 @@ class MultiXServerlessWorkflow:
                     break
 
         logger.info(
-            "INVOKING_SUCCESSOR: %s: Instance (%s) calling SUCCESSOR (%s) with PAYLOAD_SIZE (%s) GB",
+            "INVOKING_SUCCESSOR: RUN_ID (%s): INSTANCE (%s) calling SUCCESSOR (%s) with PAYLOAD_SIZE (%s) GB",
             workflow_placement_decision["run_id"],
             current_instance_name,
             successor_instance_name,
@@ -273,7 +276,6 @@ class MultiXServerlessWorkflow:
                         if successor_instance.split(":", maxsplit=2)[1].split("_")[-1] == str(self._successor_index):
                             self._successor_index += 1
                             return successor_instance
-                print(successor_instances, successor_function_name, self._successor_index)
                 raise RuntimeError(f"Could not find successor instance for successor function name {successor_function_name} in {successor_instances}")  # type: ignore  # pylint: disable=line-too-long
         raise RuntimeError(f"Could not find current instance {current_instance_name} in workflow_placement decision")
 
@@ -446,6 +448,22 @@ class MultiXServerlessWorkflow:
 
             def wrapper(*args, **kwargs):  # type: ignore # pylint: disable=unused-argument
                 # Modify args and kwargs here as needed
+                argument_raw = args[0]
+
+                if (
+                    "Records" in argument_raw
+                    and len(argument_raw["Records"]) == 1
+                    and "Sns" in argument_raw["Records"][0]
+                    and "Message" in argument_raw["Records"][0]["Sns"]
+                ):
+                    argument = json.loads(argument_raw["Records"][0]["Sns"]["Message"])
+                else:
+                    try:
+                        argument = json.loads(argument_raw)
+                    except json.JSONDecodeError as e:
+                        raise RuntimeError(
+                            f"Could not get message from argument {argument_raw}, there should be meta information in the message"  # pylint: disable=line-too-long
+                        ) from e
                 if entry_point:
                     wrapper.workflow_placement_decision = self.get_workflow_placement_decision_from_platform()  # type: ignore  # pylint: disable=line-too-long
                     # This is the first function to be called, so we need to generate a run id
@@ -453,32 +471,16 @@ class MultiXServerlessWorkflow:
                     wrapper.workflow_placement_decision["run_id"] = uuid.uuid4().hex  # type: ignore
                     if len(args) == 0:
                         return func()
-                    payload = args[0]
+                    payload = argument
 
                     logger.info(
-                        "ENTRY_POINT: %s: Entry Point of workflow %s called with payload size %s GB",
+                        "ENTRY_POINT: RUN_ID (%s): Entry Point of workflow %s called with payload size %s GB",
                         wrapper.workflow_placement_decision["run_id"],  # type: ignore
                         f"{self.name}-{self.version}",
                         len(json.dumps(payload).encode("utf-8")) / (1024**3),
                     )
                 else:
                     # Get the workflow_placement decision from the message received from the predecessor function
-                    argument_raw = args[0]
-
-                    if (
-                        "Records" in argument_raw
-                        and len(argument_raw["Records"]) == 1
-                        and "Sns" in argument_raw["Records"][0]
-                        and "Message" in argument_raw["Records"][0]["Sns"]
-                    ):
-                        argument = json.loads(argument_raw["Records"][0]["Sns"]["Message"])
-                    else:
-                        try:
-                            argument = json.loads(argument_raw)
-                        except json.JSONDecodeError as e:
-                            raise RuntimeError(
-                                f"Could not get message from argument {argument_raw}, there should be meta information in the message"  # pylint: disable=line-too-long
-                            ) from e
                     if "workflow_placement_decision" not in argument:
                         raise RuntimeError("Could not get workflow_placement decision from message")
                     wrapper.workflow_placement_decision = argument["workflow_placement_decision"]  # type: ignore
@@ -487,13 +489,24 @@ class MultiXServerlessWorkflow:
                     payload = argument.get("payload", {})
 
                 logger.info(
-                    "INVOKED: %s: Instance %s called",
+                    "INVOKED: RUN_ID (%s): INSTANCE (%s) called",
                     wrapper.workflow_placement_decision["run_id"],  # type: ignore
                     wrapper.workflow_placement_decision["current_instance_name"],  # type: ignore
                 )
 
                 # Call the original function with the modified arguments
-                return func(payload)
+                start_time = time.time()
+                result = func(payload)
+                end_time = time.time()
+
+                logger.info(
+                    "EXECUTED: RUN_ID (%s): INSTANCE (%s) executed EXECUTION_TIME (%s) seconds",
+                    wrapper.workflow_placement_decision["run_id"],  # type: ignore
+                    wrapper.workflow_placement_decision["current_instance_name"],  # type: ignore
+                    end_time - start_time,
+                )
+
+                return result
 
             wrapper.workflow_placement_decision = {}  # type: ignore
             wrapper.entry_point = entry_point  # type: ignore

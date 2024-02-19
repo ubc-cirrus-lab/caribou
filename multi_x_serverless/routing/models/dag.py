@@ -14,6 +14,8 @@ class DAG(Indexer):
 
         self._value_indices: dict[str, int] = {node["instance_name"]: index for index, node in enumerate(nodes)}
 
+        self._indices_to_values: dict[int, str] = self.indicies_to_values()
+
     def add_edge(self, from_node: str, to_node: str) -> None:
         if from_node in self._value_indices and to_node in self._value_indices:
             from_index: int = self._value_indices[from_node]

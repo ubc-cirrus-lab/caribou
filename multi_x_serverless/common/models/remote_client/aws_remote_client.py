@@ -1,5 +1,10 @@
 import json
+import logging
+import os
+import subprocess
+import tempfile
 import time
+import zipfile
 from datetime import datetime
 from typing import Any
 
@@ -9,6 +14,8 @@ from botocore.exceptions import ClientError
 from multi_x_serverless.common.constants import SYNC_MESSAGES_TABLE, SYNC_PREDECESSOR_COUNTER_TABLE
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
 from multi_x_serverless.deployment.common.deploy.models.resource import Resource
+
+logger = logging.getLogger(__name__)
 
 
 class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
@@ -39,6 +46,8 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
             return self.iam_role_exists(resource)
         if resource.resource_type == "function":
             return self.lambda_function_exists(resource)
+        if resource.resource_type == "messaging_topic":
+            return False
         raise RuntimeError(f"Unknown resource type {resource.resource_type}")
 
     def iam_role_exists(self, resource: Resource) -> bool:
@@ -74,13 +83,16 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         for table in [SYNC_MESSAGES_TABLE, SYNC_PREDECESSOR_COUNTER_TABLE]:
             try:
                 client.describe_table(TableName=table)
-            except client.exceptions.ResourceNotFoundException:
-                client.create_table(
-                    TableName=table,
-                    KeySchema=[{"AttributeName": "id", "KeyType": "HASH"}],
-                    AttributeDefinitions=[{"AttributeName": "id", "AttributeType": "S"}],
-                    BillingMode="PAY_PER_REQUEST",
-                )
+            except ClientError as e:
+                if e.response["Error"]["Code"] == "ResourceNotFoundException":
+                    client.create_table(
+                        TableName=table,
+                        KeySchema=[{"AttributeName": "id", "KeyType": "HASH"}],
+                        AttributeDefinitions=[{"AttributeName": "id", "AttributeType": "S"}],
+                        BillingMode="PAY_PER_REQUEST",
+                    )
+                else:
+                    raise
 
     def upload_predecessor_data_at_sync_node(self, function_name: str, workflow_instance_id: str, message: str) -> None:
         client = self._client("dynamodb")
@@ -125,22 +137,92 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         timeout: int,
         memory_size: int,
     ) -> str:
-        kwargs: dict[str, Any] = {
-            "FunctionName": function_name,
-            "Runtime": runtime,
-            "Code": {"ZipFile": zip_contents},
-            "Handler": handler,
-            "Role": role_identifier,
-            "Environment": {"Variables": environment_variables},
-            "MemorySize": memory_size,
-        }
-        if timeout >= 1:
-            kwargs["Timeout"] = timeout
-        arn, state = self._create_lambda_function(kwargs)
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            # Step 1: Unzip the ZIP file
+            zip_path = os.path.join(tmpdirname, "code.zip")
+            with open(zip_path, "wb") as f_zip:
+                f_zip.write(zip_contents)
+            with zipfile.ZipFile(zip_path, "r") as zip_ref:
+                zip_ref.extractall(tmpdirname)
 
-        if state != "Active":
-            self._wait_for_function_to_become_active(function_name)
-        return arn
+            # Step 2: Create a Dockerfile in the temporary directory
+            dockerfile_content = self.generate_dockerfile(runtime, handler)
+            with open(os.path.join(tmpdirname, "Dockerfile"), "w", encoding="utf-8") as f_dockerfile:
+                f_dockerfile.write(dockerfile_content)
+
+            # Step 3: Build the Docker Image
+            image_name = f"{function_name.lower()}:latest"
+            self.build_docker_image(tmpdirname, image_name)
+
+            # Step 4: Upload the Image to ECR
+            image_uri = self.upload_image_to_ecr(image_name)
+
+            kwargs: dict[str, Any] = {
+                "FunctionName": function_name,
+                "Code": {"ImageUri": image_uri},
+                "PackageType": "Image",
+                "Role": role_identifier,
+                "Environment": {"Variables": environment_variables},
+                "MemorySize": memory_size,
+            }
+            if timeout >= 1:
+                kwargs["Timeout"] = timeout
+            arn, state = self._create_lambda_function(kwargs)
+
+            if state != "Active":
+                self._wait_for_function_to_become_active(function_name)
+            return arn
+
+    def generate_dockerfile(self, runtime: str, handler: str) -> str:
+        return f"""
+        FROM public.ecr.aws/lambda/{runtime.replace("python", "python:")}
+        COPY requirements.txt ./
+        RUN pip3 install --no-cache-dir -r requirements.txt
+        COPY app.py ./
+        COPY src ./src
+        COPY multi_x_serverless ./multi_x_serverless
+        CMD ["{handler}"]
+        """
+
+    def build_docker_image(self, context_path: str, image_name: str) -> None:
+        try:
+            subprocess.run(["docker", "build", "--platform", "linux/amd64", "-t", image_name, context_path], check=True)
+            logger.info("Docker image %s built successfully.", image_name)
+        except subprocess.CalledProcessError as e:
+            # This will catch errors from the subprocess and logger.info a message.
+            logger.error("Failed to build Docker image %s. Error: %s", image_name, e)
+
+    def upload_image_to_ecr(self, image_name: str) -> str:
+        ecr_client = self._client("ecr")
+        # Assume AWS CLI is configured. Customize these commands based on your AWS setup.
+        repository_name = image_name.split(":")[0]
+        try:
+            ecr_client.create_repository(repositoryName=repository_name)
+        except ecr_client.exceptions.RepositoryAlreadyExistsException:
+            pass  # Repository already exists, proceed
+
+        # Retrieve an authentication token and authenticate your Docker client to your registry.
+        # Use the AWS CLI 'get-login-password' command to get the token.
+        account_id = self._client("sts").get_caller_identity().get("Account")
+        region = self._client("ecr").meta.region_name
+        ecr_registry = f"{account_id}.dkr.ecr.{region}.amazonaws.com"
+
+        login_password = (
+            subprocess.check_output(["aws", "ecr", "get-login-password", "--region", region]).strip().decode("utf-8")
+        )
+        subprocess.run(["docker", "login", "--username", "AWS", "--password", login_password, ecr_registry], check=True)
+
+        # Tag and push the image to ECR
+        image_uri = f"{ecr_registry}/{repository_name}:latest"
+        try:
+            subprocess.run(["docker", "tag", image_name, image_uri], check=True)
+            subprocess.run(["docker", "push", image_uri], check=True)
+            logger.info("Successfully pushed Docker image %s to ECR.", image_uri)
+        except subprocess.CalledProcessError as e:
+            logger.error("Failed to push Docker image %s to ECR. Error: %s", image_name, e)
+            raise
+
+        return image_uri
 
     def update_function(
         self,
@@ -154,24 +236,44 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         memory_size: int,
     ) -> str:
         client = self._client("lambda")
-        response = client.update_function_code(FunctionName=function_name, ZipFile=zip_contents)
+
+        # Process the ZIP contents to build and upload a Docker image, then update the function code with the image URI
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            zip_path = os.path.join(tmpdirname, "code.zip")
+            with open(zip_path, "wb") as f_zip:
+                f_zip.write(zip_contents)
+            with zipfile.ZipFile(zip_path, "r") as zip_ref:
+                zip_ref.extractall(tmpdirname)
+
+            dockerfile_content = self.generate_dockerfile(runtime, handler)
+            with open(os.path.join(tmpdirname, "Dockerfile"), "w", encoding="utf-8") as f_dockerfile:
+                f_dockerfile.write(dockerfile_content)
+
+            image_name = f"{function_name.lower()}:latest"
+            self.build_docker_image(tmpdirname, image_name)
+            image_uri = self.upload_image_to_ecr(image_name)
+
+            response = client.update_function_code(FunctionName=function_name, ImageUri=image_uri)
+
         time.sleep(self.DELAY_TIME)
-        if response["State"] != "Active":
+        if response.get("State") != "Active":
             self._wait_for_function_to_become_active(function_name)
-        kwargs: dict[str, Any] = {
+
+        kwargs = {
             "FunctionName": function_name,
-            "Runtime": runtime,
-            "Handler": handler,
             "Role": role_identifier,
             "Environment": {"Variables": environment_variables},
             "MemorySize": memory_size,
         }
-
         if timeout >= 1:
             kwargs["Timeout"] = timeout
 
-        response = client.update_function_configuration(**kwargs)
-        if response["State"] != "Active":
+        try:
+            response = client.update_function_configuration(**kwargs)
+        except ClientError as e:
+            logger.error("Error while updating function configuration: %s", e)
+
+        if response.get("State") != "Active":
             self._wait_for_function_to_become_active(function_name)
 
         return response["FunctionArn"]
@@ -275,6 +377,16 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         client = self._client("dynamodb")
         client.put_item(TableName=table_name, Item={"key": {"S": key}, "value": {"S": value}})
 
+    def update_value_in_table(self, table_name: str, key: str, value: str) -> None:
+        client = self._client("dynamodb")
+        client.update_item(
+            TableName=table_name,
+            Key={"key": {"S": key}},
+            UpdateExpression="SET #v = :value",
+            ExpressionAttributeNames={"#v": "value"},
+            ExpressionAttributeValues={":value": {"S": value}},
+        )
+
     def set_value_in_table_column(
         self, table_name: str, key: str, column_type_value: list[tuple[str, str, str]]
     ) -> None:
@@ -333,14 +445,20 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         response = client.get_object(Bucket="multi-x-serverless-resources", Key=key)
         return response["Body"].read()
 
-    def get_all_values_from_sort_key_table(self, table_name: str, key: str) -> list[dict[str, Any]]:
+    def get_all_values_from_sort_key_table(self, table_name: str, key: str) -> list[str]:
         client = self._client("dynamodb")
-        response = client.query(
-            TableName=table_name,
-            KeyConditionExpression="key = :key ",
-            ExpressionAttributeValues={":key": {"S": key}},
-        )
-        return [item["value"]["S"] for item in response.get("Items", [])]
+        try:
+            response = client.query(
+                TableName=table_name,
+                KeyConditionExpression="#pk = :pkValue",
+                ExpressionAttributeValues={":pkValue": {"S": key}},
+                ExpressionAttributeNames={"#pk": "key"},
+            )
+        except client.exceptions.DynamoDBError as e:
+            logger.error("Error querying DynamoDB: %s", e)
+            return []
+
+        return [item.get("value", {}).get("S", "") for item in response.get("Items", [])]
 
     def get_keys(self, table_name: str) -> list[str]:
         client = self._client("dynamodb")
@@ -354,18 +472,27 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
 
     def get_last_value_from_sort_key_table(self, table_name: str, key: str) -> tuple[str, str]:
         client = self._client("dynamodb")
-        response = client.query(
-            TableName=table_name,
-            KeyConditionExpression="key = :key ",
-            ExpressionAttributeValues={":key": {"S": key}},
-            ScanIndexForward=False,
-            Limit=1,
-        )
-        if "Items" not in response:
+        try:
+            response = client.query(
+                TableName=table_name,
+                KeyConditionExpression="#pk = :pkValue",
+                ExpressionAttributeValues={":pkValue": {"S": key}},
+                ExpressionAttributeNames={"#pk": "key"},
+                ScanIndexForward=False,  # Sorts the results in descending order based on the sort key
+                Limit=1,
+            )
+        except client.exceptions.DynamoDBError as e:
+            logger.error("Error querying DynamoDB: %s", e)
             return "", ""
-        items = response.get("Items")
-        if items is not None:
-            return (items[0]["sort_key"]["S"], items[0]["value"]["S"])
+
+        # Check if any items were returned
+        if response.get("Items"):
+            item = response["Items"][0]
+            sort_key = item.get("sort_key", {}).get("S", "")
+            value = item.get("value", {}).get("S", "")
+            return sort_key, value
+
+        # Return empty if no items found
         return "", ""
 
     def put_value_to_sort_key_table(self, table_name: str, key: str, sort_key: str, value: str) -> None:
@@ -390,9 +517,13 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
                     nextToken=next_token,
                 )
             else:
-                response = client.filter_log_events(
-                    logGroupName=f"/aws/lambda/{function_instance}", startTime=last_synced_time_ms_since_epoch
-                )
+                try:
+                    response = client.filter_log_events(
+                        logGroupName=f"/aws/lambda/{function_instance}", startTime=last_synced_time_ms_since_epoch
+                    )
+                except client.exceptions.ResourceNotFoundException:
+                    # No logs found
+                    return []
 
             log_events.extend(event["message"] for event in response.get("events", []))
 
@@ -447,3 +578,8 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
     def remove_resource(self, key: str) -> None:
         client = self._client("s3")
         client.delete_object(Bucket="multi-x-serverless-resources", Key=key)
+
+    def remove_ecr_repository(self, repository_name: str) -> None:
+        repository_name = repository_name.lower()
+        client = self._client("ecr")
+        client.delete_repository(repositoryName=repository_name, force=True)

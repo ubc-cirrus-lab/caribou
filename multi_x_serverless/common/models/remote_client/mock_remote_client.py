@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Any
 
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
 
@@ -75,7 +74,7 @@ class MockRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
     ) -> None:
         pass
 
-    def get_all_values_from_sort_key_table(self, table_name: str, key: str) -> list[dict[str, Any]]:
+    def get_all_values_from_sort_key_table(self, table_name: str, key: str) -> list[str]:
         pass
 
     def get_keys(self, table_name: str) -> list[str]:
@@ -112,4 +111,7 @@ class MockRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         pass
 
     def remove_resource(self, key: str) -> None:
+        pass
+
+    def update_value_in_table(self, table_name: str, key: str, value: str) -> None:
         pass

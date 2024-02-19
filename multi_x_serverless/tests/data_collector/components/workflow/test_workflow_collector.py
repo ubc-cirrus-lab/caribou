@@ -37,7 +37,7 @@ class TestWorkflowCollector(unittest.TestCase):
 
         self.collector._data_retriever.retrieve_available_regions.assert_called_once()
         self.collector._data_retriever.retrieve_workflow_summary.assert_called_once_with("workflow1")
-        self.collector._data_exporter.export_all_data.assert_called_once_with(mock_workflow_summary_data)
+        self.collector._data_exporter.export_all_data.assert_called_once_with({"workflow1": mock_workflow_summary_data})
 
 
 if __name__ == "__main__":

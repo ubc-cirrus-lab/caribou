@@ -75,6 +75,8 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
     def get_execution_cost_carbon_runtime(
         self, instance_index: int, region_index: int, consider_probabilistic_invocations: bool = False
     ) -> list[float]:
+        consider_probabilistic_invocations = False  # Conditional invocations not yet supported
+
         # Convert the instance and region index into the string representation
         instance_name: str = self._instance_indexer.index_to_value(instance_index)
         region_name: str = self._region_indexer.index_to_value(region_index)
@@ -100,6 +102,8 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         to_region_index: int,
         consider_probabilistic_invocations: bool = False,
     ) -> list[float]:
+        consider_probabilistic_invocations = False  # Conditional invocations not yet supported
+
         # Convert the instance and region index into the string representation
         from_instance_name: str = self._instance_indexer.index_to_value(from_instance_index)
         to_instance_name: str = self._instance_indexer.index_to_value(to_instance_index)

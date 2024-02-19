@@ -1,4 +1,5 @@
 gtts
 boto3
 profanity
-numpy
+pydub
+ffmpeg

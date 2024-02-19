@@ -1,4 +1,5 @@
 import json
+import logging
 import sys
 import traceback
 
@@ -7,6 +8,8 @@ from multi_x_serverless.common.models.endpoints import Endpoints
 from multi_x_serverless.deployment.common.config.config import Config
 from multi_x_serverless.deployment.common.deploy.deployer import Deployer, create_default_deployer
 from multi_x_serverless.deployment.common.factories.deployer_factory import DeployerFactory
+
+logger = logging.getLogger(__name__)
 
 
 def main() -> int:
@@ -19,7 +22,7 @@ def main() -> int:
 
         return 0
     except Exception:  # pylint: disable=broad-except
-        print(traceback.format_exc(), file=sys.stderr)
+        logger.error(traceback.format_exc())
         return 2
 
 
