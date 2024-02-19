@@ -1,6 +1,4 @@
 # Loader
-import numpy as np
-
 from multi_x_serverless.routing.distribution_solver.data_type.distribution import Distribution
 from multi_x_serverless.routing.distribution_solver.data_type.sample_based_distribution import SampleBasedDistribution
 from multi_x_serverless.routing.models.dag import DAG
@@ -31,20 +29,29 @@ class DistributionInputManager:  # pylint: disable=too-many-instance-attributes
         test_sum = instance_index + region_index
         print(test_sum)
         return [
-            SampleBasedDistribution(np.empty((0,))),
-            SampleBasedDistribution(np.empty((0,))),
-            SampleBasedDistribution(np.empty((0,))),
+            SampleBasedDistribution(),
+            SampleBasedDistribution(),
+            SampleBasedDistribution(),
         ]
 
     def get_transmission_cost_carbon_runtime_distribution(
         self, from_instance_index: int, to_instance_index: int, from_region_index: int, to_region_index: int
     ) -> list[Distribution]:
-        test_sum = from_instance_index + to_instance_index + from_region_index + to_region_index
+        # If the instance index is not found, return an empty distribution
+        if from_instance_index == -1 or to_instance_index == -1:
+            return [
+                SampleBasedDistribution(),
+                SampleBasedDistribution(),
+                SampleBasedDistribution(),
+            ]
+
+        test_sum = from_region_index + to_region_index
         print(test_sum)
+
         return [
-            SampleBasedDistribution(np.empty((0,))),
-            SampleBasedDistribution(np.empty((0,))),
-            SampleBasedDistribution(np.empty((0,))),
+            SampleBasedDistribution(),
+            SampleBasedDistribution(),
+            SampleBasedDistribution(),
         ]
 
     def get_all_regions(self) -> list[str]:

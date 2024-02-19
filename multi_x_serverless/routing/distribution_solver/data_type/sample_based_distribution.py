@@ -10,11 +10,11 @@ T = TypeVar("T", bound="Distribution")
 class SampleBasedDistribution(Distribution):
     _max_sample_size: int
 
-    def __init__(self, samples: np.ndarray, max_sample_size: int = 1000):
+    def __init__(self, samples: np.ndarray = np.empty((0.0,)), max_sample_size: int = 1000):
         super().__init__()
         samples.sort()
         self._samples: np.ndarray = samples
-        self._non_zero_samples: np.ndarray = samples[samples != 0]
+        self._non_zero_samples: np.ndarray = samples[samples != 0.0]
         self._max_sample_size = max_sample_size
 
     def get_merged_distribution(self, parent_distributions: list[T]) -> T:
@@ -92,25 +92,25 @@ class SampleBasedDistribution(Distribution):
 
         raise TypeError(f"Unsupported operand type for +: '{type(self).__name__}' and '{type(other).__name__}'")
 
-    def get_mean(self, ignore_zeros: bool = False) -> float:
+    def get_average(self, ignore_zeros: bool) -> float:
         samples = self._samples if not ignore_zeros else self._non_zero_samples
         return float(np.mean(samples))
 
-    def get_median(self, ignore_zeros: bool = False) -> float:
+    def get_median(self, ignore_zeros: bool) -> float:
         samples = self._samples if not ignore_zeros else self._non_zero_samples
         return float(np.median(samples))
 
-    def get_tail_latency(self, ignore_zeros: bool = False) -> float:
+    def get_tail_latency(self, ignore_zeros: bool) -> float:
         return self.get_percentile(self._tail_latency_threshold, ignore_zeros)
 
-    def get_min(self, ignore_zeros: bool = False) -> float:
+    def get_min(self, ignore_zeros: bool) -> float:
         samples = self._samples if not ignore_zeros else self._non_zero_samples
         return float(np.min(samples))
 
-    def get_max(self, ignore_zeros: bool = False) -> float:
+    def get_max(self, ignore_zeros: bool) -> float:
         samples = self._samples if not ignore_zeros else self._non_zero_samples
         return float(np.max(samples))
 
-    def get_percentile(self, percentile: int, ignore_zeros: bool = False) -> float:
+    def get_percentile(self, percentile: int, ignore_zeros: bool) -> float:
         samples = self._samples if not ignore_zeros else self._non_zero_samples
         return float(np.percentile(samples, percentile))
