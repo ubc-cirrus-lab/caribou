@@ -9,7 +9,7 @@ import uuid
 from types import FrameType
 from typing import Any, Callable, Optional
 
-from multi_x_serverless.common.constants import WORKFLOW_PLACEMENT_DECISION_TABLE
+from multi_x_serverless.common.constants import LOG_VERSION, WORKFLOW_PLACEMENT_DECISION_TABLE
 from multi_x_serverless.common.models.endpoints import Endpoints
 from multi_x_serverless.common.models.remote_client.remote_client_factory import RemoteClientFactory
 from multi_x_serverless.common.utils import get_function_source
@@ -18,7 +18,9 @@ from multi_x_serverless.deployment.client.multi_x_serverless_function import Mul
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-formatter = logging.Formatter("%(asctime)s.%(msecs)03d %(message)s", datefmt="%s")
+formatter = logging.Formatter(
+    f"TIME (%(asctime)s) LEVEL (%(levelname)s) MESSAGE (%(message)s) LOG_VERSION ({LOG_VERSION})"
+)
 handler = logging.StreamHandler()
 handler.setFormatter(formatter)
 
@@ -142,7 +144,7 @@ class MultiXServerlessWorkflow:
                     break
 
         logger.info(
-            "INVOKING_SUCCESSOR: %s: INSTANCE (%s) calling SUCCESSOR (%s) with PAYLOAD_SIZE (%s) GB",
+            "INVOKING_SUCCESSOR: RUN_ID (%s): INSTANCE (%s) calling SUCCESSOR (%s) with PAYLOAD_SIZE (%s) GB",
             workflow_placement_decision["run_id"],
             current_instance_name,
             successor_instance_name,
@@ -472,7 +474,7 @@ class MultiXServerlessWorkflow:
                     payload = argument
 
                     logger.info(
-                        "ENTRY_POINT: %s: Entry Point of workflow %s called with payload size %s GB",
+                        "ENTRY_POINT: RUN_ID (%s): Entry Point of workflow %s called with payload size %s GB",
                         wrapper.workflow_placement_decision["run_id"],  # type: ignore
                         f"{self.name}-{self.version}",
                         len(json.dumps(payload).encode("utf-8")) / (1024**3),
@@ -487,7 +489,7 @@ class MultiXServerlessWorkflow:
                     payload = argument.get("payload", {})
 
                 logger.info(
-                    "INVOKED: %s: INSTANCE (%s) called",
+                    "INVOKED: RUN_ID (%s): INSTANCE (%s) called",
                     wrapper.workflow_placement_decision["run_id"],  # type: ignore
                     wrapper.workflow_placement_decision["current_instance_name"],  # type: ignore
                 )
@@ -498,7 +500,7 @@ class MultiXServerlessWorkflow:
                 end_time = time.time()
 
                 logger.info(
-                    "EXECUTED: %s: INSTANCE (%s) executed TIME (%s) seconds",
+                    "EXECUTED: RUN_ID (%s): INSTANCE (%s) executed EXECUTION_TIME (%s) seconds",
                     wrapper.workflow_placement_decision["run_id"],  # type: ignore
                     wrapper.workflow_placement_decision["current_instance_name"],  # type: ignore
                     end_time - start_time,

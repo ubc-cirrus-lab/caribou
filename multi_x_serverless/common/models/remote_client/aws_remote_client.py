@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import subprocess
 import tempfile
@@ -13,6 +14,8 @@ from botocore.exceptions import ClientError
 from multi_x_serverless.common.constants import SYNC_MESSAGES_TABLE, SYNC_PREDECESSOR_COUNTER_TABLE
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
 from multi_x_serverless.deployment.common.deploy.models.resource import Resource
+
+logger = logging.getLogger(__name__)
 
 
 class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
@@ -184,10 +187,10 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
     def build_docker_image(self, context_path: str, image_name: str) -> None:
         try:
             subprocess.run(["docker", "build", "--platform", "linux/amd64", "-t", image_name, context_path], check=True)
-            print(f"Docker image {image_name} built successfully.")
+            logger.info("Docker image %s built successfully.", image_name)
         except subprocess.CalledProcessError as e:
-            # This will catch errors from the subprocess and print a message.
-            print(f"Failed to build Docker image {image_name}. Error: {e}")
+            # This will catch errors from the subprocess and logger.info a message.
+            logger.error("Failed to build Docker image %s. Error: %s", image_name, e)
 
     def upload_image_to_ecr(self, image_name: str) -> str:
         ecr_client = self._client("ecr")
@@ -214,9 +217,9 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         try:
             subprocess.run(["docker", "tag", image_name, image_uri], check=True)
             subprocess.run(["docker", "push", image_uri], check=True)
-            print(f"Successfully pushed Docker image {image_uri} to ECR.")
+            logger.info("Successfully pushed Docker image %s to ECR.", image_uri)
         except subprocess.CalledProcessError as e:
-            print(f"Failed to push Docker image {image_name} to ECR. Error: {e}")
+            logger.error("Failed to push Docker image %s to ECR. Error: %s", image_name, e)
             raise
 
         return image_uri
@@ -268,7 +271,7 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         try:
             response = client.update_function_configuration(**kwargs)
         except ClientError as e:
-            print(f"Error while updating function configuration: {e}")
+            logger.error("Error while updating function configuration: %s", e)
 
         if response.get("State") != "Active":
             self._wait_for_function_to_become_active(function_name)
@@ -452,7 +455,7 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
                 ExpressionAttributeNames={"#pk": "key"},
             )
         except client.exceptions.DynamoDBError as e:
-            print(f"Error querying DynamoDB: {e}")
+            logger.error("Error querying DynamoDB: %s", e)
             return []
 
         return [item.get("value", {}).get("S", "") for item in response.get("Items", [])]
@@ -479,7 +482,7 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
                 Limit=1,
             )
         except client.exceptions.DynamoDBError as e:
-            print(f"Error querying DynamoDB: {e}")
+            logger.error("Error querying DynamoDB: %s", e)
             return "", ""
 
         # Check if any items were returned

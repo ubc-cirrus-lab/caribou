@@ -1,4 +1,5 @@
 import json
+import logging
 from typing import Any, Optional
 
 import botocore.exceptions
@@ -17,6 +18,8 @@ from multi_x_serverless.routing.solver.coarse_grained_solver import CoarseGraine
 from multi_x_serverless.routing.solver.solver import Solver
 from multi_x_serverless.routing.solver.stochastic_heuristic_descent_solver import StochasticHeuristicDescentSolver
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
+
+logger = logging.getLogger(__name__)
 
 
 class Client:

@@ -1,12 +1,16 @@
 import json
+import logging
 import re
+from collections import defaultdict
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, Optional
 
-from multi_x_serverless.common.constants import DEPLOYMENT_MANAGER_RESOURCE_TABLE, WORKFLOW_SUMMARY_TABLE
+from multi_x_serverless.common.constants import DEPLOYMENT_MANAGER_RESOURCE_TABLE, LOG_VERSION, WORKFLOW_SUMMARY_TABLE
 from multi_x_serverless.common.models.endpoints import Endpoints
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
 from multi_x_serverless.common.models.remote_client.remote_client_factory import RemoteClientFactory
+
+logger = logging.getLogger(__name__)
 
 
 class DatastoreSyncer:
@@ -20,31 +24,51 @@ class DatastoreSyncer:
         )
 
         for workflow_id, deployment_manager_config_json in currently_deployed_workflows.items():
-            print(f"Processing workflow: {workflow_id}")
+            logging.info("Processing workflow: %s", workflow_id)
             if not isinstance(deployment_manager_config_json, str):
-                raise Exception(f"The deployment manager resource value for workflow_id: {workflow_id} is not a string")
+                raise RuntimeError(
+                    f"The deployment manager resource value for workflow_id: {workflow_id} is not a string"
+                )
             self.process_workflow(workflow_id, deployment_manager_config_json)
 
     def process_workflow(self, workflow_id: str, deployment_manager_config_json: str) -> None:
-        workflow_summary_instance = self.initialize_workflow_summary_instance()
+        workflow_summary_instance = self._initialize_workflow_summary_instance()
 
-        last_synced_time = self.get_last_synced_time(workflow_id)
+        last_synced_time = self._get_last_synced_time(workflow_id)
         new_last_sync_time = datetime.now()
         workflow_summary_instance["time_since_last_sync"] = (new_last_sync_time - last_synced_time).total_seconds() / (
             24 * 60 * 60
         )
 
         deployment_manager_config = json.loads(deployment_manager_config_json)
-        self.validate_deployment_manager_config(deployment_manager_config, workflow_id)
+        self._validate_deployment_manager_config(deployment_manager_config, workflow_id)
 
         deployed_region_json = deployment_manager_config.get("deployed_regions")
         deployed_region: dict[str, dict[str, str]] = json.loads(deployed_region_json)
 
+        latency_summary: dict[str, dict[str, dict[str, dict[str, Any]]]] = defaultdict(
+            lambda: defaultdict(lambda: defaultdict(dict))
+        )
+        latency_summary_successor_before_caller_store: dict[str, dict[str, dict[str, Any]]] = defaultdict(
+            lambda: defaultdict(dict)
+        )
+
         total_invocations = 0
         for function_physical_instance, provider_region in deployed_region.items():
-            total_invocations += self.process_function_instance(
-                function_physical_instance, provider_region, workflow_summary_instance, last_synced_time
+            total_invocations += self._process_function_instance(
+                function_physical_instance,
+                provider_region,
+                workflow_summary_instance,
+                last_synced_time,
+                latency_summary,  # type: ignore
+                latency_summary_successor_before_caller_store,  # type: ignore
             )
+
+        latency_aggregates = self._cleanup_latency_summary(
+            latency_summary, latency_summary_successor_before_caller_store  # type: ignore
+        )
+
+        self._update_workflow_summary_with_latency_summary(workflow_summary_instance, latency_aggregates)
 
         workflow_summary_instance["total_invocations"] = total_invocations
 
@@ -57,12 +81,87 @@ class DatastoreSyncer:
             workflow_summary_instance_json,
         )
 
-    def initialize_workflow_summary_instance(self) -> dict[str, Any]:
+    def _update_workflow_summary_with_latency_summary(
+        self,
+        workflow_summary_instance: dict[str, Any],
+        latency_aggregates: dict[str, dict[str, dict[str, dict[str, Any]]]],
+    ) -> None:
+        for caller_instance, caller_data in workflow_summary_instance["instance_summary"].items():
+            for callee_instance, outgoing_providers in caller_data["invocation_summary"].items():
+                for outgoing_provider, incoming_providers in outgoing_providers["transmission_summary"].items():
+                    for incoming_provider, latency_summary in incoming_providers.items():
+                        latency_summary["average_latency"] = latency_aggregates[caller_instance][callee_instance][
+                            outgoing_provider
+                        ][incoming_provider]["average_latency"]
+                        latency_summary["tail_latency"] = latency_aggregates[caller_instance][callee_instance][
+                            outgoing_provider
+                        ][incoming_provider]["tail_latency"]
+                        latency_summary["transmission_count"] = latency_aggregates[caller_instance][callee_instance][
+                            outgoing_provider
+                        ][incoming_provider]["transmission_count"]
+
+    def _cleanup_latency_summary(
+        self,
+        latency_summary: dict[str, dict[str, dict[str, dict[str, Any]]]],
+        latency_summary_successor_before_caller_store: dict[str, dict[str, dict[str, Any]]],
+    ) -> dict[str, dict[str, dict[str, dict[str, Any]]]]:
+        for run_id, caller_data in latency_summary.items():
+            for _, successor_latency in caller_data.items():
+                for successor_instance, latency in successor_latency.items():
+                    if latency["end_time"] is None:
+                        if (
+                            run_id in latency_summary_successor_before_caller_store
+                            and successor_instance in latency_summary_successor_before_caller_store[run_id]
+                        ):
+                            latency["end_time"] = latency_summary_successor_before_caller_store[run_id][
+                                successor_instance
+                            ]["end_time"]
+                            latency["incoming_provider"] = latency_summary_successor_before_caller_store[run_id][
+                                successor_instance
+                            ]["incoming_provider"]
+
+        aggregated_data: dict[str, dict[str, dict[str, dict[str, Any]]]] = {}
+
+        # Step 1: Aggregate the latencies
+        for run_id, caller_data in latency_summary.items():
+            for caller_id, callee_data in caller_data.items():
+                for callee_id, details in callee_data.items():
+                    outgoing_provider = details["outgoing_provider"]
+                    incoming_provider = details["incoming_provider"]
+                    latency = details["end_time"] - details["start_time"]
+
+                    caller_agg = aggregated_data.setdefault(caller_id, {})
+                    callee_agg = caller_agg.setdefault(callee_id, {})
+                    outgoing_agg = callee_agg.setdefault(outgoing_provider, {})
+                    incoming_agg = outgoing_agg.setdefault(
+                        incoming_provider, {"latencies": [], "transmission_count": 0}
+                    )
+
+                    incoming_agg["latencies"].append(latency)
+                    incoming_agg["transmission_count"] += 1
+
+        # Step 2: Calculate the aggregated latencies
+        for caller_id, callee_data in aggregated_data.items():
+            for callee_id, outgoing_data in callee_data.items():
+                for outgoing_provider, incoming_data in outgoing_data.items():
+                    for incoming_provider, stats in incoming_data.items():
+                        latencies = stats["latencies"]
+                        average_latency = sum(latencies) / len(latencies) if latencies else 0
+                        tail_latency = max(latencies) if latencies else 0
+
+                        stats["average_latency"] = average_latency
+                        stats["tail_latency"] = tail_latency
+
+                        del stats["latencies"]
+
+        return aggregated_data
+
+    def _initialize_workflow_summary_instance(self) -> dict[str, Any]:
         workflow_summary_instance: dict[str, Any] = {}
         workflow_summary_instance["instance_summary"] = {}
         return workflow_summary_instance
 
-    def get_last_synced_time(self, workflow_id: str) -> datetime:
+    def _get_last_synced_time(self, workflow_id: str) -> datetime:
         last_synced_log = self.endpoints.get_datastore_client().get_last_value_from_sort_key_table(
             WORKFLOW_SUMMARY_TABLE, workflow_id
         )
@@ -70,20 +169,24 @@ class DatastoreSyncer:
         if last_synced_log and len(last_synced_log[0]) > 0:
             last_synced_time_str = last_synced_log[0]
             return datetime.strptime(last_synced_time_str, "%Y-%m-%d %H:%M:%S.%f")
-        else:
-            return datetime.now() - timedelta(days=1)
+        return datetime.now() - timedelta(days=1)
 
-    def validate_deployment_manager_config(self, deployment_manager_config: dict[str, Any], workflow_id: str) -> None:
+    def _validate_deployment_manager_config(self, deployment_manager_config: dict[str, Any], workflow_id: str) -> None:
         if "deployed_regions" not in deployment_manager_config:
-            raise Exception(f"deployed_regions not found in deployment_manager_config for workflow_id: {workflow_id}")
+            raise RuntimeError(
+                f"deployed_regions not found in deployment_manager_config for workflow_id: {workflow_id}"
+            )
 
-    def process_function_instance(
+    def _process_function_instance(
         self,
         function_instance: str,
         provider_region: dict[str, str],
         workflow_summary_instance: dict[str, Any],
         last_synced_time: datetime,
+        latency_summary: dict[str, dict[str, dict[str, dict[str, Any]]]],
+        latency_summary_successor_before_caller_store: dict[str, dict[str, dict[str, Any]]],
     ) -> int:
+        logger.info("Processing function instance: %s", function_instance)
         if (provider_region["provider"], provider_region["region"]) not in self._region_clients:
             self._region_clients[
                 (provider_region["provider"], provider_region["region"])
@@ -93,9 +196,15 @@ class DatastoreSyncer:
             (provider_region["provider"], provider_region["region"])
         ].get_logs_since_last_sync(function_instance, last_synced_time)
 
-        return self.process_logs(logs, function_instance, provider_region, workflow_summary_instance)
+        return self._process_logs(
+            logs,
+            provider_region,
+            workflow_summary_instance,
+            latency_summary,
+            latency_summary_successor_before_caller_store,
+        )
 
-    def initialize_instance_summary(
+    def _initialize_instance_summary(
         self, function_instance: str, provider_region: dict[str, str], workflow_summary_instance: dict[str, Any]
     ) -> None:
         if function_instance not in workflow_summary_instance["instance_summary"]:
@@ -122,12 +231,152 @@ class DatastoreSyncer:
                 "tail_runtime": 0,
             }
 
-    def process_logs(
+    def _extract_invoked_logs(
         self,
-        logs: list[str],
-        function_instance: str,
+        log_entry: str,
         provider_region: dict[str, str],
         workflow_summary_instance: dict[str, Any],
+        latency_summary: dict[str, dict[str, dict[str, dict[str, Any]]]],
+        latency_summary_successor_before_caller_store: dict[str, dict[str, dict[str, Any]]],
+        run_id: str,
+        end_time: float,
+    ) -> None:
+        function_invoked = self._extract_from_string(log_entry, r"INSTANCE \((.*?)\)")
+        if not isinstance(function_invoked, str):
+            return
+        self._initialize_instance_summary(function_invoked, provider_region, workflow_summary_instance)
+        workflow_summary_instance["instance_summary"][function_invoked]["invocation_count"] += 1
+        workflow_summary_instance["instance_summary"][function_invoked]["execution_summary"][
+            f"{provider_region['provider']}:{provider_region['region']}"
+        ]["invocation_count"] += 1
+        self._update_invoked_latency_summary(
+            run_id,
+            function_invoked,
+            end_time,
+            latency_summary,
+            latency_summary_successor_before_caller_store,
+            provider_region,
+        )
+
+    def _update_invoked_latency_summary(
+        self,
+        run_id: str,
+        instance_name: str,
+        end_time: float,
+        latency_summary: dict[str, dict[str, dict[str, dict[str, Any]]]],
+        latency_summary_successor_before_caller_store: dict[str, dict[str, dict[str, Any]]],
+        provider_region: dict[str, str],
+    ) -> None:
+        found = False
+        provider_region_str = f"{provider_region['provider']}:{provider_region['region']}"
+        for _, functions in latency_summary.items():
+            for _, successors in functions.items():
+                for callee_instance, latency in successors.items():
+                    if callee_instance == instance_name:
+                        # Found the corresponding successor entry, update end_time
+                        latency["end_time"] = end_time
+                        latency["incoming_provider"] = provider_region_str
+                        found = True
+                        break
+
+        if not found:
+            # If the corresponding successor entry was not found,
+            # store the end_time in latency_summary_successor_before_caller_store
+            latency_summary_successor_before_caller_store[run_id][instance_name] = {
+                "end_time": end_time,
+                "incoming_provider": provider_region_str,
+            }
+
+    def _update_invoking_successor_latency_summary(
+        self,
+        run_id: str,
+        instance_name: str,
+        successor_name: str,
+        start_time: float,
+        latency_summary: dict[str, dict[str, dict[str, dict[str, Any]]]],
+        provider_region: dict[str, str],
+    ) -> None:
+        # Ensure the structure exists
+        run_entry = latency_summary.setdefault(run_id, {})
+        instance_entry = run_entry.setdefault(instance_name, {})
+        successor_entry = instance_entry.setdefault(
+            successor_name, {"start_time": None, "end_time": None, "outgoing_provider": None, "incoming_provider": None}
+        )
+
+        # Only update start_time if it's not already set (to handle out-of-order logs)
+        if successor_entry["start_time"] is None:
+            successor_entry["start_time"] = start_time
+            provider_region_str = f"{provider_region['provider']}:{provider_region['region']}"
+            successor_entry["outgoing_provider"] = provider_region_str
+
+    def _extract_executed_logs(self, log_entry: str, runtimes: dict[str, list[float]]) -> None:
+        function_executed = self._extract_from_string(log_entry, r"INSTANCE \((.*?)\)")
+        if not isinstance(function_executed, str):
+            return
+        duration = self._extract_from_string(log_entry, r"EXECUTION_TIME \((.*?)\)")
+        if duration:
+            duration = float(duration)  # type: ignore
+        if not isinstance(duration, float):
+            return
+        if function_executed not in runtimes:
+            runtimes[function_executed] = []
+        runtimes[function_executed].append(duration)
+
+    def _extract_from_string(self, log_entry: str, regex: str) -> Optional[str]:
+        match = re.search(regex, log_entry)
+        return match.group(1) if match else None
+
+    def _extract_invoking_successor_logs(
+        self,
+        log_entry: str,
+        provider_region: dict[str, str],
+        workflow_summary_instance: dict[str, Any],
+        data_transfer_sizes: dict[str, dict[str, list[float]]],
+        latency_summary: dict[str, dict[str, dict[str, dict[str, Any]]]],
+        run_id: str,
+        start_time: float,
+    ) -> None:
+        caller_function = self._extract_from_string(log_entry, r"INSTANCE \((.*?)\)")
+        if not isinstance(caller_function, str):
+            return
+        self._initialize_instance_summary(caller_function, provider_region, workflow_summary_instance)
+        successor_function = self._extract_from_string(log_entry, r"SUCCESSOR \((.*?)\)")
+        if not isinstance(successor_function, str):
+            return
+
+        self._update_invoking_successor_latency_summary(
+            run_id, caller_function, successor_function, start_time, latency_summary, provider_region
+        )
+        if (
+            successor_function
+            not in workflow_summary_instance["instance_summary"][caller_function]["invocation_summary"]
+        ):
+            workflow_summary_instance["instance_summary"][caller_function]["invocation_summary"][successor_function] = {
+                "invocation_count": 0,
+                "average_data_transfer_size": 0,
+                "transmission_summary": {},
+            }
+        workflow_summary_instance["instance_summary"][caller_function]["invocation_summary"][successor_function][
+            "invocation_count"
+        ] += 1
+        if caller_function not in data_transfer_sizes:
+            data_transfer_sizes[caller_function] = {}
+        if successor_function not in data_transfer_sizes[caller_function]:
+            data_transfer_sizes[caller_function][successor_function] = []
+        data_transfer_size = self._extract_from_string(log_entry, r"PAYLOAD_SIZE \((.*?)\)")
+        if data_transfer_size:
+            data_transfer_size = float(data_transfer_size)  # type: ignore
+        if not isinstance(data_transfer_size, float):
+            return
+        data_transfer_sizes[caller_function][successor_function].append(data_transfer_size)
+
+    def _process_logs(
+        self,
+        logs: list[str],
+        provider_region: dict[str, str],
+        workflow_summary_instance: dict[str, Any],
+        latency_summary: dict[str, dict[str, dict[str, dict[str, Any]]]],
+        latency_summary_successor_before_caller_store: dict[str, dict[str, dict[str, Any]]],
     ) -> int:
         entry_point_invocation_count = 0
 
@@ -135,68 +384,40 @@ class DatastoreSyncer:
         runtimes: dict[str, list[float]] = {}
 
         for log_entry in logs:
+            if f"LOG_VERSION: ({LOG_VERSION})" not in log_entry:
+                continue
+            run_id = self._extract_from_string(log_entry, r"RUN_ID \((.*?)\)")
+            if not isinstance(run_id, str):
+                continue
+            log_time = self._extract_from_string(log_entry, r"TIME \((.*?)\)")
+            if log_time:
+                log_time = float(log_time)  # type: ignore
+            if not isinstance(log_time, float):
+                continue
             if "ENTRY_POINT" in log_entry:
                 entry_point_invocation_count += 1
             if "INVOKED" in log_entry:
-                function_invoked = re.search(r"INSTANCE \((.*?)\)", log_entry)
-                if function_invoked:
-                    function_instance_str = function_invoked.group(1)
-                    if not isinstance(function_instance_str, str):
-                        continue
-                    self.initialize_instance_summary(function_instance_str, provider_region, workflow_summary_instance)
-                    workflow_summary_instance["instance_summary"][function_instance_str]["invocation_count"] += 1
-                    workflow_summary_instance["instance_summary"][function_instance_str]["execution_summary"][
-                        f"{provider_region['provider']}:{provider_region['region']}"
-                    ]["invocation_count"] += 1
+                self._extract_invoked_logs(
+                    log_entry,
+                    provider_region,
+                    workflow_summary_instance,
+                    latency_summary,
+                    latency_summary_successor_before_caller_store,
+                    run_id,
+                    log_time,
+                )
             if "EXECUTED" in log_entry:
-                function_executed = re.search(r"INSTANCE \((.*?)\)", log_entry)
-                if function_executed:
-                    function_executed_str = function_executed.group(1)
-                    duration = re.search(r"TIME \((.*?)\)", log_entry)
-                    if duration:
-                        runtime = float(duration.group(1))
-                        if not isinstance(runtime, float):
-                            continue
-                        if function_executed_str not in runtimes:
-                            runtimes[function_executed_str] = []
-                        runtimes[function_executed_str].append(runtime)
+                self._extract_executed_logs(log_entry, runtimes)
             if "INVOKING_SUCCESSOR" in log_entry:
-                caller_function = re.search(r"INSTANCE \((.*?)\)", log_entry)
-                if caller_function:
-                    caller_function_str = caller_function.group(1)
-                    if not isinstance(caller_function_str, str):
-                        continue
-                    self.initialize_instance_summary(caller_function_str, provider_region, workflow_summary_instance)
-                    successor_function = re.search(r"SUCCESSOR \((.*?)\)", log_entry)
-                    if successor_function:
-                        successor_function_str = successor_function.group(1)
-                        if not isinstance(successor_function_str, str):
-                            continue
-                        if (
-                            successor_function_str
-                            not in workflow_summary_instance["instance_summary"][caller_function_str][
-                                "invocation_summary"
-                            ]
-                        ):
-                            workflow_summary_instance["instance_summary"][caller_function_str]["invocation_summary"][
-                                successor_function_str
-                            ] = {
-                                "invocation_count": 0,
-                                "average_data_transfer_size": 0,
-                                "transmission_summary": {},
-                            }
-                        workflow_summary_instance["instance_summary"][caller_function_str]["invocation_summary"][
-                            successor_function_str
-                        ]["invocation_count"] += 1
-                    if caller_function_str not in data_transfer_sizes:
-                        data_transfer_sizes[caller_function_str] = {}
-                    if successor_function_str not in data_transfer_sizes[caller_function_str]:
-                        data_transfer_sizes[caller_function_str][successor_function_str] = []
-                    data_transfer_size = re.search(r"PAYLOAD_SIZE \((.*?)\)", log_entry)
-                    if data_transfer_size:
-                        data_transfer_sizes[caller_function_str][successor_function_str].append(
-                            float(data_transfer_size.group(1))
-                        )
+                self._extract_invoking_successor_logs(
+                    log_entry,
+                    provider_region,
+                    workflow_summary_instance,
+                    data_transfer_sizes,
+                    latency_summary,
+                    run_id,
+                    log_time,
+                )
 
         for caller_function_instance, successor_functions_instances in data_transfer_sizes.items():
             for successor_function_instance, data_transfer_size_list in successor_functions_instances.items():
