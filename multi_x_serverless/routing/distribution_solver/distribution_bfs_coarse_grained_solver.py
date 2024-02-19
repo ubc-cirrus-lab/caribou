@@ -36,10 +36,11 @@ class DistributionBFSFineGrainedSolver(DistributionSolver):
             ]
         ] = []
 
-        ## Save in the format of dict(index_of_node, possible deployments list
-        ## (dict(index_of_node, index_of_region), runtime_distribution, wc_runtime, pc_runtime))
-        deployments: dict[int, tuple[Distribution, float, float]] = {}
         for current_region_index in permitted_regions:
+            ## Save in the format of dict(index_of_node, possible deployments list
+            ## (dict(index_of_node, index_of_region), runtime_distribution, wc_runtime, pc_runtime))
+            deployments: dict[int, tuple[Distribution, float, float]] = {}
+
             # The following variables are the current cost and carbon of the BFS
 
             ## Worse case and Experimental Probabilitic Case cost and carbon
@@ -159,8 +160,6 @@ class DistributionBFSFineGrainedSolver(DistributionSolver):
 
                 # Manage memory
                 self._manage_memory(deployments, successor_dictionary, prerequisites_indices, processed_node_indices)
-
-            deployments = {}
 
         return final_deployments
 
