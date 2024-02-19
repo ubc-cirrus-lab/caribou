@@ -88,17 +88,7 @@ class DatastoreSyncer:
     ) -> None:
         for caller_instance, caller_data in workflow_summary_instance["instance_summary"].items():
             for callee_instance, outgoing_providers in caller_data["invocation_summary"].items():
-                for outgoing_provider, incoming_providers in outgoing_providers["transmission_summary"].items():
-                    for incoming_provider, latency_summary in incoming_providers.items():
-                        latency_summary["average_latency"] = latency_aggregates[caller_instance][callee_instance][
-                            outgoing_provider
-                        ][incoming_provider]["average_latency"]
-                        latency_summary["tail_latency"] = latency_aggregates[caller_instance][callee_instance][
-                            outgoing_provider
-                        ][incoming_provider]["tail_latency"]
-                        latency_summary["transmission_count"] = latency_aggregates[caller_instance][callee_instance][
-                            outgoing_provider
-                        ][incoming_provider]["transmission_count"]
+                outgoing_providers["transmission_summary"] = latency_aggregates[caller_instance][callee_instance]
 
     def _cleanup_latency_summary(
         self,
@@ -188,9 +178,9 @@ class DatastoreSyncer:
     ) -> int:
         logger.info("Processing function instance: %s", function_instance)
         if (provider_region["provider"], provider_region["region"]) not in self._region_clients:
-            self._region_clients[
-                (provider_region["provider"], provider_region["region"])
-            ] = RemoteClientFactory.get_remote_client(provider_region["provider"], provider_region["region"])
+            self._region_clients[(provider_region["provider"], provider_region["region"])] = (
+                RemoteClientFactory.get_remote_client(provider_region["provider"], provider_region["region"])
+            )
 
         logs: list[str] = self._region_clients[
             (provider_region["provider"], provider_region["region"])
@@ -384,14 +374,14 @@ class DatastoreSyncer:
         runtimes: dict[str, list[float]] = {}
 
         for log_entry in logs:
-            if f"LOG_VERSION: ({LOG_VERSION})" not in log_entry:
+            if f"LOG_VERSION ({LOG_VERSION})" not in log_entry:
                 continue
             run_id = self._extract_from_string(log_entry, r"RUN_ID \((.*?)\)")
             if not isinstance(run_id, str):
                 continue
             log_time = self._extract_from_string(log_entry, r"TIME \((.*?)\)")
             if log_time:
-                log_time = float(log_time)  # type: ignore
+                log_time = datetime.strptime(log_time, "%Y-%m-%d %H:%M:%S,%f").timestamp()
             if not isinstance(log_time, float):
                 continue
             if "ENTRY_POINT" in log_entry:
