@@ -1,7 +1,11 @@
 name: linting-and-tests
 on:
   pull_request:
-    types: [ready_for_review]
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
     branches:
       - main
 
@@ -12,6 +16,7 @@ defaults:
 jobs:
   pep8:
     runs-on: ubuntu-latest
+    if: ${{ !github.event.pull_request.draft }}
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v2
@@ -24,6 +29,7 @@ jobs:
 
   pylint:
     runs-on: ubuntu-latest
+    if: ${{ !github.event.pull_request.draft }}
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v2
@@ -36,6 +42,7 @@ jobs:
 
   pytest:
     runs-on: ubuntu-latest
+    if: ${{ !github.event.pull_request.draft }}
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v2
@@ -54,6 +61,7 @@ jobs:
 
   mypy:
     runs-on: ubuntu-latest
+    if: ${{ !github.event.pull_request.draft }}
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v2
@@ -66,6 +74,7 @@ jobs:
 
   isort:
     runs-on: ubuntu-latest
+    if: ${{ !github.event.pull_request.draft }}
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v2
@@ -78,6 +87,7 @@ jobs:
 
   integration-tests:
     runs-on: ubuntu-latest
+    if: ${{ !github.event.pull_request.draft }}
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v2

@@ -178,9 +178,9 @@ class DatastoreSyncer:
     ) -> int:
         logger.info("Processing function instance: %s", function_instance)
         if (provider_region["provider"], provider_region["region"]) not in self._region_clients:
-            self._region_clients[(provider_region["provider"], provider_region["region"])] = (
-                RemoteClientFactory.get_remote_client(provider_region["provider"], provider_region["region"])
-            )
+            self._region_clients[
+                (provider_region["provider"], provider_region["region"])
+            ] = RemoteClientFactory.get_remote_client(provider_region["provider"], provider_region["region"])
 
         logs: list[str] = self._region_clients[
             (provider_region["provider"], provider_region["region"])
@@ -381,7 +381,7 @@ class DatastoreSyncer:
                 continue
             log_time = self._extract_from_string(log_entry, r"TIME \((.*?)\)")
             if log_time:
-                log_time = datetime.strptime(log_time, "%Y-%m-%d %H:%M:%S,%f").timestamp()
+                log_time = datetime.strptime(log_time, "%Y-%m-%d %H:%M:%S,%f").timestamp()  # type: ignore
             if not isinstance(log_time, float):
                 continue
             if "ENTRY_POINT" in log_entry:

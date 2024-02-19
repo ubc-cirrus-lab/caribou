@@ -40,11 +40,11 @@ class TestDatastoreSyncer(unittest.TestCase):
 
     def test_process_logs(self):
         logs = [
-            f"TIME (1) LEVEL (info) MESSAGE (ENTRY_POINT: RUN_ID (123)) LOG_VERSION: ({LOG_VERSION})",
-            f"TIME (2) LEVEL (info) MESSAGE (INVOKED: RUN_ID (123) INSTANCE (function1)) LOG_VERSION: ({LOG_VERSION})",
-            f"TIME (3) LEVEL (info) MESSAGE (EXECUTED: RUN_ID (123) INSTANCE (function1) EXECUTION_TIME (100)) LOG_VERSION: ({LOG_VERSION})",
-            f"TIME (4) LEVEL (info) MESSAGE (INVOKED: RUN_ID (123) INSTANCE (function1)) LOG_VERSION: ({LOG_VERSION})",
-            f"TIME (5) LEVEL (info) MESSAGE (EXECUTED: RUN_ID (123) INSTANCE (function1) EXECUTION_TIME (200)) LOG_VERSION: ({LOG_VERSION})",
+            f"TIME (2024-01-01 00:01:00,000000) LEVEL (info) MESSAGE (ENTRY_POINT: RUN_ID (123)) LOG_VERSION ({LOG_VERSION})",
+            f"TIME (2024-01-01 00:02:00,000000) LEVEL (info) MESSAGE (INVOKED: RUN_ID (123) INSTANCE (function1)) LOG_VERSION ({LOG_VERSION})",
+            f"TIME (2024-01-01 00:03:00,000000) LEVEL (info) MESSAGE (EXECUTED: RUN_ID (123) INSTANCE (function1) EXECUTION_TIME (100)) LOG_VERSION ({LOG_VERSION})",
+            f"TIME (2024-01-01 00:04:00,000000) LEVEL (info) MESSAGE (INVOKED: RUN_ID (123) INSTANCE (function1)) LOG_VERSION ({LOG_VERSION})",
+            f"TIME (2024-01-01 00:05:00,000000) LEVEL (info) MESSAGE (EXECUTED: RUN_ID (123) INSTANCE (function1) EXECUTION_TIME (200)) LOG_VERSION ({LOG_VERSION})",
         ]
         function_instance = "function1"
         provider_region = {"provider": "aws", "region": "us-east-1"}
@@ -100,13 +100,13 @@ class TestDatastoreSyncer(unittest.TestCase):
 
     def test_process_logs_with_invocation_summary(self):
         logs = [
-            f"TIME (1) LEVEL (info) MESSAGE (ENTRY_POINT: RUN_ID (123)) LOG_VERSION: ({LOG_VERSION})",
-            f"TIME (2) LEVEL (info) MESSAGE (INVOKED: RUN_ID (123) INSTANCE (function1)) LOG_VERSION: ({LOG_VERSION})",
-            f"TIME (3) LEVEL (info) MESSAGE (EXECUTED: RUN_ID (123) INSTANCE (function1) EXECUTION_TIME (100)) LOG_VERSION: ({LOG_VERSION})",
-            f"TIME (4) LEVEL (info) MESSAGE (INVOKED: RUN_ID (123) INSTANCE (function1)) LOG_VERSION: ({LOG_VERSION})",
-            f"TIME (5) LEVEL (info) MESSAGE (EXECUTED: RUN_ID (123) INSTANCE (function1) EXECUTION_TIME (200)) LOG_VERSION: ({LOG_VERSION})",
-            f"TIME (6) LEVEL (info) MESSAGE (INVOKING_SUCCESSOR: RUN_ID (123): INSTANCE (function1) calling SUCCESSOR (function2) with PAYLOAD_SIZE (1) GB) LOG_VERSION: ({LOG_VERSION})",
-            f"TIME (7) LEVEL (info) MESSAGE (INVOKING_SUCCESSOR: RUN_ID (123): INSTANCE (function1) calling SUCCESSOR (function2) with PAYLOAD_SIZE (2) GB) LOG_VERSION: ({LOG_VERSION})",
+            f"TIME (1) LEVEL (info) MESSAGE (ENTRY_POINT: RUN_ID (123)) LOG_VERSION ({LOG_VERSION})",
+            f"TIME (2) LEVEL (info) MESSAGE (INVOKED: RUN_ID (123) INSTANCE (function1)) LOG_VERSION ({LOG_VERSION})",
+            f"TIME (3) LEVEL (info) MESSAGE (EXECUTED: RUN_ID (123) INSTANCE (function1) EXECUTION_TIME (100)) LOG_VERSION ({LOG_VERSION})",
+            f"TIME (4) LEVEL (info) MESSAGE (INVOKED: RUN_ID (123) INSTANCE (function1)) LOG_VERSION ({LOG_VERSION})",
+            f"TIME (5) LEVEL (info) MESSAGE (EXECUTED: RUN_ID (123) INSTANCE (function1) EXECUTION_TIME (200)) LOG_VERSION ({LOG_VERSION})",
+            f"TIME (6) LEVEL (info) MESSAGE (INVOKING_SUCCESSOR: RUN_ID (123): INSTANCE (function1) calling SUCCESSOR (function2) with PAYLOAD_SIZE (1) GB) LOG_VERSION ({LOG_VERSION})",
+            f"TIME (7) LEVEL (info) MESSAGE (INVOKING_SUCCESSOR: RUN_ID (123): INSTANCE (function1) calling SUCCESSOR (function2) with PAYLOAD_SIZE (2) GB) LOG_VERSION ({LOG_VERSION})",
         ]
         function_instance = "function1"
         provider_region = {"provider": "aws", "region": "us-east-1"}
@@ -161,18 +161,18 @@ class TestDatastoreSyncer(unittest.TestCase):
 
     def test_process_logs_with_invocation_summary(self):
         logs = [
-            f"TIME (1) LEVEL (info) MESSAGE (ENTRY_POINT: RUN_ID (123)) LOG_VERSION: ({LOG_VERSION})",
-            f"TIME (2) LEVEL (info) MESSAGE (INVOKED: RUN_ID (123) INSTANCE (function1)) LOG_VERSION: ({LOG_VERSION})",
-            f"TIME (3) LEVEL (info) MESSAGE (EXECUTED: RUN_ID (123) INSTANCE (function1) EXECUTION_TIME (100)) LOG_VERSION: ({LOG_VERSION})",
-            f"TIME (4) LEVEL (info) MESSAGE (INVOKED: RUN_ID (123) INSTANCE (function1)) LOG_VERSION: ({LOG_VERSION})",
-            f"TIME (5) LEVEL (info) MESSAGE (EXECUTED: RUN_ID (123) INSTANCE (function1) EXECUTION_TIME (200)) LOG_VERSION: ({LOG_VERSION})",
-            f"TIME (6) LEVEL (info) MESSAGE (INVOKING_SUCCESSOR: RUN_ID (123): INSTANCE (function1) calling SUCCESSOR (function2) with PAYLOAD_SIZE (1) GB) LOG_VERSION: ({LOG_VERSION})",
-            f"TIME (7) LEVEL (info) MESSAGE (INVOKING_SUCCESSOR: RUN_ID (123): INSTANCE (function1) calling SUCCESSOR (function2) with PAYLOAD_SIZE (2) GB) LOG_VERSION: ({LOG_VERSION})",
-            f"TIME (8) LEVEL (info) MESSAGE (INVOKED: RUN_ID (123) INSTANCE (function2)) LOG_VERSION: ({LOG_VERSION})",
-            f"TIME (9) LEVEL (info) MESSAGE (EXECUTED: RUN_ID (123) INSTANCE (function2) EXECUTION_TIME (300)) LOG_VERSION: ({LOG_VERSION})",
-            f"TIME (10) LEVEL (info) MESSAGE (INVOKED: RUN_ID (123) INSTANCE (function2)) LOG_VERSION: ({LOG_VERSION})",
-            f"TIME (11) LEVEL (info) MESSAGE (EXECUTED: RUN_ID (123) INSTANCE (function2) EXECUTION_TIME (150)) LOG_VERSION: ({LOG_VERSION})",
-            f"TIME (12) LEVEL (info) MESSAGE (INVOKING_SUCCESSOR: RUN_ID (123): INSTANCE (function2) calling SUCCESSOR (function3) with PAYLOAD_SIZE (4) GB) LOG_VERSION: ({LOG_VERSION})",
+            f"TIME (2024-01-01 00:00:00,000000) LEVEL (info) MESSAGE (ENTRY_POINT: RUN_ID (123)) LOG_VERSION ({LOG_VERSION})",
+            f"TIME (2024-01-01 00:01:00,000000) LEVEL (info) MESSAGE (INVOKED: RUN_ID (123) INSTANCE (function1)) LOG_VERSION ({LOG_VERSION})",
+            f"TIME (2024-01-01 00:02:00,000000) LEVEL (info) MESSAGE (EXECUTED: RUN_ID (123) INSTANCE (function1) EXECUTION_TIME (100)) LOG_VERSION ({LOG_VERSION})",
+            f"TIME (2024-01-01 00:03:00,000000) LEVEL (info) MESSAGE (INVOKED: RUN_ID (123) INSTANCE (function1)) LOG_VERSION ({LOG_VERSION})",
+            f"TIME (2024-01-01 00:04:00,000000) LEVEL (info) MESSAGE (EXECUTED: RUN_ID (123) INSTANCE (function1) EXECUTION_TIME (200)) LOG_VERSION ({LOG_VERSION})",
+            f"TIME (2024-01-01 00:05:00,000000) LEVEL (info) MESSAGE (INVOKING_SUCCESSOR: RUN_ID (123): INSTANCE (function1) calling SUCCESSOR (function2) with PAYLOAD_SIZE (1) GB) LOG_VERSION ({LOG_VERSION})",
+            f"TIME (2024-01-01 00:06:00,000000) LEVEL (info) MESSAGE (INVOKING_SUCCESSOR: RUN_ID (123): INSTANCE (function1) calling SUCCESSOR (function2) with PAYLOAD_SIZE (2) GB) LOG_VERSION ({LOG_VERSION})",
+            f"TIME (2024-01-01 00:07:00,000000) LEVEL (info) MESSAGE (INVOKED: RUN_ID (123) INSTANCE (function2)) LOG_VERSION ({LOG_VERSION})",
+            f"TIME (2024-01-01 00:08:00,000000) LEVEL (info) MESSAGE (EXECUTED: RUN_ID (123) INSTANCE (function2) EXECUTION_TIME (300)) LOG_VERSION ({LOG_VERSION})",
+            f"TIME (2024-01-01 00:09:00,000000) LEVEL (info) MESSAGE (INVOKED: RUN_ID (123) INSTANCE (function2)) LOG_VERSION ({LOG_VERSION})",
+            f"TIME (2024-01-01 00:10:00,000000) LEVEL (info) MESSAGE (EXECUTED: RUN_ID (123) INSTANCE (function2) EXECUTION_TIME (150)) LOG_VERSION ({LOG_VERSION})",
+            f"TIME (2024-01-01 00:11:00,000000) LEVEL (info) MESSAGE (INVOKING_SUCCESSOR: RUN_ID (123): INSTANCE (function2) calling SUCCESSOR (function3) with PAYLOAD_SIZE (4) GB) LOG_VERSION ({LOG_VERSION})",
         ]
         provider_region = {"provider": "aws", "region": "us-east-1"}
         workflow_summary_instance = {"instance_summary": {}}
