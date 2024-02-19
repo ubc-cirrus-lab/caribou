@@ -41,7 +41,6 @@ class RuntimeCalculator(InputCalculator):
         # If the runtime is not found, then we need to use the performance loader to estimate the relative runtime
         if runtime < 0:
             favourite_home_region = self._workflow_loader.get_favourite_region(instance_name)
-            # print(f"Favourite home region for {instance_name} is {favourite_home_region}")
             if favourite_home_region is not None:
                 # Get the performance of the instance in the favourite home region
                 favourite_region_runtime = self._workflow_loader.get_favourite_region_runtime(instance_name)
