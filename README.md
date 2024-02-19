@@ -44,26 +44,78 @@ If you execute a file without `poetry run`, it will not find the dependencies as
 
 For more information, see the [poetry documentation](https://python-poetry.org/docs/).
 
-###  Deployment Server
+###  Setup AWS Environment
 
-The deployment server can be found in `multi_x_serverless/deployment/server` and can be setup with:
+To setup the required tables and buckets in AWS, you can use the following command:
 
 ```bash
-poetry run ./multi_x_serverless/deployment/server/setup.sh
+poetry run multi_x_serverless setup_tables
 ```
+
+### Setup a new workflow
+
+To setup a new workflow, you need to be in a location where you want to create the new workflow and run:
+
+```bash
+poetry run multi_x_serverless new_workflow <workflow_name>
+```
+
+Where `<workflow_name>` is the name of the new workflow.
 
 ### Deployment Client
 
-The deployment client can be found in `multi_x_serverless/deployment/client` and can be run with:
+The deployment client has an additional dependency on `docker`. To install it, use:
 
 ```bash
-poetry run multi_x_serverless <args>
+sudo apt-get install docker.io
 ```
 
-To see the available commands, use:
+The deployment client can be found in `multi_x_serverless/deployment/client` and can be run with (needs to be run in the same directory as the workflow you want to deploy):
 
 ```bash
-poetry run multi_x_serverless --help
+poetry run multi_x_serverless deploy
+```
+
+This will deploy the workflow to the correct defined home region. To change the home region you need to adjust the config in `.multi-x-serverless/config.yml` and set the `home_region` to the desired region.
+
+This will also print the unique workflow id.
+
+### Run a workflow
+
+To run a workflow, you can use the following command:
+
+```bash
+poetry run multi_x_serverless run <workflow_id> -a '{"message": "Hello World!"}'
+```
+
+Where `<workflow_id>` is the id of the workflow you want to run.
+
+The `-a` flag is used to pass arguments to the workflow. The arguments can be passed as any object but need to be handled in the entrypoint of the workflow by your client code.
+
+###  List all workflows
+
+To list all workflows, you can use the following command:
+
+```bash
+poetry run multi_x_serverless list
+```
+
+###  Remove a workflow
+
+To remove a workflow, you can use the following command:
+
+```bash
+poetry run multi_x_serverless remove <workflow_id>
+```
+
+Where `<workflow_id>` is the id of the workflow you want to remove.
+
+### Datasync
+
+To sync the logs from all the workflows to the global table, you can use the following command:
+
+```bash
+poetry run multi_x_serverless data_sync
 ```
 
 ### Data Collecting
@@ -74,13 +126,41 @@ The data collecting can be found in `multi_x_serverless/data_collector` and can 
 poetry run multi_x_serverless data_collect <collector>
 ```
 
-Where `<collector>` is the name of the collector you want to run.
+Where `<collector>` is the name of the collector you want to run. The available collectors are:
+
+- `carbon`
+- `provider`
+- `performance`
+- `workflow`
+- `all`
 
 Important: For the data collectors to work locally, you need to set some environment variables.
 
 ```bash
 export ELECTRICITY_MAPS_AUTH_TOKEN=<your_token>
 export GOOGLE_API_KEY=<your_key>
+```
+
+### Solve
+
+To solve for a workflow you can either do it manually by using the following command:
+
+```bash
+poetry run multi_x_serverless solve <workflow_id> -s <solver>
+```
+
+Where `<workflow_id>` is the id of the workflow you want to run. And the `-s` flag is used to denote running a specific solver. 
+Where `<solver>` is the name of the solver you want to run. 
+The available solver are:
+
+- `fine-grained`
+- `coarse-grained`
+- `heuristic`
+
+Or use the update checker to solve for all workflows that have been invoked enough (100 times in last month):
+
+```bash
+poetry run multi_x_serverless update_checker
 ```
 
 ### Testing
@@ -107,12 +187,14 @@ Currently we have the following system part benchmarks:
 
 To run the solver benchmarks, use either the following commands:
 
-* Single process (runs the benchmark scenarios one after the other):
+- Single process (runs the benchmark scenarios one after the other):
+
 ```bash
 poetry run python benchmarks/solver_benchmarks/run_solver_benchmarks.py
 ```
 
-* Multiprocess (uses all CPU cores to run the benchmark scenarios in parallel):
+- Multiprocess (uses all CPU cores to run the benchmark scenarios in parallel):
+
 ```bash
 poetry run python benchmarks/solver_benchmarks/run_solver_benchmarks_multiprocess.py
 ```

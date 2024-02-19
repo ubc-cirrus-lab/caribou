@@ -74,19 +74,19 @@ def run_data_collection():
     expected_carbon_region_data = [
         (
             "integration_test_provider:rivendell",
-            '{"carbon_intensity": 51.391773, "unit": "gCO2eq/kWh", "transmission_carbon": {"integration_test_provider:rivendell": {"carbon_intensity": 5.1391773, "unit": "gCO2eq/GB"}, "integration_test_provider:lothlorien": {"carbon_intensity": 27.50650650285371, "unit": "gCO2eq/GB"}, "integration_test_provider:anduin": {"carbon_intensity": 108.0014577089424, "unit": "gCO2eq/GB"}, "integration_test_provider:fangorn": {"carbon_intensity": 112.5091237660081, "unit": "gCO2eq/GB"}}}',
+            '{"carbon_intensity": 51.391773, "unit": "gCO2eq/kWh", "transmission_carbon": {"integration_test_provider:rivendell": {"carbon_intensity": 0, "distance": 0.0, "unit": "gCO2eq/GB"}, "integration_test_provider:lothlorien": {"carbon_intensity": 53.33861014251194, "distance": 83.13919477602013, "unit": "gCO2eq/GB"}, "integration_test_provider:anduin": {"carbon_intensity": 59.433835047560095, "distance": 343.4342546548361, "unit": "gCO2eq/GB"}, "integration_test_provider:fangorn": {"carbon_intensity": 59.74313540772055, "distance": 356.6428494192109, "unit": "gCO2eq/GB"}}}',
         ),
         (
             "integration_test_provider:lothlorien",
-            '{"carbon_intensity": 50.494296, "unit": "gCO2eq/kWh", "transmission_carbon": {"integration_test_provider:rivendell": {"carbon_intensity": 27.04699360449274, "unit": "gCO2eq/GB"}, "integration_test_provider:lothlorien": {"carbon_intensity": 5.0494296, "unit": "gCO2eq/GB"}, "integration_test_provider:anduin": {"carbon_intensity": 129.7855423633701, "unit": "gCO2eq/GB"}, "integration_test_provider:fangorn": {"carbon_intensity": 134.95138830890383, "unit": "gCO2eq/GB"}}}',
+            '{"carbon_intensity": 50.494296, "unit": "gCO2eq/kWh", "transmission_carbon": {"integration_test_provider:rivendell": {"carbon_intensity": 52.447556262638514, "distance": 83.13919477602013, "unit": "gCO2eq/GB"}, "integration_test_provider:lothlorien": {"carbon_intensity": 0, "distance": 0.0, "unit": "gCO2eq/GB"}, "integration_test_provider:anduin": {"carbon_intensity": 60.161081221394646, "distance": 411.46013910805647, "unit": "gCO2eq/GB"}, "integration_test_provider:fangorn": {"carbon_intensity": 60.50469196188435, "distance": 426.0856966065312, "unit": "gCO2eq/GB"}}}',
         ),
         (
             "integration_test_provider:anduin",
-            '{"carbon_intensity": 51.208835, "unit": "gCO2eq/kWh", "transmission_carbon": {"integration_test_provider:rivendell": {"carbon_intensity": 107.1821127729988, "unit": "gCO2eq/GB"}, "integration_test_provider:lothlorien": {"carbon_intensity": 130.56588885352124, "unit": "gCO2eq/GB"}, "integration_test_provider:anduin": {"carbon_intensity": 5.120883500000001, "unit": "gCO2eq/GB"}, "integration_test_provider:fangorn": {"carbon_intensity": 137.07025372288862, "unit": "gCO2eq/GB"}}}',
+            '{"carbon_intensity": 51.208835, "unit": "gCO2eq/kWh", "transmission_carbon": {"integration_test_provider:rivendell": {"carbon_intensity": 58.98294472808719, "distance": 343.4342546548361, "unit": "gCO2eq/GB"}, "integration_test_provider:lothlorien": {"carbon_intensity": 60.52280478258588, "distance": 411.46013910805647, "unit": "gCO2eq/GB"}, "integration_test_provider:anduin": {"carbon_intensity": 0, "distance": 0.0, "unit": "gCO2eq/GB"}, "integration_test_provider:fangorn": {"carbon_intensity": 60.93927680923625, "distance": 429.85848503575806, "unit": "gCO2eq/GB"}}}',
         ),
         (
             "integration_test_provider:fangorn",
-            '{"carbon_intensity": 57.265384, "unit": "gCO2eq/kWh", "transmission_carbon": {"integration_test_provider:rivendell": {"carbon_intensity": 123.75810884238803, "unit": "gCO2eq/GB"}, "integration_test_provider:lothlorien": {"carbon_intensity": 150.24601103583214, "unit": "gCO2eq/GB"}, "integration_test_provider:anduin": {"carbon_intensity": 151.7178104616272, "unit": "gCO2eq/GB"}, "integration_test_provider:fangorn": {"carbon_intensity": 5.7265384, "unit": "gCO2eq/GB"}}}',
+            '{"carbon_intensity": 57.265384, "unit": "gCO2eq/kWh", "transmission_carbon": {"integration_test_provider:rivendell": {"carbon_intensity": 65.7164255385307, "distance": 356.6428494192109, "unit": "gCO2eq/GB"}, "integration_test_provider:lothlorien": {"carbon_intensity": 67.36194958896262, "distance": 426.0856966065312, "unit": "gCO2eq/GB"}, "integration_test_provider:anduin": {"carbon_intensity": 67.45134992821912, "distance": 429.85848503575806, "unit": "gCO2eq/GB"}, "integration_test_provider:fangorn": {"carbon_intensity": 0, "distance": 0.0, "unit": "gCO2eq/GB"}}}',
         ),
     ]
 

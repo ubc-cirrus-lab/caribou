@@ -7,9 +7,8 @@ from gtts import gTTS
 from io import BytesIO
 import boto3
 from datetime import datetime
-from profanity import profanity
+from profanity import profanity as prfnty
 from pydub import AudioSegment
-import numpy as np
 
 import tempfile
 
@@ -19,37 +18,15 @@ workflow = MultiXServerlessWorkflow(name="text_2_speech_censoring", version="0.0
 @workflow.serverless_function(
     name="GetInput",
     entry_point=True,
-    regions_and_providers={
-        "allowed_regions": [
-            {
-                "provider": "aws",
-                "region": "us-east-1",
-            }
-        ],
-        "disallowed_regions": [
-            {
-                "provider": "aws",
-                "region": "us-east-2",
-            }
-        ],
-        "providers": {
-            "aws": {
-                "config": {
-                    "timeout": 60,
-                    "memory": 128,
-                },
-            },
-        },
-    },
 )
 def get_input(event: dict[str, Any]) -> dict[str, Any]:
-    request = event["request"]
-    request_json = json.loads(request)
+    if isinstance(event, str):
+        event = json.loads(event)
 
-    if "message" in request_json:
-        message = request_json["message"]
+    if "message" in event:
+        message = event["message"]
     else:
-        raise ValueError("No image name provided")
+        raise ValueError("No message provided")
 
     payload = {
         "data": message,
@@ -77,7 +54,7 @@ def text_2_speech(event: dict[str, Any]) -> dict[str, Any]:
 
     s3 = boto3.client("s3")
 
-    s3.upload_file(os.path.join(tmp_dir, file_name), "multi-x-serverless", f"text_2_speech_censoring/{file_name}")
+    s3.upload_file(os.path.join(tmp_dir, file_name), "multi-x-serverless-text-2-speech-censoring", f"text_2_speech_censoring/{file_name}")
 
     payload = {
         "file_name": file_name,
@@ -91,8 +68,8 @@ def text_2_speech(event: dict[str, Any]) -> dict[str, Any]:
 def profanity(event: dict[str, Any]) -> dict[str, Any]:
     message = event["data"]
 
-    profanity.set_censor_characters("*")
-    filtered_message = profanity.censor(message)
+    prfnty.set_censor_characters("*")
+    filtered_message = prfnty.censor(message)
 
     extracted_indexes = extract_indexes(filtered_message)
 
@@ -129,7 +106,7 @@ def conversion(event: dict[str, Any]) -> dict[str, Any]:
     s3 = boto3.client("s3")
     tmp_dir = tempfile.mkdtemp()
 
-    s3.download_file("multi-x-serverless", f"text_2_speech_censoring/{file_name}", f"{tmp_dir}/{file_name}")
+    s3.download_file("multi-x-serverless-text-2-speech-censoring", f"text_2_speech_censoring/{file_name}", f"{tmp_dir}/{file_name}")
 
     dlFile = open(f"{tmp_dir}/{file_name}", "rb").read()
     input = BytesIO(dlFile)
@@ -144,7 +121,7 @@ def conversion(event: dict[str, Any]) -> dict[str, Any]:
     with open(os.path.join(tmp_dir, file_name), "wb") as f:
         f.write(result)
 
-    s3.upload_file(os.path.join(tmp_dir, file_name), "multi-x-serverless", f"text_2_speech_censoring/{file_name}")
+    s3.upload_file(os.path.join(tmp_dir, file_name), "multi-x-serverless-text-2-speech-censoring", f"text_2_speech_censoring/{file_name}")
 
     payload = {
         "file_name": file_name,
@@ -161,7 +138,7 @@ def compression(event: dict[str, Any]) -> dict[str, Any]:
     s3 = boto3.client("s3")
     tmp_dir = tempfile.mkdtemp()
 
-    s3.download_file("multi-x-serverless", f"text_2_speech_censoring/{file_name}", f"{tmp_dir}/{file_name}")
+    s3.download_file("multi-x-serverless-text-2-speech-censoring", f"text_2_speech_censoring/{file_name}", f"{tmp_dir}/{file_name}")
 
     dlFile = open(f"{tmp_dir}/{file_name}", "rb").read()
     dlFile = BytesIO(dlFile)
@@ -181,7 +158,7 @@ def compression(event: dict[str, Any]) -> dict[str, Any]:
     with open(os.path.join(tmp_dir, file_name), "wb") as f:
         f.write(result)
 
-    s3.upload_file(os.path.join(tmp_dir, file_name), "multi-x-serverless", f"text_2_speech_censoring/{file_name}")
+    s3.upload_file(os.path.join(tmp_dir, file_name), "multi-x-serverless-text-2-speech-censoring", f"text_2_speech_censoring/{file_name}")
 
     payload = {
         "file_name": file_name,
@@ -223,7 +200,7 @@ def censor(event: dict[str, Any]) -> dict[str, Any]:
     s3 = boto3.client("s3")
     tmp_dir = tempfile.mkdtemp()
 
-    s3.download_file("multi-x-serverless", f"text_2_speech_censoring/{file_name}", f"{tmp_dir}/{file_name}")
+    s3.download_file("multi-x-serverless-text-2-speech-censoring", f"text_2_speech_censoring/{file_name}", f"{tmp_dir}/{file_name}")
 
     dlFile = open(f"{tmp_dir}/{file_name}", "rb").read()
     dlFile = BytesIO(dlFile)
@@ -234,7 +211,7 @@ def censor(event: dict[str, Any]) -> dict[str, Any]:
     outputfile = BytesIO()
     speech = AudioSegment.from_wav(dlFile)
 
-    samples = np.array(speech.get_array_of_samples())
+    samples = speech.get_array_of_samples()
 
     for index, s in enumerate(samples):
         for start, end in indexes:
@@ -252,6 +229,6 @@ def censor(event: dict[str, Any]) -> dict[str, Any]:
     with open(os.path.join(tmp_dir, file_name), "wb") as f:
         f.write(result)
 
-    s3.upload_file(os.path.join(tmp_dir, file_name), "multi-x-serverless", f"text_2_speech_censoring/{file_name}")
+    s3.upload_file(os.path.join(tmp_dir, file_name), "multi-x-serverless-text-2-speech-censoring", f"text_2_speech_censoring/{file_name}")
 
     return {"status": 200}

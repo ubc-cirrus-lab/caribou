@@ -109,6 +109,7 @@ class DeployInstructions(ABC):
                     ),
                 ]
             )
+
         subscription_varname = f"{name}_messaging_subscription"
         instructions.extend(
             [

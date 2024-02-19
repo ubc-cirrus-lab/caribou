@@ -17,21 +17,21 @@ class WorkflowRetriever(DataRetriever):
 
     def retrieve_workflow_summary(self, workflow_unique_id: str) -> dict[str, Any]:
         # Load the summarized logs from the workflow summary table
-        workflow_summarized_logs: list[dict[str, Any]] = self._client.get_all_values_from_sort_key_table(
+        workflow_summarized_logs: list[str] = self._client.get_all_values_from_sort_key_table(
             self._workflow_summary_table, workflow_unique_id
         )
 
         # Consolidate all the timestamps together to one summary and return the result
         return self._consolidate_logs(workflow_summarized_logs)
 
-    def _consolidate_logs(self, logs: list[dict[str, Any]]) -> dict[str, Any]:  # pylint: disable=too-many-branches
+    def _consolidate_logs(self, logs: list[str]) -> dict[str, Any]:  # pylint: disable=too-many-branches
         # Here are the list of all keys in the available regions
         available_regions_set: set[str] = set(self._available_regions.keys())
 
         consolidated: dict[str, Any] = {}
         total_days = 0
         for data in logs:  # pylint: disable=too-many-nested-blocks
-            loaded_data = json.loads(data["value"])
+            loaded_data = json.loads(data)
             total_days += loaded_data["time_since_last_sync"]
             for instance_id, instance_data in loaded_data["instance_summary"].items():
                 if instance_id not in consolidated:

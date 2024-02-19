@@ -6,7 +6,6 @@ from sklearn import datasets
 import tempfile
 import os
 import datetime
-import numpy as np
 import tensorflow as tf
 from tensorflow.keras import layers
 import tarfile
@@ -20,37 +19,15 @@ workflow = MultiXServerlessWorkflow(name="regression_tuning", version="0.0.1")
 @workflow.serverless_function(
     name="GetInput",
     entry_point=True,
-    regions_and_providers={
-        "allowed_regions": [
-            {
-                "provider": "aws",
-                "region": "us-east-1",
-            }
-        ],
-        "disallowed_regions": [
-            {
-                "provider": "aws",
-                "region": "us-east-2",
-            }
-        ],
-        "providers": {
-            "aws": {
-                "config": {
-                    "timeout": 60,
-                    "memory": 128,
-                },
-            },
-        },
-    },
 )
 def get_input(event: dict[str, Any]) -> dict[str, Any]:
-    request = event["request"]
-    request_json = json.loads(request)
+    if isinstance(event, str):
+        event = json.loads(event)
 
-    if "message" in request_json:
-        samplesNum = request_json["message"]
+    if "message" in event:
+        samplesNum = event["message"]
     else:
-        raise ValueError("No image name provided")
+        raise ValueError("No samples number provided")
 
     payload = {
         "samplesNum": samplesNum,
@@ -91,7 +68,7 @@ def create_artificial_dataset(n_samples):
             _file.write("{}\t{}\n".format(x[_][0], y[_]))
 
     storage_path = datetime.now().strftime("%Y%m%d-%H%M%S") + "regression_tuning.txt"
-    s3.upload_file(path, "multi-x-serverless", f"regression_tuning/{storage_path}")
+    s3.upload_file(path, "multi-x-serverless-regression-tuning", f"regression_tuning/{storage_path}")
 
     payload = {
         "storage_path": storage_path,
@@ -107,7 +84,7 @@ def first_model(event: dict[str, Any]) -> dict[str, Any]:
     s3 = boto3.client("s3")
     tmp_dir = tempfile.mkdtemp()
 
-    s3.download_file("multi-x-serverless", f"regression_tuning/{storage_path}", os.path.join(tmp_dir, "dataset.txt"))
+    s3.download_file("multi-x-serverless-regression-tuning", f"regression_tuning/{storage_path}", os.path.join(tmp_dir, "dataset.txt"))
 
     with open(os.path.join(tmp_dir, "dataset.txt"), "r") as _file:
         raw_data = _file.readlines()
@@ -119,10 +96,10 @@ def first_model(event: dict[str, Any]) -> dict[str, Any]:
     test_dataset = dataset[split_index:]
     learning_rate = 0.1
 
-    x_train = np.array([[_[0]] for _ in train_dataset])
-    y_train = np.array([_[1] for _ in train_dataset])
-    x_test = np.array([[_[0]] for _ in test_dataset])
-    y_test = np.array([_[1] for _ in test_dataset])
+    x_train = [[_[0]] for _ in train_dataset]
+    y_train = [_[1] for _ in train_dataset]
+    x_test = [[_[0]] for _ in test_dataset]
+    y_test = [_[1] for _ in test_dataset]
     x_model = tf.keras.Sequential(
         [
             layers.Dense(
@@ -151,7 +128,7 @@ def first_model(event: dict[str, Any]) -> dict[str, Any]:
     with tarfile.open(local_tar_name, mode="w:gz") as _tar:
         _tar.add(model_name, recursive=True)
 
-    s3.upload_file(local_tar_name, "multi-x-serverless", f"regression_tuning/{local_tar_name}")
+    s3.upload_file(local_tar_name, "multi-x-serverless-regression-tuning", f"regression_tuning/{local_tar_name}")
 
     payload = {
         "model_name": local_tar_name,
@@ -170,7 +147,7 @@ def second_model(event: dict[str, Any]) -> dict[str, Any]:
     s3 = boto3.client("s3")
     tmp_dir = tempfile.mkdtemp()
 
-    s3.download_file("multi-x-serverless", f"regression_tuning/{storage_path}", os.path.join(tmp_dir, "dataset.txt"))
+    s3.download_file("multi-x-serverless-regression-tuning", f"regression_tuning/{storage_path}", os.path.join(tmp_dir, "dataset.txt"))
 
     with open(os.path.join(tmp_dir, "dataset.txt"), "r") as _file:
         raw_data = _file.readlines()
@@ -182,10 +159,10 @@ def second_model(event: dict[str, Any]) -> dict[str, Any]:
     test_dataset = dataset[split_index:]
     learning_rate = 0.2
 
-    x_train = np.array([[_[0]] for _ in train_dataset])
-    y_train = np.array([_[1] for _ in train_dataset])
-    x_test = np.array([[_[0]] for _ in test_dataset])
-    y_test = np.array([_[1] for _ in test_dataset])
+    x_train = [[_[0]] for _ in train_dataset]
+    y_train = [_[1] for _ in train_dataset]
+    x_test = [[_[0]] for _ in test_dataset]
+    y_test = [_[1] for _ in test_dataset]
     x_model = tf.keras.Sequential(
         [
             layers.Dense(
@@ -214,7 +191,7 @@ def second_model(event: dict[str, Any]) -> dict[str, Any]:
     with tarfile.open(local_tar_name, mode="w:gz") as _tar:
         _tar.add(model_name, recursive=True)
 
-    s3.upload_file(local_tar_name, "multi-x-serverless", f"regression_tuning/{local_tar_name}")
+    s3.upload_file(local_tar_name, "multi-x-serverless-regression-tuning", f"regression_tuning/{local_tar_name}")
 
     payload = {
         "model_name": local_tar_name,
@@ -263,14 +240,14 @@ def join_runs(event: dict[str, Any]) -> dict[str, Any]:
     s3 = boto3.client("s3")
     tmp_dir = tempfile.mkdtemp()
 
-    s3.download_file("multi-x-serverless", f"regression_tuning/{best_model}", os.path.join(tmp_dir, best_model))
+    s3.download_file("multi-x-serverless-regression-tuning", f"regression_tuning/{best_model}", os.path.join(tmp_dir, best_model))
 
     with tarfile.open(os.path.join(tmp_dir, best_model), "r:gz") as zipped_file:
         zipped_file.extractall(tmp_dir)
 
     model = tf.keras.models.load_model(os.path.join(tmp_dir, best_model.replace(".tar.gz", "")))
 
-    input_model = np.array([[0.57457947234]])
+    input_model = [[0.57457947234]]
 
     prediction = model.predict(input_model)
 

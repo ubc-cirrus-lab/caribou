@@ -1,4 +1,5 @@
 import json
+import logging
 from typing import Optional
 
 import botocore.exceptions
@@ -16,6 +17,8 @@ from multi_x_serverless.deployment.common.deploy.executor import Executor
 from multi_x_serverless.deployment.common.deploy.models.deployment_plan import DeploymentPlan
 from multi_x_serverless.deployment.common.deploy.models.workflow import Workflow
 from multi_x_serverless.deployment.common.deploy.workflow_builder import WorkflowBuilder
+
+logger = logging.getLogger()
 
 
 class Deployer:
@@ -157,6 +160,7 @@ class Deployer:
             raise DeploymentError(e) from e
 
     def _deploy(self, regions: list[dict[str, str]]) -> None:
+        logger.info("Deploying workflow %s with version %s", self._config.workflow_name, self._config.workflow_version)
         # Build the workflow (DAG of the workflow)
         workflow = self._workflow_builder.build_workflow(self._config, regions)
 
@@ -172,23 +176,28 @@ class Deployer:
         self._upload_workflow_to_solver_update_checker(workflow)
 
         # Build the workflow resources, e.g. deployment packages, iam roles, etc.
+        logger.info("Building deployment package")
         self._deployment_packager.build(self._config, workflow)
 
         # Chain the commands needed to deploy all the built resources to the serverless platform
+        logger.info("Building deployment plan")
         deployment_plan = DeploymentPlan(workflow.get_deployment_instructions())
 
         if self._executor is None:
             raise RuntimeError("Cannot deploy with deletion deployer")
 
         # Execute the deployment plan
+        logger.info("Executing deployment plan")
         self._executor.execute(deployment_plan)
 
+        # Upload the workflow to the deployer server
+        logger.info("Uploading workflow to configuration server")
         self._upload_workflow_to_deployer_server(workflow)
         self._upload_deployment_package_resource(workflow)
         self._upload_workflow_placement_decision(workflow)
 
-        print(f"Workflow {self._config.workflow_name} with version {self._config.workflow_version} deployed")
-        print(f"Workflow id: {self._config.workflow_id}")
+        logger.info("Workflow %s with version %s deployed", self._config.workflow_name, self._config.workflow_version)
+        logger.info("Workflow id: %s", self._config.workflow_id)
 
     def _set_workflow_id(self, workflow: Workflow) -> None:
         workflow_id = f"{workflow.name}-{workflow.version}"
@@ -293,6 +302,13 @@ class Deployer:
 
     def _upload_deployment_package_resource(self, workflow: Workflow) -> None:
         deployment_packege_filename = workflow.get_deployment_packages()[0].filename
+
+        if deployment_packege_filename is None:
+            raise RuntimeError("Deployment package filename is None")
+
+        # Append zip extension if not present
+        if not deployment_packege_filename.endswith(".zip"):
+            deployment_packege_filename = f"{deployment_packege_filename}.zip"
 
         if deployment_packege_filename is None:
             raise RuntimeError("Deployment package filename is None")

@@ -8,6 +8,7 @@ from multi_x_serverless.data_collector.components.data_exporter import DataExpor
 class TestDataExporter(unittest.TestCase):
     def setUp(self):
         self.client = MagicMock(spec=RemoteClient)
+        self.client.get_key_present_in_table.return_value = False
         self.exporter = DataExporter(self.client, "region_table")
 
     def test_init(self):

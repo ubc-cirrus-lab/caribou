@@ -9,7 +9,14 @@ import os
 class TestProviderRetriever(unittest.TestCase):
     def setUp(self):
         self.remote_client = MagicMock(spec=RemoteClient)
-        self.provider_retriever = ProviderRetriever(self.remote_client)
+
+        with patch("os.environ.get") as mock_os_environ_get, patch("boto3.client") as mock_boto3, patch(
+            "multi_x_serverless.common.utils.str_to_bool"
+        ) as mock_str_to_bool:
+            mock_boto3.return_value = MagicMock()
+            mock_os_environ_get.return_value = "test_key"
+            mock_str_to_bool.return_value = False
+            self.provider_retriever = ProviderRetriever(self.remote_client)
 
     @patch("googlemaps.Client")
     def test_retrieve_location(self, mock_googlemaps_client):
@@ -41,7 +48,13 @@ class TestProviderRetriever(unittest.TestCase):
             {"geometry": {"location": {"lat": 37.7749, "lng": -122.4194}}}
         ]
 
-        provider_retriever = ProviderRetriever(None)  # Assuming None can be passed as a dummy RemoteClient
+        with patch("os.environ.get") as mock_os_environ_get, patch("boto3.client") as mock_boto3, patch(
+            "multi_x_serverless.common.utils.str_to_bool"
+        ) as mock_str_to_bool:
+            mock_boto3.return_value = MagicMock()
+            mock_os_environ_get.return_value = "test_key"
+            mock_str_to_bool.return_value = False
+            provider_retriever = ProviderRetriever(None)  # Assuming None can be passed as a dummy RemoteClient
 
         regions = provider_retriever.retrieve_aws_regions()
 

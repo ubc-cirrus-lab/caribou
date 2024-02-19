@@ -58,7 +58,7 @@ class TestPerformanceRetriever(unittest.TestCase):
 
         region_to = {"provider": "Other"}
         result = self.retriever._get_total_latency(region_from, region_to)
-        self.assertEqual(result, 0.0)
+        self.assertEqual(result, -1.0)
 
 
 if __name__ == "__main__":

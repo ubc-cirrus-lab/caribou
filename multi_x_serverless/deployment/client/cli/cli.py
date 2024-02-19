@@ -3,6 +3,7 @@ from typing import Optional
 
 import click
 
+from multi_x_serverless.common.setup.setup_tables import main as setup_tables_func
 from multi_x_serverless.data_collector.components.carbon.carbon_collector import CarbonCollector
 from multi_x_serverless.data_collector.components.performance.performance_collector import PerformanceCollector
 from multi_x_serverless.data_collector.components.provider.provider_collector import ProviderCollector
@@ -13,6 +14,8 @@ from multi_x_serverless.deployment.common.config.config import Config
 from multi_x_serverless.deployment.common.deploy.deployer import Deployer
 from multi_x_serverless.deployment.common.factories.deployer_factory import DeployerFactory
 from multi_x_serverless.endpoint.client import Client
+from multi_x_serverless.syncers.datastore_syncer import DatastoreSyncer
+from multi_x_serverless.update_checkers.solver_update_checker import SolverUpdateChecker
 
 
 @click.group()
@@ -29,7 +32,7 @@ def cli(ctx: click.Context, project_dir: str) -> None:
 
 
 @cli.command(
-    "new-workflow",
+    "new_workflow",
     help="Create a new workflow directory from template. The workflow name must be a valid, non-existing directory name in the current directory.",  # pylint: disable=line-too-long
 )
 @click.argument("workflow_name", required=True)
@@ -52,13 +55,13 @@ def deploy(ctx: click.Context) -> None:
 
 @cli.command("run", help="Run the workflow.")
 @click.argument("workflow_id", required=True)
-@click.option("--input", "-i", help="The input to the workflow. Must be a valid JSON string.")
+@click.option("--argument", "-a", help="The input to the workflow. Must be a valid JSON string.")
 @click.pass_context
-def run(_: click.Context, input_parameter: Optional[str], workflow_id: str) -> None:
+def run(_: click.Context, argument: Optional[str], workflow_id: str) -> None:
     client = Client(workflow_id)
 
-    if input_parameter:
-        client.run(input_parameter)
+    if argument:
+        client.run(argument)
     else:
         client.run()
 
@@ -79,6 +82,37 @@ def data_collect(_: click.Context, collector: str) -> None:
     if collector in ("workflow", "all"):
         workflow_collector = WorkflowCollector()
         workflow_collector.run()
+
+
+@cli.command("data_sync", help="Run data synchronization.")
+def data_sync() -> None:
+    datastore_syncer = DatastoreSyncer()
+    datastore_syncer.sync()
+
+
+@cli.command("solve", help="Solve the workflow.")
+@click.argument("workflow_id", required=True)
+@click.option(
+    "--solver",
+    "-s",
+    help="The solver to use.",
+    required=False,
+    type=click.Choice(["fine-grained", "coarse-grained", "heuristic"]),
+)
+def solve(workflow_id: str, solver: Optional[str]) -> None:
+    client = Client(workflow_id)
+    client.solve(solver)
+
+
+@cli.command("update_check_solver", help="Check if the solver should be run.")
+def update_check_solver() -> None:
+    solver_update_checker = SolverUpdateChecker()
+    solver_update_checker.check()
+
+
+@cli.command("setup_tables", help="Setup the tables.")
+def setup_tables() -> None:
+    setup_tables_func()
 
 
 @cli.command("version", help="Print the version of multi_x_serverless.")

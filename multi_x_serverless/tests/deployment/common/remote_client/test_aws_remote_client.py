@@ -6,6 +6,9 @@ from multi_x_serverless.common.models.remote_client.aws_remote_client import AWS
 from multi_x_serverless.deployment.common.deploy.models.resource import Resource
 
 import json
+import zipfile
+import tempfile
+import datetime
 
 from botocore.exceptions import ClientError
 from unittest.mock import call
@@ -45,54 +48,6 @@ class TestAWSRemoteClient(unittest.TestCase):
         mock_client.assert_called_once_with("lambda")
         mock_client.return_value.get_function.assert_called_once_with(FunctionName=function_name)
         self.assertEqual(result, {"FunctionName": "test_function"})
-
-    @patch.object(AWSRemoteClient, "_client")
-    @patch.object(AWSRemoteClient, "_create_lambda_function")
-    @patch.object(AWSRemoteClient, "_wait_for_function_to_become_active")
-    def test_create_function(self, mock_wait_for_function, mock_create_lambda, mock_client):
-        function_name = "test_function"
-        role_arn = "arn:aws:iam::123456789012:role/test_role"
-        zip_contents = b"test_zip_contents"
-        runtime = "python3.8"
-        handler = "test_handler"
-        environment_variables = {"test_key": "test_value"}
-        timeout = 10
-        memory_size = 128
-        mock_create_lambda.return_value = ("arn:aws:lambda:region1:123456789012:function:test_function", "Inactive")
-        result = self.aws_client.create_function(
-            function_name, role_arn, zip_contents, runtime, handler, environment_variables, timeout, memory_size
-        )
-        mock_create_lambda.assert_called_once()
-        mock_wait_for_function.assert_called_once_with(function_name)
-        self.assertEqual(result, "arn:aws:lambda:region1:123456789012:function:test_function")
-
-    @patch.object(AWSRemoteClient, "_client")
-    def test_update_function(self, mock_client):
-        function_name = "test_function"
-        role_arn = "arn:aws:iam::123456789012:role/test_role"
-        zip_contents = b"test_zip_contents"
-        runtime = "python3.8"
-        handler = "test_handler"
-        environment_variables = {"test_key": "test_value"}
-        timeout = 10
-        memory_size = 128
-
-        mock_client.return_value.update_function_code.return_value = {"State": "Active"}
-        mock_client.return_value.update_function_configuration.return_value = {
-            "State": "Active",
-            "FunctionArn": "test_function_arn",
-        }
-
-        result = self.aws_client.update_function(
-            function_name, role_arn, zip_contents, runtime, handler, environment_variables, timeout, memory_size
-        )
-
-        mock_client.assert_called_with("lambda")
-        mock_client.return_value.update_function_code.assert_called_once_with(
-            FunctionName=function_name, ZipFile=zip_contents
-        )
-        mock_client.return_value.update_function_configuration.assert_called_once()
-        self.assertEqual(result, "test_function_arn")
 
     @patch.object(AWSRemoteClient, "_client")
     def test_create_role(self, mock_client):
@@ -553,6 +508,352 @@ class TestAWSRemoteClient(unittest.TestCase):
         self.assertEqual(len(result), 2)
         self.assertEqual(result[0], "key1")
         self.assertEqual(result[1], "key2")
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_set_predecessor_reached(self, mock_client):
+        # Mocking the scenario where the predecessor is set successfully
+        mock_dynamodb_client = MagicMock()
+        mock_client.return_value = mock_dynamodb_client
+
+        client = AWSRemoteClient("region1")
+
+        # Mock the return value of update_item
+        mock_dynamodb_client.update_item.return_value = {
+            "Attributes": {"sync_node_name": {"L": [{"S": "predecessor_name"}]}}
+        }
+
+        result = client.set_predecessor_reached("predecessor_name", "sync_node_name", "workflow_instance_id")
+
+        # Check that the return value is correct
+        self.assertEqual(result, 1)
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_create_sync_tables(self, mock_client):
+        # Mocking the scenario where the tables are created successfully
+        mock_dynamodb_client = MagicMock()
+        mock_client.return_value = mock_dynamodb_client
+
+        client = AWSRemoteClient("region1")
+
+        # Mock the side effect of describe_table
+        mock_dynamodb_client.describe_table.side_effect = [
+            ClientError({"Error": {"Code": "ResourceNotFoundException"}}, "describe_table"),
+            ClientError({"Error": {"Code": "ResourceNotFoundException"}}, "describe_table"),
+        ]
+
+        client.create_sync_tables()
+
+        # Check that the create_table method was called twice
+        self.assertEqual(mock_dynamodb_client.create_table.call_count, 2)
+
+    @patch.object(AWSRemoteClient, "_client")
+    @patch("subprocess.run")
+    def test_create_function(self, mock_subprocess_run, mock_client):
+        # Mocking the scenario where the function is created successfully
+        mock_lambda_client = MagicMock()
+        mock_client.return_value = mock_lambda_client
+        mock_subprocess_run.return_value = MagicMock(check_returncode=lambda: None)
+
+        client = AWSRemoteClient("region1")
+
+        # Mock the return value of _create_lambda_function and _wait_for_function_to_become_active
+        client._create_lambda_function = MagicMock(return_value=("arn", "Active"))
+        client._wait_for_function_to_become_active = MagicMock()
+
+        # Mock the input to create_function
+        function_name = "function_name"
+        role_identifier = "role_identifier"
+
+        runtime = "python"
+        handler = "handler.handler"
+        environment_variables = {"key": "value"}
+        timeout = 10
+        memory_size = 128
+
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            with open(tmpdirname + "/app.py", "w") as f:
+                f.write("print('hello world')")
+
+            with zipfile.ZipFile(tmpdirname + "/test.zip", "w") as z:
+                z.write(tmpdirname + "/app.py")
+
+            with open(tmpdirname + "/test.zip", "rb") as f:
+                zip_contents = f.read()
+            with patch("tempfile.TemporaryDirectory") as mock_tempdir:
+                mock_tempdir.return_value.__enter__.return_value = tmpdirname
+
+                result = client.create_function(
+                    function_name,
+                    role_identifier,
+                    zip_contents,
+                    runtime,
+                    handler,
+                    environment_variables,
+                    timeout,
+                    memory_size,
+                )
+
+        # Check that the return value is correct
+        self.assertEqual(result, "arn")
+
+    def test_generate_dockerfile(self):
+        client = AWSRemoteClient("region1")
+
+        # Test with python runtime
+        result = client.generate_dockerfile("python", "handler.handler")
+        expected_result = """
+        FROM public.ecr.aws/lambda/python:
+        COPY requirements.txt ./
+        RUN pip3 install --no-cache-dir -r requirements.txt
+        COPY app.py ./
+        COPY src ./src
+        COPY multi_x_serverless ./multi_x_serverless
+        CMD ["handler.handler"]
+        """
+        self.assertEqual(result.strip(), expected_result.strip())
+
+    @patch("subprocess.run")
+    def test_build_docker_image(self, mock_subprocess_run):
+        # Mocking the scenario where the Docker image is built successfully
+        mock_subprocess_run.return_value = MagicMock(check_returncode=lambda: None)
+
+        client = AWSRemoteClient("region1")
+
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            client.build_docker_image(tmpdirname, "image_name")
+
+        # Check that the subprocess.run method was called
+        mock_subprocess_run.assert_called()
+
+    @patch.object(AWSRemoteClient, "_client")
+    @patch("subprocess.run")
+    @patch("subprocess.check_output")
+    def test_upload_image_to_ecr(self, mock_check_output, mock_subprocess_run, mock_client):
+        # Mocking the scenario where the Docker image is uploaded to ECR successfully
+        mock_ecr_client = MagicMock()
+        mock_client.return_value = mock_ecr_client
+        mock_subprocess_run.return_value = MagicMock(check_returncode=lambda: None)
+        mock_check_output.return_value = b"login_password"
+
+        client = AWSRemoteClient("region1")
+
+        # Mock the return value of get_caller_identity and meta
+        mock_ecr_client.get_caller_identity.return_value = {"Account": "account_id"}
+        mock_ecr_client.meta.region_name = "region"
+
+        client.upload_image_to_ecr("image_name")
+
+        # Check that the subprocess.run and subprocess.check_output methods were called
+        mock_subprocess_run.assert_called()
+        mock_check_output.assert_called()
+
+    @patch.object(AWSRemoteClient, "_client")
+    @patch("subprocess.run")
+    @patch("time.sleep")
+    def test_update_function(self, mock_sleep, mock_subprocess_run, mock_client):
+        # Mocking the scenario where the function is updated successfully
+        mock_lambda_client = MagicMock()
+        mock_client.return_value = mock_lambda_client
+        mock_subprocess_run.return_value = MagicMock(check_returncode=lambda: None)
+
+        client = AWSRemoteClient("region1")
+
+        # Mock the return value of _wait_for_function_to_become_active
+        client._wait_for_function_to_become_active = MagicMock()
+
+        # Mock the input to update_function
+        function_name = "function_name"
+        role_identifier = "role_identifier"
+        runtime = "python"
+        handler = "handler.handler"
+        environment_variables = {"key": "value"}
+        timeout = 10
+        memory_size = 128
+
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            with open(tmpdirname + "/app.py", "w") as f:
+                f.write("print('hello world')")
+
+            with zipfile.ZipFile(tmpdirname + "/test.zip", "w") as z:
+                z.write(tmpdirname + "/app.py")
+
+            with open(tmpdirname + "/test.zip", "rb") as f:
+                zip_contents = f.read()
+            with patch("tempfile.TemporaryDirectory") as mock_tempdir:
+                mock_tempdir.return_value.__enter__.return_value = tmpdirname
+
+                # Mock the return value of update_function_code and update_function_configuration
+                mock_lambda_client.update_function_code.return_value = {"State": "Active"}
+                mock_lambda_client.update_function_configuration.return_value = {
+                    "FunctionArn": "arn",
+                    "State": "Active",
+                }
+
+                result = client.update_function(
+                    function_name,
+                    role_identifier,
+                    zip_contents,
+                    runtime,
+                    handler,
+                    environment_variables,
+                    timeout,
+                    memory_size,
+                )
+
+        # Check that the return value is correct
+        self.assertEqual(result, "arn")
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_get_last_value_from_sort_key_table(self, mock_client):
+        # Mocking the scenario where the last value is retrieved successfully
+        mock_dynamodb_client = MagicMock()
+        mock_client.return_value = mock_dynamodb_client
+
+        client = AWSRemoteClient("region1")
+
+        # Mock the return value of query
+        mock_dynamodb_client.query.return_value = {"Items": [{"sort_key": {"S": "sort_key"}, "value": {"S": "value"}}]}
+
+        result = client.get_last_value_from_sort_key_table("table_name", "key")
+
+        # Check that the return value is correct
+        self.assertEqual(result, ("sort_key", "value"))
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_put_value_to_sort_key_table(self, mock_client):
+        # Mocking the scenario where the value is put successfully
+        mock_dynamodb_client = MagicMock()
+        mock_client.return_value = mock_dynamodb_client
+
+        client = AWSRemoteClient("region1")
+
+        # Call the method with test values
+        client.put_value_to_sort_key_table("table_name", "key", "sort_key", "value")
+
+        # Check that the put_item method was called
+        mock_dynamodb_client.put_item.assert_called()
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_get_logs_since_last_sync(self, mock_client):
+        # Mocking the scenario where the logs are retrieved successfully
+        mock_logs_client = MagicMock()
+        mock_client.return_value = mock_logs_client
+
+        client = AWSRemoteClient("region1")
+
+        # Mock the return value of filter_log_events
+        mock_logs_client.filter_log_events.return_value = {"events": [{"message": "log_message"}]}
+
+        result = client.get_logs_since_last_sync("function_instance", datetime.datetime.now())
+
+        # Check that the return value is correct
+        self.assertEqual(result, ["log_message"])
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_remove_key(self, mock_client):
+        # Mocking the scenario where the key is removed successfully
+        mock_dynamodb_client = MagicMock()
+        mock_client.return_value = mock_dynamodb_client
+
+        client = AWSRemoteClient("region1")
+
+        # Call the method with test values
+        client.remove_key("table_name", "key")
+
+        # Check that the delete_item method was called
+        mock_dynamodb_client.delete_item.assert_called()
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_remove_function(self, mock_client):
+        # Mocking the scenario where the function is removed successfully
+        mock_lambda_client = MagicMock()
+        mock_client.return_value = mock_lambda_client
+
+        client = AWSRemoteClient("region1")
+
+        # Call the method with test values
+        client.remove_function("function_name")
+
+        # Check that the delete_function method was called
+        mock_lambda_client.delete_function.assert_called()
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_remove_role(self, mock_client):
+        # Mocking the scenario where the role is removed successfully
+        mock_iam_client = MagicMock()
+        mock_client.return_value = mock_iam_client
+
+        client = AWSRemoteClient("region1")
+
+        # Mock the return value of list_attached_role_policies and list_role_policies
+        mock_iam_client.list_attached_role_policies.return_value = {"AttachedPolicies": [{"PolicyArn": "arn"}]}
+        mock_iam_client.list_role_policies.return_value = {"PolicyNames": ["policy_name"]}
+
+        # Call the method with test values
+        client.remove_role("role_name")
+
+        # Check that the detach_role_policy, delete_role_policy, and delete_role methods were called
+        mock_iam_client.detach_role_policy.assert_called()
+        mock_iam_client.delete_role_policy.assert_called()
+        mock_iam_client.delete_role.assert_called()
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_remove_messaging_topic(self, mock_client):
+        # Mocking the scenario where the messaging topic is removed successfully
+        mock_sns_client = MagicMock()
+        mock_client.return_value = mock_sns_client
+
+        client = AWSRemoteClient("region1")
+
+        # Call the method with test values
+        client.remove_messaging_topic("topic_identifier")
+
+        # Check that the delete_topic method was called
+        mock_sns_client.delete_topic.assert_called()
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_get_topic_identifier(self, mock_client):
+        # Mocking the scenario where the topic identifier is retrieved successfully
+        mock_sns_client = MagicMock()
+        mock_client.return_value = mock_sns_client
+
+        client = AWSRemoteClient("region1")
+
+        # Mock the return value of list_topics
+        mock_sns_client.list_topics.return_value = {"Topics": [{"TopicArn": "arn:topic_name"}]}
+
+        result = client.get_topic_identifier("topic_name")
+
+        # Check that the return value is correct
+        self.assertEqual(result, "arn:topic_name")
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_remove_resource(self, mock_client):
+        # Mocking the scenario where the resource is removed successfully
+        mock_s3_client = MagicMock()
+        mock_client.return_value = mock_s3_client
+
+        client = AWSRemoteClient("region1")
+
+        # Call the method with test values
+        client.remove_resource("key")
+
+        # Check that the delete_object method was called
+        mock_s3_client.delete_object.assert_called()
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_remove_ecr_repository(self, mock_client):
+        # Mocking the scenario where the ECR repository is removed successfully
+        mock_ecr_client = MagicMock()
+        mock_client.return_value = mock_ecr_client
+
+        client = AWSRemoteClient("region1")
+
+        # Call the method with test values
+        client.remove_ecr_repository("repository_name")
+
+        # Check that the delete_repository method was called
+        mock_ecr_client.delete_repository.assert_called()
 
 
 if __name__ == "__main__":

@@ -54,16 +54,20 @@ class DeploymentPackager:
         self._create_deployment_package_dir(package_filename)
         if os.path.exists(package_filename):
             return package_filename
-        with tempfile.TemporaryDirectory() as temp_dir:
-            requirements_filename = self._get_requirements_filename(project_dir)
-            if not os.path.exists(requirements_filename):
-                raise RuntimeError(f"Could not find requirements file: {requirements_filename}")
-            self._build_dependencies(requirements_filename, temp_dir)
-            with zipfile.ZipFile(package_filename, "w", zipfile.ZIP_DEFLATED) as z:
-                self._add_py_dependencies(z, temp_dir)
-                self._add_application_files(z, project_dir)
-                self._add_multi_x_serverless_dependency(z)
+        # with tempfile.TemporaryDirectory() as temp_dir:
+        requirements_filename = self._get_requirements_filename(project_dir)
+        if not os.path.exists(requirements_filename):
+            raise RuntimeError(f"Could not find requirements file: {requirements_filename}")
+        # self._build_dependencies(requirements_filename, temp_dir) # TODO: Re-add when we add more providers
+        with zipfile.ZipFile(package_filename, "w", zipfile.ZIP_DEFLATED) as z:
+            # self._add_py_dependencies(z, temp_dir) # TODO: Re-add when we add more providers
+            self._add_application_files(z, project_dir)
+            self._add_multi_x_serverless_dependency(z)
+            self._add_requirements_file(z, requirements_filename)
         return package_filename
+
+    def _add_requirements_file(self, zip_file: zipfile.ZipFile, requirements_filename: str) -> None:
+        zip_file.write(requirements_filename, "requirements.txt")
 
     def _add_multi_x_serverless_dependency(self, zip_file: zipfile.ZipFile) -> None:
         multi_x_serverless_path = inspect.getfile(multi_x_serverless)

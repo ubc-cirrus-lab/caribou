@@ -51,13 +51,14 @@ class Ranker:
     ) -> int:
         number_of_violated_constraints = 0
         for constraint in soft_resource_constraints:
-            if constraint == "cost":
-                if cost > soft_resource_constraints[constraint]["value"]:
-                    number_of_violated_constraints += 1
-            elif constraint == "runtime":
-                if runtime > soft_resource_constraints[constraint]["value"]:
-                    number_of_violated_constraints += 1
-            elif constraint == "carbon":
-                if carbon > soft_resource_constraints[constraint]["value"]:
-                    number_of_violated_constraints += 1
+            if soft_resource_constraints[constraint]:
+                if constraint == "cost":
+                    if cost > soft_resource_constraints[constraint]["value"]:
+                        number_of_violated_constraints += 1
+                elif constraint == "runtime":
+                    if runtime > soft_resource_constraints[constraint]["value"]:
+                        number_of_violated_constraints += 1
+                elif constraint == "carbon":
+                    if carbon > soft_resource_constraints[constraint]["value"]:
+                        number_of_violated_constraints += 1
         return number_of_violated_constraints

@@ -16,10 +16,11 @@ workflow = MultiXServerlessWorkflow(name="image_processing", version="0.0.2")
     entry_point=True,
 )
 def get_input(event: dict[str, Any]) -> dict[str, Any]:
-    request_json = json.loads(event)
+    if isinstance(event, str):
+        event = json.loads(event)
 
-    if "message" in request_json:
-        image_name = request_json["message"]
+    if "message" in event:
+        image_name = event["message"]
     else:
         raise ValueError("No image name provided")
 
@@ -43,15 +44,18 @@ def flip(event: dict[str, Any]) -> dict[str, Any]:
 
     image = Image.open(f"{tmp_dir}/{image_name}")
     img = image.transpose(Image.FLIP_LEFT_RIGHT)
-    img.save(f"{tmp_dir}/flip-left-right-{image_name}")
 
     unique_id = str(uuid.uuid4())
-    upload_path = f"image_processing/flip-left-right-{unique_id}-{image_name}"
 
-    s3.upload_file(f"{tmp_dir}/flip-left-right-{image_name}", "multi-x-serverless-image-processing-benchmark", upload_path)
+    new_image_name = f"flip-left-right-{unique_id}-{image_name}"
+    img.save(f"{tmp_dir}/{new_image_name}")
+
+    upload_path = f"image_processing/{new_image_name}"
+
+    s3.upload_file(f"{tmp_dir}/{new_image_name}", "multi-x-serverless-image-processing-benchmark", upload_path)
 
     payload = {
-        "image_name": upload_path,
+        "image_name": new_image_name,
     }
 
     workflow.invoke_serverless_function(rotate, payload)
@@ -66,19 +70,22 @@ def rotate(event: dict[str, Any]) -> dict[str, Any]:
     s3 = boto3.client("s3")
     tmp_dir = tempfile.mkdtemp()
 
-    s3.download_file("multi-x-serverless-image-processing-benchmark", image_name, f"{tmp_dir}/{image_name}")
+    s3.download_file(
+        "multi-x-serverless-image-processing-benchmark", f"image_processing/{image_name}", f"{tmp_dir}/{image_name}"
+    )
 
     image = Image.open(f"{tmp_dir}/{image_name}")
     img = image.transpose(Image.ROTATE_90)
-    img.save(f"{tmp_dir}/rotate-90-{image_name}")
 
-    unique_id = str(uuid.uuid4())
-    upload_path = f"image_processing/rotate-90-{unique_id}-{image_name}"
+    new_image_name = f"rotate-90-{image_name}"
+    img.save(f"{tmp_dir}/{new_image_name}")
 
-    s3.upload_file(f"{tmp_dir}/rotate-90-{image_name}", "multi-x-serverless-image-processing-benchmark", upload_path)
+    upload_path = f"image_processing/{new_image_name}"
+
+    s3.upload_file(f"{tmp_dir}/{new_image_name}", "multi-x-serverless-image-processing-benchmark", upload_path)
 
     payload = {
-        "image_name": upload_path,
+        "image_name": new_image_name,
     }
 
     workflow.invoke_serverless_function(filter_function, payload)
@@ -93,19 +100,22 @@ def filter_function(event: dict[str, Any]) -> dict[str, Any]:
     s3 = boto3.client("s3")
     tmp_dir = tempfile.mkdtemp()
 
-    s3.download_file("multi-x-serverless-image-processing-benchmark", image_name, f"{tmp_dir}/{image_name}")
+    s3.download_file(
+        "multi-x-serverless-image-processing-benchmark", f"image_processing/{image_name}", f"{tmp_dir}/{image_name}"
+    )
 
     image = Image.open(f"{tmp_dir}/{image_name}")
     img = image.filter(ImageFilter.BLUR)
-    img.save(f"{tmp_dir}/filter-{image_name}")
 
-    unique_id = str(uuid.uuid4())
-    upload_path = f"image_processing/filter-{unique_id}-{image_name}"
+    new_image_name = f"filter-{image_name}"
+    img.save(f"{tmp_dir}/{new_image_name}")
 
-    s3.upload_file(f"{tmp_dir}/filter-{image_name}", "multi-x-serverless-image-processing-benchmark", upload_path)
+    upload_path = f"image_processing/{new_image_name}"
+
+    s3.upload_file(f"{tmp_dir}/{new_image_name}", "multi-x-serverless-image-processing-benchmark", upload_path)
 
     payload = {
-        "image_name": upload_path,
+        "image_name": new_image_name,
     }
 
     workflow.invoke_serverless_function(greyscale, payload)
@@ -120,19 +130,22 @@ def greyscale(event: dict[str, Any]) -> dict[str, Any]:
     s3 = boto3.client("s3")
     tmp_dir = tempfile.mkdtemp()
 
-    s3.download_file("multi-x-serverless-image-processing-benchmark", image_name, f"{tmp_dir}/{image_name}")
+    s3.download_file(
+        "multi-x-serverless-image-processing-benchmark", f"image_processing/{image_name}", f"{tmp_dir}/{image_name}"
+    )
 
     image = Image.open(f"{tmp_dir}/{image_name}")
     img = image.convert("L")
-    img.save(f"{tmp_dir}/greyscale-{image_name}")
 
-    unique_id = str(uuid.uuid4())
-    upload_path = f"image_processing/greyscale-{unique_id}-{image_name}"
+    new_image_name = f"greyscale-{image_name}"
+    img.save(f"{tmp_dir}/{new_image_name}")
 
-    s3.upload_file(f"{tmp_dir}/greyscale-{image_name}", "multi-x-serverless-image-processing-benchmark", upload_path)
+    upload_path = f"image_processing/{new_image_name}"
+
+    s3.upload_file(f"{tmp_dir}/{new_image_name}", "multi-x-serverless-image-processing-benchmark", upload_path)
 
     payload = {
-        "image_name": upload_path,
+        "image_name": new_image_name,
     }
 
     workflow.invoke_serverless_function(resize, payload)
@@ -147,15 +160,17 @@ def resize(event: dict[str, Any]) -> dict[str, Any]:
     s3 = boto3.client("s3")
     tmp_dir = tempfile.mkdtemp()
 
-    s3.download_file("multi-x-serverless-image-processing-benchmark", image_name, f"{tmp_dir}/{image_name}")
+    s3.download_file(
+        "multi-x-serverless-image-processing-benchmark", f"image_processing/{image_name}", f"{tmp_dir}/{image_name}"
+    )
 
     image = Image.open(f"{tmp_dir}/{image_name}")
     img = image.resize((128, 128))
-    img.save(f"{tmp_dir}/resize-{image_name}")
+    new_image_name = f"resize-{image_name}"
+    img.save(f"{tmp_dir}/{new_image_name}")
 
-    unique_id = str(uuid.uuid4())
-    upload_path = f"image_processing/resize-{unique_id}-{image_name}"
+    upload_path = f"image_processing/{new_image_name}"
 
-    s3.upload_file(f"{tmp_dir}/resize-{image_name}", "multi-x-serverless-image-processing-benchmark", upload_path)
+    s3.upload_file(f"{tmp_dir}/{new_image_name}", "multi-x-serverless-image-processing-benchmark", upload_path)
 
     return {"status": 200}

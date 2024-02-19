@@ -613,7 +613,6 @@ The Workflow Collector is responsible for extracting information from the `workf
           - Number transmission
           - Region Average/Tail Latency.
 
-
 ##### Workflow Summary Table Example
 
 Below is an example of the `workflow_summary_table` for a workflow with 2 instances. The Partition Key is the ID of the workflow, and the Sort Key is the timestamp of when the summary was performed. All the runtime and latency are in units of seconds.
@@ -758,10 +757,10 @@ Solver Inputs is a subcomponent of Solver responsible for providing input to the
 It serves as an interface for the solver instances to obtain execution and transmission data.
 It accesses the necessary information from tables created and managed by the Data Collectors, including [`workflow_instance_table`](#workflow-collector-output-table), [`performance_region_table`](#performance-region-table), [`carbon_region_table`](#carbon-region-table), [`available_regions_table`](#available-regions-table), [`provider_region_table`](#provider-region-table), and [`provider_table`](#at-provider-table).
 
-It consists of the `InputManager`, responsible for managing and setting up all appropriate loaders and calculators. 
-The Solver directly interacts with this component. 
-The data loaders include the `RegionViabilityLoader`, `DatacenterLoader`, `CarbonLoader`, `PerformanceLoader`, and `WorkflowLoader`. 
-Each is responsible for accessing one or more tables in a database, acquiring only the needed sets of data from each table to minimize database access cost. 
+It consists of the `InputManager`, responsible for managing and setting up all appropriate loaders and calculators.
+The Solver directly interacts with this component.
+The data loaders include the `RegionViabilityLoader`, `DatacenterLoader`, `CarbonLoader`, `PerformanceLoader`, and `WorkflowLoader`.
+Each is responsible for accessing one or more tables in a database, acquiring only the needed sets of data from each table to minimize database access cost.
 The data calculators, including the "Runtime Calculator", "Cost Calculator", and "Carbon Calculator", are responsible for accessing data from the necessary data loaders and/or other calculators in order to calculate the execution and transmission cost/carbon/runtime.
 
 Below is a diagram showing the overall access of data in the Solver Inputs:

@@ -62,6 +62,10 @@ class Executor:
         for key, value in params.items():
             if isinstance(value, Variable):
                 params[key] = self.variables[value.name]
+            if isinstance(value, list):
+                params[key] = [self.variables[item.name] if isinstance(item, Variable) else item for item in value]
+            if isinstance(value, dict):
+                params[key] = {k: self.variables[v.name] if isinstance(v, Variable) else v for k, v in value.items()}
         return params
 
     def _default_handler(self, instruction: Instruction, client: RemoteClient) -> None:
