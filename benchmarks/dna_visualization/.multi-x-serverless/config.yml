@@ -41,5 +41,5 @@ regions_and_providers: # Either the user specify only allowed regions (which wil
   providers:
     aws:
       config:
-        timeout: 60
-        memory: 128
+        timeout: 300
+        memory: 512
