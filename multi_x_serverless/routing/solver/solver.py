@@ -16,6 +16,10 @@ from multi_x_serverless.routing.solver.objective_function.any_improvement_object
 )
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class Solver(ABC):  # pylint: disable=too-many-instance-attributes
     def __init__(
@@ -71,12 +75,18 @@ class Solver(ABC):  # pylint: disable=too-many-instance-attributes
         self._objective_function = AnyImprovementObjectiveFunction
 
     def solve(self) -> None:
+        logger.info("Solving workflow placement")
         solved_results = self._solve(self._worklow_level_permitted_regions)
         ranked_results = self.rank_solved_results(solved_results)
+        logger.info(f"Number of results: {len(ranked_results)}")
         selected_result = self._select_result(ranked_results)
         formatted_result = self._formatter.format(
             selected_result, self._dag.indicies_to_values(), self._region_indexer.indicies_to_values()
         )
+        logger.info(f"Selected result: {formatted_result}")
+        logger.info(f"Result values: cost: {selected_result[1]}, carbon: {selected_result[2]}, runtime: {selected_result[3]}")
+        if len(ranked_results) > 1:
+            logger.info(f"Second best result: cost: {ranked_results[1][1]}, carbon: {ranked_results[1][2]}, runtime: {ranked_results[1][3]}")
         self._upload_result(formatted_result)
 
     def _init_home_region_transmission_costs(self, regions: list[str]) -> None:
@@ -189,9 +199,7 @@ class Solver(ABC):  # pylint: disable=too-many-instance-attributes
             and carbon > hard_resource_constraints["carbon"]["value"]
         )
 
-    def init_deployment_to_region(
-        self, region_index: int
-    ) -> tuple[
+    def init_deployment_to_region(self, region_index: int) -> tuple[
         dict[int, int],
         tuple[float, float],
         tuple[float, float],

@@ -13,6 +13,10 @@ from multi_x_serverless.deployment.common.deploy.models.function_instance import
 from multi_x_serverless.deployment.common.deploy.models.iam_role import IAMRole
 from multi_x_serverless.deployment.common.deploy.models.workflow import Workflow
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class WorkflowBuilder:
     def build_workflow(  # pylint: disable=too-many-branches
@@ -278,6 +282,7 @@ class WorkflowBuilder:
                     deploy_region=deployed_regions[function["name"]],
                     entry_point=function["entry_point"],
                     providers=function["providers"],
+                    deploy=False,
                 )
             )
 

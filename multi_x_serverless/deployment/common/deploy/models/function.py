@@ -22,6 +22,7 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
         runtime: str,
         deploy_region: dict[str, str],
         providers: dict[str, Any],
+        deploy: bool = True,
     ) -> None:
         super().__init__(name, "function")
         self.entry_point = entry_point
@@ -33,6 +34,7 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
         self.runtime = runtime
         self.deploy_region = deploy_region
         self.providers = providers
+        self.deploy = deploy
 
     def to_json(self) -> dict[str, Any]:
         return {

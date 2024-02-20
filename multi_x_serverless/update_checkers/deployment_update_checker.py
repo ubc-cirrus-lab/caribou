@@ -2,6 +2,9 @@ from multi_x_serverless.common.constants import WORKFLOW_PLACEMENT_SOLVER_STAGIN
 from multi_x_serverless.deployment.server.main import run
 from multi_x_serverless.update_checkers.update_checker import UpdateChecker
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 class DeploymentUpdateChecker(UpdateChecker):
     def __init__(self) -> None:
@@ -13,4 +16,5 @@ class DeploymentUpdateChecker(UpdateChecker):
             WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE
         )
         for updated_workflow_placement in updated_workflow_placements:
+            logger.info(f"Checking if the deployment should be updated for workflow: {updated_workflow_placement}")
             run(updated_workflow_placement)
