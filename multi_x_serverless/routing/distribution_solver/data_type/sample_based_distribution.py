@@ -49,6 +49,9 @@ class SampleBasedDistribution(Distribution):
         return final_samples
 
     def get_merged_distribution(self, parent_distributions: list[T]) -> T:
+        return self._possible_loop_approach_get_merged_distribution(parent_distributions)
+
+    def _possible_padding_approach_get_merged_distribution(self, parent_distributions: list[T]) -> T:
         for distribution in parent_distributions:
             if not isinstance(distribution, SampleBasedDistribution):
                 raise TypeError(
@@ -80,7 +83,7 @@ class SampleBasedDistribution(Distribution):
             return np.sort(padded_array)
         return np.sort(samples)
 
-    def _alternative_get_merged_distribution(self, parent_distributions: list[T]) -> T:
+    def _possible_loop_approach_get_merged_distribution(self, parent_distributions: list[T]) -> T:
         for distribution in parent_distributions:
             if not isinstance(distribution, SampleBasedDistribution):
                 raise TypeError(
@@ -107,7 +110,7 @@ class SampleBasedDistribution(Distribution):
             T, SampleBasedDistribution(parent_runtimes[-1], self._probability_of_invocation, self._max_sample_size)
         )
 
-    def _alternative_downsample_approach_get_merged_distribution(self, parent_distributions: list[T]) -> T:
+    def _possible_downsample_approach_get_merged_distribution(self, parent_distributions: list[T]) -> T:
         for distribution in parent_distributions:
             if not isinstance(distribution, SampleBasedDistribution):
                 raise TypeError(
@@ -161,6 +164,28 @@ class SampleBasedDistribution(Distribution):
         )
 
     def _downsample(self, samples: np.ndarray, max_sample_size: int = -1) -> np.ndarray:
+        new_samples = self._quantile_downsample(samples, max_sample_size)
+        new_samples.sort()
+        return new_samples
+
+    def _quantile_downsample(self, samples: np.ndarray, max_sample_size: int = 1000) -> np.ndarray:
+        max_sample_size = self._consider_sample_size(max_sample_size)
+
+        if len(samples) <= max_sample_size:
+            return samples
+
+        # Sort the samples to facilitate quantile-based sampling
+        sorted_samples = np.sort(samples)
+
+        # Compute quantile indices to sample from
+        quantile_indices = np.linspace(0, len(sorted_samples) - 1, max_sample_size).astype(int)
+
+        # Select samples based on computed indices
+        downsampled_samples = sorted_samples[quantile_indices]
+
+        return downsampled_samples
+
+    def _random_downsample(self, samples: np.ndarray, max_sample_size: int = -1) -> np.ndarray:
         max_sample_size = self._consider_sample_size(max_sample_size)
 
         if len(samples) <= max_sample_size:
