@@ -8,6 +8,7 @@ T = TypeVar("T", bound="Distribution")
 
 class Distribution(ABC):
     _samples: np.ndarray
+    _probability_of_invocation: float
 
     def __init__(self) -> None:
         self._tail_latency_threshold = 95  # Would become an environemntal variable later

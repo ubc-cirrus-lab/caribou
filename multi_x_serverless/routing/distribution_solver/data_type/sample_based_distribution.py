@@ -10,12 +10,41 @@ T = TypeVar("T", bound="Distribution")
 class SampleBasedDistribution(Distribution):
     _max_sample_size: int
 
-    def __init__(self, samples: np.ndarray = np.zeros(1, dtype=float), max_sample_size: int = 100):
+    def __init__(
+        self,
+        samples: np.ndarray = np.zeros(1, dtype=float),
+        probability_of_invocation: float = 1.0,
+        max_sample_size: int = 1000,
+    ):
         super().__init__()
-        samples.sort()
-        self._samples: np.ndarray = samples
+        # We want to avoid contaiminating this with zero samples
+        # Such that we want to do this BEFORE adding zero samples
         self._non_zero_samples: np.ndarray = samples[samples != 0.0]
         self._max_sample_size = max_sample_size
+        self._probability_of_invocation = probability_of_invocation
+
+        # We want to add zero samples to the distribution
+        self._samples: np.ndarray = self._add_zero_samples(samples, probability_of_invocation)
+
+    def _add_zero_samples(self, samples: np.ndarray, probability_of_invocation: float) -> np.ndarray:
+        # Handle the case where we have 0 or 1 probability of invocation
+        if probability_of_invocation >= 1.0:
+            return samples
+        if probability_of_invocation <= 0.0:
+            return np.zeros(1, dtype=float)
+
+        num_zeros = int((1 - probability_of_invocation) * len(samples))
+        print(num_zeros, len(samples), probability_of_invocation, len(samples) + num_zeros)
+        zero_samples = np.zeros(num_zeros, dtype=float)
+        final_samples = np.concatenate((samples, zero_samples))
+        final_samples.sort()
+
+        # If the final_sample is WAY too big, we should downsample it
+        # Else we might just want to preserve the original size
+        if len(final_samples) > self._max_sample_size * 5:
+            final_samples = self._downsample(final_samples, self._max_sample_size)
+
+        return final_samples
 
     def get_merged_distribution(self, parent_distributions: list[T]) -> T:
         for distribution in parent_distributions:
