@@ -840,22 +840,13 @@ class TestDistributionBFSFineGrainedSolver(unittest.TestCase):
 
         # Execution Matrix (Runtime, Probability, Bimodal)
         all_bimodal = False
-        # self._execution_matrix = [
-        #     [(15.0, 0.5, all_bimodal)],  # Node 0 -> head
-        #     [(12.0, 0.9, all_bimodal)],  # Node 1 -> Left
-        #     [(400.0, 0.1, all_bimodal)],  # Node 2 -> Right
-        #     [(30.0, 0.9, all_bimodal)],  # Node 3 -> Join Node 1 and 2
-        #     [(75.0, 0.4, all_bimodal)],  # Node 4 -> Follows Node 2
-        #     [(25, 0.47, all_bimodal)],  # Node 5 -> Join Node 3 and 4
-        # ]
-        # Execution Matrix (Runtime, Probability, Bimodal)
         self._execution_matrix = [
-            [(15.0, 1, all_bimodal)],  # Node 0 -> head
-            [(12.0, 1, all_bimodal)],  # Node 1 -> Left
-            [(400.0, 1, all_bimodal)],  # Node 2 -> Right
-            [(30.0, 1, all_bimodal)],  # Node 3 -> Join Node 1 and 2
-            [(75.0, 1, all_bimodal)],  # Node 4 -> Follows Node 2
-            [(25, 1, all_bimodal)],  # Node 5 -> Join Node 3 and 4
+            [(15.0, 0.5, all_bimodal)],  # Node 0 -> head
+            [(12.0, 0.9, all_bimodal)],  # Node 1 -> Left
+            [(400.0, 0.01, all_bimodal)],  # Node 2 -> Right
+            [(30.0, 0.9, all_bimodal)],  # Node 3 -> Join Node 1 and 2
+            [(75.0, 0.4, all_bimodal)],  # Node 4 -> Follows Node 2
+            [(25, 0.47, all_bimodal)],  # Node 5 -> Join Node 3 and 4
         ]
 
         self._transmission_matrix = [
