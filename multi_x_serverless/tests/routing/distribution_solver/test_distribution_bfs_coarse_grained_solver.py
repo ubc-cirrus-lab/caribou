@@ -305,13 +305,13 @@ class TestDistributionBFSFineGrainedSolver(unittest.TestCase):
         self.execution_matrix = [
             [SampleBasedDistribution(np.array([1.0])), SampleBasedDistribution(np.array([1.5]))],
             [SampleBasedDistribution(np.array([0.0, 2.0])), SampleBasedDistribution(np.array([0.0, 2.5]))],
-            [SampleBasedDistribution(np.array([0.0, 0.0, 0.0, 3.0])), SampleBasedDistribution(np.array([0.0, 0.0, 0.0, 3.5]))],
+            [SampleBasedDistribution(np.array([0.0, 0.0, 0.0, 103.0])), SampleBasedDistribution(np.array([0.0, 0.0, 0.0, 103.5]))],
             [SampleBasedDistribution(np.array([4.0])), SampleBasedDistribution(np.array([4.5]))],
         ]
 
-        self.transmission_matrix = [
-            [SampleBasedDistribution(np.array([0.01])), SampleBasedDistribution(np.array([0.1]))],
-            [None, SampleBasedDistribution(np.array([0.01]))],
+        self.transmission_matrix = [ # No Transmission -> Ignores complexities
+            [SampleBasedDistribution(np.array([0])), SampleBasedDistribution(np.array([0]))],
+            [None, SampleBasedDistribution(np.array([0]))],
         ]
 
         solver = DistributionBFSFineGrainedSolver(self.workflow_config, self._all_regions, self.input_manager)
