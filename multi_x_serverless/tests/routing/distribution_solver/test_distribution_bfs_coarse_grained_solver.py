@@ -490,10 +490,10 @@ class TestDistributionBFSFineGrainedSolver(unittest.TestCase):
 
         # Execution Matrix (Runtime, Probability)
         self._execution_matrix = [
-            [(5.0, 0.5)],  # Node 0 -> head
-            [(2.0, 1.0)],  # Node 1 -> Left
-            [(300.0, 0.001)],  # Node 2 -> Right
-            [(4.0, 0.9)],  # Node 3 -> Join
+            [(15.0, 0.5)],  # Node 0 -> head
+            [(12.0, 0.9)],  # Node 1 -> Left
+            [(300.0, 0.1)],  # Node 2 -> Right
+            [(14.0, 0.9)],  # Node 3 -> Join
         ]
         self._transmission_matrix = [
             [0],
@@ -501,7 +501,7 @@ class TestDistributionBFSFineGrainedSolver(unittest.TestCase):
         (
             self.distribution_execution_matrix,
             self.distribution_transmission_matrix,
-        ) = self._generate_distribution_matricies(self._execution_matrix, self._transmission_matrix, False)
+        ) = self._generate_distribution_matricies(self._execution_matrix, self._transmission_matrix, True)
 
         original_bfs_solver = BFSFineGrainedSolver(self.workflow_config, self._all_regions, self.input_manager)
         solver = DistributionBFSFineGrainedSolver(

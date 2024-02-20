@@ -30,11 +30,10 @@ class SampleBasedDistribution(Distribution):
         # Handle the case where we have 0 or 1 probability of invocation
         if probability_of_invocation >= 1.0:
             return samples
-        if probability_of_invocation <= 0.0:
+        if probability_of_invocation <= 0.001: # If the probability is too low, we should just return an empty array
             return np.zeros(1, dtype=float)
 
-        num_zeros = int((1 - probability_of_invocation) * len(samples))
-        print(num_zeros, len(samples), probability_of_invocation, len(samples) + num_zeros)
+        num_zeros = int(len(samples) / probability_of_invocation)
         zero_samples = np.zeros(num_zeros, dtype=float)
         final_samples = np.concatenate((samples, zero_samples))
         final_samples.sort()
@@ -43,6 +42,9 @@ class SampleBasedDistribution(Distribution):
         # Else we might just want to preserve the original size
         if len(final_samples) > self._max_sample_size * 5:
             final_samples = self._downsample(final_samples, self._max_sample_size)
+        
+        # # print length of new zero samples and non zero samples
+        # print(len(final_samples[final_samples <= 0.0]), len(final_samples[final_samples > 0.0]))
 
         return final_samples
 
