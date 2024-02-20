@@ -10,14 +10,12 @@ class DistributionBFSFineGrainedSolver(DistributionSolver):
         return []
 
     def _distribution_solve(
-        self, regions: list[str]
+        self, regions: list[str], current_distribution_type: type[Distribution] = SampleBasedDistribution
     ) -> list[
         tuple[
             int, tuple[Distribution, Distribution, Distribution], tuple[float, float, float], tuple[float, float, float]
         ]
     ]:
-        CurrentDistributionType = SampleBasedDistribution  # Set the distribution type
-
         # Get the home region index -> this is the region that the workflow starts from
         # For now the current implementation only supports one home region
         home_region_index = self._region_indexer.get_value_indices()[self._workflow_config.start_hops]
@@ -52,8 +50,8 @@ class DistributionBFSFineGrainedSolver(DistributionSolver):
             cumulative_wc_cost = cumulative_wc_carbon = cumulative_pc_cost = cumulative_pc_carbon = 0.0
 
             # Cummulative Distribution of the cost and carbon
-            cumulative_cost_distribution: Distribution = CurrentDistributionType()
-            cumulative_carbon_distribution: Distribution = CurrentDistributionType()
+            cumulative_cost_distribution: Distribution = current_distribution_type()
+            cumulative_carbon_distribution: Distribution = current_distribution_type()
 
             for current_instance_index in self._topological_order:
                 # Get the prerequisites of the current node
@@ -65,7 +63,7 @@ class DistributionBFSFineGrainedSolver(DistributionSolver):
                 # Aquire the previous deployments
                 if len(prerequisites_indices) == 0:
                     # Special Case where the current node is a head node
-                    blank_runtime_distribution: Distribution = CurrentDistributionType()
+                    blank_runtime_distribution: Distribution = current_distribution_type()
                     previous_deployments.append(((blank_runtime_distribution, 0.0, 0.0), -1))
                 else:
                     # General Case where the current node is not a head node
@@ -114,7 +112,7 @@ class DistributionBFSFineGrainedSolver(DistributionSolver):
 
                 # Process the current runtime
                 cumulative_runtime_distribution = self._process_runtime_distributions(
-                    held_runtime_distributions, CurrentDistributionType
+                    held_runtime_distributions, current_distribution_type
                 )
 
                 # Process current execution if not virtual leaf node

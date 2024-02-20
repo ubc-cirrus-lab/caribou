@@ -356,7 +356,7 @@ class TestDistributionBFSFineGrainedSolver(unittest.TestCase):
         This is a simple test with 4 instances, 1 parent, and 2 nodes from that parent, and a final join node.
         """
         self.workflow_config.start_hops = "p1:r1"
-        self.workflow_config.regions_and_providers = {"providers": {"p1": None}}
+        self.workflow_config.regions_and_providers = {"providers": {"p1": None, "p2": None}}
         self.workflow_config.instances = [
             {
                 "instance_name": "i1",
@@ -407,21 +407,22 @@ class TestDistributionBFSFineGrainedSolver(unittest.TestCase):
 
         # Execution Matrix (Runtime, Probability)
         self._execution_matrix = [
-            [(1.0, 1.0), (1.5, 1.0)],
-            [(2.0, 1.0), (2.5, 1.0)],
-            [(3.0, 1.0), (3.5, 1.0)],
-            [(4.0, 1.0), (4.5, 1.0)],
+            [(1.0, 1.0), (1.5, 1.0), (1.5, 1.0)],
+            [(2.0, 1.0), (2.5, 1.0), (1.5, 1.0)],
+            [(3.0, 1.0), (3.5, 1.0), (1.5, 1.0)],
+            [(4.0, 1.0), (4.5, 1.0), (1.5, 1.0)],
         ]
         self._transmission_matrix = [
-            [1.0, 1.0],
-            [0.0, 1.0],
+            [0.1, 1.0, 1.0],
+            [1.0, 0.1, 1.0],
+            [1.0, 1.0, 0.1],
         ]
         (
             self.distribution_execution_matrix,
             self.distribution_transmission_matrix,
-        ) = self._generate_distribution_matricies(self._execution_matrix, self._transmission_matrix, False)
+        ) = self._generate_distribution_matricies(self._execution_matrix, self._transmission_matrix)
 
-        limited_regions = ["p1:r1"]
+        limited_regions = ["p1:r1", "p2:r1", "p2:r2"]
 
         original_solver = CoarseGrainedSolver(self.workflow_config, limited_regions, self.input_manager)
         original_bfs_solver = BFSFineGrainedSolver(self.workflow_config, limited_regions, self.input_manager)
@@ -432,248 +433,457 @@ class TestDistributionBFSFineGrainedSolver(unittest.TestCase):
             self.workflow_config, limited_regions, self.distribution_input_manager
         )
 
-        # print("Times for the complex join node test:")
-        # start_time = time.time()  # Start the timer
-        # original_solver._solve(limited_regions)
-        # end_time = time.time()  # End the timer
-        # print(f"Coarse Grained Solver Execution time: {end_time - start_time} seconds")  # Print the execution time
+        # N = 10  # Number of times to run each solver
 
-        # start_time = time.time()  # Start the timer
-        # solver._distribution_solve(limited_regions)
-        # end_time = time.time()  # End the timer
+        # print("Times for the complex join node test:")
+
+        # # Original Solver
+        # times = []
+        # for _ in range(N):
+        #     start_time = time.time()
+        #     original_solver._solve(limited_regions)
+        #     end_time = time.time()
+        #     times.append(end_time - start_time)
+        # print(f"Coarse Grained Solver Execution time: {sum(times) / N} seconds")
+
+        # # Distributed Solver
+        # times = []
+        # for _ in range(N):
+        #     start_time = time.time()
+        #     solver._distribution_solve(limited_regions)
+        #     end_time = time.time()
+        #     times.append(end_time - start_time)
+        # print(f"Distributed Solver Average Execution time: {sum(times) / N} seconds")
+
+        # # Original BFS Solver
+        # times = []
+        # for _ in range(N):
+        #     start_time = time.time()
+        #     original_bfs_solver._solve(limited_regions)
+        #     end_time = time.time()
+        #     times.append(end_time - start_time)
+        # print(f"Original BFS Solver Average Execution time: {sum(times) / N} seconds")
+
+        # # Original SGD Solver
+        # times = []
+        # for _ in range(N):
+        #     start_time = time.time()
+        #     original_sgd_solver._solve(limited_regions)
+        #     end_time = time.time()
+        #     times.append(end_time - start_time)
+        # print(f"Original SGD Solver Average Execution time: {sum(times) / N} seconds")
+
+    def test_solver_no_prob(self):
+        self.workflow_config.start_hops = "p1:r1"
+        self.workflow_config.regions_and_providers = {"providers": {"p1": None, "p2": None}}
+        self.workflow_config.instances = [
+            {
+                "instance_name": "i1",
+                "function_name": "f1",
+                "succeeding_instances": ["i2", "i3"],
+                "preceding_instances": [],
+                "regions_and_providers": {
+                    "allowed_regions": None,
+                    "disallowed_regions": None,
+                    "providers": {"p1": None, "p2": None},
+                },
+            },
+            {
+                "instance_name": "i2",
+                "function_name": "f2",
+                "succeeding_instances": ["i4"],
+                "preceding_instances": ["i1"],
+                "regions_and_providers": {
+                    "allowed_regions": None,
+                    "disallowed_regions": None,
+                    "providers": {"p1": None, "p2": None},
+                },
+            },
+            {
+                "instance_name": "i3",
+                "function_name": "f3",
+                "succeeding_instances": ["i4"],
+                "preceding_instances": ["i1"],
+                "regions_and_providers": {
+                    "allowed_regions": None,
+                    "disallowed_regions": None,
+                    "providers": {"p1": None, "p2": None},
+                },
+            },
+            {
+                "instance_name": "i4",
+                "function_name": "f4",
+                "succeeding_instances": [],
+                "preceding_instances": ["i2", "i3"],
+                "regions_and_providers": {
+                    "allowed_regions": None,
+                    "disallowed_regions": None,
+                    "providers": {"p1": None, "p2": None},
+                },
+            },
+        ]
+        self.workflow_config.constraints = None
+
+        # Execution Matrix (Runtime, Probability)
+        all_bimodal = True
+        prob = 1.0
+        self._execution_matrix = [
+            [(15.0, prob, all_bimodal or False)],  # Node 0 -> head
+            [(12.0, prob, all_bimodal or False)],  # Node 1 -> Left
+            [(300.0, prob, all_bimodal or False)],  # Node 2 -> Right
+            [(14.0, prob, all_bimodal or False)],  # Node 3 -> Join
+        ]
+        self._transmission_matrix = [
+            [0],
+        ]
+        (
+            self.distribution_execution_matrix,
+            self.distribution_transmission_matrix,
+        ) = self._generate_distribution_matricies(self._execution_matrix, self._transmission_matrix, True, True)
+
+        original_bfs_solver = BFSFineGrainedSolver(self.workflow_config, self._all_regions, self.input_manager)
+        solver = DistributionBFSFineGrainedSolver(
+            self.workflow_config, self._all_regions, self.distribution_input_manager
+        )
+
+        # limited_regions = self._all_regions
+        limited_regions = ["p1:r1"]
+
+        print("\nFor the complex with distribution (NO PROB) join node test:")
+        start_time = time.time()  # Start the timer
+        deployments = solver._distribution_solve(limited_regions)
+        end_time = time.time()  # End the timer
         # print(f"Distributed Solver Execution time: {end_time - start_time} seconds")  # Print the execution time
 
-        # start_time = time.time()  # Start the timer
-        # original_bfs_solver._solve(limited_regions)
-        # end_time = time.time()  # End the timer
+        start_time = time.time()  # Start the timer
+        original_bfs_solver_deployments = original_bfs_solver._solve(limited_regions)
+        end_time = time.time()  # End the timer
         # print(f"Original BFS Solver Execution time: {end_time - start_time} seconds")  # Print the execution time
 
-        # start_time = time.time()  # Start the timer
-        # original_sgd_solver._solve(limited_regions)
-        # end_time = time.time()  # End the timer
-        # print(f"Original SGD Solver Execution time: {end_time - start_time} seconds")  # Print the execution time
+        print(original_bfs_solver_deployments)
+        self._print_formatted_output(deployments)
 
-        N = 10  # Number of times to run each solver
+    def test_solver_probabilistic_2_node_join_complex_comparison(self):
+        self.workflow_config.start_hops = "p1:r1"
+        self.workflow_config.regions_and_providers = {"providers": {"p1": None, "p2": None}}
+        self.workflow_config.instances = [
+            {
+                "instance_name": "i1",
+                "function_name": "f1",
+                "succeeding_instances": ["i2", "i3"],
+                "preceding_instances": [],
+                "regions_and_providers": {
+                    "allowed_regions": None,
+                    "disallowed_regions": None,
+                    "providers": {"p1": None, "p2": None},
+                },
+            },
+            {
+                "instance_name": "i2",
+                "function_name": "f2",
+                "succeeding_instances": ["i4"],
+                "preceding_instances": ["i1"],
+                "regions_and_providers": {
+                    "allowed_regions": None,
+                    "disallowed_regions": None,
+                    "providers": {"p1": None, "p2": None},
+                },
+            },
+            {
+                "instance_name": "i3",
+                "function_name": "f3",
+                "succeeding_instances": ["i4"],
+                "preceding_instances": ["i1"],
+                "regions_and_providers": {
+                    "allowed_regions": None,
+                    "disallowed_regions": None,
+                    "providers": {"p1": None, "p2": None},
+                },
+            },
+            {
+                "instance_name": "i4",
+                "function_name": "f4",
+                "succeeding_instances": [],
+                "preceding_instances": ["i2", "i3"],
+                "regions_and_providers": {
+                    "allowed_regions": None,
+                    "disallowed_regions": None,
+                    "providers": {"p1": None, "p2": None},
+                },
+            },
+        ]
+        self.workflow_config.constraints = None
 
-        print("Times for the complex join node test:")
+        # Execution Matrix (Runtime, Probability, Bimodal)
+        all_bimodal = True
+        self._execution_matrix = [
+            [(15.0, 0.5, all_bimodal or False)],  # Node 0 -> head
+            [(12.0, 0.9, all_bimodal or False)],  # Node 1 -> Left
+            [(300.0, 0, all_bimodal or False)],  # Node 2 -> Right
+            [(14.0, 0.9, all_bimodal or False)],  # Node 3 -> Join
+        ]
+        self._transmission_matrix = [
+            [0],
+        ]
+        (
+            self.distribution_execution_matrix,
+            self.distribution_transmission_matrix,
+        ) = self._generate_distribution_matricies(self._execution_matrix, self._transmission_matrix, True, True)
 
-        # Original Solver
-        times = []
-        for _ in range(N):
-            start_time = time.time()
-            original_solver._solve(limited_regions)
-            end_time = time.time()
-            times.append(end_time - start_time)
-        print(f"Coarse Grained Solver Execution time: {sum(times) / N} seconds")
+        original_bfs_solver = BFSFineGrainedSolver(self.workflow_config, self._all_regions, self.input_manager)
+        solver = DistributionBFSFineGrainedSolver(
+            self.workflow_config, self._all_regions, self.distribution_input_manager
+        )
 
-        # Distributed Solver
-        times = []
-        for _ in range(N):
-            start_time = time.time()
-            solver._distribution_solve(limited_regions)
-            end_time = time.time()
-            times.append(end_time - start_time)
-        print(f"Distributed Solver Average Execution time: {sum(times) / N} seconds")
+        limited_regions = self._all_regions
+        limited_regions = ["p1:r1"]
 
-        # Original BFS Solver
-        times = []
-        for _ in range(N):
-            start_time = time.time()
-            original_bfs_solver._solve(limited_regions)
-            end_time = time.time()
-            times.append(end_time - start_time)
-        print(f"Original BFS Solver Average Execution time: {sum(times) / N} seconds")
+        print("\nFor the complex with distribution join node test:")
+        start_time = time.time()  # Start the timer
+        deployments = solver._distribution_solve(limited_regions)
+        end_time = time.time()  # End the timer
+        # print(f"Distributed Solver Execution time: {end_time - start_time} seconds")  # Print the execution time
 
-        # Original SGD Solver
-        times = []
-        for _ in range(N):
-            start_time = time.time()
-            original_sgd_solver._solve(limited_regions)
-            end_time = time.time()
-            times.append(end_time - start_time)
-        print(f"Original SGD Solver Average Execution time: {sum(times) / N} seconds")
+        start_time = time.time()  # Start the timer
+        original_bfs_solver_deployments = original_bfs_solver._solve(limited_regions)
+        end_time = time.time()  # End the timer
+        # print(f"Original BFS Solver Execution time: {end_time - start_time} seconds")  # Print the execution time
 
+        print(original_bfs_solver_deployments)
+        self._print_formatted_output(deployments)
 
-    # def test_solver_no_prob(self):
-    #     self.workflow_config.start_hops = "p1:r1"
-    #     self.workflow_config.regions_and_providers = {"providers": {"p1": None, "p2": None}}
-    #     self.workflow_config.instances = [
-    #         {
-    #             "instance_name": "i1",
-    #             "function_name": "f1",
-    #             "succeeding_instances": ["i2", "i3"],
-    #             "preceding_instances": [],
-    #             "regions_and_providers": {
-    #                 "allowed_regions": None,
-    #                 "disallowed_regions": None,
-    #                 "providers": {"p1": None, "p2": None},
-    #             },
-    #         },
-    #         {
-    #             "instance_name": "i2",
-    #             "function_name": "f2",
-    #             "succeeding_instances": ["i4"],
-    #             "preceding_instances": ["i1"],
-    #             "regions_and_providers": {
-    #                 "allowed_regions": None,
-    #                 "disallowed_regions": None,
-    #                 "providers": {"p1": None, "p2": None},
-    #             },
-    #         },
-    #         {
-    #             "instance_name": "i3",
-    #             "function_name": "f3",
-    #             "succeeding_instances": ["i4"],
-    #             "preceding_instances": ["i1"],
-    #             "regions_and_providers": {
-    #                 "allowed_regions": None,
-    #                 "disallowed_regions": None,
-    #                 "providers": {"p1": None, "p2": None},
-    #             },
-    #         },
-    #         {
-    #             "instance_name": "i4",
-    #             "function_name": "f4",
-    #             "succeeding_instances": [],
-    #             "preceding_instances": ["i2", "i3"],
-    #             "regions_and_providers": {
-    #                 "allowed_regions": None,
-    #                 "disallowed_regions": None,
-    #                 "providers": {"p1": None, "p2": None},
-    #             },
-    #         },
-    #     ]
-    #     self.workflow_config.constraints = None
+    def test_solver_probabilistic_very_complex_comparison(self):
+        self.workflow_config.start_hops = "p1:r1"
+        self.workflow_config.regions_and_providers = {"providers": {"p1": None, "p2": None}}
+        self.workflow_config.instances = [
+            {
+                "instance_name": "i1",
+                "function_name": "f1",
+                "succeeding_instances": ["i2", "i3"],
+                "preceding_instances": [],
+                "regions_and_providers": {
+                    "allowed_regions": None,
+                    "disallowed_regions": None,
+                    "providers": {"p1": None, "p2": None},
+                },
+            },
+            {
+                "instance_name": "i2",
+                "function_name": "f2",
+                "succeeding_instances": ["i4"],
+                "preceding_instances": ["i1"],
+                "regions_and_providers": {
+                    "allowed_regions": None,
+                    "disallowed_regions": None,
+                    "providers": {"p1": None},
+                },
+            },
+            {
+                "instance_name": "i3",
+                "function_name": "f3",
+                "succeeding_instances": ["i4", "i5"],
+                "preceding_instances": ["i1"],
+                "regions_and_providers": {
+                    "allowed_regions": None,
+                    "disallowed_regions": None,
+                    "providers": {"p1": None},
+                },
+            },
+            {
+                "instance_name": "i4",
+                "function_name": "f4",
+                "succeeding_instances": ["i6"],
+                "preceding_instances": ["i2", "i3"],
+                "regions_and_providers": {
+                    "allowed_regions": None,
+                    "disallowed_regions": None,
+                    "providers": {"p1": None},
+                },
+            },
+            {
+                "instance_name": "i5",
+                "function_name": "f5",
+                "succeeding_instances": ["i6"],
+                "preceding_instances": ["i3"],
+                "regions_and_providers": {
+                    "allowed_regions": None,
+                    "disallowed_regions": None,
+                    "providers": {"p1": None},
+                },
+            },
+            {
+                "instance_name": "i6",
+                "function_name": "f6",
+                "succeeding_instances": [],
+                "preceding_instances": ["i4", "i5"],
+                "regions_and_providers": {
+                    "allowed_regions": None,
+                    "disallowed_regions": None,
+                    "providers": {"p1": None, "p2": None},
+                },
+            },
+        ]
+        self.workflow_config.constraints = None
 
-    #     # Execution Matrix (Runtime, Probability)
-    #     all_bimodal = True
-    #     prob = 1.0
-    #     self._execution_matrix = [
-    #         [(15.0, prob, all_bimodal or False)],  # Node 0 -> head
-    #         [(12.0, prob, all_bimodal or False)],  # Node 1 -> Left
-    #         [(300.0, prob, all_bimodal or False)],  # Node 2 -> Right
-    #         [(14.0, prob, all_bimodal or False)],  # Node 3 -> Join
-    #     ]
-    #     self._transmission_matrix = [
-    #         [0],
-    #     ]
-    #     (
-    #         self.distribution_execution_matrix,
-    #         self.distribution_transmission_matrix,
-    #     ) = self._generate_distribution_matricies(self._execution_matrix, self._transmission_matrix)
+        # Execution Matrix (Runtime, Probability, Bimodal)
+        all_bimodal = False
+        self._execution_matrix = [
+            [(15.0, 0.5, all_bimodal or False)],  # Node 0 -> head
+            [(12.0, 0.9, all_bimodal or False)],  # Node 1 -> Left
+            [(300.0, 0.1, all_bimodal or True)],  # Node 2 -> Right
+            [(14.0, 0.9, all_bimodal or True)],  # Node 3 -> Join Node 1 and 2
+            [(4.0, 0.4, all_bimodal or False)],  # Node 4 -> Follows Node 2
+            [(12.0, 0.47, all_bimodal or True)],  # Node 5 -> Join Node 3 and 4
+        ]
+        self._transmission_matrix = [
+            [0],
+        ]
+        (
+            self.distribution_execution_matrix,
+            self.distribution_transmission_matrix,
+        ) = self._generate_distribution_matricies(self._execution_matrix, self._transmission_matrix, True, True)
 
-    #     original_bfs_solver = BFSFineGrainedSolver(self.workflow_config, self._all_regions, self.input_manager)
-    #     solver = DistributionBFSFineGrainedSolver(
-    #         self.workflow_config, self._all_regions, self.distribution_input_manager
-    #     )
+        original_bfs_solver = BFSFineGrainedSolver(self.workflow_config, self._all_regions, self.input_manager)
+        solver = DistributionBFSFineGrainedSolver(
+            self.workflow_config, self._all_regions, self.distribution_input_manager
+        )
 
-    #     limited_regions = self._all_regions
-    #     limited_regions = ["p1:r1"]
+        limited_regions = self._all_regions
+        limited_regions = ["p1:r1"]
 
-    #     print("\nFor the complex with distribution (NO PROB) join node test:")
-    #     start_time = time.time()  # Start the timer
-    #     deployments = solver._distribution_solve(limited_regions)
-    #     end_time = time.time()  # End the timer
-    #     # print(f"Distributed Solver Execution time: {end_time - start_time} seconds")  # Print the execution time
+        print("\nFor the VERY complex with distribution join node test:")
+        start_time = time.time()  # Start the timer
+        deployments = solver._distribution_solve(limited_regions)
+        end_time = time.time()  # End the timer
+        # print(f"Distributed Solver Execution time: {end_time - start_time} seconds")  # Print the execution time
 
-    #     start_time = time.time()  # Start the timer
-    #     original_bfs_solver_deployments = original_bfs_solver._solve(limited_regions)
-    #     end_time = time.time()  # End the timer
-    #     # print(f"Original BFS Solver Execution time: {end_time - start_time} seconds")  # Print the execution time
+        start_time = time.time()  # Start the timer
+        original_bfs_solver_deployments = original_bfs_solver._solve(limited_regions)
+        end_time = time.time()  # End the timer
+        # print(f"Original BFS Solver Execution time: {end_time - start_time} seconds")  # Print the execution time
 
-    #     print(original_bfs_solver_deployments)
-    #     self._print_formatted_output(deployments)
+        print(original_bfs_solver_deployments)
+        self._print_formatted_output(deployments)
 
-    # def test_solver_probabilistic_2_node_join_complex_comparison(self):
-    #     self.workflow_config.start_hops = "p1:r1"
-    #     self.workflow_config.regions_and_providers = {"providers": {"p1": None, "p2": None}}
-    #     self.workflow_config.instances = [
-    #         {
-    #             "instance_name": "i1",
-    #             "function_name": "f1",
-    #             "succeeding_instances": ["i2", "i3"],
-    #             "preceding_instances": [],
-    #             "regions_and_providers": {
-    #                 "allowed_regions": None,
-    #                 "disallowed_regions": None,
-    #                 "providers": {"p1": None, "p2": None},
-    #             },
-    #         },
-    #         {
-    #             "instance_name": "i2",
-    #             "function_name": "f2",
-    #             "succeeding_instances": ["i4"],
-    #             "preceding_instances": ["i1"],
-    #             "regions_and_providers": {
-    #                 "allowed_regions": None,
-    #                 "disallowed_regions": None,
-    #                 "providers": {"p1": None, "p2": None},
-    #             },
-    #         },
-    #         {
-    #             "instance_name": "i3",
-    #             "function_name": "f3",
-    #             "succeeding_instances": ["i4"],
-    #             "preceding_instances": ["i1"],
-    #             "regions_and_providers": {
-    #                 "allowed_regions": None,
-    #                 "disallowed_regions": None,
-    #                 "providers": {"p1": None, "p2": None},
-    #             },
-    #         },
-    #         {
-    #             "instance_name": "i4",
-    #             "function_name": "f4",
-    #             "succeeding_instances": [],
-    #             "preceding_instances": ["i2", "i3"],
-    #             "regions_and_providers": {
-    #                 "allowed_regions": None,
-    #                 "disallowed_regions": None,
-    #                 "providers": {"p1": None, "p2": None},
-    #             },
-    #         },
-    #     ]
-    #     self.workflow_config.constraints = None
+    def test_solver_probabilistic_very_complex_non_bimodal_comparison(self):
+        self.workflow_config.start_hops = "p1:r1"
+        self.workflow_config.regions_and_providers = {"providers": {"p1": None, "p2": None}}
+        self.workflow_config.instances = [
+            {
+                "instance_name": "i1",
+                "function_name": "f1",
+                "succeeding_instances": ["i2", "i3"],
+                "preceding_instances": [],
+                "regions_and_providers": {
+                    "allowed_regions": None,
+                    "disallowed_regions": None,
+                    "providers": {"p1": None, "p2": None},
+                },
+            },
+            {
+                "instance_name": "i2",
+                "function_name": "f2",
+                "succeeding_instances": ["i4"],
+                "preceding_instances": ["i1"],
+                "regions_and_providers": {
+                    "allowed_regions": None,
+                    "disallowed_regions": None,
+                    "providers": {"p1": None},
+                },
+            },
+            {
+                "instance_name": "i3",
+                "function_name": "f3",
+                "succeeding_instances": ["i4", "i5"],
+                "preceding_instances": ["i1"],
+                "regions_and_providers": {
+                    "allowed_regions": None,
+                    "disallowed_regions": None,
+                    "providers": {"p1": None},
+                },
+            },
+            {
+                "instance_name": "i4",
+                "function_name": "f4",
+                "succeeding_instances": ["i6"],
+                "preceding_instances": ["i2", "i3"],
+                "regions_and_providers": {
+                    "allowed_regions": None,
+                    "disallowed_regions": None,
+                    "providers": {"p1": None},
+                },
+            },
+            {
+                "instance_name": "i5",
+                "function_name": "f5",
+                "succeeding_instances": ["i6"],
+                "preceding_instances": ["i3"],
+                "regions_and_providers": {
+                    "allowed_regions": None,
+                    "disallowed_regions": None,
+                    "providers": {"p1": None},
+                },
+            },
+            {
+                "instance_name": "i6",
+                "function_name": "f6",
+                "succeeding_instances": [],
+                "preceding_instances": ["i4", "i5"],
+                "regions_and_providers": {
+                    "allowed_regions": None,
+                    "disallowed_regions": None,
+                    "providers": {"p1": None, "p2": None},
+                },
+            },
+        ]
+        self.workflow_config.constraints = None
 
-    #     # Execution Matrix (Runtime, Probability)
-    #     all_bimodal = True
-    #     self._execution_matrix = [
-    #         [(15.0, 0.5, all_bimodal or False)],  # Node 0 -> head
-    #         [(12.0, 0.9, all_bimodal or False)],  # Node 1 -> Left
-    #         [(300.0, 0, all_bimodal or False)],  # Node 2 -> Right
-    #         [(14.0, 0.9, all_bimodal or False)],  # Node 3 -> Join
-    #     ]
-    #     self._transmission_matrix = [
-    #         [0],
-    #     ]
-    #     (
-    #         self.distribution_execution_matrix,
-    #         self.distribution_transmission_matrix,
-    #     ) = self._generate_distribution_matricies(self._execution_matrix, self._transmission_matrix)
+        # Execution Matrix (Runtime, Probability, Bimodal)
+        all_bimodal = False
+        # self._execution_matrix = [
+        #     [(15.0, 0.5, all_bimodal)],  # Node 0 -> head
+        #     [(12.0, 0.9, all_bimodal)],  # Node 1 -> Left
+        #     [(400.0, 0.1, all_bimodal)],  # Node 2 -> Right
+        #     [(30.0, 0.9, all_bimodal)],  # Node 3 -> Join Node 1 and 2
+        #     [(75.0, 0.4, all_bimodal)],  # Node 4 -> Follows Node 2
+        #     [(25, 0.47, all_bimodal)],  # Node 5 -> Join Node 3 and 4
+        # ]
+        # Execution Matrix (Runtime, Probability, Bimodal)
+        self._execution_matrix = [
+            [(15.0, 1, all_bimodal)],  # Node 0 -> head
+            [(12.0, 1, all_bimodal)],  # Node 1 -> Left
+            [(400.0, 1, all_bimodal)],  # Node 2 -> Right
+            [(30.0, 1, all_bimodal)],  # Node 3 -> Join Node 1 and 2
+            [(75.0, 1, all_bimodal)],  # Node 4 -> Follows Node 2
+            [(25, 1, all_bimodal)],  # Node 5 -> Join Node 3 and 4
+        ]
 
-    #     original_bfs_solver = BFSFineGrainedSolver(self.workflow_config, self._all_regions, self.input_manager)
-    #     solver = DistributionBFSFineGrainedSolver(
-    #         self.workflow_config, self._all_regions, self.distribution_input_manager
-    #     )
+        self._transmission_matrix = [
+            [0],
+        ]
+        (
+            self.distribution_execution_matrix,
+            self.distribution_transmission_matrix,
+        ) = self._generate_distribution_matricies(self._execution_matrix, self._transmission_matrix, True, True)
 
-    #     limited_regions = self._all_regions
-    #     limited_regions = ["p1:r1"]
+        original_bfs_solver = BFSFineGrainedSolver(self.workflow_config, self._all_regions, self.input_manager)
+        solver = DistributionBFSFineGrainedSolver(
+            self.workflow_config, self._all_regions, self.distribution_input_manager
+        )
 
-    #     print("\nFor the complex with distribution join node test:")
-    #     start_time = time.time()  # Start the timer
-    #     deployments = solver._distribution_solve(limited_regions)
-    #     end_time = time.time()  # End the timer
-    #     # print(f"Distributed Solver Execution time: {end_time - start_time} seconds")  # Print the execution time
+        limited_regions = self._all_regions
+        limited_regions = ["p1:r1"]
 
-    #     start_time = time.time()  # Start the timer
-    #     original_bfs_solver_deployments = original_bfs_solver._solve(limited_regions)
-    #     end_time = time.time()  # End the timer
-    #     # print(f"Original BFS Solver Execution time: {end_time - start_time} seconds")  # Print the execution time
+        print("\nFor the VERY complex (Non-Bimodal) with distribution join node test:")
+        deployments = solver._distribution_solve(limited_regions)
+        original_bfs_solver_deployments = original_bfs_solver._solve(limited_regions)
 
-    #     print(original_bfs_solver_deployments)
-    #     self._print_formatted_output(deployments)
+        print(original_bfs_solver_deployments)
+        self._print_formatted_output(deployments)
 
-    def _generate_distribution_matricies(self, execution_matrix, transmission_matrix, enable_variation=True):
+    def _generate_distribution_matricies(
+        self, execution_matrix, transmission_matrix, enable_variation=True, back_propagation=False
+    ):
         distribution_execution_matrix = []
         distribution_transmission_matrix = []
 
@@ -684,7 +894,7 @@ class TestDistributionBFSFineGrainedSolver(unittest.TestCase):
                 execution_value = execution_matrix[i][j][0]
                 execution_prob = execution_matrix[i][j][1]
                 enable_bimodal = False
-                if (len(execution_matrix[i][j]) > 2):
+                if len(execution_matrix[i][j]) > 2:
                     enable_bimodal = execution_matrix[i][j][2]
 
                 # Now we can simply get a fraction of the execution value as the std
@@ -697,12 +907,20 @@ class TestDistributionBFSFineGrainedSolver(unittest.TestCase):
                     distribution_execution_matrix[i].append(SampleBasedDistribution())
                 else:
                     samples = np.random.normal(loc=execution_value, scale=std, size=self._random_generated_sample_size)
-                    if enable_bimodal: 
-                        samples = np.concatenate((samples, np.random.normal(loc=execution_value * 2, scale=std, size=self._random_generated_sample_size)))
+                    if enable_bimodal:
+                        samples = np.concatenate(
+                            (
+                                samples,
+                                np.random.normal(
+                                    loc=execution_value * 2, scale=std, size=self._random_generated_sample_size
+                                ),
+                            )
+                        )
 
-                    distribution_execution_matrix[i].append(
-                        SampleBasedDistribution(samples, execution_prob)
-                    )
+                    distribution_execution_matrix[i].append(SampleBasedDistribution(samples, execution_prob))
+
+                    if back_propagation:
+                        self._execution_matrix[i][j] = (float(np.percentile(samples, 95)), execution_prob)
 
         # For transmission
         for i in range(len(transmission_matrix)):
@@ -719,11 +937,13 @@ class TestDistributionBFSFineGrainedSolver(unittest.TestCase):
                 if transmission_value <= 0:
                     distribution_transmission_matrix[i].append(SampleBasedDistribution())
                 else:
-                    distribution_transmission_matrix[i].append(
-                        SampleBasedDistribution(
-                            np.random.normal(loc=transmission_value, scale=std, size=self._random_generated_sample_size)
-                        )
+                    samples = np.random.normal(
+                        loc=transmission_value, scale=std, size=self._random_generated_sample_size
                     )
+                    distribution_transmission_matrix[i].append(SampleBasedDistribution(samples))
+
+                    if back_propagation:
+                        self._transmission_matrix[i][j] = float(np.percentile(samples, 95))
 
         return distribution_execution_matrix, distribution_transmission_matrix
 
