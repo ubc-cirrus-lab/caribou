@@ -18,6 +18,7 @@ class TestWorkflow(unittest.TestCase):
         self.config = Config({}, self.test_dir)
         self.config.project_config["home_regions"] = [{"provider": "provider1", "region": "region1"}]
         self.function = Mock(spec=Function)
+        self.function.deploy = Mock(return_value=True)
         self.function_instance = Mock(spec=FunctionInstance)
         self.function_instance.name = "function_instance_1::"
         self.function_instance.entry_point = True
@@ -165,25 +166,104 @@ class TestWorkflow(unittest.TestCase):
     def test_extend_stage_area_placement(self):
         resource_values = {
             "messaging_topic": [
-                {"name": "function_resource_1", "topic_identifier": "identifier_1"},
-                {"name": "function_resource_2", "topic_identifier": "identifier_2"},
+                {"name": "function_resource_1_provider2-region2", "topic_identifier": "identifier_1"},
+                {"name": "function_resource_2_provider2-region2", "topic_identifier": "identifier_2"},
             ],
             "function": [
-                {"name": "function_resource_1", "function_identifier": "function_identifier_1"},
-                {"name": "function_resource_2", "function_identifier": "function_identifier_2"},
+                {"name": "function_resource_1_provider2-region2", "function_identifier": "function_identifier_1"},
+                {"name": "function_resource_2_provider2-region2", "function_identifier": "function_identifier_2"},
             ],
         }
-        staging_area_placement = {"workflow_placement": {"function_instance_1::": {}, "function_instance_2::": {}}}
+        staging_area_placement = {
+            "workflow_placement": {
+                "function_instance_1::": {
+                    "provider_region": {"provider": "provider2", "region": "region2"},
+                },
+                "function_instance_2::": {
+                    "provider_region": {"provider": "provider2", "region": "region2"},
+                },
+            },
+            "instances": [
+                {
+                    "instance_name": "function_instance_1::",
+                    "function_name": "function_resource_1_provider1-region1",
+                },
+                {
+                    "instance_name": "function_instance_2::",
+                    "function_name": "function_resource_2_provider1-region1",
+                },
+            ],
+        }
         expected_output = {
             "workflow_placement": {
-                "function_instance_1::": {"identifier": "identifier_1", "function_identifier": "function_identifier_1"},
-                "function_instance_2::": {"identifier": "identifier_2", "function_identifier": "function_identifier_2"},
-            }
+                "function_instance_1::": {
+                    "provider_region": {"provider": "provider2", "region": "region2"},
+                    "identifier": "identifier_1",
+                    "function_identifier": "function_identifier_1",
+                },
+                "function_instance_2::": {
+                    "provider_region": {"provider": "provider2", "region": "region2"},
+                    "identifier": "identifier_2",
+                    "function_identifier": "function_identifier_2",
+                },
+            },
+            "instances": [
+                {"instance_name": "function_instance_1::", "function_name": "function_resource_1_provider1-region1"},
+                {"instance_name": "function_instance_2::", "function_name": "function_resource_2_provider1-region1"},
+            ],
         }
         self.assertEqual(
             self.workflow._extend_stage_area_placement(resource_values, staging_area_placement),
             expected_output,
         )
+
+    def test_update_instances(self):
+        staging_area_placement = {
+            "workflow_placement": {
+                "function_instance_1::": {
+                    "provider_region": {"provider": "provider2", "region": "region2"},
+                    "function_identifier": "function_resource_1_provider2-region2",
+                },
+                "function_instance_2::": {
+                    "provider_region": {"provider": "provider2", "region": "region2"},
+                    "function_identifier": "function_resource_2_provider2-region2",
+                },
+            },
+            "instances": [
+                {
+                    "instance_name": "function_instance_1::",
+                    "function_name": "function_resource_1_provider1-region1",
+                },
+                {
+                    "instance_name": "function_instance_2::",
+                    "function_name": "function_resource_2_provider1-region1",
+                },
+            ],
+        }
+        expected_output = {
+            "workflow_placement": {
+                "function_instance_1::": {
+                    "provider_region": {"provider": "provider2", "region": "region2"},
+                    "function_identifier": "function_resource_1_provider2-region2",
+                },
+                "function_instance_2::": {
+                    "provider_region": {"provider": "provider2", "region": "region2"},
+                    "function_identifier": "function_resource_2_provider2-region2",
+                },
+            },
+            "instances": [
+                {
+                    "instance_name": "function_instance_1::",
+                    "function_name": "function_resource_1_provider2-region2",
+                },
+                {
+                    "instance_name": "function_instance_2::",
+                    "function_name": "function_resource_2_provider2-region2",
+                },
+            ],
+        }
+        self.workflow._update_instances(staging_area_placement)
+        self.assertEqual(staging_area_placement, expected_output)
 
     def test_get_function_instance_to_identifier(self):
         resource_values = {
@@ -247,26 +327,34 @@ class TestWorkflow(unittest.TestCase):
     def test_get_workflow_placement_decision_extend_staging(self):
         resource_values = {
             "messaging_topic": [
-                {"name": "function_resource_1", "topic_identifier": "new_identifier_1"},
-                {"name": "function_resource_2", "topic_identifier": "new_identifier_2"},
+                {"name": "function_resource_1_newprovider1-newregion1", "topic_identifier": "new_identifier_1"},
+                {"name": "function_resource_2_newprovider2-newregion2", "topic_identifier": "new_identifier_2"},
             ],
             "function": [
-                {"name": "function_resource_1", "function_identifier": "new_function_identifier_1"},
-                {"name": "function_resource_2", "function_identifier": "new_function_identifier_2"},
+                {
+                    "name": "function_resource_1_newprovider1-newregion1",
+                    "function_identifier": "new_function_identifier_1",
+                },
+                {
+                    "name": "function_resource_2_newprovider2-newregion2",
+                    "function_identifier": "new_function_identifier_2",
+                },
             ],
         }
         staging_area_placement = {
             "workflow_placement": {
-                "function_instance_1::": {"provider_region": {"provider": "new_provider1", "region": "new_region1"}},
-                "function_instance_2::": {"provider_region": {"provider": "new_provider2", "region": "new_region2"}},
+                "function_instance_1:entry_point:": {
+                    "provider_region": {"provider": "newprovider1", "region": "newregion1"}
+                },
+                "function_instance_2::": {"provider_region": {"provider": "newprovider2", "region": "newregion2"}},
             }
         }
         self.workflow.get_workflow_config = Mock(return_value=Mock(instances=["instance_1", "instance_2"]))
         self.workflow._Workflow__get_entry_point_instance_name = Mock(return_value="entry_point_instance")
         previous_instances = [
             {
-                "instance_name": "function_instance_1::",
-                "function_name": "function_resource_1",
+                "instance_name": "function_instance_1:entry_point:",
+                "function_name": "function_resource_1_oldprovider1-oldregion1",
                 "preceding_instances": [],
                 "regions_and_providers": {},
                 "succeeding_instances": ["function_instance_2::"],
@@ -274,7 +362,7 @@ class TestWorkflow(unittest.TestCase):
             },
             {
                 "instance_name": "function_instance_2::",
-                "function_name": "function_resource_2",
+                "function_name": "function_resource_2_oldprovider1-oldregion1",
                 "preceding_instances": ["function_instance_1::"],
                 "regions_and_providers": {},
                 "succeeding_instances": [],
@@ -284,7 +372,7 @@ class TestWorkflow(unittest.TestCase):
         expected_output = {
             "instances": [
                 {
-                    "instance_name": "function_instance_1::",
+                    "instance_name": "function_instance_1:entry_point:",
                     "function_name": "new_function_identifier_1",
                     "preceding_instances": [],
                     "regions_and_providers": {},
@@ -300,17 +388,17 @@ class TestWorkflow(unittest.TestCase):
                     "dependent_sync_predecessors": [],
                 },
             ],
-            "current_instance_name": "function_instance_1::",
+            "current_instance_name": "function_instance_1:entry_point:",
             "workflow_placement": {
-                "function_instance_1::": {
+                "function_instance_1:entry_point:": {
                     "identifier": "new_identifier_1",
                     "function_identifier": "new_function_identifier_1",
-                    "provider_region": {"provider": "new_provider1", "region": "new_region1"},
+                    "provider_region": {"provider": "newprovider1", "region": "newregion1"},
                 },
                 "function_instance_2::": {
                     "identifier": "new_identifier_2",
                     "function_identifier": "new_function_identifier_2",
-                    "provider_region": {"provider": "new_provider2", "region": "new_region2"},
+                    "provider_region": {"provider": "newprovider2", "region": "newregion2"},
                 },
             },
         }

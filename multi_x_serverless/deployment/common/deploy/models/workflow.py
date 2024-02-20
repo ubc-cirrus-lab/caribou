@@ -186,7 +186,7 @@ class Workflow(Resource):
 
     def _get_function_instance_to_identifier_from_staging(
         self, resource_values: list[Any], identifier_key: str, staging_area_placement: dict[str, Any]
-    ):
+    ) -> dict[str, str]:
         function_resource_to_identifiers = {
             function_resource_description["name"]: function_resource_description[identifier_key]
             for function_resource_description in resource_values
@@ -265,11 +265,11 @@ class Workflow(Resource):
         )
 
         for instance_name in staging_area_placement["workflow_placement"]:
-            staging_area_placement["workflow_placement"][instance_name]["identifier"] = (
-                function_instance_to_messaging_identifier[instance_name]
-            )
-            staging_area_placement["workflow_placement"][instance_name]["function_identifier"] = (
-                function_instance_to_function_identifier[instance_name]
-            )
+            staging_area_placement["workflow_placement"][instance_name][
+                "identifier"
+            ] = function_instance_to_messaging_identifier[instance_name]
+            staging_area_placement["workflow_placement"][instance_name][
+                "function_identifier"
+            ] = function_instance_to_function_identifier[instance_name]
 
         return staging_area_placement

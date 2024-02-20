@@ -1,3 +1,4 @@
+import logging
 import os
 import queue
 from collections import defaultdict
@@ -12,8 +13,6 @@ from multi_x_serverless.deployment.common.deploy.models.function import Function
 from multi_x_serverless.deployment.common.deploy.models.function_instance import FunctionInstance
 from multi_x_serverless.deployment.common.deploy.models.iam_role import IAMRole
 from multi_x_serverless.deployment.common.deploy.models.workflow import Workflow
-
-import logging
 
 logger = logging.getLogger(__name__)
 

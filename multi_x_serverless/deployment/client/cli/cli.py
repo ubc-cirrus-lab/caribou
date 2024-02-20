@@ -15,8 +15,8 @@ from multi_x_serverless.deployment.common.deploy.deployer import Deployer
 from multi_x_serverless.deployment.common.factories.deployer_factory import DeployerFactory
 from multi_x_serverless.endpoint.client import Client
 from multi_x_serverless.syncers.datastore_syncer import DatastoreSyncer
-from multi_x_serverless.update_checkers.solver_update_checker import SolverUpdateChecker
 from multi_x_serverless.update_checkers.deployment_update_checker import DeploymentUpdateChecker
+from multi_x_serverless.update_checkers.solver_update_checker import SolverUpdateChecker
 
 
 @click.group()
