@@ -139,8 +139,8 @@ class DistributionBFSFineGrainedSolver(DistributionSolver):
 
                     # Process the runtime distribution and get the worst case runtime
                     cumulative_runtime_distribution += current_execution_runtime_distribution
-                    held_wc_runtime += cumulative_runtime_distribution.get_tail_latency(True)
-                    held_pc_runtime += cumulative_runtime_distribution.get_average(False)
+                    held_wc_runtime += current_execution_runtime_distribution.get_tail_latency(True)
+                    held_pc_runtime += current_execution_runtime_distribution.get_average(False)
 
                     # Save the deployment
                     deployments[current_instance_index] = (

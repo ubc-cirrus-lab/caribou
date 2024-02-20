@@ -1,6 +1,8 @@
 import unittest
 from unittest.mock import MagicMock, Mock
 
+import time
+
 import numpy as np
 from multi_x_serverless.routing.distribution_solver.data_type.distribution import Distribution
 from multi_x_serverless.routing.distribution_solver.data_type.sample_based_distribution import SampleBasedDistribution
@@ -31,18 +33,40 @@ class TestDistributionBFSFineGrainedSolver(unittest.TestCase):
             },
         ]
 
-        random_generated_sample_size = 100
+        self._random_generated_sample_size = 1000
 
         self.execution_matrix = [
-            [SampleBasedDistribution(np.random.normal(loc=10.0, scale=1.0, size=random_generated_sample_size)), SampleBasedDistribution(np.random.normal(loc=10.0, scale=1.0, size=random_generated_sample_size))],
-            [SampleBasedDistribution(np.random.normal(loc=10.0, scale=1.0, size=random_generated_sample_size)), SampleBasedDistribution(np.random.normal(loc=10.0, scale=1.0, size=random_generated_sample_size))],
-            [SampleBasedDistribution(np.random.normal(loc=10.0, scale=1.0, size=random_generated_sample_size)), SampleBasedDistribution(np.random.normal(loc=10.0, scale=1.0, size=random_generated_sample_size))],
-            [SampleBasedDistribution(np.random.normal(loc=10.0, scale=1.0, size=random_generated_sample_size)), SampleBasedDistribution(np.random.normal(loc=10.0, scale=1.0, size=random_generated_sample_size))],
+            [
+                SampleBasedDistribution(np.random.normal(loc=10.0, scale=1.0, size=self._random_generated_sample_size)),
+                SampleBasedDistribution(np.random.normal(loc=10.0, scale=1.0, size=self._random_generated_sample_size)),
+            ],
+            [
+                SampleBasedDistribution(np.random.normal(loc=10.0, scale=1.0, size=self._random_generated_sample_size)),
+                SampleBasedDistribution(np.random.normal(loc=10.0, scale=1.0, size=self._random_generated_sample_size)),
+            ],
+            [
+                SampleBasedDistribution(np.random.normal(loc=10.0, scale=1.0, size=self._random_generated_sample_size)),
+                SampleBasedDistribution(np.random.normal(loc=10.0, scale=1.0, size=self._random_generated_sample_size)),
+            ],
+            [
+                SampleBasedDistribution(np.random.normal(loc=10.0, scale=1.0, size=self._random_generated_sample_size)),
+                SampleBasedDistribution(np.random.normal(loc=10.0, scale=1.0, size=self._random_generated_sample_size)),
+            ],
         ]
 
         self.transmission_matrix = [
-            [SampleBasedDistribution(np.random.normal(loc=0.01, scale=0.01, size=random_generated_sample_size)), SampleBasedDistribution(np.random.normal(loc=1.1, scale=1.0, size=random_generated_sample_size))],
-            [SampleBasedDistribution(np.random.normal(loc=1.1, scale=1.0, size=random_generated_sample_size)), SampleBasedDistribution(np.random.normal(loc=0.01, scale=0.01, size=random_generated_sample_size))],
+            [
+                SampleBasedDistribution(
+                    np.random.normal(loc=0.01, scale=0.01, size=self._random_generated_sample_size)
+                ),
+                SampleBasedDistribution(np.random.normal(loc=1.1, scale=1.0, size=self._random_generated_sample_size)),
+            ],
+            [
+                SampleBasedDistribution(np.random.normal(loc=1.1, scale=1.0, size=self._random_generated_sample_size)),
+                SampleBasedDistribution(
+                    np.random.normal(loc=0.01, scale=0.01, size=self._random_generated_sample_size)
+                ),
+            ],
         ]
 
         # Mock input manager
@@ -61,7 +85,7 @@ class TestDistributionBFSFineGrainedSolver(unittest.TestCase):
                 (self.transmission_matrix[from_region_index][to_region_index]),
                 (self.transmission_matrix[from_region_index][to_region_index]),
             )
-            if from_region_index is not None and previous_instance_index is not None
+            if from_region_index is not None and previous_instance_index is not None and current_instance_index != -1.0
             else (
                 SampleBasedDistribution(),
                 SampleBasedDistribution(),
@@ -126,10 +150,90 @@ class TestDistributionBFSFineGrainedSolver(unittest.TestCase):
         ]
         self.workflow_config.constraints = None
 
+        self.execution_matrix = [
+            [SampleBasedDistribution(np.array([2.0])), SampleBasedDistribution(np.array([2.5]))],
+        ]
+
+        self.transmission_matrix = [
+            [SampleBasedDistribution(np.array([0.01])), SampleBasedDistribution(np.array([0.1]))],
+            [None, SampleBasedDistribution(np.array([0.02]))],
+        ]
+
         solver = DistributionBFSFineGrainedSolver(self.workflow_config, self._all_regions, self.input_manager)
 
+        print("For the simple 1 node test:")
+        start_time = time.time()  # Start the timer
         deployments = solver._distribution_solve(self._all_regions)
+        end_time = time.time()  # End the timer
+        print(f"\nExecution time: {end_time - start_time} seconds")  # Print the execution time
 
+        self._print_formatted_output(deployments)
+
+    def test_solver_simple_2_node_join(self):
+        """
+        This is a simple test with 4 instances, 1 parent, and 2 nodes from that parent, and a final join node.
+        """
+        self.workflow_config.start_hops = "p1:r1"
+        self.workflow_config.regions_and_providers = {"providers": {"p1": None, "p2": None}}
+        self.workflow_config.instances = [
+            {
+                "instance_name": "i1",
+                "function_name": "f1",
+                "succeeding_instances": ["i2", "i3"],
+                "preceding_instances": [],
+                "regions_and_providers": {
+                    "allowed_regions": None,
+                    "disallowed_regions": None,
+                    "providers": {"p1": None, "p2": None},
+                },
+            },
+            {
+                "instance_name": "i2",
+                "function_name": "f2",
+                "succeeding_instances": ["i4"],
+                "preceding_instances": ["i1"],
+                "regions_and_providers": {
+                    "allowed_regions": None,
+                    "disallowed_regions": None,
+                    "providers": {"p1": None},
+                },
+            },
+            {
+                "instance_name": "i3",
+                "function_name": "f3",
+                "succeeding_instances": ["i4"],
+                "preceding_instances": ["i1"],
+                "regions_and_providers": {
+                    "allowed_regions": None,
+                    "disallowed_regions": None,
+                    "providers": {"p1": None},
+                },
+            },
+            {
+                "instance_name": "i4",
+                "function_name": "f4",
+                "succeeding_instances": [],
+                "preceding_instances": ["i2", "i3"],
+                "regions_and_providers": {
+                    "allowed_regions": None,
+                    "disallowed_regions": None,
+                    "providers": {"p1": None, "p2": None},
+                },
+            },
+        ]
+        # self.workflow_config.constraints = None
+
+        # solver = DistributionBFSFineGrainedSolver(self.workflow_config, self._all_regions, self.input_manager)
+
+        # print("For the join node test:")
+        # start_time = time.time()  # Start the timer
+        # deployments = solver._distribution_solve(self._all_regions)
+        # end_time = time.time()  # End the timer
+        # print(f"\nExecution time: {end_time - start_time} seconds")  # Print the execution time
+
+        # self._print_formatted_output(deployments)
+
+    def _print_formatted_output(self, deployments):
         for deployment in deployments:
             print("For deployment in region:", deployment[0])
             print("WC    :", deployment[2])
@@ -151,8 +255,6 @@ class TestDistributionBFSFineGrainedSolver(unittest.TestCase):
                 ),
             )
             print()
-
-        # self.assertTrue(all(deployment in expected_deployments for deployment in deployments))
 
 
 if __name__ == "__main__":
