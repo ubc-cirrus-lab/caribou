@@ -63,6 +63,7 @@ class AWSDeployInstructions(DeployInstructions):
                 "environment_variables": environment_variables,
                 "timeout": self._config["timeout"],
                 "memory_size": self._config["memory"],
+                "additional_docker_commands": self._config.get("additional_docker_commands", []),
             },
             output_var=function_varname,
         )
@@ -88,6 +89,7 @@ class AWSDeployInstructions(DeployInstructions):
                 "environment_variables": environment_variables,
                 "timeout": self._config["timeout"],
                 "memory_size": self._config["memory"],
+                "additional_docker_commands": self._config.get("additional_docker_commands", []),
             },
             output_var=function_varname,
         )

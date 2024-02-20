@@ -1,6 +1,6 @@
 # Text to speech censoring benchmark
 
-This benchmark requires an s3 bucket with the name `multi-x-serverless-text-2-speech-censoring`.
+This benchmark requires access to the s3 bucket with the name `multi-x-serverless-text-2-speech-censoring`.
 
 You can deploy the benchmark with the following command:
 

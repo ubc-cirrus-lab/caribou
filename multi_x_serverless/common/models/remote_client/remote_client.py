@@ -18,6 +18,7 @@ class RemoteClient(ABC):  # pylint: disable=too-many-public-methods
         environment_variables: dict[str, str],
         timeout: int,
         memory_size: int,
+        additional_docker_commands: Optional[list[str]] = None,
     ) -> str:
         raise NotImplementedError()
 
@@ -138,6 +139,7 @@ class RemoteClient(ABC):  # pylint: disable=too-many-public-methods
         environment_variables: dict[str, str],
         timeout: int,
         memory_size: int,
+        additional_docker_commands: Optional[list[str]] = None,
     ) -> str:
         raise NotImplementedError()
 

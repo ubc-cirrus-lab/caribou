@@ -6,7 +6,7 @@ import tempfile
 import time
 import zipfile
 from datetime import datetime
-from typing import Any
+from typing import Any, Optional
 
 from boto3.session import Session
 from botocore.exceptions import ClientError
@@ -136,6 +136,7 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         environment_variables: dict[str, str],
         timeout: int,
         memory_size: int,
+        additional_docker_commands: Optional[list[str]] = None,
     ) -> str:
         with tempfile.TemporaryDirectory() as tmpdirname:
             # Step 1: Unzip the ZIP file
@@ -146,7 +147,7 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
                 zip_ref.extractall(tmpdirname)
 
             # Step 2: Create a Dockerfile in the temporary directory
-            dockerfile_content = self.generate_dockerfile(runtime, handler)
+            dockerfile_content = self._generate_dockerfile(runtime, handler, additional_docker_commands)
             with open(os.path.join(tmpdirname, "Dockerfile"), "w", encoding="utf-8") as f_dockerfile:
                 f_dockerfile.write(dockerfile_content)
 
@@ -173,10 +174,16 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
                 self._wait_for_function_to_become_active(function_name)
             return arn
 
-    def generate_dockerfile(self, runtime: str, handler: str) -> str:
+    def _generate_dockerfile(self, runtime: str, handler: str, additional_docker_commands: Optional[list[str]]) -> str:
+        run_command = ""
+        if additional_docker_commands and len(additional_docker_commands) > 0:
+            run_command += " && ".join(additional_docker_commands)
+        if len(run_command) > 0:
+            run_command = f"RUN {run_command}"
         return f"""
         FROM public.ecr.aws/lambda/{runtime.replace("python", "python:")}
         COPY requirements.txt ./
+        {run_command}
         RUN pip3 install --no-cache-dir -r requirements.txt
         COPY app.py ./
         COPY src ./src
@@ -234,6 +241,7 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         environment_variables: dict[str, str],
         timeout: int,
         memory_size: int,
+        additional_docker_commands: Optional[list[str]] = None,
     ) -> str:
         client = self._client("lambda")
 
@@ -245,7 +253,7 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
             with zipfile.ZipFile(zip_path, "r") as zip_ref:
                 zip_ref.extractall(tmpdirname)
 
-            dockerfile_content = self.generate_dockerfile(runtime, handler)
+            dockerfile_content = self._generate_dockerfile(runtime, handler, additional_docker_commands)
             with open(os.path.join(tmpdirname, "Dockerfile"), "w", encoding="utf-8") as f_dockerfile:
                 f_dockerfile.write(dockerfile_content)
 

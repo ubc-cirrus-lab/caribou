@@ -3,6 +3,7 @@ import logging
 import boto3
 
 from multi_x_serverless.common import constants
+from multi_x_serverless.common.models.remote_client.aws_remote_client import AWSRemoteClient
 
 logger = logging.getLogger()
 
@@ -30,6 +31,9 @@ def create_table(dynamodb, table_name):
             BillingMode="PAY_PER_REQUEST",
         )
         return
+    if table_name in [constants.SYNC_MESSAGES_TABLE, constants.SYNC_PREDECESSOR_COUNTER_TABLE]:
+        client = AWSRemoteClient(constants.GLOBAL_SYSTEM_REGION)
+        client.create_sync_tables()
     dynamodb.create_table(
         TableName=table_name,
         AttributeDefinitions=[{"AttributeName": "key", "AttributeType": "S"}],
@@ -51,7 +55,7 @@ def create_bucket(s3, bucket_name):
 
 
 def main():
-    dynamodb = boto3.client("dynamodb")
+    dynamodb = boto3.client("dynamodb", region_name=constants.GLOBAL_SYSTEM_REGION)
     s3 = boto3.client("s3", region_name="us-east-1")
 
     # Get all attributes of the constants module

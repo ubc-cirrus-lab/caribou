@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
 
@@ -14,6 +15,7 @@ class MockRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         environment_variables: dict[str, str],
         timeout: int,
         memory_size: int,
+        additional_docker_commands: Optional[list[str]] = None,
     ) -> str:
         pass
 
@@ -57,6 +59,7 @@ class MockRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         environment_variables,
         timeout,
         memory_size,
+        additional_docker_commands: Optional[list[str]] = None,
     ):
         pass
 

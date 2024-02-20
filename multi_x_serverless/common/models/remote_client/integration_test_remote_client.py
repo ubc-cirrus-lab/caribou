@@ -3,7 +3,7 @@ import os
 import sqlite3
 import time
 from datetime import datetime
-from typing import Any
+from typing import Any, Optional
 
 from multi_x_serverless.common import constants
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
@@ -341,6 +341,7 @@ class IntegrationTestRemoteClient(RemoteClient):  # pylint: disable=too-many-pub
         environment_variables: dict[str, str],
         timeout: int,
         memory_size: int,
+        additional_docker_commands: Optional[list[str]] = None,
     ) -> str:
         conn = self._db_connection()
         cursor = conn.cursor()
@@ -383,6 +384,7 @@ class IntegrationTestRemoteClient(RemoteClient):  # pylint: disable=too-many-pub
         environment_variables: dict[str, str],
         timeout: int,
         memory_size: int,
+        additional_docker_commands: Optional[list[str]] = None,
     ) -> str:
         conn = self._db_connection()
         cursor = conn.cursor()
