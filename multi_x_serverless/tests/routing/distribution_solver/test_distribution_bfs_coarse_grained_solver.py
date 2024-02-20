@@ -329,6 +329,21 @@ class TestDistributionBFSFineGrainedSolver(unittest.TestCase):
 
         # self._print_formatted_output(deployments)
 
+    def test_special(self):
+        test_input = [
+            SampleBasedDistribution(np.array([3.0])),
+            SampleBasedDistribution(np.array([2.3, 3.3])),
+            SampleBasedDistribution(np.array([5.0, 7.0, 10.0])),
+        ]
+        print("\nAlternative Method (pad):", SampleBasedDistribution().get_merged_distribution(test_input)._samples)
+        new_sample = SampleBasedDistribution()._alternative_get_merged_distribution(test_input)._samples
+        print("Loop:", new_sample)
+        print("Loop Method Downsampled:", SampleBasedDistribution()._downsample(new_sample, 3))
+        print(
+            "Alternative Method (downsample):",
+            SampleBasedDistribution()._alternative_downsample_approach_get_merged_distribution(test_input)._samples,
+        )
+
     def test_solver_probabilistic_2_node_join_comparison(self):
         """
         This is a simple test with 4 instances, 1 parent, and 2 nodes from that parent, and a final join node.
@@ -503,27 +518,27 @@ class TestDistributionBFSFineGrainedSolver(unittest.TestCase):
             self.distribution_transmission_matrix,
         ) = self._generate_distribution_matricies(self._execution_matrix, self._transmission_matrix, True)
 
-        original_bfs_solver = BFSFineGrainedSolver(self.workflow_config, self._all_regions, self.input_manager)
-        solver = DistributionBFSFineGrainedSolver(
-            self.workflow_config, self._all_regions, self.distribution_input_manager
-        )
+        # original_bfs_solver = BFSFineGrainedSolver(self.workflow_config, self._all_regions, self.input_manager)
+        # solver = DistributionBFSFineGrainedSolver(
+        #     self.workflow_config, self._all_regions, self.distribution_input_manager
+        # )
 
-        limited_regions = self._all_regions
-        limited_regions = ["p1:r1"]
+        # limited_regions = self._all_regions
+        # limited_regions = ["p1:r1"]
 
-        print("\nFor the complex with zero distribution join node test:")
-        start_time = time.time()  # Start the timer
-        deployments = solver._distribution_solve(limited_regions)
-        end_time = time.time()  # End the timer
-        print(f"Distributed Solver Execution time: {end_time - start_time} seconds")  # Print the execution time
+        # print("\nFor the complex with zero distribution join node test:")
+        # start_time = time.time()  # Start the timer
+        # deployments = solver._distribution_solve(limited_regions)
+        # end_time = time.time()  # End the timer
+        # print(f"Distributed Solver Execution time: {end_time - start_time} seconds")  # Print the execution time
 
-        start_time = time.time()  # Start the timer
-        original_bfs_solver_deployments = original_bfs_solver._solve(limited_regions)
-        end_time = time.time()  # End the timer
-        print(f"Original BFS Solver Execution time: {end_time - start_time} seconds")  # Print the execution time
+        # start_time = time.time()  # Start the timer
+        # original_bfs_solver_deployments = original_bfs_solver._solve(limited_regions)
+        # end_time = time.time()  # End the timer
+        # print(f"Original BFS Solver Execution time: {end_time - start_time} seconds")  # Print the execution time
 
-        print(original_bfs_solver_deployments)
-        self._print_formatted_output(deployments)
+        # print(original_bfs_solver_deployments)
+        # self._print_formatted_output(deployments)
 
     def _generate_distribution_matricies(self, execution_matrix, transmission_matrix, enable_variation=True):
         distribution_execution_matrix = []

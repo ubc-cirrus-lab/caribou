@@ -113,8 +113,8 @@ class DistributionBFSFineGrainedSolver(DistributionSolver):
                     )
 
                 # Process the current runtime
-                cumulative_runtime_distribution = CurrentDistributionType().get_merged_distribution(
-                    held_runtime_distributions
+                cumulative_runtime_distribution = self._process_runtime_distributions(
+                    held_runtime_distributions, CurrentDistributionType
                 )
 
                 # Process current execution if not virtual leaf node
@@ -167,6 +167,18 @@ class DistributionBFSFineGrainedSolver(DistributionSolver):
                 self._manage_memory(deployments, successor_dictionary, prerequisites_indices, processed_node_indices)
 
         return final_deployments
+
+    def _process_runtime_distributions(
+        self, runtime_distributions: list[Distribution], current_distribution_type: type[Distribution]
+    ) -> Distribution:
+        if len(runtime_distributions) == 1:
+            cumulative_runtime_distribution = runtime_distributions[0]
+        elif len(runtime_distributions) > 1:
+            cumulative_runtime_distribution = current_distribution_type().get_merged_distribution(runtime_distributions)
+        else:
+            cumulative_runtime_distribution = current_distribution_type()
+
+        return cumulative_runtime_distribution
 
     def _manage_memory(
         self,

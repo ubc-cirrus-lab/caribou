@@ -30,7 +30,7 @@ class SampleBasedDistribution(Distribution):
         # Handle the case where we have 0 or 1 probability of invocation
         if probability_of_invocation >= 1.0:
             return samples
-        if probability_of_invocation <= 0.001: # If the probability is too low, we should just return an empty array
+        if probability_of_invocation <= 0.001:  # If the probability is too low, we should just return an empty array
             return np.zeros(1, dtype=float)
 
         num_zeros = int(len(samples) / probability_of_invocation)
@@ -42,7 +42,7 @@ class SampleBasedDistribution(Distribution):
         # Else we might just want to preserve the original size
         if len(final_samples) > self._max_sample_size * 5:
             final_samples = self._downsample(final_samples, self._max_sample_size)
-        
+
         # # print length of new zero samples and non zero samples
         # print(len(final_samples[final_samples <= 0.0]), len(final_samples[final_samples > 0.0]))
 
@@ -56,9 +56,69 @@ class SampleBasedDistribution(Distribution):
                     f"but got {type(distribution).__name__}"
                 )
 
+        # First we must extract the samples from the parent distributions
+        parent_runtimes = [distribution.get_samples() for distribution in parent_distributions]
+
+        # Then we have to find the maximum sample size of those runtimes and
+        # pad the shorter ones with zeros such that they are all the same size
+        max_sample_size = max(len(samples) for samples in parent_runtimes)
+
+        # Then since they are all in the same size we can convert them to a numpy array
+        parent_runtimes = np.array(
+            [self._pad_with_zeros_and_sort(samples, max_sample_size) for samples in parent_runtimes]
+        )
+
+        # Finally we can find the maximum runtime for each index using np.maximum.reduce
+        max_runtimes = np.maximum.reduce(parent_runtimes)
+
+        # Return the padded version of the max runtimes and convert it to a Distribution object
+        return cast(T, SampleBasedDistribution(max_runtimes, self._max_sample_size))
+
+    def _pad_with_zeros_and_sort(self, samples: np.ndarray, max_sample_size: int) -> np.ndarray:
+        if len(samples) < max_sample_size:
+            padded_array = np.pad(samples, (0, max_sample_size - len(samples)))
+            return np.sort(padded_array)
+        return np.sort(samples)
+
+    def _alternative_get_merged_distribution(self, parent_distributions: list[T]) -> T:
+        for distribution in parent_distributions:
+            if not isinstance(distribution, SampleBasedDistribution):
+                raise TypeError(
+                    f"Expected all distributions to be of type {SampleBasedDistribution.__name__}, "
+                    f"but got {type(distribution).__name__}"
+                )
+
+        # Here we should combine the distributions in a merged manner
+        # Current strategy: Find the maximum runtime across combinations of every two runtimes
+        # Perhaps we should consider more sophisticated methods in the future
+
+        # First we must extract the samples from the parent distributions
+        parent_runtimes: list[np.ndarray] = [distribution.get_samples() for distribution in parent_distributions]
+
+        # We then go through all the runtimes, take the max between a combination of every two runtimes
+        # downsample it then do the same for the next runtime
+        for i in range(len(parent_runtimes) - 1):
+            parent_runtimes[i + 1] = self._downsample(
+                np.maximum.outer(parent_runtimes[i], parent_runtimes[i + 1]).flatten(), self._max_sample_size
+            )
+
+        # Return the downsampled version of the max runtimes and convert it to a Distribution object
+        return cast(
+            T, SampleBasedDistribution(parent_runtimes[-1], self._probability_of_invocation, self._max_sample_size)
+        )
+
+    def _alternative_downsample_approach_get_merged_distribution(self, parent_distributions: list[T]) -> T:
+        for distribution in parent_distributions:
+            if not isinstance(distribution, SampleBasedDistribution):
+                raise TypeError(
+                    f"Expected all distributions to be of type {SampleBasedDistribution.__name__}, "
+                    f"but got {type(distribution).__name__}"
+                )
+
         # Here we should combine the distributions in a merged manner
         # Current strategy: Find the longest (maximum) runtime across these arrays for each corresponding index
         # Perhaps we should consider more sophisticated methods in the future
+        # This variation however is distorts the distribution by downsampling the longer runtimes
 
         # First we must extract the samples from the parent distributions
         parent_runtimes = [distribution.get_samples() for distribution in parent_distributions]
