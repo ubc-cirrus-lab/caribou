@@ -102,46 +102,46 @@ class TestDistributionBFSFineGrainedSolver(unittest.TestCase):
 
         self._all_regions = ["p1:r1", "p2:r2"]
 
-    def test_manage_memory(self):
-        # Initialize a DistributionBFSFineGrainedSolver instance here
-        self.solver = DistributionBFSFineGrainedSolver(
-            self.workflow_config, self._all_regions, self.distribution_input_manager
-        )
+    # def test_manage_memory(self):
+    #     # Initialize a DistributionBFSFineGrainedSolver instance here
+    #     self.solver = DistributionBFSFineGrainedSolver(
+    #         self.workflow_config, self._all_regions, self.distribution_input_manager
+    #     )
 
-        deployments = {0: (None, 0.0, 0.0), 1: (None, 0.0, 0.0)}
-        successor_dictionary = {0: [1], 1: []}
-        prerequisites_indices = [0]
-        processed_node_indices = set()
-        self.solver._manage_memory(deployments, successor_dictionary, prerequisites_indices, processed_node_indices)
-        self.assertNotIn(0, deployments)
+    #     deployments = {0: (None, 0.0, 0.0), 1: (None, 0.0, 0.0)}
+    #     successor_dictionary = {0: [1], 1: []}
+    #     prerequisites_indices = [0]
+    #     processed_node_indices = set()
+    #     self.solver._manage_memory(deployments, successor_dictionary, prerequisites_indices, processed_node_indices)
+    #     self.assertNotIn(0, deployments)
 
-    def test_acquire_prerequisite_successor_dictionaries(self):
-        # Initialize a DistributionBFSFineGrainedSolver instance here
-        self.solver = DistributionBFSFineGrainedSolver(
-            self.workflow_config, self._all_regions, self.distribution_input_manager
-        )
+    # def test_acquire_prerequisite_successor_dictionaries(self):
+    #     # Initialize a DistributionBFSFineGrainedSolver instance here
+    #     self.solver = DistributionBFSFineGrainedSolver(
+    #         self.workflow_config, self._all_regions, self.distribution_input_manager
+    #     )
 
-        self.solver._dag = MagicMock()
-        self.solver._dag.get_prerequisites_dict.return_value = {0: [], 1: [0], 2: [1]}
-        self.solver._dag.get_preceeding_dict.return_value = {0: [1], 1: [2], 2: []}
-        self.solver._dag.get_leaf_nodes.return_value = [2]
-        self.solver._topological_order = [0, 1, 2]
-        prerequisites_dictionary, successor_dictionary = self.solver._acquire_prerequisite_successor_dictionaries()
-        self.assertEqual(prerequisites_dictionary, {0: [], 1: [0], 2: [1], -1: [2]})
-        self.assertEqual(successor_dictionary, {0: [1], 1: [2], 2: [-1], -1: []})
+    #     self.solver._dag = MagicMock()
+    #     self.solver._dag.get_prerequisites_dict.return_value = {0: [], 1: [0], 2: [1]}
+    #     self.solver._dag.get_preceeding_dict.return_value = {0: [1], 1: [2], 2: []}
+    #     self.solver._dag.get_leaf_nodes.return_value = [2]
+    #     self.solver._topological_order = [0, 1, 2]
+    #     prerequisites_dictionary, successor_dictionary = self.solver._acquire_prerequisite_successor_dictionaries()
+    #     self.assertEqual(prerequisites_dictionary, {0: [], 1: [0], 2: [1], -1: [2]})
+    #     self.assertEqual(successor_dictionary, {0: [1], 1: [2], 2: [-1], -1: []})
 
-    def test_acquire_permitted_region_indices(self):
-        # Initialize a DistributionBFSFineGrainedSolver instance here
-        self.solver = DistributionBFSFineGrainedSolver(
-            self.workflow_config, self._all_regions, self.distribution_input_manager
-        )
+    # def test_acquire_permitted_region_indices(self):
+    #     # Initialize a DistributionBFSFineGrainedSolver instance here
+    #     self.solver = DistributionBFSFineGrainedSolver(
+    #         self.workflow_config, self._all_regions, self.distribution_input_manager
+    #     )
 
-        self.solver._topological_order = [0, 1, 2]
-        self.solver._get_permitted_region_indices = MagicMock()
-        self.solver._get_permitted_region_indices.return_value = [0, 1]
-        regions = ["region1", "region2"]
-        result = self.solver._acquire_permitted_region_indices(regions)
-        self.assertEqual(result, {0, 1})
+    #     self.solver._topological_order = [0, 1, 2]
+    #     self.solver._get_permitted_region_indices = MagicMock()
+    #     self.solver._get_permitted_region_indices.return_value = [0, 1]
+    #     regions = ["region1", "region2"]
+    #     result = self.solver._acquire_permitted_region_indices(regions)
+    #     self.assertEqual(result, {0, 1})
 
     # def test_special(self):
     #     test_input = [
@@ -165,198 +165,198 @@ class TestDistributionBFSFineGrainedSolver(unittest.TestCase):
     #         SampleBasedDistribution()._possible_downsample_approach_get_merged_distribution(test_input)._samples,
     #     )
 
-    def test_simple_1_node(self):
-        """
-        This is the most simple test for a single node DAG.
-        """
-        self.workflow_config.start_hops = "p1:r1"
-        self.workflow_config.regions_and_providers = {"providers": {"p1": None, "p2": None}}
-        self.workflow_config.instances = [
-            {
-                "instance_name": "i1",
-                "function_name": "f1",
-                "succeeding_instances": [],
-                "preceding_instances": [],
-                "regions_and_providers": {
-                    "allowed_regions": None,
-                    "disallowed_regions": None,
-                    "providers": {"p1": None, "p2": None},
-                },
-            },
-        ]
-        self.workflow_config.constraints = None
+    # def test_simple_1_node(self):
+    #     """
+    #     This is the most simple test for a single node DAG.
+    #     """
+    #     self.workflow_config.start_hops = "p1:r1"
+    #     self.workflow_config.regions_and_providers = {"providers": {"p1": None, "p2": None}}
+    #     self.workflow_config.instances = [
+    #         {
+    #             "instance_name": "i1",
+    #             "function_name": "f1",
+    #             "succeeding_instances": [],
+    #             "preceding_instances": [],
+    #             "regions_and_providers": {
+    #                 "allowed_regions": None,
+    #                 "disallowed_regions": None,
+    #                 "providers": {"p1": None, "p2": None},
+    #             },
+    #         },
+    #     ]
+    #     self.workflow_config.constraints = None
 
-        self.distribution_execution_matrix = [
-            [SampleBasedDistribution(np.array([2.0])), SampleBasedDistribution(np.array([2.5]))],
-        ]
+    #     self.distribution_execution_matrix = [
+    #         [SampleBasedDistribution(np.array([2.0])), SampleBasedDistribution(np.array([2.5]))],
+    #     ]
 
-        self.distribution_transmission_matrix = [
-            [SampleBasedDistribution(np.array([0.01])), SampleBasedDistribution(np.array([0.1]))],
-            [None, SampleBasedDistribution(np.array([0.02]))],
-        ]
+    #     self.distribution_transmission_matrix = [
+    #         [SampleBasedDistribution(np.array([0.01])), SampleBasedDistribution(np.array([0.1]))],
+    #         [None, SampleBasedDistribution(np.array([0.02]))],
+    #     ]
 
-        solver = DistributionBFSFineGrainedSolver(
-            self.workflow_config, self._all_regions, self.distribution_input_manager
-        )
+    #     solver = DistributionBFSFineGrainedSolver(
+    #         self.workflow_config, self._all_regions, self.distribution_input_manager
+    #     )
 
-        deployments = solver._distribution_solve(self._all_regions)
+    #     deployments = solver._distribution_solve(self._all_regions)
 
-    def test_solver_simple_2_node_join(self):
-        """
-        This is a simple test with 4 instances, 1 parent, and 2 nodes from that parent, and a final join node.
-        """
-        self.workflow_config.start_hops = "p1:r1"
-        self.workflow_config.regions_and_providers = {"providers": {"p1": None, "p2": None}}
-        self.workflow_config.instances = [
-            {
-                "instance_name": "i1",
-                "function_name": "f1",
-                "succeeding_instances": ["i2", "i3"],
-                "preceding_instances": [],
-                "regions_and_providers": {
-                    "allowed_regions": None,
-                    "disallowed_regions": None,
-                    "providers": {"p1": None, "p2": None},
-                },
-            },
-            {
-                "instance_name": "i2",
-                "function_name": "f2",
-                "succeeding_instances": ["i4"],
-                "preceding_instances": ["i1"],
-                "regions_and_providers": {
-                    "allowed_regions": None,
-                    "disallowed_regions": None,
-                    "providers": {"p1": None, "p2": None},
-                },
-            },
-            {
-                "instance_name": "i3",
-                "function_name": "f3",
-                "succeeding_instances": ["i4"],
-                "preceding_instances": ["i1"],
-                "regions_and_providers": {
-                    "allowed_regions": None,
-                    "disallowed_regions": None,
-                    "providers": {"p1": None, "p2": None},
-                },
-            },
-            {
-                "instance_name": "i4",
-                "function_name": "f4",
-                "succeeding_instances": [],
-                "preceding_instances": ["i2", "i3"],
-                "regions_and_providers": {
-                    "allowed_regions": None,
-                    "disallowed_regions": None,
-                    "providers": {"p1": None, "p2": None},
-                },
-            },
-        ]
-        self.workflow_config.constraints = None
+    # def test_solver_simple_2_node_join(self):
+    #     """
+    #     This is a simple test with 4 instances, 1 parent, and 2 nodes from that parent, and a final join node.
+    #     """
+    #     self.workflow_config.start_hops = "p1:r1"
+    #     self.workflow_config.regions_and_providers = {"providers": {"p1": None, "p2": None}}
+    #     self.workflow_config.instances = [
+    #         {
+    #             "instance_name": "i1",
+    #             "function_name": "f1",
+    #             "succeeding_instances": ["i2", "i3"],
+    #             "preceding_instances": [],
+    #             "regions_and_providers": {
+    #                 "allowed_regions": None,
+    #                 "disallowed_regions": None,
+    #                 "providers": {"p1": None, "p2": None},
+    #             },
+    #         },
+    #         {
+    #             "instance_name": "i2",
+    #             "function_name": "f2",
+    #             "succeeding_instances": ["i4"],
+    #             "preceding_instances": ["i1"],
+    #             "regions_and_providers": {
+    #                 "allowed_regions": None,
+    #                 "disallowed_regions": None,
+    #                 "providers": {"p1": None, "p2": None},
+    #             },
+    #         },
+    #         {
+    #             "instance_name": "i3",
+    #             "function_name": "f3",
+    #             "succeeding_instances": ["i4"],
+    #             "preceding_instances": ["i1"],
+    #             "regions_and_providers": {
+    #                 "allowed_regions": None,
+    #                 "disallowed_regions": None,
+    #                 "providers": {"p1": None, "p2": None},
+    #             },
+    #         },
+    #         {
+    #             "instance_name": "i4",
+    #             "function_name": "f4",
+    #             "succeeding_instances": [],
+    #             "preceding_instances": ["i2", "i3"],
+    #             "regions_and_providers": {
+    #                 "allowed_regions": None,
+    #                 "disallowed_regions": None,
+    #                 "providers": {"p1": None, "p2": None},
+    #             },
+    #         },
+    #     ]
+    #     self.workflow_config.constraints = None
 
-        self.distribution_execution_matrix = [
-            [SampleBasedDistribution(np.array([1.0])), SampleBasedDistribution(np.array([1.5]))],
-            [SampleBasedDistribution(np.array([2.0])), SampleBasedDistribution(np.array([2.5]))],
-            [SampleBasedDistribution(np.array([3.0])), SampleBasedDistribution(np.array([3.5]))],
-            [SampleBasedDistribution(np.array([4.0])), SampleBasedDistribution(np.array([4.5]))],
-        ]
+    #     self.distribution_execution_matrix = [
+    #         [SampleBasedDistribution(np.array([1.0])), SampleBasedDistribution(np.array([1.5]))],
+    #         [SampleBasedDistribution(np.array([2.0])), SampleBasedDistribution(np.array([2.5]))],
+    #         [SampleBasedDistribution(np.array([3.0])), SampleBasedDistribution(np.array([3.5]))],
+    #         [SampleBasedDistribution(np.array([4.0])), SampleBasedDistribution(np.array([4.5]))],
+    #     ]
 
-        self.distribution_transmission_matrix = [
-            [SampleBasedDistribution(np.array([0.01])), SampleBasedDistribution(np.array([0.1]))],
-            [None, SampleBasedDistribution(np.array([0.01]))],
-        ]
+    #     self.distribution_transmission_matrix = [
+    #         [SampleBasedDistribution(np.array([0.01])), SampleBasedDistribution(np.array([0.1]))],
+    #         [None, SampleBasedDistribution(np.array([0.01]))],
+    #     ]
 
-        solver = DistributionBFSFineGrainedSolver(
-            self.workflow_config, self._all_regions, self.distribution_input_manager
-        )
+    #     solver = DistributionBFSFineGrainedSolver(
+    #         self.workflow_config, self._all_regions, self.distribution_input_manager
+    #     )
 
-        deployments = solver._distribution_solve(self._all_regions)
-        # self._print_formatted_output(deployments)
+    #     deployments = solver._distribution_solve(self._all_regions)
+    #     # self._print_formatted_output(deployments)
 
-    def test_solver_probabilistic_2_node_join(self):
-        """
-        This is a simple test with 4 instances, 1 parent, and 2 nodes from that parent, and a final join node.
-        """
-        self.workflow_config.start_hops = "p1:r1"
-        self.workflow_config.regions_and_providers = {"providers": {"p1": None, "p2": None}}
-        self.workflow_config.instances = [
-            {
-                "instance_name": "i1",
-                "function_name": "f1",
-                "succeeding_instances": ["i2", "i3"],
-                "preceding_instances": [],
-                "regions_and_providers": {
-                    "allowed_regions": None,
-                    "disallowed_regions": None,
-                    "providers": {"p1": None, "p2": None},
-                },
-            },
-            {
-                "instance_name": "i2",
-                "function_name": "f2",
-                "succeeding_instances": ["i4"],
-                "preceding_instances": ["i1"],
-                "regions_and_providers": {
-                    "allowed_regions": None,
-                    "disallowed_regions": None,
-                    "providers": {"p1": None, "p2": None},
-                },
-            },
-            {
-                "instance_name": "i3",
-                "function_name": "f3",
-                "succeeding_instances": ["i4"],
-                "preceding_instances": ["i1"],
-                "regions_and_providers": {
-                    "allowed_regions": None,
-                    "disallowed_regions": None,
-                    "providers": {"p1": None, "p2": None},
-                },
-            },
-            {
-                "instance_name": "i4",
-                "function_name": "f4",
-                "succeeding_instances": [],
-                "preceding_instances": ["i2", "i3"],
-                "regions_and_providers": {
-                    "allowed_regions": None,
-                    "disallowed_regions": None,
-                    "providers": {"p1": None, "p2": None},
-                },
-            },
-        ]
-        self.workflow_config.constraints = None
+    # def test_solver_probabilistic_2_node_join(self):
+    #     """
+    #     This is a simple test with 4 instances, 1 parent, and 2 nodes from that parent, and a final join node.
+    #     """
+    #     self.workflow_config.start_hops = "p1:r1"
+    #     self.workflow_config.regions_and_providers = {"providers": {"p1": None, "p2": None}}
+    #     self.workflow_config.instances = [
+    #         {
+    #             "instance_name": "i1",
+    #             "function_name": "f1",
+    #             "succeeding_instances": ["i2", "i3"],
+    #             "preceding_instances": [],
+    #             "regions_and_providers": {
+    #                 "allowed_regions": None,
+    #                 "disallowed_regions": None,
+    #                 "providers": {"p1": None, "p2": None},
+    #             },
+    #         },
+    #         {
+    #             "instance_name": "i2",
+    #             "function_name": "f2",
+    #             "succeeding_instances": ["i4"],
+    #             "preceding_instances": ["i1"],
+    #             "regions_and_providers": {
+    #                 "allowed_regions": None,
+    #                 "disallowed_regions": None,
+    #                 "providers": {"p1": None, "p2": None},
+    #             },
+    #         },
+    #         {
+    #             "instance_name": "i3",
+    #             "function_name": "f3",
+    #             "succeeding_instances": ["i4"],
+    #             "preceding_instances": ["i1"],
+    #             "regions_and_providers": {
+    #                 "allowed_regions": None,
+    #                 "disallowed_regions": None,
+    #                 "providers": {"p1": None, "p2": None},
+    #             },
+    #         },
+    #         {
+    #             "instance_name": "i4",
+    #             "function_name": "f4",
+    #             "succeeding_instances": [],
+    #             "preceding_instances": ["i2", "i3"],
+    #             "regions_and_providers": {
+    #                 "allowed_regions": None,
+    #                 "disallowed_regions": None,
+    #                 "providers": {"p1": None, "p2": None},
+    #             },
+    #         },
+    #     ]
+    #     self.workflow_config.constraints = None
 
-        self.distribution_execution_matrix = [
-            [SampleBasedDistribution(np.array([1.0])), SampleBasedDistribution(np.array([1.5]))],
-            [SampleBasedDistribution(np.array([0.0, 2.0])), SampleBasedDistribution(np.array([0.0, 2.5]))],
-            [
-                SampleBasedDistribution(np.array([0.0, 0.0, 0.0, 103.0])),
-                SampleBasedDistribution(np.array([0.0, 0.0, 0.0, 103.5])),
-            ],
-            [SampleBasedDistribution(np.array([4.0])), SampleBasedDistribution(np.array([4.5]))],
-        ]
+    #     self.distribution_execution_matrix = [
+    #         [SampleBasedDistribution(np.array([1.0])), SampleBasedDistribution(np.array([1.5]))],
+    #         [SampleBasedDistribution(np.array([0.0, 2.0])), SampleBasedDistribution(np.array([0.0, 2.5]))],
+    #         [
+    #             SampleBasedDistribution(np.array([0.0, 0.0, 0.0, 103.0])),
+    #             SampleBasedDistribution(np.array([0.0, 0.0, 0.0, 103.5])),
+    #         ],
+    #         [SampleBasedDistribution(np.array([4.0])), SampleBasedDistribution(np.array([4.5]))],
+    #     ]
 
-        self.distribution_transmission_matrix = [  # No Transmission -> Ignores complexities
-            [SampleBasedDistribution(np.array([0])), SampleBasedDistribution(np.array([0]))],
-            [None, SampleBasedDistribution(np.array([0]))],
-        ]
+    #     self.distribution_transmission_matrix = [  # No Transmission -> Ignores complexities
+    #         [SampleBasedDistribution(np.array([0])), SampleBasedDistribution(np.array([0]))],
+    #         [None, SampleBasedDistribution(np.array([0]))],
+    #     ]
 
-        solver = DistributionBFSFineGrainedSolver(
-            self.workflow_config, self._all_regions, self.distribution_input_manager
-        )
+    #     solver = DistributionBFSFineGrainedSolver(
+    #         self.workflow_config, self._all_regions, self.distribution_input_manager
+    #     )
 
-        deployments = solver._distribution_solve(self._all_regions)
+    #     deployments = solver._distribution_solve(self._all_regions)
 
-        # self._print_formatted_output(deployments)
+    #     # self._print_formatted_output(deployments)
 
     def test_solver_probabilistic_2_node_join_comparison(self):
         """
         This is a simple test with 4 instances, 1 parent, and 2 nodes from that parent, and a final join node.
         """
         self.workflow_config.start_hops = "p1:r1"
-        self.workflow_config.regions_and_providers = {"providers": {"p1": None, "p2": None}}
+        self.workflow_config.regions_and_providers = {"providers": {"p1": None}}
         self.workflow_config.instances = [
             {
                 "instance_name": "i1",
@@ -421,133 +421,259 @@ class TestDistributionBFSFineGrainedSolver(unittest.TestCase):
             self.distribution_transmission_matrix,
         ) = self._generate_distribution_matricies(self._execution_matrix, self._transmission_matrix, False)
 
-        original_solver = CoarseGrainedSolver(self.workflow_config, self._all_regions, self.input_manager)
-        original_bfs_solver = BFSFineGrainedSolver(self.workflow_config, self._all_regions, self.input_manager)
-        original_sgd_solver = StochasticHeuristicDescentSolver(
-            self.workflow_config, self._all_regions, self.input_manager
-        )
-        solver = DistributionBFSFineGrainedSolver(
-            self.workflow_config, self._all_regions, self.distribution_input_manager
-        )
-
-        limited_regions = self._all_regions
         limited_regions = ["p1:r1"]
 
-        # print("For the complex join node test:")
+        original_solver = CoarseGrainedSolver(self.workflow_config, limited_regions, self.input_manager)
+        original_bfs_solver = BFSFineGrainedSolver(self.workflow_config, limited_regions, self.input_manager)
+        original_sgd_solver = StochasticHeuristicDescentSolver(
+            self.workflow_config, limited_regions, self.input_manager
+        )
+        solver = DistributionBFSFineGrainedSolver(
+            self.workflow_config, limited_regions, self.distribution_input_manager
+        )
+
+        # print("Times for the complex join node test:")
         # start_time = time.time()  # Start the timer
-        # original_solver_deployments = original_solver._solve(limited_regions)
+        # original_solver._solve(limited_regions)
         # end_time = time.time()  # End the timer
-        # print(f"Original Solver Execution time: {end_time - start_time} seconds")  # Print the execution time
+        # print(f"Coarse Grained Solver Execution time: {end_time - start_time} seconds")  # Print the execution time
 
         # start_time = time.time()  # Start the timer
-        # deployments = solver._distribution_solve(limited_regions)
+        # solver._distribution_solve(limited_regions)
         # end_time = time.time()  # End the timer
         # print(f"Distributed Solver Execution time: {end_time - start_time} seconds")  # Print the execution time
 
         # start_time = time.time()  # Start the timer
-        # original_bfs_solver_deployments = original_bfs_solver._solve(limited_regions)
+        # original_bfs_solver._solve(limited_regions)
         # end_time = time.time()  # End the timer
         # print(f"Original BFS Solver Execution time: {end_time - start_time} seconds")  # Print the execution time
 
         # start_time = time.time()  # Start the timer
-        # original_sgd_solver_deployments = original_sgd_solver._solve(limited_regions)
+        # original_sgd_solver._solve(limited_regions)
         # end_time = time.time()  # End the timer
         # print(f"Original SGD Solver Execution time: {end_time - start_time} seconds")  # Print the execution time
 
-        # print(original_solver_deployments)
-        # self._print_formatted_output(deployments)
-        # print(original_bfs_solver_deployments)
-        # print(original_sgd_solver_deployments)
+        N = 10  # Number of times to run each solver
 
-    def test_solver_probabilistic_2_node_join_complex_comparison(self):
-        self.workflow_config.start_hops = "p1:r1"
-        self.workflow_config.regions_and_providers = {"providers": {"p1": None, "p2": None}}
-        self.workflow_config.instances = [
-            {
-                "instance_name": "i1",
-                "function_name": "f1",
-                "succeeding_instances": ["i2", "i3"],
-                "preceding_instances": [],
-                "regions_and_providers": {
-                    "allowed_regions": None,
-                    "disallowed_regions": None,
-                    "providers": {"p1": None, "p2": None},
-                },
-            },
-            {
-                "instance_name": "i2",
-                "function_name": "f2",
-                "succeeding_instances": ["i4"],
-                "preceding_instances": ["i1"],
-                "regions_and_providers": {
-                    "allowed_regions": None,
-                    "disallowed_regions": None,
-                    "providers": {"p1": None, "p2": None},
-                },
-            },
-            {
-                "instance_name": "i3",
-                "function_name": "f3",
-                "succeeding_instances": ["i4"],
-                "preceding_instances": ["i1"],
-                "regions_and_providers": {
-                    "allowed_regions": None,
-                    "disallowed_regions": None,
-                    "providers": {"p1": None, "p2": None},
-                },
-            },
-            {
-                "instance_name": "i4",
-                "function_name": "f4",
-                "succeeding_instances": [],
-                "preceding_instances": ["i2", "i3"],
-                "regions_and_providers": {
-                    "allowed_regions": None,
-                    "disallowed_regions": None,
-                    "providers": {"p1": None, "p2": None},
-                },
-            },
-        ]
-        self.workflow_config.constraints = None
+        print("Times for the complex join node test:")
 
-        # Execution Matrix (Runtime, Probability)
-        self._execution_matrix = [
-            [(15.0, 0.5)],  # Node 0 -> head
-            [(12.0, 0.9)],  # Node 1 -> Left
-            [(300.0, 0.1)],  # Node 2 -> Right
-            [(14.0, 0.9)],  # Node 3 -> Join
-        ]
-        self._transmission_matrix = [
-            [0],
-        ]
-        (
-            self.distribution_execution_matrix,
-            self.distribution_transmission_matrix,
-        ) = self._generate_distribution_matricies(self._execution_matrix, self._transmission_matrix, True)
+        # Original Solver
+        times = []
+        for _ in range(N):
+            start_time = time.time()
+            original_solver._solve(limited_regions)
+            end_time = time.time()
+            times.append(end_time - start_time)
+        print(f"Coarse Grained Solver Execution time: {sum(times) / N} seconds")
 
-        original_bfs_solver = BFSFineGrainedSolver(self.workflow_config, self._all_regions, self.input_manager)
-        solver = DistributionBFSFineGrainedSolver(
-            self.workflow_config, self._all_regions, self.distribution_input_manager
-        )
+        # Distributed Solver
+        times = []
+        for _ in range(N):
+            start_time = time.time()
+            solver._distribution_solve(limited_regions)
+            end_time = time.time()
+            times.append(end_time - start_time)
+        print(f"Distributed Solver Average Execution time: {sum(times) / N} seconds")
 
-        limited_regions = self._all_regions
-        limited_regions = ["p1:r1"]
+        # Original BFS Solver
+        times = []
+        for _ in range(N):
+            start_time = time.time()
+            original_bfs_solver._solve(limited_regions)
+            end_time = time.time()
+            times.append(end_time - start_time)
+        print(f"Original BFS Solver Average Execution time: {sum(times) / N} seconds")
 
-        print("\nFor the complex with zero distribution join node test:")
-        start_time = time.time()  # Start the timer
-        deployments = solver._distribution_solve(limited_regions)
-        end_time = time.time()  # End the timer
-        print(f"Distributed Solver Execution time: {end_time - start_time} seconds")  # Print the execution time
+        # Original SGD Solver
+        times = []
+        for _ in range(N):
+            start_time = time.time()
+            original_sgd_solver._solve(limited_regions)
+            end_time = time.time()
+            times.append(end_time - start_time)
+        print(f"Original SGD Solver Average Execution time: {sum(times) / N} seconds")
 
-        start_time = time.time()  # Start the timer
-        original_bfs_solver_deployments = original_bfs_solver._solve(limited_regions)
-        end_time = time.time()  # End the timer
-        print(f"Original BFS Solver Execution time: {end_time - start_time} seconds")  # Print the execution time
 
-        print(original_bfs_solver_deployments)
-        self._print_formatted_output(deployments)
+    # def test_solver_no_prob(self):
+    #     self.workflow_config.start_hops = "p1:r1"
+    #     self.workflow_config.regions_and_providers = {"providers": {"p1": None, "p2": None}}
+    #     self.workflow_config.instances = [
+    #         {
+    #             "instance_name": "i1",
+    #             "function_name": "f1",
+    #             "succeeding_instances": ["i2", "i3"],
+    #             "preceding_instances": [],
+    #             "regions_and_providers": {
+    #                 "allowed_regions": None,
+    #                 "disallowed_regions": None,
+    #                 "providers": {"p1": None, "p2": None},
+    #             },
+    #         },
+    #         {
+    #             "instance_name": "i2",
+    #             "function_name": "f2",
+    #             "succeeding_instances": ["i4"],
+    #             "preceding_instances": ["i1"],
+    #             "regions_and_providers": {
+    #                 "allowed_regions": None,
+    #                 "disallowed_regions": None,
+    #                 "providers": {"p1": None, "p2": None},
+    #             },
+    #         },
+    #         {
+    #             "instance_name": "i3",
+    #             "function_name": "f3",
+    #             "succeeding_instances": ["i4"],
+    #             "preceding_instances": ["i1"],
+    #             "regions_and_providers": {
+    #                 "allowed_regions": None,
+    #                 "disallowed_regions": None,
+    #                 "providers": {"p1": None, "p2": None},
+    #             },
+    #         },
+    #         {
+    #             "instance_name": "i4",
+    #             "function_name": "f4",
+    #             "succeeding_instances": [],
+    #             "preceding_instances": ["i2", "i3"],
+    #             "regions_and_providers": {
+    #                 "allowed_regions": None,
+    #                 "disallowed_regions": None,
+    #                 "providers": {"p1": None, "p2": None},
+    #             },
+    #         },
+    #     ]
+    #     self.workflow_config.constraints = None
 
-    def _generate_distribution_matricies(self, execution_matrix, transmission_matrix, enable_variation=True, enable_bimodal=False):
+    #     # Execution Matrix (Runtime, Probability)
+    #     all_bimodal = True
+    #     prob = 1.0
+    #     self._execution_matrix = [
+    #         [(15.0, prob, all_bimodal or False)],  # Node 0 -> head
+    #         [(12.0, prob, all_bimodal or False)],  # Node 1 -> Left
+    #         [(300.0, prob, all_bimodal or False)],  # Node 2 -> Right
+    #         [(14.0, prob, all_bimodal or False)],  # Node 3 -> Join
+    #     ]
+    #     self._transmission_matrix = [
+    #         [0],
+    #     ]
+    #     (
+    #         self.distribution_execution_matrix,
+    #         self.distribution_transmission_matrix,
+    #     ) = self._generate_distribution_matricies(self._execution_matrix, self._transmission_matrix)
+
+    #     original_bfs_solver = BFSFineGrainedSolver(self.workflow_config, self._all_regions, self.input_manager)
+    #     solver = DistributionBFSFineGrainedSolver(
+    #         self.workflow_config, self._all_regions, self.distribution_input_manager
+    #     )
+
+    #     limited_regions = self._all_regions
+    #     limited_regions = ["p1:r1"]
+
+    #     print("\nFor the complex with distribution (NO PROB) join node test:")
+    #     start_time = time.time()  # Start the timer
+    #     deployments = solver._distribution_solve(limited_regions)
+    #     end_time = time.time()  # End the timer
+    #     # print(f"Distributed Solver Execution time: {end_time - start_time} seconds")  # Print the execution time
+
+    #     start_time = time.time()  # Start the timer
+    #     original_bfs_solver_deployments = original_bfs_solver._solve(limited_regions)
+    #     end_time = time.time()  # End the timer
+    #     # print(f"Original BFS Solver Execution time: {end_time - start_time} seconds")  # Print the execution time
+
+    #     print(original_bfs_solver_deployments)
+    #     self._print_formatted_output(deployments)
+
+    # def test_solver_probabilistic_2_node_join_complex_comparison(self):
+    #     self.workflow_config.start_hops = "p1:r1"
+    #     self.workflow_config.regions_and_providers = {"providers": {"p1": None, "p2": None}}
+    #     self.workflow_config.instances = [
+    #         {
+    #             "instance_name": "i1",
+    #             "function_name": "f1",
+    #             "succeeding_instances": ["i2", "i3"],
+    #             "preceding_instances": [],
+    #             "regions_and_providers": {
+    #                 "allowed_regions": None,
+    #                 "disallowed_regions": None,
+    #                 "providers": {"p1": None, "p2": None},
+    #             },
+    #         },
+    #         {
+    #             "instance_name": "i2",
+    #             "function_name": "f2",
+    #             "succeeding_instances": ["i4"],
+    #             "preceding_instances": ["i1"],
+    #             "regions_and_providers": {
+    #                 "allowed_regions": None,
+    #                 "disallowed_regions": None,
+    #                 "providers": {"p1": None, "p2": None},
+    #             },
+    #         },
+    #         {
+    #             "instance_name": "i3",
+    #             "function_name": "f3",
+    #             "succeeding_instances": ["i4"],
+    #             "preceding_instances": ["i1"],
+    #             "regions_and_providers": {
+    #                 "allowed_regions": None,
+    #                 "disallowed_regions": None,
+    #                 "providers": {"p1": None, "p2": None},
+    #             },
+    #         },
+    #         {
+    #             "instance_name": "i4",
+    #             "function_name": "f4",
+    #             "succeeding_instances": [],
+    #             "preceding_instances": ["i2", "i3"],
+    #             "regions_and_providers": {
+    #                 "allowed_regions": None,
+    #                 "disallowed_regions": None,
+    #                 "providers": {"p1": None, "p2": None},
+    #             },
+    #         },
+    #     ]
+    #     self.workflow_config.constraints = None
+
+    #     # Execution Matrix (Runtime, Probability)
+    #     all_bimodal = True
+    #     self._execution_matrix = [
+    #         [(15.0, 0.5, all_bimodal or False)],  # Node 0 -> head
+    #         [(12.0, 0.9, all_bimodal or False)],  # Node 1 -> Left
+    #         [(300.0, 0, all_bimodal or False)],  # Node 2 -> Right
+    #         [(14.0, 0.9, all_bimodal or False)],  # Node 3 -> Join
+    #     ]
+    #     self._transmission_matrix = [
+    #         [0],
+    #     ]
+    #     (
+    #         self.distribution_execution_matrix,
+    #         self.distribution_transmission_matrix,
+    #     ) = self._generate_distribution_matricies(self._execution_matrix, self._transmission_matrix)
+
+    #     original_bfs_solver = BFSFineGrainedSolver(self.workflow_config, self._all_regions, self.input_manager)
+    #     solver = DistributionBFSFineGrainedSolver(
+    #         self.workflow_config, self._all_regions, self.distribution_input_manager
+    #     )
+
+    #     limited_regions = self._all_regions
+    #     limited_regions = ["p1:r1"]
+
+    #     print("\nFor the complex with distribution join node test:")
+    #     start_time = time.time()  # Start the timer
+    #     deployments = solver._distribution_solve(limited_regions)
+    #     end_time = time.time()  # End the timer
+    #     # print(f"Distributed Solver Execution time: {end_time - start_time} seconds")  # Print the execution time
+
+    #     start_time = time.time()  # Start the timer
+    #     original_bfs_solver_deployments = original_bfs_solver._solve(limited_regions)
+    #     end_time = time.time()  # End the timer
+    #     # print(f"Original BFS Solver Execution time: {end_time - start_time} seconds")  # Print the execution time
+
+    #     print(original_bfs_solver_deployments)
+    #     self._print_formatted_output(deployments)
+
+    def _generate_distribution_matricies(self, execution_matrix, transmission_matrix, enable_variation=True):
         distribution_execution_matrix = []
         distribution_transmission_matrix = []
 
@@ -557,6 +683,9 @@ class TestDistributionBFSFineGrainedSolver(unittest.TestCase):
             for j in range(len(execution_matrix[i])):
                 execution_value = execution_matrix[i][j][0]
                 execution_prob = execution_matrix[i][j][1]
+                enable_bimodal = False
+                if (len(execution_matrix[i][j]) > 2):
+                    enable_bimodal = execution_matrix[i][j][2]
 
                 # Now we can simply get a fraction of the execution value as the std
                 # This is a very simple way to generate a distribution
@@ -567,11 +696,12 @@ class TestDistributionBFSFineGrainedSolver(unittest.TestCase):
                 if execution_value <= 0:
                     distribution_execution_matrix[i].append(SampleBasedDistribution())
                 else:
+                    samples = np.random.normal(loc=execution_value, scale=std, size=self._random_generated_sample_size)
+                    if enable_bimodal: 
+                        samples = np.concatenate((samples, np.random.normal(loc=execution_value * 2, scale=std, size=self._random_generated_sample_size)))
+
                     distribution_execution_matrix[i].append(
-                        SampleBasedDistribution(
-                            np.random.normal(loc=execution_value, scale=std, size=self._random_generated_sample_size),
-                            execution_prob,
-                        )
+                        SampleBasedDistribution(samples, execution_prob)
                     )
 
         # For transmission

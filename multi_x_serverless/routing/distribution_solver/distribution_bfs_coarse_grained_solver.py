@@ -213,7 +213,8 @@ class DistributionBFSFineGrainedSolver(DistributionSolver):
         # Add virtual leaf nodes to the DAG
         leaf_nodes = self._dag.get_leaf_nodes()
         if len(leaf_nodes) > 0:  # If there are leaf nodes (There should always be leaf nodes)
-            self._topological_order.append(-1)
+            if -1 not in self._topological_order:
+                self._topological_order.append(-1)
             for leaf_node in leaf_nodes:
                 if -1 not in prerequisites_dictionary:
                     prerequisites_dictionary[-1] = []
