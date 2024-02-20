@@ -1,4 +1,4 @@
-workflow_name: "text_2_speech_censoring"
+workflow_name: "dna_visualization"
 workflow_version: "0.0.1"
 environment_variables:
   - key: "ENV_VAR_1"
@@ -6,7 +6,7 @@ environment_variables:
 iam_policy_file: "iam_policy.json"
 home_regions:
   - provider: "aws"
-    region: "us-west-2"
+    region: "us-east-1"
 estimated_invocations_per_month: 1000000
 constraints:
   hard_resource_constraints: # None for none
@@ -43,14 +43,3 @@ regions_and_providers: # Either the user specify only allowed regions (which wil
       config:
         timeout: 60
         memory: 128
-        additional_docker_commands:
-          - "yum update -y"
-          - "yum install -y tar gzip"
-          - "yum install -y xz"
-          - "curl https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz > /tmp/ffmpeg-release.tar.xz"
-          - "tar xvf /tmp/ffmpeg-release.tar.xz -C /opt"
-          - "mv /opt/ffmpeg-* /opt/ffmpeg"
-          - "cd /opt/ffmpeg"
-          - "mv model /usr/local/share"
-          - "mv ffmpeg ffprobe qt-faststart /usr/local/bin"
-          - "rm /tmp/ffmpeg-release.tar.xz"

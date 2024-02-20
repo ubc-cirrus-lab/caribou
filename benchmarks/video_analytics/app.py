@@ -10,6 +10,9 @@ from PIL import Image
 import torch
 import torchvision.models as models
 from multi_x_serverless.deployment.client import MultiXServerlessWorkflow
+import io
+
+FANOUT_NUM = 4
 
 workflow = MultiXServerlessWorkflow(name="video_analytics", version="0.0.1")
 
@@ -22,7 +25,7 @@ def get_input(event: dict[str, Any]) -> dict[str, Any]:
     if "message" in event:
         video_name = event["message"]
     else:
-        raise ValueError("No image name provided")
+        raise ValueError("No video provided")
 
     payload = {
         "video_name": video_name,
@@ -70,10 +73,10 @@ def decode(event: dict[str, Any]) -> dict[str, Any]:
     request_id = event["request_id"]
     print(f"Decoding video: {video_name}")
 
-    video_name = video_analytics_decode(video_name, request_id)
+    decoded_filename = video_analytics_decode(video_name, request_id)
 
     payload = {
-        "video_name": video_name,
+        "decoded_filename": decoded_filename,
         "request_id": request_id,
     }
 
@@ -84,15 +87,26 @@ def decode(event: dict[str, Any]) -> dict[str, Any]:
 
 @workflow.serverless_function(name="Recognition")
 def recognition(event: dict[str, Any]) -> dict[str, Any]:
-    video_name = event["video_name"]
+    decoded_filename = event["decoded_filename"]
     request_id = event["request_id"]
-    print(f"Recognizing video: {video_name}")
+    print(f"Recognizing video: {decoded_filename}")
 
-    return {"status": 200}
+    s3 = boto3.client("s3")
+    response = s3.get_object(Bucket="multi-x-serverless-video_analytics", Key=decoded_filename)
+    image_bytes = response["Body"].read()
+
+    # Perform inference
+    result = infer(image_bytes)
+
+    # Upload the result to S3
+    result_key = f"{request_id}-{decoded_filename}-result.txt"
+    s3.put_object(Bucket="multi-x-serverless-video_analytics", Key=result_key, Body=result.encode("utf-8"))
+
+    return {"status": 200, "result_key": result_key}
 
 
 def video_analytics_streaming(filename: str, request_id: int) -> str:
-    local_filename = f'/tmp/{filename}'
+    local_filename = f"/tmp/{filename}"
 
     s3 = boto3.client("s3")
 
@@ -108,11 +122,12 @@ def video_analytics_streaming(filename: str, request_id: int) -> str:
     os.remove(resized_local_filename)
     return streaming_filename
 
+
 def resize_and_store(local_filename: str) -> str:
     cap = cv2.VideoCapture(local_filename)
     fps = cap.get(cv2.CAP_PROP_FPS)
-    fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
-    resized_local_filename = '/tmp/resized_video.mp4'
+    fourcc = cv2.VideoWriter_fourcc("m", "p", "4", "v")
+    resized_local_filename = "/tmp/resized_video.mp4"
     width, height = 340, 256
     writer = cv2.VideoWriter(resized_local_filename, fourcc, fps, (width, height))
 
@@ -126,30 +141,52 @@ def resize_and_store(local_filename: str) -> str:
 
 
 def video_analytics_decode(filename: str, request_id: int) -> str:
-    local_filename = f'/tmp/{filename}'
-
+    local_filename = f"/tmp/{filename}"
     s3 = boto3.client("s3")
 
+    # Download the video file from S3
     s3.download_file("multi-x-serverless-video_analytics", filename, local_filename)
 
-    video_bytes = decode_video(local_filename)
+    # Open the video file
+    cap = cv2.VideoCapture(local_filename)
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    duration = total_frames / fps
 
-    tmp = tempfile.NamedTemporaryFile(suffix='.mp4')
-    tmp.write(video_bytes)
-    tmp.seek(0)
-    vidcap = cv2.VideoCapture(tmp.name)
+    # Calculate frame range for this request_id
+    frames_per_section = total_frames // FANOUT_NUM
+    start_frame = frames_per_section * (request_id - 1)
+    end_frame = start_frame + frames_per_section
 
-    success, image = vidcap.read()
+    # Adjust for the last section to cover all remaining frames
+    if request_id == FANOUT_NUM:
+        end_frame = total_frames
 
-    if not success:
-        raise ValueError("Failed to read video")
-    
-    decoded_filename = f"decoded-{request_id}-{filename}"
-    cv2.imwrite(f'/tmp/{decoded_filename}', image)
-    s3.upload_file(f'/tmp/{decoded_filename}', "multi-x-serverless-video_analytics", decoded_filename)
+    # Seek to the start frame
+    cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
 
-    tmp.close()
+    # Process and upload frames from start_frame to end_frame
+    for frame_idx in range(start_frame, end_frame):
+        success, image = cap.read()
+        if not success:
+            break  # Exit loop if no frame is found
 
+        decoded_filename = f"decoded-{request_id}-{frame_idx}-{filename}.jpg"
+        decoded_local_path = os.path.join("/tmp", decoded_filename)
+
+        # Write the frame to a temporary file
+        cv2.imwrite(decoded_local_path, image)
+
+        # Upload the frame to S3
+        s3.upload_file(decoded_local_path, "multi-x-serverless-video_analytics", decoded_filename)
+
+        # Clean up the local file
+        os.remove(decoded_local_path)
+
+    # Clean up the downloaded video file
+    os.remove(local_filename)
+
+    # Return the name of the last uploaded frame as an example
     return decoded_filename
 
 
@@ -160,5 +197,38 @@ def decode_video(local_filename: str) -> bytes:
         ret, frame = cap.read()
         if not ret:
             break
-        frames.append(cv2.imencode('.jpg', frame)[1].tobytes())
+        frames.append(cv2.imencode(".jpg", frame)[1].tobytes())
     return frames
+
+
+def preprocess_image(image_bytes):
+    img = Image.open(io.BytesIO(image_bytes))
+    transform = transforms.Compose(
+        [
+            transforms.Resize(256),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ]
+    )
+    img = transform(img)
+    return torch.unsqueeze(img, 0)
+
+
+def infer(image_bytes):
+    # Load model labels
+    s3 = boto3.client("s3")
+    response = s3.get_object(Bucket="multi-x-serverless-video_analytics", Key="imagenet_labels.txt")
+    labels = response["Body"].read().decode("utf-8").splitlines()
+
+    # Load the model
+    model = models.squeezenet1_1(pretrained=True)
+
+    frame = preprocess_image(image_bytes)
+    model.eval()
+    with torch.no_grad():
+        out = model(frame)
+    _, indices = torch.sort(out, descending=True)
+    percentages = torch.nn.functional.softmax(out, dim=1)[0] * 100
+
+    return ",".join([f"{labels[idx]}: {percentages[idx].item()}%" for idx in indices[0][:5]]).strip()

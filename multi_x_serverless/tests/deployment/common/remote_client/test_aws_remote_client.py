@@ -600,10 +600,24 @@ class TestAWSRemoteClient(unittest.TestCase):
         client = AWSRemoteClient("region1")
 
         # Test with python runtime
-        result = client.generate_dockerfile("python", "handler.handler")
+        result = client._generate_dockerfile("python", "handler.handler", [])
         expected_result = """
         FROM public.ecr.aws/lambda/python:
         COPY requirements.txt ./
+        
+        RUN pip3 install --no-cache-dir -r requirements.txt
+        COPY app.py ./
+        COPY src ./src
+        COPY multi_x_serverless ./multi_x_serverless
+        CMD ["handler.handler"]
+        """
+        self.assertEqual(result.strip(), expected_result.strip())
+
+        result = client._generate_dockerfile("python", "handler.handler", ["command1", "command2"])
+        expected_result = """
+        FROM public.ecr.aws/lambda/python:
+        COPY requirements.txt ./
+        RUN command1 && command2
         RUN pip3 install --no-cache-dir -r requirements.txt
         COPY app.py ./
         COPY src ./src

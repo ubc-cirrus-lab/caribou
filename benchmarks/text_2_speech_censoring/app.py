@@ -54,7 +54,11 @@ def text_2_speech(event: dict[str, Any]) -> dict[str, Any]:
 
     s3 = boto3.client("s3")
 
-    s3.upload_file(os.path.join(tmp_dir, file_name), "multi-x-serverless-text-2-speech-censoring", f"text_2_speech_censoring/{file_name}")
+    s3.upload_file(
+        os.path.join(tmp_dir, file_name),
+        "multi-x-serverless-text-2-speech-censoring",
+        f"text_2_speech_censoring/{file_name}",
+    )
 
     payload = {
         "file_name": file_name,
@@ -106,11 +110,12 @@ def conversion(event: dict[str, Any]) -> dict[str, Any]:
     s3 = boto3.client("s3")
     tmp_dir = tempfile.mkdtemp()
 
-    s3.download_file("multi-x-serverless-text-2-speech-censoring", f"text_2_speech_censoring/{file_name}", f"{tmp_dir}/{file_name}")
+    s3.download_file(
+        "multi-x-serverless-text-2-speech-censoring", f"text_2_speech_censoring/{file_name}", f"{tmp_dir}/{file_name}"
+    )
 
     dlFile = open(f"{tmp_dir}/{file_name}", "rb").read()
     input = BytesIO(dlFile)
-    inputSize = len(input.getvalue())
     speech = AudioSegment.from_mp3(input)
     output = BytesIO()
     speech.export(output, format="wav")
@@ -121,7 +126,11 @@ def conversion(event: dict[str, Any]) -> dict[str, Any]:
     with open(os.path.join(tmp_dir, file_name), "wb") as f:
         f.write(result)
 
-    s3.upload_file(os.path.join(tmp_dir, file_name), "multi-x-serverless-text-2-speech-censoring", f"text_2_speech_censoring/{file_name}")
+    s3.upload_file(
+        os.path.join(tmp_dir, file_name),
+        "multi-x-serverless-text-2-speech-censoring",
+        f"text_2_speech_censoring/{file_name}",
+    )
 
     payload = {
         "file_name": file_name,
@@ -138,7 +147,9 @@ def compression(event: dict[str, Any]) -> dict[str, Any]:
     s3 = boto3.client("s3")
     tmp_dir = tempfile.mkdtemp()
 
-    s3.download_file("multi-x-serverless-text-2-speech-censoring", f"text_2_speech_censoring/{file_name}", f"{tmp_dir}/{file_name}")
+    s3.download_file(
+        "multi-x-serverless-text-2-speech-censoring", f"text_2_speech_censoring/{file_name}", f"{tmp_dir}/{file_name}"
+    )
 
     dlFile = open(f"{tmp_dir}/{file_name}", "rb").read()
     dlFile = BytesIO(dlFile)
@@ -158,7 +169,11 @@ def compression(event: dict[str, Any]) -> dict[str, Any]:
     with open(os.path.join(tmp_dir, file_name), "wb") as f:
         f.write(result)
 
-    s3.upload_file(os.path.join(tmp_dir, file_name), "multi-x-serverless-text-2-speech-censoring", f"text_2_speech_censoring/{file_name}")
+    s3.upload_file(
+        os.path.join(tmp_dir, file_name),
+        "multi-x-serverless-text-2-speech-censoring",
+        f"text_2_speech_censoring/{file_name}",
+    )
 
     payload = {
         "file_name": file_name,
@@ -170,7 +185,7 @@ def compression(event: dict[str, Any]) -> dict[str, Any]:
 
 @workflow.serverless_function(name="MergeFunction")
 def sync_function(event: dict[str, Any]) -> dict[str, Any]:
-    results = workflow.get_predecessor_data(event)
+    results = workflow.get_predecessor_data()
 
     for result in results:
         if "file_name" in result:
@@ -195,12 +210,14 @@ def sync_function(event: dict[str, Any]) -> dict[str, Any]:
 @workflow.serverless_function(name="Censor")
 def censor(event: dict[str, Any]) -> dict[str, Any]:
     file_name = event["file_name"]
-    indexes = event["data"]
+    indexes = event["indexes"]
 
     s3 = boto3.client("s3")
     tmp_dir = tempfile.mkdtemp()
 
-    s3.download_file("multi-x-serverless-text-2-speech-censoring", f"text_2_speech_censoring/{file_name}", f"{tmp_dir}/{file_name}")
+    s3.download_file(
+        "multi-x-serverless-text-2-speech-censoring", f"text_2_speech_censoring/{file_name}", f"{tmp_dir}/{file_name}"
+    )
 
     dlFile = open(f"{tmp_dir}/{file_name}", "rb").read()
     dlFile = BytesIO(dlFile)
@@ -229,6 +246,10 @@ def censor(event: dict[str, Any]) -> dict[str, Any]:
     with open(os.path.join(tmp_dir, file_name), "wb") as f:
         f.write(result)
 
-    s3.upload_file(os.path.join(tmp_dir, file_name), "multi-x-serverless-text-2-speech-censoring", f"text_2_speech_censoring/{file_name}")
+    s3.upload_file(
+        os.path.join(tmp_dir, file_name),
+        "multi-x-serverless-text-2-speech-censoring",
+        f"text_2_speech_censoring/{file_name}",
+    )
 
     return {"status": 200}

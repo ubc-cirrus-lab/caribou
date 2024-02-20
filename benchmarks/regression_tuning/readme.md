@@ -1,6 +1,6 @@
 # Regression Tuning Benchmarks
 
-This benchmark requires an s3 bucket with the name `multi-x-serverless-regression-tuning`.
+This benchmark requires access to the s3 bucket with the name `multi-x-serverless-regression-tuning`.
 
 You can deploy the benchmark with the following command:
 
