@@ -37,12 +37,13 @@ class Workflow(Resource):
             raise ValueError("Config not set, this state should not be reachable")
 
         for resource in self._resources:
-            result = resource.get_deployment_instructions()
-            if result:
-                for region, instructions in result.items():
-                    if region not in plans:
-                        plans[region] = []
-                    plans[region].extend(instructions)
+            if resource.deploy:
+                result = resource.get_deployment_instructions()
+                if result:
+                    for region, instructions in result.items():
+                        if region not in plans:
+                            plans[region] = []
+                        plans[region].extend(instructions)
 
         return plans
 
@@ -183,6 +184,33 @@ class Workflow(Resource):
 
         return function_instance_to_identifier
 
+    def _get_function_instance_to_identifier_from_staging(
+        self, resource_values: list[Any], identifier_key: str, staging_area_placement: dict[str, Any]
+    ) -> dict[str, str]:
+        function_resource_to_identifiers = {
+            function_resource_description["name"]: function_resource_description[identifier_key]
+            for function_resource_description in resource_values
+        }
+
+        function_instance_to_identifier = {}
+        for function_instance in staging_area_placement["instances"]:
+            instance_name = function_instance["instance_name"]
+            function_resource_name = function_instance["function_name"]
+
+            actual_placement = staging_area_placement["workflow_placement"][instance_name]["provider_region"]
+
+            function_resource_name = (
+                function_resource_name.rsplit("_", 1)[0]
+                + "_"
+                + actual_placement["provider"]
+                + "-"
+                + actual_placement["region"]
+            )
+
+            function_instance_to_identifier[instance_name] = function_resource_to_identifiers[function_resource_name]
+
+        return function_instance_to_identifier
+
     def get_workflow_placement_decision(self, resource_values: dict[str, list[Any]]) -> dict[str, Any]:
         """
         The desired output format is explained in the `docs/design.md` file under `Workflow Placement Decision`.
@@ -204,10 +232,18 @@ class Workflow(Resource):
         The desired output format is explained in the `docs/design.md` file under `Workflow Placement Decision`.
         """
         staging_area_placement["instances"] = previous_instances
-        staging_area_placement["current_instance_name"] = self._get_entry_point_instance_name()
+        staging_area_placement["current_instance_name"] = self._get_entry_point_from_previous_instances(
+            previous_instances
+        )
         self._extend_stage_area_placement(resource_values, staging_area_placement)
         self._update_instances(staging_area_placement)
         return staging_area_placement
+
+    def _get_entry_point_from_previous_instances(self, previous_instances: list[dict]) -> str:
+        for instance in previous_instances:
+            if "instance_name" in instance and instance["instance_name"].split(":")[1] == "entry_point":
+                return instance["instance_name"]
+        raise RuntimeError("No entry point instance found, this should not happen")
 
     def _update_instances(self, staging_area_placement: dict[str, Any]) -> None:
         for instance in staging_area_placement["instances"]:
@@ -219,11 +255,13 @@ class Workflow(Resource):
     def _extend_stage_area_placement(
         self, resource_values: dict[str, list[Any]], staging_area_placement: dict[str, Any]
     ) -> dict[str, dict[str, Any]]:
-        function_instance_to_messaging_identifier = self._get_function_instance_to_identifier(
-            resource_values["messaging_topic"], "topic_identifier"
+        if "messaging_topic" not in resource_values or "function" not in resource_values:
+            raise RuntimeError("Resource values are not set, this should not happen")
+        function_instance_to_messaging_identifier = self._get_function_instance_to_identifier_from_staging(
+            resource_values["messaging_topic"], "topic_identifier", staging_area_placement
         )
-        function_instance_to_function_identifier = self._get_function_instance_to_identifier(
-            resource_values["function"], "function_identifier"
+        function_instance_to_function_identifier = self._get_function_instance_to_identifier_from_staging(
+            resource_values["function"], "function_identifier", staging_area_placement
         )
 
         for instance_name in staging_area_placement["workflow_placement"]:

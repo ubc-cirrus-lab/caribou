@@ -1,4 +1,5 @@
 import json
+import logging
 from abc import ABC, abstractmethod
 from typing import Optional
 
@@ -15,6 +16,8 @@ from multi_x_serverless.routing.solver.objective_function.any_improvement_object
     AnyImprovementObjectiveFunction,
 )
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
+
+logger = logging.getLogger(__name__)
 
 
 class Solver(ABC):  # pylint: disable=too-many-instance-attributes
@@ -71,12 +74,28 @@ class Solver(ABC):  # pylint: disable=too-many-instance-attributes
         self._objective_function = AnyImprovementObjectiveFunction
 
     def solve(self) -> None:
+        logger.info("Solving workflow placement")
         solved_results = self._solve(self._worklow_level_permitted_regions)
         ranked_results = self.rank_solved_results(solved_results)
+        logger.info("Number of results: %s", len(ranked_results))
         selected_result = self._select_result(ranked_results)
         formatted_result = self._formatter.format(
             selected_result, self._dag.indicies_to_values(), self._region_indexer.indicies_to_values()
         )
+        logger.info("Selected result: %s", formatted_result)
+        logger.info(
+            "Result values: cost: %s, carbon: %s, runtime: %s",
+            selected_result[1],
+            selected_result[2],
+            selected_result[3],
+        )
+        if len(ranked_results) > 1:
+            logger.info(
+                "Second best result: cost: %s, carbon: %s, runtime: %s",
+                ranked_results[1][1],
+                ranked_results[1][2],
+                ranked_results[1][3],
+            )
         self._upload_result(formatted_result)
 
     def _init_home_region_transmission_costs(self, regions: list[str]) -> None:

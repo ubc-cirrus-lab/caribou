@@ -49,6 +49,7 @@ def run(
     if not isinstance(workflow_function_descriptions, list):
         raise ValueError("Workflow function description is not a list")
 
+    logger.info("Running deployer for workflow: %s", input_workflow_id)
     run_deployer(
         deployment_config=deployment_config,
         workflow_function_descriptions=workflow_function_descriptions,

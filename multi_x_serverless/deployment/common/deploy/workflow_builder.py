@@ -1,3 +1,4 @@
+import logging
 import os
 import queue
 from collections import defaultdict
@@ -12,6 +13,8 @@ from multi_x_serverless.deployment.common.deploy.models.function import Function
 from multi_x_serverless.deployment.common.deploy.models.function_instance import FunctionInstance
 from multi_x_serverless.deployment.common.deploy.models.iam_role import IAMRole
 from multi_x_serverless.deployment.common.deploy.models.workflow import Workflow
+
+logger = logging.getLogger(__name__)
 
 
 class WorkflowBuilder:
@@ -278,6 +281,7 @@ class WorkflowBuilder:
                     deploy_region=deployed_regions[function["name"]],
                     entry_point=function["entry_point"],
                     providers=function["providers"],
+                    deploy=False,
                 )
             )
 
