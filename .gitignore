@@ -95,3 +95,5 @@ benchmarks/solver_benchmarks/images/
 
 # Benchmark results
 benchmarks/solver_benchmarks/results/
+
+Dockerfile

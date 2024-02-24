@@ -5,32 +5,21 @@ import boto3
 
 
 def generate_dockerfile(handler: str, runtime: str) -> str:
-    parent_parent_dir = Path(__file__).parent.parent
-    return f"""
-    FROM public.ecr.aws/lambda/{runtime.replace("python", "python:")}
-    RUN pip3 install poetry
-    COPY {parent_parent_dir}/pyproject.toml ./
-    COPY {parent_parent_dir}/poetry.lock ./
-    COPY {parent_parent_dir}/multi_x_serverless ./multi_x_serverless
-    RUN poetry install --no-dev
+    return f"""FROM public.ecr.aws/lambda/{runtime}
+RUN pip3 install poetry
+COPY pyproject.toml ./
+COPY poetry.lock ./
+COPY multi_x_serverless ./multi_x_serverless
 
-    COPY {parent_parent_dir}/depoyment/handlers/{handler}.sh ./
-    CMD ["{handler}.sh"]
-    """
-
-
-def generate_handler_script(handler: str) -> str:
-    return f"""
-    #!/bin/bash
-    echo "Running multi_x_serverless {handler}"
-    poetry run multi_x_serverless {handler}
-    """
+RUN poetry install --no-dev
+CMD ["multi_x_serverless/deployment/client/cli/cli.{handler}"]
+"""
 
 
 def build_docker_image(image_name: str) -> None:
     print(f"Building docker image {image_name}")
     try:
-        subprocess.run(["docker", "build", "--platform", "linux/amd64", "-t", image_name, "."], check=True)
+        subprocess.run(["docker", "build", "--platform", "linux/amd64", "-t", image_name, f"{Path(__file__).parent.parent}/."], check=True)
     except subprocess.CalledProcessError as e:
         print(f"Error building docker image {image_name}")
         print(e)
@@ -58,7 +47,9 @@ def upload_image_to_ecr(image_name: str) -> str:
         ["docker", "login", "--username", "AWS", "--password", login_password, ecr_repository_uri], check=True
     )
 
-    image_uri = f"{ecr_repository_uri}/{repository_name}:latest"
+    image_uri = f"{ecr_repository_uri}:latest"
+
+    print(f"Tagging and pushing Docker image {image_name} to ECR")
 
     try:
         subprocess.run(["docker", "tag", image_name, image_uri], check=True)
@@ -77,40 +68,44 @@ def create_lambda_function(handler: str, image_uri: str, role: str) -> None:
     try:
         lambda_client.create_function(
             FunctionName=f"multi_x_serverless_{handler}",
-            Runtime="provided",
             Role=role,
             Code={"ImageUri": image_uri},
             PackageType="Image",
+            Timeout=600,
+            MemorySize=3008,
         )
     except lambda_client.exceptions.ResourceConflictException:
         print(f"Lambda function {handler} already exists")
         pass
 
 
-def deploy_to_aws(handler: str, runtime: str, role: str):
-    if not Path(f"./handlers/{handler}.sh").exists():
-        Path(f"./handlers/{handler}.sh").write_text(generate_handler_script(handler))
-
+def deploy_to_aws(handler: str, runtime: str, role_arn: str):
     dockerfile_content = generate_dockerfile(handler, runtime)
 
-    dockerfile_path = Path("./Dockerfile")
+    dockerfile_path = Path(f"{Path(__file__).parent.parent}/Dockerfile")
     dockerfile_path.write_text(dockerfile_content)
     print(dockerfile_path.read_text())
     print("Deploying to AWS")
 
-    image_name = f"multi_x_serverless_{handler}:{runtime}"
+    image_name = f"multi_x_serverless_{handler}:{runtime.replace(':', '-')}"
     build_docker_image(image_name)
 
     image_uri = upload_image_to_ecr(image_name)
 
     print(f"Deployed {handler} to AWS Lambda with image URI {image_uri}")
 
-    create_lambda_function(handler, image_uri, role)
+    create_lambda_function(handler, image_uri, role_arn)
+
+    print(f"Created Lambda function multi_x_serverless_{handler}")
 
 
 if __name__ == "__main__":
     handler = sys.argv[1]
     runtime = sys.argv[2]
-    role = sys.argv[3]
+    role_arn = sys.argv[3]
 
-    deploy_to_aws(handler, runtime, role)
+    if not runtime.startswith("python:"):
+        print("Runtime must be a Python runtime of the form python:x.x")
+        sys.exit(1)
+
+    deploy_to_aws(handler, runtime, role_arn)
