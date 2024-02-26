@@ -31,10 +31,12 @@ class SolverUpdateChecker(UpdateChecker):
 
             if "workflow_config" not in workflow_json:
                 raise ValueError("Invalid workflow config")
-            
+
             workflow_config_dict = json.loads(workflow_json["workflow_config"])
             # determines whether we should run solver
-            workflow_summary = data_collector_client.get_last_value_from_sort_key_table(WORKFLOW_SUMMARY_TABLE, workflow_id)
+            workflow_summary = data_collector_client.get_last_value_from_sort_key_table(
+                WORKFLOW_SUMMARY_TABLE, workflow_id
+            )
 
             if len(workflow_summary) == 0:
                 raise ValueError("Invalid workflow summary")
@@ -52,7 +54,7 @@ class SolverUpdateChecker(UpdateChecker):
             time_since_last_sync = workflow_summary_json["time_since_last_sync"]
             total_invocations = workflow_summary_json["total_invocations"]
 
-            # Extrapoloate the number of invocations per month
+            # Extrapoloate the number of invocations per month
             months_between_summary = time_since_last_sync / (60 * 60 * 24 * 30)
 
             if total_invocations / months_between_summary > workflow_config.num_calls_in_one_month:

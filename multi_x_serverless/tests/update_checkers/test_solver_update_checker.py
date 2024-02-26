@@ -20,8 +20,12 @@ class TestSolverUpdateChecker(unittest.TestCase):
         # Mock the return values of get_keys and get_value_from_table
         mock_solver_client.get_keys.return_value = ["workflow_id"]
         mock_data_collector_client.get_value_from_table.side_effect = [
-            json.dumps({"solver": "coarse_grained_solver", "num_calls_in_one_month": 10}),  # workflow_config
-            json.dumps({"months_between_summary": 1, "total_invocations": 20}),  # workflow_summary
+            json.dumps(
+                {"workflow_config": '{"solver": "coarse_grained_solver", "num_calls_in_one_month": 10}'}
+            ),  # workflow_config
+        ]
+        mock_data_collector_client.get_last_value_from_sort_key_table.side_effect = [
+            (0, json.dumps({"time_since_last_sync": 1, "total_invocations": 20})),  # workflow_summary
         ]
 
         # Mock the solver classes
