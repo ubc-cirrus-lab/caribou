@@ -87,6 +87,8 @@ class WorkflowConfig:
     def solver(self) -> str:
         allowed_solvers = {"coarse_grained_solver", "fine_grained_solver", "stochastic_heuristic_solver"}
         result = self._lookup("solver", "coarse_grained_solver")
+        if len(result) == 0:
+            result = "coarse_grained_solver"
         if result not in allowed_solvers:
             raise ValueError(f"Invalid solver: {result}")
         return result

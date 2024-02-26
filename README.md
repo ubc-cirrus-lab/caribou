@@ -149,8 +149,8 @@ To solve for a workflow you can either do it manually by using the following com
 poetry run multi_x_serverless solve <workflow_id> -s <solver>
 ```
 
-Where `<workflow_id>` is the id of the workflow you want to run. And the `-s` flag is used to denote running a specific solver. 
-Where `<solver>` is the name of the solver you want to run. 
+Where `<workflow_id>` is the id of the workflow you want to run. And the `-s` flag is used to denote running a specific solver.
+Where `<solver>` is the name of the solver you want to run.
 The available solver are:
 
 - `fine-grained`
@@ -162,6 +162,16 @@ Or use the update checker to solve for all workflows that have been invoked enou
 ```bash
 poetry run multi_x_serverless update_check_solver
 ```
+
+### Re-Deploy
+
+Once a workflow has been solved and a new deployment is required, you can use the following command:
+
+```bash
+poetry run multi_x_serverless update_check_deployment
+```
+
+Which will check if a new deployment is required for any workflow and if so, deploy the new workflow.
 
 ### Testing
 
