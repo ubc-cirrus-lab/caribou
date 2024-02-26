@@ -11,12 +11,7 @@ from typing import Any, Optional
 from boto3.session import Session
 from botocore.exceptions import ClientError
 
-from multi_x_serverless.common.constants import (
-    SYNC_MESSAGES_TABLE,
-    SYNC_PREDECESSOR_COUNTER_TABLE,
-    ECR_WORKFLOW_IMAGE_TABLE,
-    GLOBAL_SYSTEM_REGION,
-)
+from multi_x_serverless.common.constants import SYNC_MESSAGES_TABLE, SYNC_PREDECESSOR_COUNTER_TABLE
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
 from multi_x_serverless.deployment.common.deploy.models.resource import Resource
 
@@ -143,95 +138,6 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         memory_size: int,
         additional_docker_commands: Optional[list[str]] = None,
     ) -> str:
-        logger.info("Creating function %s", function_name)
-        simplified_function_name, workflow_instance_id = self._extract_function_name_and_workflow_id(function_name)
-        original_image_uri = self._get_image_uri_from_table(workflow_instance_id, simplified_function_name)
-        if len(original_image_uri) > 0:
-            # Copy the image to the new region
-            image_uri = self._copy_image_to_new_region(original_image_uri, function_name)
-        else:
-            image_uri = self._build_and_upload_image(
-                function_name,
-                workflow_instance_id,
-                simplified_function_name,
-                runtime,
-                handler,
-                role_identifier,
-                zip_contents,
-                environment_variables,
-                timeout,
-                memory_size,
-                additional_docker_commands,
-            )
-
-        kwargs: dict[str, Any] = {
-            "FunctionName": function_name,
-            "Code": {"ImageUri": image_uri},
-            "PackageType": "Image",
-            "Role": role_identifier,
-            "Environment": {"Variables": environment_variables},
-            "MemorySize": memory_size,
-        }
-        if timeout >= 1:
-            kwargs["Timeout"] = timeout
-        arn, state = self._create_lambda_function(kwargs)
-
-        if state != "Active":
-            self._wait_for_function_to_become_active(function_name)
-        return arn
-
-    def _copy_image_to_new_region(self, original_image_uri: str, function_name: str) -> str:
-        source_provider_region = original_image_uri.rsplit("_", 1)[1]
-        source_region = "-".join(source_provider_region.split("-")[1:])
-
-        # Create a new session in the source region
-        source_session = Session(region_name=source_region)
-        source_ecr_client = source_session.client("ecr")
-
-        # Get the image digest
-        image_digest = original_image_uri.split("@")[1]
-
-        # Get the image manifest
-        image_manifest = source_ecr_client.batch_get_image(
-            repositoryName=function_name.lower(), imageIds=[{"imageDigest": image_digest}]
-        )["images"][0]["imageManifest"]
-
-        destination_ecr_client = self._client("ecr")
-        destination_account_id = self._client("sts").get_caller_identity().get("Account")
-        destination_region = self._client("ecr").meta.region_name
-        destination_ecr_registry = f"{destination_account_id}.dkr.ecr.{destination_region}.amazonaws.com"
-
-        # Create a new repository in the destination region
-        try:
-            destination_ecr_client.create_repository(repositoryName=function_name.lower())
-        except destination_ecr_client.exceptions.RepositoryAlreadyExistsException:
-            pass
-
-        # Tag and push the image to ECR in the destination region
-        image_uri = f"{destination_ecr_registry}/{function_name.lower()}:latest"
-
-        destination_ecr_client.put_image(
-            repositoryName=function_name.lower(),
-            imageManifest=image_manifest,
-            imageTag="latest",
-        )
-
-        return image_uri
-
-    def _build_and_upload_image(
-        self,
-        function_name: str,
-        workflow_instance_id: str,
-        simplified_function_name: str,
-        runtime: str,
-        handler: str,
-        role_identifier: str,
-        zip_contents: bytes,
-        environment_variables: dict[str, str],
-        timeout: int,
-        memory_size: int,
-        additional_docker_commands: Optional[list[str]],
-    ) -> str:
         with tempfile.TemporaryDirectory() as tmpdirname:
             # Step 1: Unzip the ZIP file
             zip_path = os.path.join(tmpdirname, "code.zip")
@@ -252,45 +158,21 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
             # Step 4: Upload the Image to ECR
             image_uri = self._upload_image_to_ecr(image_name)
 
-            # Step 5: Update the table with the image URI
-            self._set_image_uri_in_table(workflow_instance_id, simplified_function_name, image_uri)
+            kwargs: dict[str, Any] = {
+                "FunctionName": function_name,
+                "Code": {"ImageUri": image_uri},
+                "PackageType": "Image",
+                "Role": role_identifier,
+                "Environment": {"Variables": environment_variables},
+                "MemorySize": memory_size,
+            }
+            if timeout >= 1:
+                kwargs["Timeout"] = timeout
+            arn, state = self._create_lambda_function(kwargs)
 
-            return image_uri
-
-    def _set_image_uri_in_table(self, workflow_instance_id: str, function_name: str, image_uri: str) -> None:
-        client = Session(region_name=GLOBAL_SYSTEM_REGION).client("dynamodb")
-        client.update_item(
-            TableName=ECR_WORKFLOW_IMAGE_TABLE,
-            Key={"key": {"S": workflow_instance_id}},
-            UpdateExpression="SET function_images = if_not_exists(function_images, :empty_map)",
-            ExpressionAttributeValues={":empty_map": {"M": {}}},
-        )
-
-        # Update the specific key within function_images
-        client.update_item(
-            TableName=ECR_WORKFLOW_IMAGE_TABLE,
-            Key={"key": {"S": workflow_instance_id}},
-            UpdateExpression="SET function_images.#functionName = :imageUri",
-            ExpressionAttributeNames={"#functionName": function_name},
-            ExpressionAttributeValues={":imageUri": {"S": image_uri}},
-        )
-
-    def _get_image_uri_from_table(self, workflow_instance_id: str, function_name: str) -> str:
-        client = Session(region_name=GLOBAL_SYSTEM_REGION).client("dynamodb")
-        response = client.get_item(TableName=ECR_WORKFLOW_IMAGE_TABLE, Key={"key": {"S": workflow_instance_id}})
-        if "Item" not in response:
-            return ""
-        item = response.get("Item")
-        if item is not None and function_name in item:
-            return item[function_name]["S"]
-        return ""
-
-    def _extract_function_name_and_workflow_id(self, function_name: str) -> tuple[str, str]:
-        workflow_instance_id = "-".join(function_name.split("-")[0:2])
-        remainder = function_name[len(workflow_instance_id) + 1 :]
-        parts = remainder.rsplit("_", 1)
-        middle_section = parts[0]
-        return middle_section, workflow_instance_id
+            if state != "Active":
+                self._wait_for_function_to_become_active(function_name)
+            return arn
 
     def _generate_dockerfile(self, runtime: str, handler: str, additional_docker_commands: Optional[list[str]]) -> str:
         run_command = ""
