@@ -74,8 +74,8 @@ def create_lambda_function(handler: str, image_uri: str, role: str, timeout: int
             Role=role,
             Code={"ImageUri": image_uri},
             PackageType="Image",
-            Timeout=600,
-            MemorySize=3008,
+            Timeout=timeout,
+            MemorySize=memory_size,
         )
     except lambda_client.exceptions.ResourceConflictException:
         print(f"Lambda function {handler} already exists")
