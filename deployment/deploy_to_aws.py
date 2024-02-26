@@ -19,7 +19,10 @@ CMD ["multi_x_serverless/deployment/client/cli/cli.py", "{handler}"]
 def build_docker_image(image_name: str) -> None:
     print(f"Building docker image {image_name}")
     try:
-        subprocess.run(["docker", "build", "--platform", "linux/amd64", "-t", image_name, f"{Path(__file__).parent.parent}/."], check=True)
+        subprocess.run(
+            ["docker", "build", "--platform", "linux/amd64", "-t", image_name, f"{Path(__file__).parent.parent}/."],
+            check=True,
+        )
     except subprocess.CalledProcessError as e:
         print(f"Error building docker image {image_name}")
         print(e)
@@ -62,7 +65,7 @@ def upload_image_to_ecr(image_name: str) -> str:
     return image_uri
 
 
-def create_lambda_function(handler: str, image_uri: str, role: str) -> None:
+def create_lambda_function(handler: str, image_uri: str, role: str, timeout: int, memory_size: int) -> None:
     lambda_client = boto3.client("lambda")
 
     try:
@@ -79,7 +82,7 @@ def create_lambda_function(handler: str, image_uri: str, role: str) -> None:
         pass
 
 
-def deploy_to_aws(handler: str, runtime: str, role_arn: str):
+def deploy_to_aws(handler: str, runtime: str, role_arn: str, timeout: int, memory_size: int):
     dockerfile_content = generate_dockerfile(handler, runtime)
 
     dockerfile_path = Path(f"{Path(__file__).parent.parent}/Dockerfile")
@@ -94,18 +97,29 @@ def deploy_to_aws(handler: str, runtime: str, role_arn: str):
 
     print(f"Deployed {handler} to AWS Lambda with image URI {image_uri}")
 
-    create_lambda_function(handler, image_uri, role_arn)
+    create_lambda_function(handler, image_uri, role_arn, timeout, memory_size)
 
     print(f"Created Lambda function multi_x_serverless_{handler}")
 
 
 if __name__ == "__main__":
+    if len(sys.argv) < 4 or len(sys.argv) > 6:
+        print("Usage: deploy_to_aws.py handler runtime role_arn [timeout] [memory_size]")
+        sys.exit(1)
+
     handler = sys.argv[1]
     runtime = sys.argv[2]
     role_arn = sys.argv[3]
+    timeout = 600
+    memory_size = 3008
+
+    if len(sys.argv) == 5:
+        timeout = int(sys.argv[4])
+    elif len(sys.argv) == 6:
+        memory_size = int(sys.argv[5])
 
     if not runtime.startswith("python:"):
         print("Runtime must be a Python runtime of the form python:x.x")
         sys.exit(1)
 
-    deploy_to_aws(handler, runtime, role_arn)
+    deploy_to_aws(handler, runtime, role_arn, timeout, memory_size)

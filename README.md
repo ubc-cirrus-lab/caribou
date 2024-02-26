@@ -160,7 +160,7 @@ The available solver are:
 Or use the update checker to solve for all workflows that have been invoked enough (100 times in last month):
 
 ```bash
-poetry run multi_x_serverless update_checker
+poetry run multi_x_serverless update_check_solver
 ```
 
 ### Testing
