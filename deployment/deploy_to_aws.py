@@ -12,7 +12,7 @@ COPY poetry.lock ./
 COPY multi_x_serverless ./multi_x_serverless
 
 RUN poetry install --no-dev
-CMD ["multi_x_serverless/deployment/client/cli/cli.{handler}"]
+CMD ["multi_x_serverless/deployment/client/cli/cli.py", "{handler}"]
 """
 
 
