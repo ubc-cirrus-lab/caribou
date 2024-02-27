@@ -48,6 +48,13 @@ class MultiXServerlessWorkflow:
         self._function_names: set[str] = set()
         self._endpoint = Endpoints()
 
+    def _verify_name_and_version(self) -> None:
+        # Both colon and minus are not allowed in the name and version
+        if ":" in self.name or "-" in self.name:
+            raise RuntimeError("Name cannot contain colon or minus")
+        if ":" in self.version or "-" in self.version:
+            raise RuntimeError("Version cannot contain colon or minus")
+
     def get_wrapper_frame(self, current_frame: Optional[FrameType]) -> FrameType:
         if not current_frame:
             raise RuntimeError("Could not get current frame")

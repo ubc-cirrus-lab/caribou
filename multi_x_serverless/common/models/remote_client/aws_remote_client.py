@@ -153,10 +153,10 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
 
             # Step 3: Build the Docker Image
             image_name = f"{function_name.lower()}:latest"
-            self.build_docker_image(tmpdirname, image_name)
+            self._build_docker_image(tmpdirname, image_name)
 
             # Step 4: Upload the Image to ECR
-            image_uri = self.upload_image_to_ecr(image_name)
+            image_uri = self._upload_image_to_ecr(image_name)
 
             kwargs: dict[str, Any] = {
                 "FunctionName": function_name,
@@ -191,7 +191,7 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         CMD ["{handler}"]
         """
 
-    def build_docker_image(self, context_path: str, image_name: str) -> None:
+    def _build_docker_image(self, context_path: str, image_name: str) -> None:
         try:
             subprocess.run(["docker", "build", "--platform", "linux/amd64", "-t", image_name, context_path], check=True)
             logger.info("Docker image %s built successfully.", image_name)
@@ -199,7 +199,7 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
             # This will catch errors from the subprocess and logger.info a message.
             logger.error("Failed to build Docker image %s. Error: %s", image_name, e)
 
-    def upload_image_to_ecr(self, image_name: str) -> str:
+    def _upload_image_to_ecr(self, image_name: str) -> str:
         ecr_client = self._client("ecr")
         # Assume AWS CLI is configured. Customize these commands based on your AWS setup.
         repository_name = image_name.split(":")[0]
@@ -258,8 +258,8 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
                 f_dockerfile.write(dockerfile_content)
 
             image_name = f"{function_name.lower()}:latest"
-            self.build_docker_image(tmpdirname, image_name)
-            image_uri = self.upload_image_to_ecr(image_name)
+            self._build_docker_image(tmpdirname, image_name)
+            image_uri = self._upload_image_to_ecr(image_name)
 
             response = client.update_function_code(FunctionName=function_name, ImageUri=image_uri)
 

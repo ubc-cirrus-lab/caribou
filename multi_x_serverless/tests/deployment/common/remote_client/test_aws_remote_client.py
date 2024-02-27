@@ -634,7 +634,7 @@ class TestAWSRemoteClient(unittest.TestCase):
         client = AWSRemoteClient("region1")
 
         with tempfile.TemporaryDirectory() as tmpdirname:
-            client.build_docker_image(tmpdirname, "image_name")
+            client._build_docker_image(tmpdirname, "image_name")
 
         # Check that the subprocess.run method was called
         mock_subprocess_run.assert_called()
@@ -655,7 +655,7 @@ class TestAWSRemoteClient(unittest.TestCase):
         mock_ecr_client.get_caller_identity.return_value = {"Account": "account_id"}
         mock_ecr_client.meta.region_name = "region"
 
-        client.upload_image_to_ecr("image_name")
+        client._upload_image_to_ecr("image_name")
 
         # Check that the subprocess.run and subprocess.check_output methods were called
         mock_subprocess_run.assert_called()
