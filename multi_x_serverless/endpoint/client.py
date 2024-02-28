@@ -7,6 +7,7 @@ import botocore.exceptions
 from multi_x_serverless.common.constants import (
     DEPLOYMENT_MANAGER_RESOURCE_TABLE,
     SOLVER_UPDATE_CHECKER_RESOURCE_TABLE,
+    WORKFLOW_INSTANCE_TABLE,
     WORKFLOW_PLACEMENT_DECISION_TABLE,
     WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE,
 )
@@ -105,6 +106,8 @@ class Client:
         self._endpoints.get_deployment_manager_client().remove_resource(f"deployment_package_{self._workflow_id}")
 
         self._endpoints.get_deployment_manager_client().remove_key(DEPLOYMENT_MANAGER_RESOURCE_TABLE, self._workflow_id)
+
+        self._endpoints.get_data_collector_client().remove_key(WORKFLOW_INSTANCE_TABLE, self._workflow_id)
         print(f"Removed workflow {self._workflow_id}")
 
     def _remove_workflow(self, deployment_manager_config_json: str) -> None:
@@ -127,6 +130,8 @@ class Client:
             if isinstance(client, AWSRemoteClient):
                 client.remove_ecr_repository(identifier)
         except RuntimeError as e:
+            print(f"Could not remove ecr repository {identifier}: {str(e)}")
+        except botocore.exceptions.ClientError as e:
             print(f"Could not remove ecr repository {identifier}: {str(e)}")
 
         try:

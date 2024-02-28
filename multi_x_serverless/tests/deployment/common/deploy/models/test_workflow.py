@@ -213,7 +213,7 @@ class TestWorkflow(unittest.TestCase):
             ],
         }
         self.assertEqual(
-            self.workflow._extend_stage_area_placement(resource_values, staging_area_placement),
+            self.workflow._extend_stage_area_workflow_placement(resource_values, staging_area_placement),
             expected_output,
         )
 

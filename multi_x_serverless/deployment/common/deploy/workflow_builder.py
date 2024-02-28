@@ -269,21 +269,21 @@ class WorkflowBuilder:
                             providers=function["providers"],
                         )
                     )
-            # In any case, we need to add the original function to the resources
-            resources.append(
-                Function(
-                    name=function["name"],
-                    environment_variables=function["environment_variables"],
-                    runtime=function["runtime"],
-                    handler=function["handler"],
-                    role=IAMRole(function["role"]["policy_file"], function["role"]["role_name"]),
-                    deployment_package=DeploymentPackage(),
-                    deploy_region=deployed_regions[function["name"]],
-                    entry_point=function["entry_point"],
-                    providers=function["providers"],
-                    deploy=False,
+            else:
+                resources.append(
+                    Function(
+                        name=function["name"],
+                        environment_variables=function["environment_variables"],
+                        runtime=function["runtime"],
+                        handler=function["handler"],
+                        role=IAMRole(function["role"]["policy_file"], function["role"]["role_name"]),
+                        deployment_package=DeploymentPackage(),
+                        deploy_region=deployed_regions[function["name"]]["deploy_region"],
+                        entry_point=function["entry_point"],
+                        providers=function["providers"],
+                        deploy=False,
+                    )
                 )
-            )
 
         return Workflow(
             resources=resources,
