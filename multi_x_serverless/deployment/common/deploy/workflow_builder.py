@@ -233,7 +233,7 @@ class WorkflowBuilder:
         config: Config,
         function_to_deployment_region: dict[str, dict[str, str]],
         workflow_function_descriptions: list[dict],
-        deployed_regions: dict[str, dict[str, str]],
+        deployed_regions: dict[str, dict[str, Any]],
     ) -> Workflow:
         resources: list[Function] = []
 
