@@ -7,7 +7,8 @@ import numpy as np
 
 from multi_x_serverless.common.constants import WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE
 from multi_x_serverless.common.models.endpoints import Endpoints
-from multi_x_serverless.routing.formatter.formatter import Formatter
+
+# from multi_x_serverless.routing.formatter.formatter import Formatter
 from multi_x_serverless.routing.models.dag import DAG
 from multi_x_serverless.routing.models.region_indexer import RegionIndexer
 from multi_x_serverless.routing.ranker.ranker import Ranker
@@ -51,8 +52,8 @@ class Solver(ABC):  # pylint: disable=too-many-instance-attributes
         # Setup the ranker for final ranking of solutions
         self._ranker = Ranker(workflow_config)
 
-        # Setup the formatter for formatting final output
-        self._formatter = Formatter()
+        # # Setup the formatter for formatting final output
+        # self._formatter = Formatter([], {})  # TODO: Fill in the formatter parameters
 
         self._endpoints = Endpoints()
 
@@ -141,8 +142,8 @@ class Solver(ABC):  # pylint: disable=too-many-instance-attributes
         return self._filter_regions(regions, self._workflow_config.instances[instance_index]["regions_and_providers"])
 
     def rank_solved_results(
-        self, results: list[tuple[dict, float, float, float]]
-    ) -> list[tuple[dict, float, float, float]]:
+        self, results: list[tuple[list[int], dict[str, float]]]
+    ) -> list[tuple[list[int], dict[str, float]]]:
         return self._ranker.rank(results)
 
     def _select_result(self, results: list[tuple[dict, float, float, float]]) -> tuple[dict, float, float, float]:
@@ -187,7 +188,9 @@ class Solver(ABC):  # pylint: disable=too-many-instance-attributes
             and carbon > hard_resource_constraints["carbon"]["value"]
         )
 
-    def init_deployment_to_region(self, region_index: int) -> tuple[
+    def init_deployment_to_region(
+        self, region_index: int
+    ) -> tuple[
         dict[int, int],
         tuple[float, float],
         tuple[float, float],

@@ -3,7 +3,7 @@ from multi_x_serverless.routing.deployment_algorithms.deployment_algorithm impor
 
 class CoarseGrainedDeploymentAlgorithm(DeploymentAlgorithm):
     def _run_algorithm(self) -> list[tuple[list[int], dict[str, float]]]:
-        deployments = self._generate_all_possible_deployments()
+        deployments = self._generate_all_possible_coarse_deployments()
         return deployments
 
     def _generate_all_possible_coarse_deployments(self) -> list[tuple[list[int], dict[str, float]]]:

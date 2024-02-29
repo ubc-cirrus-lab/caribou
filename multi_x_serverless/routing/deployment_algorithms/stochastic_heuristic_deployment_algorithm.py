@@ -1,13 +1,15 @@
-from multi_x_serverless.routing.deployment_algorithms.deployment_algorithm import DeploymentAlgorithm
-
 import random
+
+from multi_x_serverless.routing.deployment_algorithms.deployment_algorithm import DeploymentAlgorithm
+from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
 
 class StochasticHeuristicDeploymentAlgorithm(DeploymentAlgorithm):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, workflow_config: WorkflowConfig) -> None:
+        super().__init__(workflow_config)
 
-        self._learning_rate = self._number_of_instances * 0.1 + 1
+        # This learning rate should be an int -> Convert the float to an int
+        self._learning_rate: int = int(self._number_of_instances * 0.1 + 1)
         self._num_iterations = len(self._region_indexer.get_value_indices().values()) * 100
         self._temperature = 1.0
 

@@ -1,17 +1,20 @@
-from abc import ABC, abstractmethod
 import json
+from abc import ABC, abstractmethod
 
 from multi_x_serverless.common.constants import WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE
-from multi_x_serverless.routing.workflow_config import WorkflowConfig
-from multi_x_serverless.routing.solver.input.input_manager import InputManager
+from multi_x_serverless.common.models.endpoints import Endpoints
+from multi_x_serverless.routing.deployment_input.input_manager import InputManager
 from multi_x_serverless.routing.deployment_metrics_calculator.deployment_metrics_calculator import (
     DeploymentMetricsCalculator,
 )
-from multi_x_serverless.common.models.endpoints import Endpoints
+from multi_x_serverless.routing.deployment_metrics_calculator.simple_deployment_metrics_calculator import (
+    SimpleDeploymentMetricsCalculator,
+)
 from multi_x_serverless.routing.formatter.formatter import Formatter
-from multi_x_serverless.routing.ranker.ranker import Ranker
-from multi_x_serverless.routing.models.region_indexer import RegionIndexer
 from multi_x_serverless.routing.models.instance_indexer import InstanceIndexer
+from multi_x_serverless.routing.models.region_indexer import RegionIndexer
+from multi_x_serverless.routing.ranker.ranker import Ranker
+from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
 
 class DeploymentAlgorithm(ABC):
@@ -25,15 +28,17 @@ class DeploymentAlgorithm(ABC):
             workflow_config=workflow_config,
         )
 
-        self._deployment_metrics_calculator = DeploymentMetricsCalculator(
-            workflow_config=workflow_config,
-            input_manager=self._input_manager,
-        )
-
         self._workflow_level_permitted_regions = self._get_workflow_level_permitted_regions()
 
         self._region_indexer = RegionIndexer(self._workflow_level_permitted_regions)
         self._instance_indexer = InstanceIndexer(self._workflow_config.instances)
+
+        self._deployment_metrics_calculator: DeploymentMetricsCalculator = SimpleDeploymentMetricsCalculator(
+            workflow_config,
+            self._input_manager,
+            self._region_indexer,
+            self._instance_indexer,
+        )
 
         self._home_region_index = self._region_indexer.value_to_index(self._workflow_config.start_hops)
 
@@ -56,7 +61,9 @@ class DeploymentAlgorithm(ABC):
         deployments = self._run_algorithm()
         ranked_deployments = self._ranker.rank(deployments)
         selected_deployment = self._select_deployment(ranked_deployments)
-        formatted_deployment = self._formatter.format(selected_deployment)
+        formatted_deployment = self._formatter.format(
+            selected_deployment, self._instance_indexer.indicies_to_values(), self._region_indexer.indicies_to_values()
+        )
 
         self._upload_result(formatted_deployment)
 
@@ -70,7 +77,7 @@ class DeploymentAlgorithm(ABC):
         return deployments[0]
 
     def _get_workflow_level_permitted_regions(self) -> list[str]:
-        all_available_regions = self._input_manager.get_all_available_regions()
+        all_available_regions = self._input_manager.get_all_regions()
         workflow_level_permitted_regions = self._filter_regions(
             regions=all_available_regions,
             regions_and_providers=self._workflow_config.regions_and_providers,

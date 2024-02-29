@@ -1,5 +1,6 @@
-from multi_x_serverless.routing.workflow_config import WorkflowConfig
 from typing import Optional
+
+from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
 
 class Ranker:
@@ -15,9 +16,7 @@ class Ranker:
         priority_order = self._config.constraints["priority_order"]
         return f"average_{priority_order[0]}"
 
-    def rank(
-        self, results: list[tuple[list[int], dict[str, float]]]
-    ) -> list[tuple[list[int], dict[str, float]]]:
+    def rank(self, results: list[tuple[list[int], dict[str, float]]]) -> list[tuple[list[int], dict[str, float]]]:
         constraints = self._config.constraints
 
         if constraints is not None and "soft_resource_constraints" in constraints:
@@ -63,21 +62,24 @@ class Ranker:
         number_of_violated_constraints = 0
         for constraint in soft_resource_constraints:
             if soft_resource_constraints[constraint]:
-                if constraint == "cost":
-                    if self.is_absolute_or_relative_failed(
-                        cost, soft_resource_constraints[constraint], self._home_deployment_metrics["average_cost"]
-                    ):
-                        number_of_violated_constraints += 1
-                elif constraint == "runtime":
-                    if self.is_absolute_or_relative_failed(
-                        runtime, soft_resource_constraints[constraint], self._home_deployment_metrics["average_runtime"]
-                    ):
-                        number_of_violated_constraints += 1
-                elif constraint == "carbon":
-                    if self.is_absolute_or_relative_failed(
-                        carbon, soft_resource_constraints[constraint], self._home_deployment_metrics["average_carbon"]
-                    ):
-                        number_of_violated_constraints += 1
+                if self._home_deployment_metrics:
+                    home_deployment_metrics: dict[str, float] = self._home_deployment_metrics
+
+                    if constraint == "cost":
+                        if self.is_absolute_or_relative_failed(
+                            cost, soft_resource_constraints[constraint], home_deployment_metrics["average_cost"]
+                        ):
+                            number_of_violated_constraints += 1
+                    elif constraint == "runtime":
+                        if self.is_absolute_or_relative_failed(
+                            runtime, soft_resource_constraints[constraint], home_deployment_metrics["average_runtime"]
+                        ):
+                            number_of_violated_constraints += 1
+                    elif constraint == "carbon":
+                        if self.is_absolute_or_relative_failed(
+                            carbon, soft_resource_constraints[constraint], home_deployment_metrics["average_carbon"]
+                        ):
+                            number_of_violated_constraints += 1
         return number_of_violated_constraints
 
     def is_absolute_or_relative_failed(self, value: float, constraint: dict, relative_to: float) -> bool:
@@ -85,6 +87,6 @@ class Ranker:
             return False
         if constraint["type"] == "absolute":
             return value > constraint["value"]
-        elif constraint["type"] == "relative":
+        if constraint["type"] == "relative":
             return value > constraint["value"] * relative_to
         return False
