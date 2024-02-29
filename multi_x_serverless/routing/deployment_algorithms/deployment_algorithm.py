@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Optional
 import json
 
 from multi_x_serverless.common.constants import WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE
@@ -31,7 +31,9 @@ class DeploymentAlgorithm(ABC):
 
         self._workflow_level_permitted_regions = self._get_workflow_level_permitted_regions()
 
-        self._ranker = Ranker(workflow_config)
+        self._initialise_home_deployment()
+
+        self._ranker = Ranker(workflow_config, self._home_deployment_metrics)
 
         self._formatter = Formatter()
 
@@ -88,3 +90,27 @@ class DeploymentAlgorithm(ABC):
         self._endpoints.get_solver_workflow_placement_decision_client().set_value_in_table(
             WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE, self._workflow_config.workflow_id, result_json
         )
+
+    def _is_hard_constraint_failed(
+        self, constraints: Optional[dict], cost: float, runtime: float, carbon: float
+    ) -> bool:
+        if constraints is None or "hard_resource_constraints" not in constraints:
+            return False
+        hard_resource_constraints = constraints["hard_resource_constraints"]
+        return (
+            "cost" in hard_resource_constraints
+            and self._ranker.is_absolute_or_relative_failed(
+                cost, hard_resource_constraints["cost"], self._home_deployment_metrics["tail_cost"]
+            )
+            or "runtime" in hard_resource_constraints
+            and self._ranker.is_absolute_or_relative_failed(
+                runtime, hard_resource_constraints["runtime"], self._home_deployment_metrics["tail_runtime"]
+            )
+            or "carbon" in hard_resource_constraints
+            and self._ranker.is_absolute_or_relative_failed(
+                carbon, hard_resource_constraints["carbon"], self._home_deployment_metrics["tail_carbon"]
+            )
+        )
+
+    def _initialise_home_deployment(self) -> None:
+        pass

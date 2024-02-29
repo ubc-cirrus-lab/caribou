@@ -1,9 +1,11 @@
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
+from typing import Optional
 
 
 class Ranker:
-    def __init__(self, config: WorkflowConfig) -> None:
+    def __init__(self, config: WorkflowConfig, home_deployment_metrics: Optional[dict[str, float]] = None) -> None:
         self._config = config
+        self._home_deployment_metrics = home_deployment_metrics
         self._priority_order_name_to_index = {
             "cost": 0,
             "runtime": 1,
@@ -53,12 +55,27 @@ class Ranker:
         for constraint in soft_resource_constraints:
             if soft_resource_constraints[constraint]:
                 if constraint == "cost":
-                    if cost > soft_resource_constraints[constraint]["value"]:
+                    if self.is_absolute_or_relative_failed(
+                        cost, soft_resource_constraints[constraint], self._home_deployment_metrics["average_cost"]
+                    ):
                         number_of_violated_constraints += 1
                 elif constraint == "runtime":
-                    if runtime > soft_resource_constraints[constraint]["value"]:
+                    if self.is_absolute_or_relative_failed(
+                        runtime, soft_resource_constraints[constraint], self._home_deployment_metrics["average_runtime"]
+                    ):
                         number_of_violated_constraints += 1
                 elif constraint == "carbon":
-                    if carbon > soft_resource_constraints[constraint]["value"]:
+                    if self.is_absolute_or_relative_failed(
+                        carbon, soft_resource_constraints[constraint], self._home_deployment_metrics["average_carbon"]
+                    ):
                         number_of_violated_constraints += 1
         return number_of_violated_constraints
+
+    def is_absolute_or_relative_failed(self, value: float, constraint: dict, relative_to: float) -> bool:
+        if "value" not in constraint:
+            return False
+        if constraint["type"] == "absolute":
+            return value > constraint["value"]
+        elif constraint["type"] == "relative":
+            return value > constraint["value"] * relative_to
+        return False
