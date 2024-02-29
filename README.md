@@ -165,6 +165,8 @@ poetry run multi_x_serverless update_check_solver
 
 ### Re-Deploy
 
+Since we are restricted by the AWS lambda environment to not use docker, we have to use [crane](https://github.com/google/go-containerregistry/tree/main/cmd/crane) to deploy the workflows. For the following step to work please install crane as described in the [crane documentation](https://github.com/google/go-containerregistry/blob/main/cmd/crane/README.md).
+
 Once a workflow has been solved and a new deployment is required, you can use the following command:
 
 ```bash

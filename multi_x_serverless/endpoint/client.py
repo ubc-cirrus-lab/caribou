@@ -6,6 +6,7 @@ import botocore.exceptions
 
 from multi_x_serverless.common.constants import (
     DEPLOYMENT_MANAGER_RESOURCE_TABLE,
+    MULTI_X_SERVERLESS_WORKFLOW_IMAGES_TABLE,
     SOLVER_UPDATE_CHECKER_RESOURCE_TABLE,
     WORKFLOW_INSTANCE_TABLE,
     WORKFLOW_PLACEMENT_DECISION_TABLE,
@@ -107,16 +108,23 @@ class Client:
 
         self._endpoints.get_deployment_manager_client().remove_key(DEPLOYMENT_MANAGER_RESOURCE_TABLE, self._workflow_id)
 
-        self._endpoints.get_data_collector_client().remove_key(WORKFLOW_INSTANCE_TABLE, self._workflow_id)
+        self._endpoints.get_deployment_manager_client().remove_key(
+            MULTI_X_SERVERLESS_WORKFLOW_IMAGES_TABLE, self._workflow_id
+        )
+
+        self._endpoints.get_data_collector_client().remove_key(
+            WORKFLOW_INSTANCE_TABLE, self._workflow_id.replace(".", "_")
+        )
+
         print(f"Removed workflow {self._workflow_id}")
 
     def _remove_workflow(self, deployment_manager_config_json: str) -> None:
         deployment_manager_config = json.loads(deployment_manager_config_json)
         deployed_region_json = deployment_manager_config.get("deployed_regions")
-        deployed_region: dict[str, dict[str, str]] = json.loads(deployed_region_json)
+        deployed_region: dict[str, dict[str, Any]] = json.loads(deployed_region_json)
 
         for function_physical_instance, provider_region in deployed_region.items():
-            self._remove_function_instance(function_physical_instance, provider_region)
+            self._remove_function_instance(function_physical_instance, provider_region["deploy_region"])
 
     def _remove_function_instance(self, function_instance: str, provider_region: dict[str, str]) -> None:
         provider = provider_region["provider"]

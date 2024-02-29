@@ -11,7 +11,12 @@ from typing import Any, Optional
 from boto3.session import Session
 from botocore.exceptions import ClientError
 
-from multi_x_serverless.common.constants import SYNC_MESSAGES_TABLE, SYNC_PREDECESSOR_COUNTER_TABLE
+from multi_x_serverless.common.constants import (
+    GLOBAL_SYSTEM_REGION,
+    MULTI_X_SERVERLESS_WORKFLOW_IMAGES_TABLE,
+    SYNC_MESSAGES_TABLE,
+    SYNC_PREDECESSOR_COUNTER_TABLE,
+)
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
 from multi_x_serverless.deployment.common.deploy.models.resource import Resource
 
@@ -25,6 +30,7 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
     def __init__(self, region: str) -> None:
         self._session = Session(region_name=region)
         self._client_cache: dict[str, Any] = {}
+        self._workflow_image_cache: dict[str, dict[str, str]] = {}
 
     def _client(self, service_name: str) -> Any:
         if service_name not in self._client_cache:
@@ -138,41 +144,141 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         memory_size: int,
         additional_docker_commands: Optional[list[str]] = None,
     ) -> str:
-        with tempfile.TemporaryDirectory() as tmpdirname:
-            # Step 1: Unzip the ZIP file
-            zip_path = os.path.join(tmpdirname, "code.zip")
-            with open(zip_path, "wb") as f_zip:
-                f_zip.write(zip_contents)
-            with zipfile.ZipFile(zip_path, "r") as zip_ref:
-                zip_ref.extractall(tmpdirname)
+        deployed_image_uri = self._get_deployed_image_uri(function_name)
+        if len(deployed_image_uri) > 0:
+            image_uri = self._copy_image_to_region(deployed_image_uri)
+        else:
+            with tempfile.TemporaryDirectory() as tmpdirname:
+                # Step 1: Unzip the ZIP file
+                zip_path = os.path.join(tmpdirname, "code.zip")
+                with open(zip_path, "wb") as f_zip:
+                    f_zip.write(zip_contents)
+                with zipfile.ZipFile(zip_path, "r") as zip_ref:
+                    zip_ref.extractall(tmpdirname)
 
-            # Step 2: Create a Dockerfile in the temporary directory
-            dockerfile_content = self._generate_dockerfile(runtime, handler, additional_docker_commands)
-            with open(os.path.join(tmpdirname, "Dockerfile"), "w", encoding="utf-8") as f_dockerfile:
-                f_dockerfile.write(dockerfile_content)
+                # Step 2: Create a Dockerfile in the temporary directory
+                dockerfile_content = self._generate_dockerfile(runtime, handler, additional_docker_commands)
+                with open(os.path.join(tmpdirname, "Dockerfile"), "w", encoding="utf-8") as f_dockerfile:
+                    f_dockerfile.write(dockerfile_content)
 
-            # Step 3: Build the Docker Image
-            image_name = f"{function_name.lower()}:latest"
-            self._build_docker_image(tmpdirname, image_name)
+                # Step 3: Build the Docker Image
+                image_name = f"{function_name.lower()}:latest"
+                self._build_docker_image(tmpdirname, image_name)
 
-            # Step 4: Upload the Image to ECR
-            image_uri = self._upload_image_to_ecr(image_name)
+                # Step 4: Upload the Image to ECR
+                image_uri = self._upload_image_to_ecr(image_name)
+                self._store_deployed_image_uri(function_name, image_uri)
 
-            kwargs: dict[str, Any] = {
-                "FunctionName": function_name,
-                "Code": {"ImageUri": image_uri},
-                "PackageType": "Image",
-                "Role": role_identifier,
-                "Environment": {"Variables": environment_variables},
-                "MemorySize": memory_size,
-            }
-            if timeout >= 1:
-                kwargs["Timeout"] = timeout
-            arn, state = self._create_lambda_function(kwargs)
+        kwargs: dict[str, Any] = {
+            "FunctionName": function_name,
+            "Code": {"ImageUri": image_uri},
+            "PackageType": "Image",
+            "Role": role_identifier,
+            "Environment": {"Variables": environment_variables},
+            "MemorySize": memory_size,
+        }
+        if timeout >= 1:
+            kwargs["Timeout"] = timeout
+        arn, state = self._create_lambda_function(kwargs)
 
-            if state != "Active":
-                self._wait_for_function_to_become_active(function_name)
-            return arn
+        if state != "Active":
+            self._wait_for_function_to_become_active(function_name)
+
+        return arn
+
+    def _copy_image_to_region(self, deployed_image_uri: str) -> str:
+        parts = deployed_image_uri.split("/")
+        original_region = parts[0].split(".")[3]
+        original_image_name = parts[1]
+
+        new_region = self._client("ecr").meta.region_name
+        new_image_name = original_image_name.replace(original_region, new_region)
+
+        ecr_client = self._client("ecr")
+        # Assume AWS CLI is configured. Customize these commands based on your AWS setup.
+        repository_name = new_image_name.split(":")[0]
+        try:
+            ecr_client.create_repository(repositoryName=repository_name)
+        except ecr_client.exceptions.RepositoryAlreadyExistsException:
+            pass  # Repository already exists, proceed
+
+        account_id = self._client("sts").get_caller_identity().get("Account")
+
+        ecr_registry = f"{account_id}.dkr.ecr.{new_region}.amazonaws.com"
+
+        new_image_uri = f"{ecr_registry}/{new_image_name}"
+
+        login_password = (
+            subprocess.check_output(["aws", "ecr", "get-login-password", "--region", new_region])
+            .strip()
+            .decode("utf-8")
+        )
+        # Use crane to copy the image
+        try:
+            subprocess.run(["crane", "auth", "login", ecr_registry, "-u", "AWS", "-p", login_password], check=True)
+            subprocess.run(["crane", "cp", deployed_image_uri, new_image_uri], check=True)
+            logger.info("Docker image %s copied successfully.", new_image_uri)
+        except subprocess.CalledProcessError as e:
+            logger.error("Failed to copy Docker image %s. Error: %s", new_image_uri, e)
+
+        return new_image_uri
+
+    def _store_deployed_image_uri(self, function_name: str, image_name: str) -> None:
+        workflow_instance_id = "-".join(function_name.split("-")[0:2])
+
+        function_name_simple = function_name[len(workflow_instance_id) + 1 :].rsplit("_", 1)[0]
+
+        if workflow_instance_id not in self._workflow_image_cache:
+            self._workflow_image_cache[workflow_instance_id] = {}
+
+        self._workflow_image_cache[workflow_instance_id].update({function_name_simple: image_name})
+
+        client = self._session.client("dynamodb", region_name=GLOBAL_SYSTEM_REGION)
+
+        # Check if the item exists and create dictionary if not
+        client.update_item(
+            TableName=MULTI_X_SERVERLESS_WORKFLOW_IMAGES_TABLE,
+            Key={"key": {"S": workflow_instance_id}},
+            UpdateExpression="SET #v = if_not_exists(#v, :empty_map)",
+            ExpressionAttributeNames={"#v": "value"},
+            ExpressionAttributeValues={":empty_map": {"M": {}}},
+        )
+
+        client.update_item(
+            TableName=MULTI_X_SERVERLESS_WORKFLOW_IMAGES_TABLE,
+            Key={"key": {"S": workflow_instance_id}},
+            UpdateExpression="SET #v.#f = :value",
+            ExpressionAttributeNames={"#v": "value", "#f": function_name_simple},
+            ExpressionAttributeValues={":value": {"S": image_name}},
+        )
+
+    def _get_deployed_image_uri(self, function_name: str) -> str:
+        workflow_instance_id = "-".join(function_name.split("-")[0:2])
+
+        function_name_simple = function_name[len(workflow_instance_id) + 1 :].rsplit("_", 1)[0]
+
+        if function_name_simple in self._workflow_image_cache.get(workflow_instance_id, {}):
+            return self._workflow_image_cache[workflow_instance_id][function_name_simple]
+
+        client = self._session.client("dynamodb", region_name=GLOBAL_SYSTEM_REGION)
+
+        response = client.get_item(
+            TableName=MULTI_X_SERVERLESS_WORKFLOW_IMAGES_TABLE,
+            Key={"key": {"S": workflow_instance_id}},
+        )
+
+        if "Item" not in response:
+            return ""
+
+        item = response.get("Item")
+        if item is not None and "value" in item:
+            if workflow_instance_id not in self._workflow_image_cache:
+                self._workflow_image_cache[workflow_instance_id] = {}
+            self._workflow_image_cache[workflow_instance_id].update(
+                {function_name_simple: item["value"]["M"].get(function_name_simple, {}).get("S", "")}
+            )
+            return item["value"]["M"].get(function_name_simple, {}).get("S", "")
+        return ""
 
     def _generate_dockerfile(self, runtime: str, handler: str, additional_docker_commands: Optional[list[str]]) -> str:
         run_command = ""
@@ -243,25 +349,29 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         memory_size: int,
         additional_docker_commands: Optional[list[str]] = None,
     ) -> str:
+        deployed_image_uri = self._get_deployed_image_uri(function_name)
         client = self._client("lambda")
+        if len(deployed_image_uri) > 0:
+            image_uri = self._copy_image_to_region(deployed_image_uri)
+        else:
+            # Process the ZIP contents to build and upload a Docker image,
+            # then update the function code with the image URI
+            with tempfile.TemporaryDirectory() as tmpdirname:
+                zip_path = os.path.join(tmpdirname, "code.zip")
+                with open(zip_path, "wb") as f_zip:
+                    f_zip.write(zip_contents)
+                with zipfile.ZipFile(zip_path, "r") as zip_ref:
+                    zip_ref.extractall(tmpdirname)
 
-        # Process the ZIP contents to build and upload a Docker image, then update the function code with the image URI
-        with tempfile.TemporaryDirectory() as tmpdirname:
-            zip_path = os.path.join(tmpdirname, "code.zip")
-            with open(zip_path, "wb") as f_zip:
-                f_zip.write(zip_contents)
-            with zipfile.ZipFile(zip_path, "r") as zip_ref:
-                zip_ref.extractall(tmpdirname)
+                dockerfile_content = self._generate_dockerfile(runtime, handler, additional_docker_commands)
+                with open(os.path.join(tmpdirname, "Dockerfile"), "w", encoding="utf-8") as f_dockerfile:
+                    f_dockerfile.write(dockerfile_content)
 
-            dockerfile_content = self._generate_dockerfile(runtime, handler, additional_docker_commands)
-            with open(os.path.join(tmpdirname, "Dockerfile"), "w", encoding="utf-8") as f_dockerfile:
-                f_dockerfile.write(dockerfile_content)
+                image_name = f"{function_name.lower()}:latest"
+                self._build_docker_image(tmpdirname, image_name)
+                image_uri = self._upload_image_to_ecr(image_name)
 
-            image_name = f"{function_name.lower()}:latest"
-            self._build_docker_image(tmpdirname, image_name)
-            image_uri = self._upload_image_to_ecr(image_name)
-
-            response = client.update_function_code(FunctionName=function_name, ImageUri=image_uri)
+        response = client.update_function_code(FunctionName=function_name, ImageUri=image_uri)
 
         time.sleep(self.DELAY_TIME)
         if response.get("State") != "Active":

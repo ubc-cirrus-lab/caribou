@@ -118,7 +118,11 @@ class TestClient(unittest.TestCase):
         # Mock the return value of get_all_values_from_table
         mock_deployment_manager_client.get_all_values_from_table.return_value = {
             "workflow_id": json.dumps(
-                {"deployed_regions": json.dumps({"function_instance": {"provider": "provider", "region": "region"}})}
+                {
+                    "deployed_regions": json.dumps(
+                        {"function_instance": {"deploy_region": {"provider": "provider", "region": "region"}}}
+                    )
+                }
             )
         }
 
@@ -139,7 +143,11 @@ class TestClient(unittest.TestCase):
 
         # Mock the input to _remove_workflow
         deployment_manager_config_json = json.dumps(
-            {"deployed_regions": json.dumps({"function_instance": {"provider": "provider", "region": "region"}})}
+            {
+                "deployed_regions": json.dumps(
+                    {"function_instance": {"deploy_region": {"provider": "provider", "region": "region"}}}
+                )
+            }
         )
 
         # Capture the output of the print statements

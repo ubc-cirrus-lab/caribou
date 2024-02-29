@@ -559,6 +559,7 @@ class TestAWSRemoteClient(unittest.TestCase):
         # Mock the return value of _create_lambda_function and _wait_for_function_to_become_active
         client._create_lambda_function = MagicMock(return_value=("arn", "Active"))
         client._wait_for_function_to_become_active = MagicMock()
+        client._store_deployed_image_uri = MagicMock()
 
         # Mock the input to create_function
         function_name = "function_name"
