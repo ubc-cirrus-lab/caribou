@@ -17,7 +17,7 @@ from multi_x_serverless.routing.ranker.ranker import Ranker
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
 
-class DeploymentAlgorithm(ABC):
+class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
     def __init__(
         self,
         workflow_config: WorkflowConfig,
