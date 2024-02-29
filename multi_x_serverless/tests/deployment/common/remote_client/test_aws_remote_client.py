@@ -13,7 +13,7 @@ import datetime
 from botocore.exceptions import ClientError
 from unittest.mock import call
 
-from multi_x_serverless.common.constants import SYNC_MESSAGES_TABLE
+from multi_x_serverless.common.constants import SYNC_MESSAGES_TABLE, MULTI_X_SERVERLESS_WORKFLOW_IMAGES_TABLE
 
 
 class TestAWSRemoteClient(unittest.TestCase):
@@ -560,6 +560,7 @@ class TestAWSRemoteClient(unittest.TestCase):
         client._create_lambda_function = MagicMock(return_value=("arn", "Active"))
         client._wait_for_function_to_become_active = MagicMock()
         client._store_deployed_image_uri = MagicMock()
+        client._get_deployed_image_uri = MagicMock(return_value="")
 
         # Mock the input to create_function
         function_name = "function_name"
@@ -640,6 +641,31 @@ class TestAWSRemoteClient(unittest.TestCase):
         # Check that the subprocess.run method was called
         mock_subprocess_run.assert_called()
 
+    def test_store_deployed_image_uri(self):
+        # Mocking the scenario where the image URI is stored successfully
+        mock_dynamodb_client = MagicMock()
+        mock_session = MagicMock()
+        mock_session.client.return_value = mock_dynamodb_client
+
+        client = AWSRemoteClient("region1")
+
+        client._session = mock_session
+
+        # Define the input
+        function_name = "image_processing-0_0_1-getinput_aws-us-east-1"
+        image_name = "image_processing_light-0_0_1-getinput_aws-us-east-1:latest"
+
+        client._store_deployed_image_uri(function_name, image_name)
+
+        # Check that the client.update_item method was called
+        mock_dynamodb_client.update_item.assert_any_call(
+            TableName=MULTI_X_SERVERLESS_WORKFLOW_IMAGES_TABLE,
+            Key={"key": {"S": "image_processing-0_0_1"}},
+            UpdateExpression="SET #v = if_not_exists(#v, :empty_map)",
+            ExpressionAttributeNames={"#v": "value"},
+            ExpressionAttributeValues={":empty_map": {"M": {}}},
+        )
+
     @patch.object(AWSRemoteClient, "_client")
     @patch("subprocess.run")
     @patch("subprocess.check_output")
@@ -675,6 +701,8 @@ class TestAWSRemoteClient(unittest.TestCase):
 
         # Mock the return value of _wait_for_function_to_become_active
         client._wait_for_function_to_become_active = MagicMock()
+        client._get_deployed_image_uri = MagicMock(return_value="")
+        client._store_deployed_image_uri = MagicMock()
 
         # Mock the input to update_function
         function_name = "function_name"

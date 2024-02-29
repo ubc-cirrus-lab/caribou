@@ -370,6 +370,7 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
                 image_name = f"{function_name.lower()}:latest"
                 self._build_docker_image(tmpdirname, image_name)
                 image_uri = self._upload_image_to_ecr(image_name)
+                self._store_deployed_image_uri(function_name, image_uri)
 
         response = client.update_function_code(FunctionName=function_name, ImageUri=image_uri)
 
