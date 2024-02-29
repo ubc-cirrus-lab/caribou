@@ -4,7 +4,7 @@ from multi_x_serverless.routing.deployment_metrics_calculator.deployment_metrics
 
 
 class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
-    def _perform_monte_carlo_simulation(self, deployment: list[int], times: int = 1000) -> dict[str, float]:
+    def _perform_monte_carlo_simulation(self, deployment: list[int], times: int) -> dict[str, float]:
         """
         Perform a Monte Carlo simulation to get the average cost, runtime, and carbon footprint of the deployment.
         """
