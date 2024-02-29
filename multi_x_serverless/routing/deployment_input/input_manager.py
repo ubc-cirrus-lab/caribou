@@ -3,6 +3,11 @@ from multi_x_serverless.routing.models.region_indexer import RegionIndexer
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
 
+# NOTE: We may change the returns from execution/transmission cost,
+# carbon, and runtime to distributions in the future.
+# For now a simple set of float values is returned.
+# Right now I am unsure what data type to use for the distributions.
+# This may depends on existing approaches.
 class InputManager:
     _region_indexer: RegionIndexer
     _instance_indexer: InstanceIndexer

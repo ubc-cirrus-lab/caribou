@@ -1,6 +1,8 @@
+import random
 from abc import ABC, abstractmethod
 
 from multi_x_serverless.routing.deployment_input.input_manager import InputManager
+from multi_x_serverless.routing.deployment_metrics_calculator.models.dag import DAG
 from multi_x_serverless.routing.models.instance_indexer import InstanceIndexer
 from multi_x_serverless.routing.models.region_indexer import RegionIndexer
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
@@ -14,23 +16,154 @@ class DeploymentMetricsCalculator(ABC):
         region_indexer: RegionIndexer,
         instance_indexer: InstanceIndexer,
     ):
-        self._workflow_config = workflow_config
+        # Not all variables are relevant for other parts
         self._input_manager: InputManager = input_manager
-        self._region_indexer: RegionIndexer = region_indexer
-        self._instance_indexer: InstanceIndexer = instance_indexer
+
+        # Set up the DAG structure and get the prerequisites and successor dictionaries
+        dag: DAG = self._get_dag_representation(workflow_config.instances, instance_indexer)
+        self._prerequisites_dictionary = dag.get_prerequisites_dict()
+        self._successor_dictionary = dag.get_preceeding_dict()
+
+        # Get the home region index -> this is the region that the workflow starts from
+        self._home_region_index = region_indexer.get_value_indices()[workflow_config.start_hops]
+
+    def calculate_deployment_metrics(self, deployment: list[int]) -> dict[str, float]:
+        # Get the tail results
+        tail_workflow_results = self._perform_tail_workflow_calculation(deployment)
+        tail_cost = tail_workflow_results["cost"]
+        tail_runtime = tail_workflow_results["runtime"]
+        tail_carbon = tail_workflow_results["carbon"]
+
+        # Get the average results through Monte Carlo simulation
+        average_workflow_results = self._perform_monte_carlo_simulation(deployment, 1000)
+        average_cost = average_workflow_results["cost"]
+        average_runtime = average_workflow_results["runtime"]
+        average_carbon = average_workflow_results["carbon"]
+
+        return {
+            "average_cost": average_cost,
+            "average_runtime": average_runtime,
+            "average_carbon": average_carbon,
+            "tail_cost": tail_cost,
+            "tail_runtime": tail_runtime,
+            "tail_carbon": tail_carbon,
+        }
 
     @abstractmethod
-    def calculate_deployment_metrics(self, deployment: list[int]) -> dict[str, float]:
+    def _perform_monte_carlo_simulation(self, deployment: list[int], times: int = 1000) -> dict[str, float]:
         """
-        Calculate the deployment metrics for the given deployment.
-        Input: deployment: list[int] Where each element is the region index where
-        the corresponding instance is deployed.
-        Output: dict[str, float] A dictionary with the following keys:
-            - average_cost: The average cost of the deployment
-            - average_runtime: The average runtime of the deployment
-            - average_carbon: The average carbon footprint of the deployment
-            - tail_cost: The cost of the deployment with the highest cost
-            - tail_runtime: The runtime of the deployment with the highest runtime
-            - tail_carbon: The carbon footprint of the deployment with the highest carbon footprint
+        Perform a Monte Carlo simulation to get the average cost, runtime, and carbon footprint of the deployment.
         """
         raise NotImplementedError
+
+    def _perform_tail_workflow_calculation(self, deployment: list[int]) -> dict[str, float]:
+        """
+        Perform a single calculation of the workflow to get the cost, runtime, and carbon footprint of the deployment.
+        """
+        return self._calculate_workflow(deployment, False)
+
+    def _calculate_workflow(self, deployment: list[int], probabilistic_case: bool) -> dict[str, float]:
+        total_cost = 0.0
+        total_carbon = 0.0
+
+        # Keep track of instances of the node that will get invoked in this round.
+        invoked_instance_set: set = set([0])
+
+        # Keep track of the runtime of the instances that were invoked in this round.
+        cumulative_runtime_of_instances: list[float] = [0.0] * len(deployment)
+
+        for instance_index, region_index in enumerate(deployment):
+            if instance_index in invoked_instance_set:  # Only care about the invoked instances
+                predecessor_instance_indices = self._prerequisites_dictionary[instance_index]
+
+                # First deal with transmission cost/carbon/runtime
+                cumulative_runtime = 0.0
+                if len(predecessor_instance_indices) == 0:
+                    # This is the first instance, deal with home region transmission cost
+                    (
+                        transmission_cost,
+                        transmission_carbon,
+                        transmission_runtime,
+                    ) = self._input_manager.get_transmission_cost_carbon_runtime(
+                        -1, instance_index, self._home_region_index, region_index, probabilistic_case
+                    )
+
+                    total_cost += transmission_cost
+                    total_carbon += transmission_carbon
+
+                    cumulative_runtime += transmission_runtime
+                else:  # This is not the first instance
+                    max_runtime = 0.0
+                    for predecessor_instance_index in predecessor_instance_indices:
+                        parent_runtime = cumulative_runtime_of_instances[predecessor_instance_index]
+
+                        # Calculate transmission cost/carbon/runtime TO current instance
+                        (
+                            transmission_cost,
+                            transmission_carbon,
+                            transmission_runtime,
+                        ) = self._input_manager.get_transmission_cost_carbon_runtime(
+                            predecessor_instance_index,
+                            instance_index,
+                            deployment[predecessor_instance_index],
+                            region_index,
+                            probabilistic_case,
+                        )
+
+                        total_cost += transmission_cost
+                        total_carbon += transmission_carbon
+                        runtime_from_path = parent_runtime + transmission_runtime
+                        max_runtime = max(max_runtime, runtime_from_path)
+
+                    cumulative_runtime += max_runtime
+
+                # Deal with execution cost/carbon/runtime
+                (
+                    execution_cost,
+                    execution_carbon,
+                    execution_runtime,
+                ) = self._input_manager.get_execution_cost_carbon_runtime(
+                    instance_index, region_index, probabilistic_case
+                )
+
+                total_cost += execution_cost
+                total_carbon += execution_carbon
+                cumulative_runtime += execution_runtime
+
+                # Update the cumulative runtime of the instance
+                cumulative_runtime_of_instances[instance_index] = cumulative_runtime
+
+                # Determine if the next instances will be invoked
+                for successor_instance_index in self._successor_dictionary[instance_index]:
+                    if self._is_invoked(instance_index, successor_instance_index, probabilistic_case):
+                        invoked_instance_set.add(successor_instance_index)
+
+        # At this point we may have 1 or more leaf nodes, we need to get the max runtime from them.
+        return {
+            "cost": total_cost,
+            "runtime": max(cumulative_runtime_of_instances),
+            "carbon": total_carbon,
+        }
+
+    def _is_invoked(self, from_instance_index: int, to_instance_index: int, probabilistic_case: bool) -> bool:
+        """
+        Return true if the edge would be triggered, if the probabilistic_case is True,
+        It triggers dependent on the probability of the edge, if the probabilistic_case is False,
+        It always triggers the edge.
+        """
+        if not probabilistic_case:
+            return True
+
+        invocation_probability = self._input_manager.get_invocation_probability(from_instance_index, to_instance_index)
+        return random.random() < invocation_probability
+
+    def _get_dag_representation(self, workflow_config_instances: list[dict], instance_indexer: InstanceIndexer) -> DAG:
+        nodes = [
+            {k: v for k, v in node.items() if k not in ("succeeding_instances", "preceding_instances")}
+            for node in workflow_config_instances
+        ]
+        dag = DAG(nodes, instance_indexer)
+        for instance in workflow_config_instances:
+            for succeeding_instance in instance["succeeding_instances"]:
+                dag.add_edge(instance["instance_name"], succeeding_instance)
+        return dag
