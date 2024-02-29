@@ -69,6 +69,9 @@ class DeploymentMetricsCalculator(ABC):
         # Keep track of instances of the node that will get invoked in this round.
         invoked_instance_set: set = set([0])
 
+        # Secondary dictionary to keep track of what called what
+        invoked_child_dictionary: dict[int, set[int]] = {}
+
         # Keep track of the runtime of the instances that were invoked in this round.
         cumulative_runtime_of_instances: list[float] = [0.0] * len(deployment)
 
@@ -95,25 +98,27 @@ class DeploymentMetricsCalculator(ABC):
                 else:  # This is not the first instance
                     max_runtime = 0.0
                     for predecessor_instance_index in predecessor_instance_indices:
-                        parent_runtime = cumulative_runtime_of_instances[predecessor_instance_index]
+                        # Only care about the parents that invoke the current instance
+                        if instance_index in invoked_child_dictionary.get(predecessor_instance_index, set()):
+                            parent_runtime = cumulative_runtime_of_instances[predecessor_instance_index]
 
-                        # Calculate transmission cost/carbon/runtime TO current instance
-                        (
-                            transmission_cost,
-                            transmission_carbon,
-                            transmission_runtime,
-                        ) = self._input_manager.get_transmission_cost_carbon_runtime(
-                            predecessor_instance_index,
-                            instance_index,
-                            deployment[predecessor_instance_index],
-                            region_index,
-                            probabilistic_case,
-                        )
+                            # Calculate transmission cost/carbon/runtime TO current instance
+                            (
+                                transmission_cost,
+                                transmission_carbon,
+                                transmission_runtime,
+                            ) = self._input_manager.get_transmission_cost_carbon_runtime(
+                                predecessor_instance_index,
+                                instance_index,
+                                deployment[predecessor_instance_index],
+                                region_index,
+                                probabilistic_case,
+                            )
 
-                        total_cost += transmission_cost
-                        total_carbon += transmission_carbon
-                        runtime_from_path = parent_runtime + transmission_runtime
-                        max_runtime = max(max_runtime, runtime_from_path)
+                            total_cost += transmission_cost
+                            total_carbon += transmission_carbon
+                            runtime_from_path = parent_runtime + transmission_runtime
+                            max_runtime = max(max_runtime, runtime_from_path)
 
                     cumulative_runtime += max_runtime
 
@@ -134,9 +139,13 @@ class DeploymentMetricsCalculator(ABC):
                 cumulative_runtime_of_instances[instance_index] = cumulative_runtime
 
                 # Determine if the next instances will be invoked
+                cumulative_invoked_instance_set = set()
                 for successor_instance_index in self._successor_dictionary[instance_index]:
                     if self._is_invoked(instance_index, successor_instance_index, probabilistic_case):
                         invoked_instance_set.add(successor_instance_index)
+                        cumulative_invoked_instance_set.add(successor_instance_index)
+
+                invoked_child_dictionary[instance_index] = cumulative_invoked_instance_set
 
         # At this point we may have 1 or more leaf nodes, we need to get the max runtime from them.
         return {
