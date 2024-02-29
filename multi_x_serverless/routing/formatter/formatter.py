@@ -9,6 +9,8 @@ class Formatter:
         The desired output format is explained in the `docs/design.md` file under `Workflow Placement Decision`.
         """
         # The results are already formatted, so just return them
+        # TODO (#81): Preserve Home Region Workflow in Active Workflow Deployments
+        # TODO (#152): Add expiry time to the selected deployment
         return {
             "workflow_placement": {
                 index_to_instance_name[key]: {
