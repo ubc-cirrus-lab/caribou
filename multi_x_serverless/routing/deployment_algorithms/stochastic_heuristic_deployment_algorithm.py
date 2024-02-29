@@ -7,15 +7,15 @@ class StochasticHeuristicDeploymentAlgorithm(DeploymentAlgorithm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self._learning_rate = len(self._instance_indexer.get_value_indices().values()) * 0.1 + 1
+        self._learning_rate = self._number_of_instances * 0.1 + 1
         self._num_iterations = len(self._region_indexer.get_value_indices().values()) * 100
         self._temperature = 1.0
 
-    def _run_algorithm(self) -> list[tuple[dict[int, int], dict[str, float]]]:
+    def _run_algorithm(self) -> list[tuple[list[int], dict[str, float]]]:
         deployments = self._generate_stochastic_heuristic_deployments()
         return deployments
 
-    def _generate_stochastic_heuristic_deployments(self) -> list[tuple[dict[int, int], dict[str, float]]]:
+    def _generate_stochastic_heuristic_deployments(self) -> list[tuple[list[int], dict[str, float]]]:
         current_deployment_metrics = self._home_deployment_metrics.copy()
         current_deployment = self._home_deployment.copy()
 
@@ -46,7 +46,7 @@ class StochasticHeuristicDeploymentAlgorithm(DeploymentAlgorithm):
         )
 
     def _acceptance_probability(self) -> float:
-        # Acceptance probability is calculated using the Boltzmann distribution
+        # Acceptance probability is calculated using the Boltzmann distribution
         return (
             1.0
             if self._temperature == 0
@@ -59,9 +59,7 @@ class StochasticHeuristicDeploymentAlgorithm(DeploymentAlgorithm):
 
     def _generate_new_deployment(self, current_deployment: list[int]) -> list[int]:
         new_deployment = current_deployment.copy()
-        instances_to_move = [
-            random.choice(self._instance_indexer.get_value_indices().values()) for _ in range(self._learning_rate)
-        ]
+        instances_to_move = [random.randint(0, self._number_of_instances - 1) for _ in range(self._learning_rate)]
         for instance in instances_to_move:
             new_deployment[instance] = self._choose_new_region(instance)
         return new_deployment

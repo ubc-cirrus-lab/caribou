@@ -4,29 +4,23 @@ from itertools import product
 
 
 class FineGrainedDeploymentAlgorithm(DeploymentAlgorithm):
-    def _run_algorithm(self) -> list[tuple[dict[int, int], dict[str, float]]]:
+    def _run_algorithm(self) -> list[tuple[list[int], dict[str, float]]]:
         deployments = self._generate_all_possible_fine_deployments()
         return deployments
 
-    def _generate_all_possible_fine_deployments(self) -> list[tuple[dict[int, int], dict[str, float]]]:
+    def _generate_all_possible_fine_deployments(self) -> list[tuple[list[int], dict[str, float]]]:
         deployments = []
 
         # Generate every possible combination of region and instances
         all_combinations = product(
             self._region_indexer.get_value_indices().values(),
-            repeat=len(self._instance_indexer.get_value_indices().values()),
+            repeat=self._number_of_instances,
         )
 
-        for combination in all_combinations:
-            # Map each combination to the corresponding instance
-            deployment = {
-                instance: region
-                for instance, region in zip(self._instance_indexer.get_value_indices().values(), combination)
-            }
-
+        for deployment in all_combinations:
             if any(
                 deployment[instance] not in self._per_instance_permitted_regions[instance]
-                for instance in self._instance_indexer.get_value_indices().values()
+                for instance in range(self._number_of_instances)
             ):
                 continue
 

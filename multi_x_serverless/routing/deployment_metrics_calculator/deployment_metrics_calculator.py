@@ -7,7 +7,7 @@ class DeploymentMetricsCalculator:
         self.workflow_config = workflow_config
         self.input_manager = input_manager
 
-    def calculate_deployment_metrics(self, deployment: dict[int, int]) -> dict[str:float]:
+    def calculate_deployment_metrics(self, deployment: list[int]) -> dict[str, float]:
         # TODO (#145): Implement new data model for solver
         # Expected output:
         # {

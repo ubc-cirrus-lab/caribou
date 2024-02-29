@@ -45,9 +45,11 @@ class DeploymentAlgorithm(ABC):
 
         self._endpoints = Endpoints()
 
+        self._number_of_instances = len(self._instance_indexer.get_value_indices().values())
+
         self._per_instance_permitted_regions = [
             self._get_permitted_region_indices(self._workflow_level_permitted_regions, instance)
-            for instance in self._instance_indexer.get_value_indices().values()
+            for instance in range(self._number_of_instances)
         ]
 
     def run(self) -> None:
@@ -59,12 +61,12 @@ class DeploymentAlgorithm(ABC):
         self._upload_result(formatted_deployment)
 
     @abstractmethod
-    def _run_algorithm(self) -> list[tuple[dict[int, int], dict[str, float]]]:
+    def _run_algorithm(self) -> list[tuple[list[int], dict[str, float]]]:
         raise NotImplementedError
 
     def _select_deployment(
-        self, deployments: list[tuple[dict[int, int], dict[str, float]]]
-    ) -> tuple[dict[int, int], dict[str, float]]:
+        self, deployments: list[tuple[list[int], dict[str, float]]]
+    ) -> tuple[list[int], dict[str, float]]:
         return deployments[0]
 
     def _get_workflow_level_permitted_regions(self) -> list[str]:
@@ -129,10 +131,8 @@ class DeploymentAlgorithm(ABC):
             )
         )
 
-    def _initialise_home_deployment(self) -> tuple[dict[int, int], dict[str, float]]:
-        home_deployment = {
-            instance_index: self._home_region_index for instance_index in range(len(self._workflow_config.instances))
-        }
+    def _initialise_home_deployment(self) -> tuple[list[int], dict[str, float]]:
+        home_deployment = [self._home_region_index for _ in range(self._number_of_instances)]
 
         home_deployment_metrics = self._deployment_metrics_calculator.calculate_deployment_metrics(home_deployment)
 
