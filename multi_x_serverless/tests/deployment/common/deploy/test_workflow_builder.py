@@ -506,7 +506,9 @@ class TestWorkflowBuilder(unittest.TestCase):
                 "providers": ["provider1"],
             }
         ]
-        deployed_regions = {"function_name_provider1-region1": {"provider": "provider1", "region": "region1"}}
+        deployed_regions = {
+            "function_name_provider1-region1": {"deploy_region": {"provider": "provider1", "region": "region1"}}
+        }
 
         workflow_builder = WorkflowBuilder()
         workflow = workflow_builder.re_build_workflow(
@@ -557,7 +559,7 @@ class TestWorkflowBuilder(unittest.TestCase):
 
         self.assertEqual(workflow.name, "workflow_name")
         self.assertEqual(workflow.version, "workflow_version")
-        self.assertEqual(len(workflow._resources), 2)
+        self.assertEqual(len(workflow._resources), 1)
 
         self.assertEqual(workflow._resources[0].name, "function_name_provider2-region2")
         self.assertEqual(workflow._resources[0].deploy_region, {"provider": "provider2", "region": "region2"})
@@ -568,16 +570,6 @@ class TestWorkflowBuilder(unittest.TestCase):
         self.assertEqual(workflow._resources[0].role._policy, {})
         self.assertEqual(workflow._resources[0].role.name, "function_name_provider2-region2-role")
         self.assertEqual(workflow._resources[0].runtime, "python3.8")
-
-        self.assertEqual(workflow._resources[1].name, "function_name_provider1-region1")
-        self.assertEqual(workflow._resources[1].deploy_region, {"provider": "provider1", "region": "region1"})
-        self.assertEqual(workflow._resources[1].entry_point, "entry_point")
-        self.assertEqual(workflow._resources[1].environment_variables, {"var": "value"})
-        self.assertEqual(workflow._resources[1].handler, "handler")
-        self.assertEqual(workflow._resources[1].providers, ["provider1"])
-        self.assertEqual(workflow._resources[1].role._policy, {})
-        self.assertEqual(workflow._resources[1].role.name, "role_name")
-        self.assertEqual(workflow._resources[1].runtime, "python3.8")
 
 
 if __name__ == "__main__":

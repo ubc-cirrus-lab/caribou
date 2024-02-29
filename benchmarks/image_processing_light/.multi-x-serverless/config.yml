@@ -1,0 +1,45 @@
+workflow_name: "image_processing_light"
+workflow_version: "0.0.1"
+environment_variables:
+  - key: "ENV_VAR_1"
+    value: "value_1"
+iam_policy_file: "iam_policy.json"
+home_regions:
+  - provider: "aws"
+    region: "us-east-1"
+estimated_invocations_per_month: 1000000
+constraints:
+  hard_resource_constraints:
+    cost:
+      type: "absolute"
+      value: 1000
+    runtime:
+      type: "absolute"
+      value: 1000
+    carbon:
+      type: "absolute"
+      value: 1000
+  soft_resource_constraints:
+    cost: null
+    runtime: null
+    carbon: null
+  priority_order:
+    - cost
+    - runtime
+    - carbon
+regions_and_providers:
+  allowed_regions:
+    - provider: "aws"
+      region: "us-east-1"
+    - provider: "aws"
+      region: "us-east-2"
+    - provider: "aws"
+      region: "us-west-1"
+    - provider: "aws"
+      region: "us-west-2"
+  disallowed_regions:
+  providers:
+    aws:
+      config:
+        timeout: 60
+        memory: 128

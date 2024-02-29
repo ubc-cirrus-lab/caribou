@@ -34,6 +34,7 @@ class Deployer:
         self._deployment_packager = deployment_packager
         self._executor = executor
         self._endpoints = Endpoints()
+        self._workflow: Optional[Workflow] = None
 
     def re_deploy(
         self,
@@ -91,26 +92,21 @@ class Deployer:
             function_to_deployment_regions, deployed_regions
         )
 
-        workflow = self._workflow_builder.re_build_workflow(
+        self._workflow = self._workflow_builder.re_build_workflow(
             self._config, filtered_function_to_deployment_regions, workflow_function_descriptions, deployed_regions
         )
 
-        self._deployment_packager.re_build(workflow, self._endpoints.get_deployment_manager_client())
+        self._deployment_packager.re_build(self._workflow, self._endpoints.get_deployment_manager_client())
 
-        deployment_plan = DeploymentPlan(workflow.get_deployment_instructions())
+        deployment_plan = DeploymentPlan(self._workflow.get_deployment_instructions())
 
-        if self._executor is None:
-            raise RuntimeError("Cannot deploy with deletion deployer")
+        assert self._executor is not None, "Executor is None, this should not happen"
 
         self._executor.execute(deployment_plan)
 
-        merged_deployer_regions = self._merge_deployed_regions(
-            deployed_regions, filtered_function_to_deployment_regions
-        )
-
-        self._update_workflow_to_deployer_server(workflow, merged_deployer_regions)
+        self._update_workflow_to_deployer_server(deployed_regions)
         self._update_workflow_placement_decision(
-            workflow, staging_area_data, previous_workflow_placement_decision_json["instances"]
+            staging_area_data, previous_workflow_placement_decision_json["instances"]
         )
 
     def _get_function_to_deployment_regions(self, staging_area_data: dict) -> dict[str, dict[str, str]]:
@@ -141,16 +137,6 @@ class Deployer:
                 filtered_function_to_deployment_regions[function_name] = deployment_regions
         return filtered_function_to_deployment_regions
 
-    def _merge_deployed_regions(
-        self,
-        deployed_regions: dict[str, dict[str, str]],
-        filtered_function_to_deployment_regions: dict[str, dict[str, str]],
-    ) -> dict[str, dict[str, str]]:
-        merged_deployer_regions = deployed_regions.copy()
-        for function_name, deployment_regions in filtered_function_to_deployment_regions.items():
-            merged_deployer_regions[function_name] = deployment_regions
-        return merged_deployer_regions
-
     def deploy(self, regions: list[dict[str, str]]) -> None:
         try:
             self._deploy(regions)
@@ -162,9 +148,9 @@ class Deployer:
     def _deploy(self, regions: list[dict[str, str]]) -> None:
         logger.info("Deploying workflow %s with version %s", self._config.workflow_name, self._config.workflow_version)
         # Build the workflow (DAG of the workflow)
-        workflow = self._workflow_builder.build_workflow(self._config, regions)
+        self._workflow = self._workflow_builder.build_workflow(self._config, regions)
 
-        self._set_workflow_id(workflow)
+        self._set_workflow_id()
 
         already_deployed = self._get_workflow_already_deployed()
         if already_deployed:
@@ -173,18 +159,17 @@ class Deployer:
             )
 
         # Upload the workflow to the solver
-        self._upload_workflow_to_solver_update_checker(workflow)
+        self._upload_workflow_to_solver_update_checker()
 
         # Build the workflow resources, e.g. deployment packages, iam roles, etc.
         logger.info("Building deployment package")
-        self._deployment_packager.build(self._config, workflow)
+        self._deployment_packager.build(self._config, self._workflow)
 
         # Chain the commands needed to deploy all the built resources to the serverless platform
         logger.info("Building deployment plan")
-        deployment_plan = DeploymentPlan(workflow.get_deployment_instructions())
+        deployment_plan = DeploymentPlan(self._workflow.get_deployment_instructions())
 
-        if self._executor is None:
-            raise RuntimeError("Cannot deploy with deletion deployer")
+        assert self._executor is not None, "Executor is None, this should not happen"
 
         # Execute the deployment plan
         logger.info("Executing deployment plan")
@@ -192,19 +177,21 @@ class Deployer:
 
         # Upload the workflow to the deployer server
         logger.info("Uploading workflow to configuration server")
-        self._upload_workflow_to_deployer_server(workflow)
-        self._upload_deployment_package_resource(workflow)
-        self._upload_workflow_placement_decision(workflow)
+        self._upload_workflow_to_deployer_server()
+        self._upload_deployment_package_resource()
+        self._upload_workflow_placement_decision()
 
         logger.info("Workflow %s with version %s deployed", self._config.workflow_name, self._config.workflow_version)
         logger.info("Workflow id: %s", self._config.workflow_id)
 
-    def _set_workflow_id(self, workflow: Workflow) -> None:
-        workflow_id = f"{workflow.name}-{workflow.version}"
+    def _set_workflow_id(self) -> None:
+        assert self._workflow is not None, "Workflow is None, this should not happen"
+        workflow_id = f"{self._workflow.name}-{self._workflow.version}"
         self._config.set_workflow_id(workflow_id)
 
-    def _upload_workflow_to_solver_update_checker(self, workflow: Workflow) -> None:
-        workflow_config = workflow.get_workflow_config().to_json()
+    def _upload_workflow_to_solver_update_checker(self) -> None:
+        assert self._workflow is not None, "Workflow is None, this should not happen"
+        workflow_config = self._workflow.get_workflow_config().to_json()
 
         payload = {
             "workflow_id": self._config.workflow_id,
@@ -222,9 +209,8 @@ class Deployer:
             SOLVER_UPDATE_CHECKER_RESOURCE_TABLE, self._config.workflow_id
         )
 
-    def _update_workflow_placement_decision(
-        self, workflow: Workflow, staging_area_data: str, previous_instances: list[dict]
-    ) -> None:
+    def _update_workflow_placement_decision(self, staging_area_data: str, previous_instances: list[dict]) -> None:
+        assert self._workflow is not None, "Workflow is None, this should not happen"
         if staging_area_data is None:
             raise RuntimeError("Staging area data is None")
 
@@ -236,8 +222,8 @@ class Deployer:
         if self._executor is None:
             raise RuntimeError("Cannot deploy with deletion deployer")
 
-        workflow_placement_decision = workflow.get_workflow_placement_decision_extend_staging(
-            self._executor.resource_values, staging_area_data_json, previous_instances
+        workflow_placement_decision = self._workflow.get_workflow_placement_decision_extend_staging(
+            staging_area_data_json, previous_instances
         )
         workflow_placement_decision_json = json.dumps(workflow_placement_decision)
 
@@ -248,22 +234,24 @@ class Deployer:
             WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE, self._config.workflow_id
         )
 
-    def _upload_workflow_placement_decision(self, workflow: Workflow) -> None:
-        if self._executor is None:
-            raise RuntimeError("Cannot deploy with deletion deployer")
+    def _upload_workflow_placement_decision(self) -> None:
+        assert self._workflow is not None, "Workflow is None, this should not happen"
+        assert self._executor is not None, "Executor is None, this should not happen"
 
-        workflow_placement_decision = workflow.get_workflow_placement_decision(self._executor.resource_values)
+        workflow_placement_decision = self._workflow.get_workflow_placement_decision()
         workflow_placement_decision_json = json.dumps(workflow_placement_decision)
 
         self._endpoints.get_solver_update_checker_client().set_value_in_table(
             WORKFLOW_PLACEMENT_DECISION_TABLE, self._config.workflow_id, workflow_placement_decision_json
         )
 
-    def _upload_workflow_to_deployer_server(self, workflow: Workflow) -> None:
-        workflow_function_descriptions = workflow.get_function_description()
+    def _upload_workflow_to_deployer_server(self) -> None:
+        assert self._workflow is not None, "Workflow is None, this should not happen"
+        assert self._executor is not None, "Executor is None, this should not happen"
+        workflow_function_descriptions = self._workflow.get_function_description()
         workflow_function_descriptions_json = json.dumps(workflow_function_descriptions)
         deployment_config_json = self._config.to_json()
-        deployed_regions = workflow.get_deployed_regions_initial_deployment()
+        deployed_regions = self._workflow.get_deployed_regions_initial_deployment(self._executor.resource_values)
         deployed_regions_json = json.dumps(deployed_regions)
 
         payload = {
@@ -279,12 +267,17 @@ class Deployer:
             DEPLOYMENT_MANAGER_RESOURCE_TABLE, self._config.workflow_id, payload_json
         )
 
-    def _update_workflow_to_deployer_server(
-        self, workflow: Workflow, deployed_regions: dict[str, dict[str, str]]
-    ) -> None:
-        workflow_function_descriptions = workflow.get_function_description()
+        self._workflow.set_deployed_regions(deployed_regions)
+
+    def _update_workflow_to_deployer_server(self, previously_deployed_regions: dict[str, dict[str, str]]) -> None:
+        assert self._workflow is not None, "Workflow is None, this should not happen"
+        assert self._executor is not None, "Executor is None, this should not happen"
+        workflow_function_descriptions = self._workflow.get_function_description()
         workflow_function_descriptions_json = json.dumps(workflow_function_descriptions)
         deployment_config_json = self._config.to_json()
+        deployed_regions = self._workflow.get_deployed_regions_extend_deployment(
+            self._executor.resource_values, previously_deployed_regions
+        )
         deployed_regions_json = json.dumps(deployed_regions)
 
         payload = {
@@ -300,8 +293,9 @@ class Deployer:
             DEPLOYMENT_MANAGER_RESOURCE_TABLE, self._config.workflow_id, payload_json
         )
 
-    def _upload_deployment_package_resource(self, workflow: Workflow) -> None:
-        deployment_packege_filename = workflow.get_deployment_packages()[0].filename
+    def _upload_deployment_package_resource(self) -> None:
+        assert self._workflow is not None, "Workflow is None, this should not happen"
+        deployment_packege_filename = self._workflow.get_deployment_packages()[0].filename
 
         if deployment_packege_filename is None:
             raise RuntimeError("Deployment package filename is None")
