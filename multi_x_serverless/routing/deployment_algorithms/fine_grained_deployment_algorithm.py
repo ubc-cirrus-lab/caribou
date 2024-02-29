@@ -23,8 +23,18 @@ class FineGrainedDeploymentAlgorithm(DeploymentAlgorithm):
                 instance: region
                 for instance, region in zip(self._instance_indexer.get_value_indices().values(), combination)
             }
+
+            if any(
+                deployment[instance] not in self._per_instance_permitted_regions[instance]
+                for instance in self._instance_indexer.get_value_indices().values()
+            ):
+                continue
+
             # Calculate the deployment metrics for the mapping
             deployment_metrics = self._deployment_metrics_calculator.calculate_deployment_metrics(deployment)
+
+            if self._is_hard_constraint_failed(deployment_metrics):
+                continue
 
             deployments.append(deployment, deployment_metrics)
 

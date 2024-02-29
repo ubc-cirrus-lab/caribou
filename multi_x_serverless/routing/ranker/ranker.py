@@ -7,6 +7,14 @@ class Ranker:
         self._config = config
         self._home_deployment_metrics = home_deployment_metrics
 
+        self.number_one_priority = self._get_number_one_priority()
+
+    def _get_number_one_priority(self) -> str:
+        if self._config.constraints is None or "priority_order" not in self._config.constraints:
+            return "average_carbon"
+        priority_order = self._config.constraints["priority_order"]
+        return f"average_{priority_order[0]}"
+
     def rank(
         self, results: list[tuple[dict[int, int], dict[str, float]]]
     ) -> list[tuple[dict[int, int], dict[str, float]]]:
@@ -22,7 +30,7 @@ class Ranker:
     ) -> list[tuple[dict[int, int], dict[str, float]]]:
         if self._config.constraints is None or "priority_order" not in self._config.constraints:
             return sorted(
-                results, key=lambda x: (x[1]["average_cost"], x[1]["average_runtime"], x[1]["average_carbon"])
+                results, key=lambda x: (x[1]["average_carbon"], x[1]["average_runtime"], x[1]["average_cost"])
             )
         priority_order = self._config.constraints["priority_order"]
         sorted_order = sorted(results, key=lambda x: tuple(x[1][f"average_{i}"] for i in priority_order))

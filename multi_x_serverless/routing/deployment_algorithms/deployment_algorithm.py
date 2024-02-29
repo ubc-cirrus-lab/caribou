@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from typing import List, Optional
 import json
 
 from multi_x_serverless.common.constants import WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE
@@ -46,6 +45,11 @@ class DeploymentAlgorithm(ABC):
 
         self._endpoints = Endpoints()
 
+        self._per_instance_permitted_regions = [
+            self._get_permitted_region_indices(self._workflow_level_permitted_regions, instance)
+            for instance in self._instance_indexer.get_value_indices().values()
+        ]
+
     def run(self) -> None:
         deployments = self._run_algorithm()
         ranked_deployments = self._ranker.rank(deployments)
@@ -58,10 +62,12 @@ class DeploymentAlgorithm(ABC):
     def _run_algorithm(self) -> list[tuple[dict[int, int], dict[str, float]]]:
         raise NotImplementedError
 
-    def _select_deployment(self, deployments: list[tuple[dict[int, int], dict[str, float]]]) -> tuple[dict[int, int], dict[str, float]]:
+    def _select_deployment(
+        self, deployments: list[tuple[dict[int, int], dict[str, float]]]
+    ) -> tuple[dict[int, int], dict[str, float]]:
         return deployments[0]
 
-    def _get_workflow_level_permitted_regions(self) -> List[str]:
+    def _get_workflow_level_permitted_regions(self) -> list[str]:
         all_available_regions = self._input_manager.get_all_available_regions()
         workflow_level_permitted_regions = self._filter_regions(
             regions=all_available_regions,
@@ -97,24 +103,29 @@ class DeploymentAlgorithm(ABC):
             WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE, self._workflow_config.workflow_id, result_json
         )
 
-    def _is_hard_constraint_failed(
-        self, constraints: Optional[dict], cost: float, runtime: float, carbon: float
-    ) -> bool:
-        if constraints is None or "hard_resource_constraints" not in constraints:
+    def _is_hard_constraint_failed(self, metrics: dict[str, float]) -> bool:
+        if (
+            self._workflow_config.constraints is None
+            or "hard_resource_constraints" not in self._workflow_config.constraints
+        ):
             return False
-        hard_resource_constraints = constraints["hard_resource_constraints"]
+        hard_resource_constraints = self._workflow_config.constraints["hard_resource_constraints"]
         return (
             "cost" in hard_resource_constraints
             and self._ranker.is_absolute_or_relative_failed(
-                cost, hard_resource_constraints["cost"], self._home_deployment_metrics["tail_cost"]
+                metrics["tail_cost"], hard_resource_constraints["cost"], self._home_deployment_metrics["tail_cost"]
             )
             or "runtime" in hard_resource_constraints
             and self._ranker.is_absolute_or_relative_failed(
-                runtime, hard_resource_constraints["runtime"], self._home_deployment_metrics["tail_runtime"]
+                metrics["tail_runtime"],
+                hard_resource_constraints["runtime"],
+                self._home_deployment_metrics["tail_runtime"],
             )
             or "carbon" in hard_resource_constraints
             and self._ranker.is_absolute_or_relative_failed(
-                carbon, hard_resource_constraints["carbon"], self._home_deployment_metrics["tail_carbon"]
+                metrics["tail_carbon"],
+                hard_resource_constraints["carbon"],
+                self._home_deployment_metrics["tail_carbon"],
             )
         )
 
@@ -126,3 +137,12 @@ class DeploymentAlgorithm(ABC):
         home_deployment_metrics = self._deployment_metrics_calculator.calculate_deployment_metrics(home_deployment)
 
         return home_deployment, home_deployment_metrics
+
+    def _get_permitted_region_indices(self, regions: list[str], instance: int) -> list[int]:
+        permitted_regions: list[str] = self._filter_regions_instance(regions, instance)
+        if len(permitted_regions) == 0:  # Should never happen in a valid DAG
+            raise ValueError("There are no permitted regions for this instance")
+
+        all_regions_indices = self._region_indexer.get_value_indices()
+        permitted_regions_indices = [all_regions_indices[region] for region in permitted_regions]
+        return permitted_regions_indices

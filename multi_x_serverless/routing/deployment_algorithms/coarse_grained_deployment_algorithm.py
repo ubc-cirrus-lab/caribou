@@ -9,8 +9,17 @@ class CoarseGrainedDeploymentAlgorithm(DeploymentAlgorithm):
     def _generate_all_possible_coarse_deployments(self) -> list[tuple[dict[int, int], dict[str, float]]]:
         deployments = []
         for region_index in self._region_indexer.get_value_indices().values():
+            if any(
+                region_index not in self._per_instance_permitted_regions[instance_index]
+                for instance_index in self._instance_indexer.get_value_indices().values()
+            ):
+                continue
             deployment = self._generate_deployment(region_index)
             deployment_metrics = self._deployment_metrics_calculator.calculate_deployment_metrics(deployment)
+
+            if self._is_hard_constraint_failed(deployment_metrics):
+                continue
+
             deployments.append((deployment, deployment_metrics))
         return deployments
 
