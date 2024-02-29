@@ -11,6 +11,8 @@ from multi_x_serverless.routing.deployment_metrics_calculator.deployment_metrics
 from multi_x_serverless.common.models.endpoints import Endpoints
 from multi_x_serverless.routing.formatter.formatter import Formatter
 from multi_x_serverless.routing.ranker.ranker import Ranker
+from multi_x_serverless.routing.models.region_indexer import RegionIndexer
+from multi_x_serverless.routing.models.instance_indexer import InstanceIndexer
 
 
 class DeploymentAlgorithm(ABC):
@@ -18,7 +20,7 @@ class DeploymentAlgorithm(ABC):
         self,
         workflow_config: WorkflowConfig,
     ):
-        self.workflow_config = workflow_config
+        self._workflow_config = workflow_config
 
         self._input_manager = InputManager(
             workflow_config=workflow_config,
@@ -31,11 +33,16 @@ class DeploymentAlgorithm(ABC):
 
         self._workflow_level_permitted_regions = self._get_workflow_level_permitted_regions()
 
-        self._initialise_home_deployment()
+        self._region_indexer = RegionIndexer(self._workflow_level_permitted_regions)
+        self._instance_indexer = InstanceIndexer(self._workflow_config.instances)
+
+        self._home_region_index = self._region_indexer.value_to_index(self._workflow_config.start_hops)
+
+        self._home_deployment, self._home_deployment_metrics = self._initialise_home_deployment()
 
         self._ranker = Ranker(workflow_config, self._home_deployment_metrics)
 
-        self._formatter = Formatter()
+        self._formatter = Formatter(self._home_deployment, self._home_deployment_metrics)
 
         self._endpoints = Endpoints()
 
@@ -48,18 +55,17 @@ class DeploymentAlgorithm(ABC):
         self._upload_result(formatted_deployment)
 
     @abstractmethod
-    def _run_algorithm(self) -> list[tuple[dict, float, float, float]]:
+    def _run_algorithm(self) -> list[tuple[dict[int, int], dict[str, float]]]:
         raise NotImplementedError
 
-    def _select_deployment(self, deployments: list[tuple[dict, float, float, float]]) -> dict:
-        # TODO (#142): Ranker Tie-Breaker if any deployment is currently deployed
+    def _select_deployment(self, deployments: list[tuple[dict[int, int], dict[str, float]]]) -> tuple[dict[int, int], dict[str, float]]:
         return deployments[0]
 
     def _get_workflow_level_permitted_regions(self) -> List[str]:
         all_available_regions = self._input_manager.get_all_available_regions()
         workflow_level_permitted_regions = self._filter_regions(
             regions=all_available_regions,
-            regions_and_providers=self.workflow_config.regions_and_providers,
+            regions_and_providers=self._workflow_config.regions_and_providers,
         )
         return workflow_level_permitted_regions
 
@@ -112,5 +118,11 @@ class DeploymentAlgorithm(ABC):
             )
         )
 
-    def _initialise_home_deployment(self) -> None:
-        pass
+    def _initialise_home_deployment(self) -> tuple[dict[int, int], dict[str, float]]:
+        home_deployment = {
+            instance_index: self._home_region_index for instance_index in range(len(self._workflow_config.instances))
+        }
+
+        home_deployment_metrics = self._deployment_metrics_calculator.calculate_deployment_metrics(home_deployment)
+
+        return home_deployment, home_deployment_metrics

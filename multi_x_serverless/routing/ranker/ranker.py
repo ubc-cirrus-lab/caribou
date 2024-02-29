@@ -6,13 +6,10 @@ class Ranker:
     def __init__(self, config: WorkflowConfig, home_deployment_metrics: Optional[dict[str, float]] = None) -> None:
         self._config = config
         self._home_deployment_metrics = home_deployment_metrics
-        self._priority_order_name_to_index = {
-            "cost": 0,
-            "runtime": 1,
-            "carbon": 2,
-        }
 
-    def rank(self, results: list[tuple[dict, float, float, float]]) -> list[tuple[dict, float, float, float]]:
+    def rank(
+        self, results: list[tuple[dict[int, int], dict[str, float]]]
+    ) -> list[tuple[dict[int, int], dict[str, float]]]:
         constraints = self._config.constraints
 
         if constraints is not None and "soft_resource_constraints" in constraints:
@@ -21,24 +18,28 @@ class Ranker:
         return self._rank_with_priority_order(results)
 
     def _rank_with_priority_order(
-        self, results: list[tuple[dict, float, float, float]]
-    ) -> list[tuple[dict, float, float, float]]:
+        self, results: list[tuple[dict[int, int], dict[str, float]]]
+    ) -> list[tuple[dict[int, int], dict[str, float]]]:
         if self._config.constraints is None or "priority_order" not in self._config.constraints:
-            return sorted(results, key=lambda x: (x[1], x[2], x[3]))
+            return sorted(
+                results, key=lambda x: (x[1]["average_cost"], x[1]["average_runtime"], x[1]["average_carbon"])
+            )
         priority_order = self._config.constraints["priority_order"]
-        ordering = tuple(self._priority_order_name_to_index[metric] + 1 for metric in priority_order)
-        sorted_order = sorted(results, key=lambda x: tuple(x[i] for i in ordering))
+        sorted_order = sorted(results, key=lambda x: tuple(x[1][f"average_{i}"] for i in priority_order))
         return sorted_order
 
     def _rank_with_soft_resource_constraints(
-        self, results: list[tuple[dict, float, float, float]], soft_resource_constraints: dict
-    ) -> list[tuple[dict, float, float, float]]:
+        self, results: list[tuple[dict[int, int], dict[str, float]]], soft_resource_constraints: dict
+    ) -> list[tuple[dict[int, int], dict[str, float]]]:
         ranked_results = []
-        violations_to_results: dict[int, list[tuple[dict, float, float, float]]] = {}
+        violations_to_results: dict[int, list[tuple[dict[int, int], dict[str, float]]]] = {}
         for result in results:
-            _, cost, runtime, carbon = result
+            _, metrics = result
             number_of_violated_constraints = self._get_number_of_violated_constraints(
-                soft_resource_constraints, cost, runtime, carbon
+                soft_resource_constraints,
+                metrics["average_cost"],
+                metrics["average_runtime"],
+                metrics["average_carbon"],
             )
             if number_of_violated_constraints not in violations_to_results:
                 violations_to_results[number_of_violated_constraints] = []

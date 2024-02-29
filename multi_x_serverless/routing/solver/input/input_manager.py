@@ -2,7 +2,7 @@
 from multi_x_serverless.common.models.endpoints import Endpoints
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
 from multi_x_serverless.routing.models.dag import DAG
-from multi_x_serverless.routing.models.region import Region
+from multi_x_serverless.routing.models.region_indexer import RegionIndexer
 
 # Calculators
 from multi_x_serverless.routing.solver.input.components.calculators.carbon_calculator import CarbonCalculator
@@ -19,7 +19,7 @@ from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
 
 class InputManager:  # pylint: disable=too-many-instance-attributes
-    _region_indexer: Region
+    _region_indexer: RegionIndexer
     _instance_indexer: DAG
 
     def __init__(self, config: WorkflowConfig, setup_region_viability: bool = True) -> None:
@@ -48,7 +48,7 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         )
         self._cost_calculator = CostCalculator(self._datacenter_loader, self._workflow_loader, self._runtime_calculator)
 
-    def setup(self, regions_indexer: Region, instance_indexer: DAG) -> None:
+    def setup(self, regions_indexer: RegionIndexer, instance_indexer: DAG) -> None:
         self._region_indexer = regions_indexer
         self._instance_indexer = instance_indexer
 

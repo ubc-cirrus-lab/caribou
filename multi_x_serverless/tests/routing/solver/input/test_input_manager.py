@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, Mock
 from multi_x_serverless.common.models.endpoints import Endpoints
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
 from multi_x_serverless.routing.models.dag import DAG
-from multi_x_serverless.routing.models.region import Region
+from multi_x_serverless.routing.models.region_indexer import RegionIndexer
 from multi_x_serverless.routing.solver.input.input_manager import InputManager
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
@@ -51,7 +51,7 @@ class TestInputManager(unittest.TestCase):
         self.input_manager._performance_loader.setup = MagicMock()
         self.input_manager._carbon_loader.setup = MagicMock()
 
-        region_indexer = MagicMock(spec=Region)
+        region_indexer = MagicMock(spec=RegionIndexer)
         region_indexer.get_value_indices = MagicMock(return_value={"provider1:region1": 0, "provider1:region2": 1})
         instance_indexer = MagicMock(spec=DAG)
         instance_indexer.get_instance_index = MagicMock(return_value={"node1": 0, "node2": 1})
@@ -64,7 +64,7 @@ class TestInputManager(unittest.TestCase):
 
     def test_get_execution_cost_carbon_runtime(self):
         self.input_manager._instance_indexer = MagicMock(spec=DAG)
-        self.input_manager._region_indexer = MagicMock(spec=Region)
+        self.input_manager._region_indexer = MagicMock(spec=RegionIndexer)
 
         self.input_manager._cost_calculator.calculate_execution_cost = MagicMock(return_value=10.0)
         self.input_manager._carbon_calculator.calculate_execution_carbon = MagicMock(return_value=20.0)
@@ -75,7 +75,7 @@ class TestInputManager(unittest.TestCase):
 
     def test_get_transmission_cost_carbon_runtime(self):
         self.input_manager._instance_indexer = MagicMock(spec=DAG)
-        self.input_manager._region_indexer = MagicMock(spec=Region)
+        self.input_manager._region_indexer = MagicMock(spec=RegionIndexer)
 
         self.input_manager._cost_calculator.calculate_transmission_cost = Mock(return_value=10.0)
         self.input_manager._carbon_calculator.calculate_transmission_carbon = Mock(return_value=20.0)

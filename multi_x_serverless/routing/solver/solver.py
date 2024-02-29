@@ -9,7 +9,7 @@ from multi_x_serverless.common.constants import WORKFLOW_PLACEMENT_SOLVER_STAGIN
 from multi_x_serverless.common.models.endpoints import Endpoints
 from multi_x_serverless.routing.formatter.formatter import Formatter
 from multi_x_serverless.routing.models.dag import DAG
-from multi_x_serverless.routing.models.region import Region
+from multi_x_serverless.routing.models.region_indexer import RegionIndexer
 from multi_x_serverless.routing.ranker.ranker import Ranker
 from multi_x_serverless.routing.solver.input.input_manager import InputManager
 from multi_x_serverless.routing.solver.objective_function.any_improvement_objective_function import (
@@ -41,7 +41,7 @@ class Solver(ABC):  # pylint: disable=too-many-instance-attributes
 
         # Set up the instance indexer (DAG) and region indexer
         self._dag = self.get_dag_representation()
-        self._region_indexer = Region(self._worklow_level_permitted_regions)
+        self._region_indexer = RegionIndexer(self._worklow_level_permitted_regions)
 
         if input_manager is None:
             self._instantiate_input_manager()
@@ -75,28 +75,7 @@ class Solver(ABC):  # pylint: disable=too-many-instance-attributes
 
     def solve(self) -> None:
         logger.info("Solving workflow placement")
-        solved_results = self._solve(self._worklow_level_permitted_regions)
-        ranked_results = self.rank_solved_results(solved_results)
-        logger.info("Number of results: %s", len(ranked_results))
-        selected_result = self._select_result(ranked_results)
-        formatted_result = self._formatter.format(
-            selected_result, self._dag.indicies_to_values(), self._region_indexer.indicies_to_values()
-        )
-        logger.info("Selected result: %s", formatted_result)
-        logger.info(
-            "Result values: cost: %s, carbon: %s, runtime: %s",
-            selected_result[1],
-            selected_result[2],
-            selected_result[3],
-        )
-        if len(ranked_results) > 1:
-            logger.info(
-                "Second best result: cost: %s, carbon: %s, runtime: %s",
-                ranked_results[1][1],
-                ranked_results[1][2],
-                ranked_results[1][3],
-            )
-        self._upload_result(formatted_result)
+        _ = self._solve(self._worklow_level_permitted_regions)
 
     def _init_home_region_transmission_costs(self, regions: list[str]) -> None:
         home_region_transmissions_average = np.zeros((3, len(self._region_indexer.get_value_indices())))
@@ -208,9 +187,7 @@ class Solver(ABC):  # pylint: disable=too-many-instance-attributes
             and carbon > hard_resource_constraints["carbon"]["value"]
         )
 
-    def init_deployment_to_region(
-        self, region_index: int
-    ) -> tuple[
+    def init_deployment_to_region(self, region_index: int) -> tuple[
         dict[int, int],
         tuple[float, float],
         tuple[float, float],
