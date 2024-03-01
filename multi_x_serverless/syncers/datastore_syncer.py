@@ -34,7 +34,7 @@ class DatastoreSyncer:
     def process_workflow(self, workflow_id: str, deployment_manager_config_json: str) -> None:
         workflow_summary_instance = self._initialize_workflow_summary_instance()
 
-        last_synced_time = self._get_last_synced_time(workflow_id) - timedelta(days=2)  # TODO: Remove
+        last_synced_time = self._get_last_synced_time(workflow_id)
         new_last_sync_time = datetime.now()
         workflow_summary_instance["time_since_last_sync"] = (new_last_sync_time - last_synced_time).total_seconds() / (
             24 * 60 * 60

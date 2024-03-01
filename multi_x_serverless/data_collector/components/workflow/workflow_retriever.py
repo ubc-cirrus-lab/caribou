@@ -47,17 +47,13 @@ class WorkflowRetriever(DataRetriever):
                     if region not in consolidated[instance_id]["execution_summary"]:
                         consolidated[instance_id]["execution_summary"][region] = {
                             "invocation_count": 0,
-                            "total_runtime": 0,
-                            "total_tail_runtime": 0,
+                            "runtime_samples": [],
                         }
                     consolidated[instance_id]["execution_summary"][region]["invocation_count"] += region_data[
                         "invocation_count"
                     ]
-                    consolidated[instance_id]["execution_summary"][region]["total_runtime"] += (
-                        region_data["average_runtime"] * region_data["invocation_count"]
-                    )
-                    consolidated[instance_id]["execution_summary"][region]["total_tail_runtime"] += (
-                        region_data["tail_runtime"] * region_data["invocation_count"]
+                    consolidated[instance_id]["execution_summary"][region]["runtime_samples"].extend(
+                        [sample / 1000 for sample in region_data["runtime_samples"]]  # Convert to seconds
                     )
 
                 if "invocation_summary" in instance_data:
@@ -65,14 +61,14 @@ class WorkflowRetriever(DataRetriever):
                         if child_instance not in consolidated[instance_id]["invocation_summary"]:
                             consolidated[instance_id]["invocation_summary"][child_instance] = {
                                 "invocation_count": 0,
-                                "total_data_transfer_size": 0,
+                                "data_transfer_samples": [],
                                 "transmission_summary": {},
                             }
                         consolidated[instance_id]["invocation_summary"][child_instance][
                             "invocation_count"
                         ] += invocation_data["invocation_count"]
-                        consolidated[instance_id]["invocation_summary"][child_instance]["total_data_transfer_size"] += (
-                            invocation_data["average_data_transfer_size"] * invocation_data["invocation_count"]
+                        consolidated[instance_id]["invocation_summary"][child_instance]["data_transfer_samples"].extend(
+                            invocation_data["data_transfer_samples"]
                         )
 
                         # Deal with transmission summary
@@ -106,8 +102,7 @@ class WorkflowRetriever(DataRetriever):
                                                     "transmission_summary"
                                                 ][from_provider_region][to_provider_region] = {
                                                     "transmission_count": 0,
-                                                    "total_latency": 0,
-                                                    "total_tail_latency": 0,
+                                                    "latency_samples": [],
                                                 }
 
                                             consolidated[instance_id]["invocation_summary"][child_instance][
@@ -119,15 +114,11 @@ class WorkflowRetriever(DataRetriever):
                                             ]
                                             consolidated[instance_id]["invocation_summary"][child_instance][
                                                 "transmission_summary"
-                                            ][from_provider_region][to_provider_region]["total_latency"] += (
-                                                to_provider_transmission_data["average_latency"]
-                                                * to_provider_transmission_data["transmission_count"]
-                                            )
-                                            consolidated[instance_id]["invocation_summary"][child_instance][
-                                                "transmission_summary"
-                                            ][from_provider_region][to_provider_region]["total_tail_latency"] += (
-                                                to_provider_transmission_data["tail_latency"]
-                                                * to_provider_transmission_data["transmission_count"]
+                                            ][from_provider_region][to_provider_region]["latency_samples"].extend(
+                                                [
+                                                    sample / 1000
+                                                    for sample in to_provider_transmission_data["latency_samples"]
+                                                ]
                                             )
 
         # Summarized data in proper output format
@@ -140,14 +131,12 @@ class WorkflowRetriever(DataRetriever):
                 for region, data in instance_data["execution_summary"].items()
                 if region in available_regions_set
             }
-            favourite_home_region = self.get_favourite_home_region(filtered_execution_summary)
 
             # Now for execution summary only in the available regions
             execution_summary: dict[str, Any] = {}
             for region, region_data in filtered_execution_summary.items():
                 execution_summary[region] = {
-                    "average_runtime": region_data["total_runtime"] / region_data["invocation_count"],
-                    "tail_runtime": region_data["total_tail_runtime"] / region_data["invocation_count"],
+                    "runtime_samples": region_data["runtime_samples"],
                     "unit": "s",
                 }
 
@@ -165,10 +154,7 @@ class WorkflowRetriever(DataRetriever):
                                 for to_provider_region, to_provider_transmission_data in from_provider_data.items():
                                     if to_provider_region in available_regions_set:
                                         transmission_summary[from_provider_region][to_provider_region] = {
-                                            "average_latency": to_provider_transmission_data["total_latency"]
-                                            / to_provider_transmission_data["transmission_count"],
-                                            "tail_latency": to_provider_transmission_data["total_tail_latency"]
-                                            / to_provider_transmission_data["transmission_count"],
+                                            "latency_samples": to_provider_transmission_data["latency_samples"],
                                             "unit": "s",
                                         }
 
@@ -176,24 +162,13 @@ class WorkflowRetriever(DataRetriever):
                     invocation_summary[child_instance] = {
                         "probability_of_invocation": invocation_data["invocation_count"]
                         / instance_data["invocation_count"],
-                        "average_data_transfer_size": (
-                            invocation_data["total_data_transfer_size"] / invocation_data["invocation_count"]
-                        ),
+                        "data_transfer_samples": invocation_data["data_transfer_samples"],
                         "transmission_summary": transmission_summary,
                     }
 
             # Final output
             total_months = total_days / 30
             workflow_summary_data[instance_id] = {
-                "favourite_home_region": favourite_home_region,
-                "favourite_home_region_average_runtime": filtered_execution_summary[favourite_home_region][
-                    "total_runtime"
-                ]
-                / filtered_execution_summary[favourite_home_region]["invocation_count"],
-                "favourite_home_region_tail_runtime": filtered_execution_summary[favourite_home_region][
-                    "total_tail_runtime"
-                ]
-                / filtered_execution_summary[favourite_home_region]["invocation_count"],
                 "projected_monthly_invocations": instance_data["invocation_count"]
                 / total_months,  # Simple Estimation, may not be accurate
                 "execution_summary": execution_summary,
@@ -201,8 +176,3 @@ class WorkflowRetriever(DataRetriever):
             }
 
         return workflow_summary_data
-
-    def get_favourite_home_region(self, filtered_execution_summary: dict[str, Any]) -> str:
-        return max(
-            filtered_execution_summary, key=lambda region: filtered_execution_summary[region]["invocation_count"]
-        )
