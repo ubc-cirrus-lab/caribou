@@ -55,8 +55,7 @@ class TestDatastoreSyncer(unittest.TestCase):
                     "execution_summary": {
                         f'{provider_region["provider"]}:{provider_region["region"]}': {
                             "invocation_count": 0,
-                            "average_runtime": 0,
-                            "tail_runtime": 0,
+                            "runtime_samples": [],
                         }
                     },
                     "invocation_summary": {},
@@ -88,14 +87,8 @@ class TestDatastoreSyncer(unittest.TestCase):
         self.assertEqual(
             workflow_summary_instance["instance_summary"][function_instance]["execution_summary"][
                 f'{provider_region["provider"]}:{provider_region["region"]}'
-            ]["average_runtime"],
-            0.15,
-        )
-        self.assertEqual(
-            workflow_summary_instance["instance_summary"][function_instance]["execution_summary"][
-                f'{provider_region["provider"]}:{provider_region["region"]}'
-            ]["tail_runtime"],
-            0.2,
+            ]["runtime_samples"],
+            [100, 200],
         )
 
     def test_process_logs_with_invocation_summary(self):
@@ -201,14 +194,8 @@ class TestDatastoreSyncer(unittest.TestCase):
         self.assertEqual(
             workflow_summary_instance["instance_summary"]["function1"]["execution_summary"][
                 f'{provider_region["provider"]}:{provider_region["region"]}'
-            ]["average_runtime"],
-            0.15,
-        )
-        self.assertEqual(
-            workflow_summary_instance["instance_summary"]["function1"]["execution_summary"][
-                f'{provider_region["provider"]}:{provider_region["region"]}'
-            ]["tail_runtime"],
-            0.2,
+            ]["runtime_samples"],
+            [100, 200],
         )
         self.assertEqual(
             workflow_summary_instance["instance_summary"]["function1"]["invocation_summary"]["function2"][
@@ -218,9 +205,9 @@ class TestDatastoreSyncer(unittest.TestCase):
         )
         self.assertEqual(
             workflow_summary_instance["instance_summary"]["function1"]["invocation_summary"]["function2"][
-                "average_data_transfer_size"
+                "data_transfer_samples"
             ],
-            1.5,
+            [1, 2],
         )
         self.assertEqual(workflow_summary_instance["instance_summary"]["function2"]["invocation_count"], 2)
         self.assertEqual(
@@ -232,14 +219,8 @@ class TestDatastoreSyncer(unittest.TestCase):
         self.assertEqual(
             workflow_summary_instance["instance_summary"]["function2"]["execution_summary"][
                 f'{provider_region["provider"]}:{provider_region["region"]}'
-            ]["average_runtime"],
-            0.225,
-        )
-        self.assertEqual(
-            workflow_summary_instance["instance_summary"]["function2"]["execution_summary"][
-                f'{provider_region["provider"]}:{provider_region["region"]}'
-            ]["tail_runtime"],
-            0.3,
+            ]["runtime_samples"],
+            [300, 150],
         )
         self.assertEqual(
             workflow_summary_instance["instance_summary"]["function2"]["invocation_summary"]["function3"][
@@ -249,9 +230,9 @@ class TestDatastoreSyncer(unittest.TestCase):
         )
         self.assertEqual(
             workflow_summary_instance["instance_summary"]["function2"]["invocation_summary"]["function3"][
-                "average_data_transfer_size"
+                "data_transfer_samples"
             ],
-            4,
+            [4],
         )
 
     @patch("multi_x_serverless.common.models.endpoints.Endpoints")
@@ -443,7 +424,7 @@ class TestDatastoreSyncer(unittest.TestCase):
             "run_id": {
                 "caller": {
                     "callee": {
-                        "start_time": 1.23,
+                        "start_time": 1,
                         "end_time": None,
                         "outgoing_provider": "outgoing",
                         "incoming_provider": None,
@@ -454,14 +435,13 @@ class TestDatastoreSyncer(unittest.TestCase):
         latency_summary_successor_before_caller_store = {
             "run_id": {
                 "callee": {
-                    "end_time": 4.56,
+                    "end_time": 5,
                     "incoming_provider": "incoming",
                 }
             }
         }
         result = self.syncer._cleanup_latency_summary(latency_summary, latency_summary_successor_before_caller_store)
-        self.assertAlmostEqual(result["caller"]["callee"]["outgoing"]["incoming"]["average_latency"], 3.33, 2)
-        self.assertAlmostEqual(result["caller"]["callee"]["outgoing"]["incoming"]["tail_latency"], 3.33, 2)
+        self.assertEqual(result["caller"]["callee"]["outgoing"]["incoming"]["latency_samples"], [4])
         self.assertEqual(result["caller"]["callee"]["outgoing"]["incoming"]["transmission_count"], 1)
 
     def test_cleanup_latency_summary_multiple_runs(self):
@@ -469,7 +449,7 @@ class TestDatastoreSyncer(unittest.TestCase):
             "run_id1": {
                 "caller1": {
                     "callee1": {
-                        "start_time": 1.23,
+                        "start_time": 5,
                         "end_time": None,
                         "outgoing_provider": "outgoing",
                         "incoming_provider": None,
@@ -477,7 +457,7 @@ class TestDatastoreSyncer(unittest.TestCase):
                 },
                 "caller2": {
                     "callee2": {
-                        "start_time": 2.34,
+                        "start_time": 6,
                         "end_time": None,
                         "outgoing_provider": "outgoing",
                         "incoming_provider": None,
@@ -487,7 +467,7 @@ class TestDatastoreSyncer(unittest.TestCase):
             "run_id2": {
                 "caller1": {
                     "callee1": {
-                        "start_time": 3.45,
+                        "start_time": 9,
                         "end_time": None,
                         "outgoing_provider": "outgoing",
                         "incoming_provider": None,
@@ -495,7 +475,7 @@ class TestDatastoreSyncer(unittest.TestCase):
                 },
                 "caller2": {
                     "callee2": {
-                        "start_time": 4.56,
+                        "start_time": 10,
                         "end_time": None,
                         "outgoing_provider": "outgoing",
                         "incoming_provider": None,
@@ -506,31 +486,29 @@ class TestDatastoreSyncer(unittest.TestCase):
         latency_summary_successor_before_caller_store = {
             "run_id1": {
                 "callee1": {
-                    "end_time": 5.67,
+                    "end_time": 10,
                     "incoming_provider": "incoming",
                 },
                 "callee2": {
-                    "end_time": 6.78,
+                    "end_time": 20,
                     "incoming_provider": "incoming",
                 },
             },
             "run_id2": {
                 "callee1": {
-                    "end_time": 7.89,
+                    "end_time": 16,
                     "incoming_provider": "incoming",
                 },
                 "callee2": {
-                    "end_time": 8.90,
+                    "end_time": 12,
                     "incoming_provider": "incoming",
                 },
             },
         }
         result = self.syncer._cleanup_latency_summary(latency_summary, latency_summary_successor_before_caller_store)
-        self.assertAlmostEqual(result["caller1"]["callee1"]["outgoing"]["incoming"]["average_latency"], 4.44, 2)
-        self.assertAlmostEqual(result["caller1"]["callee1"]["outgoing"]["incoming"]["tail_latency"], 4.44, 2)
+        self.assertEqual(result["caller1"]["callee1"]["outgoing"]["incoming"]["latency_samples"], [5, 7])
         self.assertEqual(result["caller1"]["callee1"]["outgoing"]["incoming"]["transmission_count"], 2)
-        self.assertAlmostEqual(result["caller2"]["callee2"]["outgoing"]["incoming"]["average_latency"], 4.39, 2)
-        self.assertAlmostEqual(result["caller2"]["callee2"]["outgoing"]["incoming"]["tail_latency"], 4.44, 2)
+        self.assertEqual(result["caller2"]["callee2"]["outgoing"]["incoming"]["latency_samples"], [14, 2])
         self.assertEqual(result["caller2"]["callee2"]["outgoing"]["incoming"]["transmission_count"], 2)
 
     def test_cleanup_latency_summary_multiple_providers(self):
@@ -538,13 +516,13 @@ class TestDatastoreSyncer(unittest.TestCase):
             "run_id": {
                 "caller": {
                     "callee1": {
-                        "start_time": 1.23,
+                        "start_time": 1,
                         "end_time": None,
                         "outgoing_provider": "outgoing1",
                         "incoming_provider": None,
                     },
                     "callee2": {
-                        "start_time": 2.34,
+                        "start_time": 6,
                         "end_time": None,
                         "outgoing_provider": "outgoing2",
                         "incoming_provider": None,
@@ -555,21 +533,19 @@ class TestDatastoreSyncer(unittest.TestCase):
         latency_summary_successor_before_caller_store = {
             "run_id": {
                 "callee1": {
-                    "end_time": 3.45,
+                    "end_time": 4,
                     "incoming_provider": "incoming1",
                 },
                 "callee2": {
-                    "end_time": 4.56,
+                    "end_time": 10,
                     "incoming_provider": "incoming2",
                 },
             }
         }
         result = self.syncer._cleanup_latency_summary(latency_summary, latency_summary_successor_before_caller_store)
-        self.assertEqual(result["caller"]["callee1"]["outgoing1"]["incoming1"]["average_latency"], 2.22)
-        self.assertEqual(result["caller"]["callee1"]["outgoing1"]["incoming1"]["tail_latency"], 2.22)
+        self.assertEqual(result["caller"]["callee1"]["outgoing1"]["incoming1"]["latency_samples"], [3])
         self.assertEqual(result["caller"]["callee1"]["outgoing1"]["incoming1"]["transmission_count"], 1)
-        self.assertAlmostEqual(result["caller"]["callee2"]["outgoing2"]["incoming2"]["average_latency"], 2.22, 2)
-        self.assertAlmostEqual(result["caller"]["callee2"]["outgoing2"]["incoming2"]["tail_latency"], 2.22, 2)
+        self.assertEqual(result["caller"]["callee2"]["outgoing2"]["incoming2"]["latency_samples"], [4])
         self.assertEqual(result["caller"]["callee2"]["outgoing2"]["incoming2"]["transmission_count"], 1)
 
 

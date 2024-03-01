@@ -34,7 +34,7 @@ class DatastoreSyncer:
     def process_workflow(self, workflow_id: str, deployment_manager_config_json: str) -> None:
         workflow_summary_instance = self._initialize_workflow_summary_instance()
 
-        last_synced_time = self._get_last_synced_time(workflow_id)
+        last_synced_time = self._get_last_synced_time(workflow_id) - timedelta(days=2)  # TODO: Remove
         new_last_sync_time = datetime.now()
         workflow_summary_instance["time_since_last_sync"] = (new_last_sync_time - last_synced_time).total_seconds() / (
             24 * 60 * 60
@@ -124,25 +124,11 @@ class DatastoreSyncer:
                     callee_agg = caller_agg.setdefault(callee_id, {})
                     outgoing_agg = callee_agg.setdefault(outgoing_provider, {})
                     incoming_agg = outgoing_agg.setdefault(
-                        incoming_provider, {"latencies": [], "transmission_count": 0}
+                        incoming_provider, {"latency_samples": [], "transmission_count": 0}
                     )
 
-                    incoming_agg["latencies"].append(latency)
+                    incoming_agg["latency_samples"].append(latency)
                     incoming_agg["transmission_count"] += 1
-
-        # Step 2: Calculate the aggregated latencies
-        for caller_id, callee_data in aggregated_data.items():
-            for callee_id, outgoing_data in callee_data.items():
-                for outgoing_provider, incoming_data in outgoing_data.items():
-                    for incoming_provider, stats in incoming_data.items():
-                        latencies = stats["latencies"]
-                        average_latency = sum(latencies) / len(latencies) if latencies else 0
-                        tail_latency = max(latencies) if latencies else 0
-
-                        stats["average_latency"] = average_latency
-                        stats["tail_latency"] = tail_latency
-
-                        del stats["latencies"]
 
         return aggregated_data
 
@@ -203,8 +189,7 @@ class DatastoreSyncer:
                 "execution_summary": {
                     f"{provider_region['provider']}:{provider_region['region']}": {
                         "invocation_count": 0,
-                        "average_runtime": 0,
-                        "tail_runtime": 0,
+                        "runtime_samples": [],
                     }
                 },
                 "invocation_summary": {},
@@ -217,8 +202,7 @@ class DatastoreSyncer:
                 f"{provider_region['provider']}:{provider_region['region']}"
             ] = {
                 "invocation_count": 0,
-                "average_runtime": 0,
-                "tail_runtime": 0,
+                "runtime_samples": [],
             }
 
     def _extract_invoked_logs(
@@ -343,7 +327,7 @@ class DatastoreSyncer:
         ):
             workflow_summary_instance["instance_summary"][caller_function]["invocation_summary"][successor_function] = {
                 "invocation_count": 0,
-                "average_data_transfer_size": 0,
+                "data_transfer_samples": [],
                 "transmission_summary": {},
             }
         workflow_summary_instance["instance_summary"][caller_function]["invocation_summary"][successor_function][
@@ -411,26 +395,13 @@ class DatastoreSyncer:
 
         for caller_function_instance, successor_functions_instances in data_transfer_sizes.items():
             for successor_function_instance, data_transfer_size_list in successor_functions_instances.items():
-                average_data_transfer_size = (
-                    sum(data_transfer_size_list) / len(data_transfer_size_list) if data_transfer_size_list else 0
-                )
                 workflow_summary_instance["instance_summary"][caller_function_instance]["invocation_summary"][
                     successor_function_instance
-                ]["average_data_transfer_size"] = average_data_transfer_size
+                ]["data_transfer_samples"].extend(data_transfer_size_list)
 
         for function_instance_str, runtimes_list in runtimes.items():
-            average_runtime = sum(runtimes_list) / len(runtimes_list) if runtimes_list else 0
-            tail_runtime = max(runtimes_list) if runtimes_list else 0
-
-            # convert to seconds
-            average_runtime = average_runtime / 1000
-            tail_runtime = tail_runtime / 1000
-
             workflow_summary_instance["instance_summary"][function_instance_str]["execution_summary"][
                 f"{provider_region['provider']}:{provider_region['region']}"
-            ]["average_runtime"] = average_runtime
-            workflow_summary_instance["instance_summary"][function_instance_str]["execution_summary"][
-                f"{provider_region['provider']}:{provider_region['region']}"
-            ]["tail_runtime"] = tail_runtime
+            ]["runtime_samples"].extend(runtimes_list)
 
         return entry_point_invocation_count

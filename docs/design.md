@@ -630,37 +630,32 @@ Below is an example of the `workflow_summary_table` for a workflow with 2 instan
               "execution_summary": {
                   "provider_1:region_1": {
                       "invocation_count": 90,
-                      "average_runtime": 20,
-                      "tail_runtime": 30,
+                      "runtime_samples": [26.0, 31.0]
                   },
                   "provider_1:region_2": {
                       "invocation_count": 10,
-                      "average_runtime": 17,
-                      "tail_runtime": 25,
+                      "runtime_samples": [26.0, 31.0]
                   },
               },
               "invocation_summary": {
                   "instance_2": {
                       "invocation_count": 80,
-                      "average_data_transfer_size": 0.0007,
+                      "data_transfer_samples": [0.0072, 0.0075],
                       "transmission_summary": {
                           "provider_1:region_1": {
                               "provider_1:region_1": {
                                   "transmission_count": 50,
-                                  "average_latency": 0.001,
-                                  "tail_latency": 0.002,
+                                  "latency_samples": [0.00125, 0.00175]
                               },
                               "provider_1:region_2": {
                                   "transmission_count": 22,
-                                  "average_latency": 0.12,
-                                  "tail_latency": 0.15,
+                                  "latency_samples": [0.00125, 0.00175]
                               },
                           },
                           "provider_1:region_2": {
                               "provider_1:region_1": {
                                   "transmission_count": 8,
-                                  "average_latency": 0.1,
-                                  "tail_latency": 0.12,
+                                  "latency_samples": [0.00125, 0.00175]
                               }
                           },
                       },
@@ -672,13 +667,11 @@ Below is an example of the `workflow_summary_table` for a workflow with 2 instan
               "execution_summary": {
                   "provider_1:region_1": {
                       "invocation_count": 58,
-                      "average_runtime": 10,
-                      "tail_runtime": 15,
+                      "runtime_samples": [26.0, 31.0]
                   },
                   "provider_1:region_2": {
                       "invocation_count": 22,
-                      "average_runtime": 12,
-                      "tail_runtime": 17,
+                      "runtime_samples": [26.0, 31.0]
                   },
               },
           },
@@ -713,8 +706,6 @@ Below is an example of the `workflow_instance_table` output for a workflow with 
 ```json
 {
   "instance_1": {
-      "favourite_home_region": "provider_1:region_1",
-      "favourite_home_region_runtime_samples": [26.0, 26.5],
       "projected_monthly_invocations": 12.5,
       "execution_summary": {
           "provider_1:region_1": {"runtime_samples": [26.0, 31.0], "unit": "s"},
@@ -723,7 +714,7 @@ Below is an example of the `workflow_instance_table` output for a workflow with 
       "invocation_summary": {
           "instance_2": {
               "probability_of_invocation": 0.8,
-              "average_data_transfer_size": 0.0007,
+              "data_transfer_samples": [0.0072, 0.0075],
               "transmission_summary": {
                   "provider_1:region_1": {
                       "provider_1:region_1": {"latency_samples": [0.00125, 0.00175], "unit": "s"},
@@ -737,8 +728,6 @@ Below is an example of the `workflow_instance_table` output for a workflow with 
       },
   },
   "instance_2": {
-      "favourite_home_region": "provider_1:region_1",
-      "favourite_home_region_runtime_samples": [12.5, 13.0],
       "projected_monthly_invocations": 11.25,
       "execution_summary": {
           "provider_1:region_1": {"runtime_samples": [12.4, 12.6], "unit": "s"},
