@@ -72,6 +72,9 @@ class CarbonCalculator(InputCalculator):
             cloud_provider_usage_kwh * (1 - cfe) * pue * grid_co2e
         )  # Element wise multiplication
 
+        # Sort the array in place
+        operational_emission.sort()
+
         return operational_emission  # gCO2e distribution
 
     def calculate_transmission_carbon_distribution(
@@ -100,7 +103,14 @@ class CarbonCalculator(InputCalculator):
 
             # Calculate the carbon emissions
             # Carbon emissions = Data transfer size (GB) * Transmission carbon intensity (gCo2eq/GB)
-            return data_transfer_size_distribution * transmission_carbon_intensity  # Element wise multiplication
+            carbon_emissions_distribution = (
+                data_transfer_size_distribution * transmission_carbon_intensity
+            )  # Element wise multiplication
+
+            # Sort the array in place
+            carbon_emissions_distribution.sort()
+
+            return carbon_emissions_distribution
 
         if CARBON_TRANSMISSION_CARBON_METHOD == "latency":
             kwh_per_gb_distribution: np.ndarray = (
@@ -115,6 +125,13 @@ class CarbonCalculator(InputCalculator):
 
             # However now we have 2 distributions, data transefer size and transmission carbon intensity
             # We must treat this differently, one approach is outer product. And we flatten the result
-            return np.outer(data_transfer_size_distribution, transmission_carbon_intensity_distribution).flatten()
+            carbon_emissions_distribution = np.outer(
+                data_transfer_size_distribution, transmission_carbon_intensity_distribution
+            ).flatten()
+
+            # Sort the array in place
+            carbon_emissions_distribution.sort()
+
+            return carbon_emissions_distribution
 
         raise ValueError(f"Invalid carbon transmission method: {CARBON_TRANSMISSION_CARBON_METHOD}")

@@ -32,7 +32,12 @@ class RuntimeCalculator(InputCalculator):
                 raw_runtime_distribution.append(0.0)
 
         # Now we convert the list to a numpy array an return it
-        return np.array(raw_runtime_distribution)
+        runtime_distribution = np.array(raw_runtime_distribution)
+
+        # Sort the array in place
+        runtime_distribution.sort()
+
+        return runtime_distribution
 
     def calculate_latency_distribution(
         self, from_instance_name: str, to_instance_name: str, from_region_name: str, to_region_name: str
@@ -49,4 +54,9 @@ class RuntimeCalculator(InputCalculator):
             )
 
         # Now we convert the list to a numpy array an return it
-        return np.array(raw_latency_distribution)
+        latency_distribution = np.array(raw_latency_distribution)
+
+        # Sort the array in place
+        latency_distribution.sort()
+
+        return latency_distribution

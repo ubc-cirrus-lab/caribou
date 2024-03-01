@@ -45,7 +45,11 @@ class CostCalculator(InputCalculator):
         cost_from_invocation: float = invocation_cost
 
         total_execution_cost: np.ndarray = cost_from_compute + cost_from_invocation  # Element wise addition
-        return total_execution_cost  # Already a numpy array
+
+        # Sort the array in place
+        total_execution_cost.sort()
+
+        return total_execution_cost
 
     def calculate_transmission_cost_distribution(
         self, from_instance_name: str, to_instance_name: str, from_region_name: str, to_region_name: str
@@ -72,4 +76,7 @@ class CostCalculator(InputCalculator):
         # Both in units of gb
         transmission_cost: np.ndarray = transmission_size * transmission_cost_gb  # Element wise multiplication
 
-        return transmission_cost  # Already a numpy array
+        # Sort the array in place
+        transmission_cost.sort()
+
+        return transmission_cost
