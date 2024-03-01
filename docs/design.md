@@ -714,12 +714,11 @@ Below is an example of the `workflow_instance_table` output for a workflow with 
 {
   "instance_1": {
       "favourite_home_region": "provider_1:region_1",
-      "favourite_home_region_average_runtime": 26.0,
-      "favourite_home_region_tail_runtime": 31.0,
+      "favourite_home_region_runtime_samples": [26.0, 26.5],
       "projected_monthly_invocations": 12.5,
       "execution_summary": {
-          "provider_1:region_1": {"average_runtime": 26.0, "tail_runtime": 31.0, "unit": "s"},
-          "provider_1:region_2": {"average_runtime": 26.0, "tail_runtime": 31.0, "unit": "s"},
+          "provider_1:region_1": {"runtime_samples": [26.0, 31.0], "unit": "s"},
+          "provider_1:region_2": {"runtime_samples": [26.0, 31.5], "unit": "s"},
       },
       "invocation_summary": {
           "instance_2": {
@@ -727,11 +726,11 @@ Below is an example of the `workflow_instance_table` output for a workflow with 
               "average_data_transfer_size": 0.0007,
               "transmission_summary": {
                   "provider_1:region_1": {
-                      "provider_1:region_1": {"average_latency": 0.00125, "tail_latency": 0.00175, "unit": "s"},
-                      "provider_1:region_2": {"average_latency": 0.125, "tail_latency": 0.155, "unit": "s"},
+                      "provider_1:region_1": {"latency_samples": [0.00125, 0.00175], "unit": "s"},
+                      "provider_1:region_2": {"latency_samples": [0.00125, 0.00175], "unit": "s"},
                   },
                   "provider_1:region_2": {
-                      "provider_1:region_1": {"average_latency": 0.095, "tail_latency": 0.125, "unit": "s"},
+                      "provider_1:region_1": {"latency_samples": [0.095, 0.125], "unit": "s"},
                   },
               },
           },
@@ -739,12 +738,11 @@ Below is an example of the `workflow_instance_table` output for a workflow with 
   },
   "instance_2": {
       "favourite_home_region": "provider_1:region_1",
-      "favourite_home_region_average_runtime": 12.5,
-      "favourite_home_region_tail_runtime": 12.5,
+      "favourite_home_region_runtime_samples": [12.5, 13.0],
       "projected_monthly_invocations": 11.25,
       "execution_summary": {
-          "provider_1:region_1": {"average_runtime": 12.5, "tail_runtime": 12.5, "unit": "s"},
-          "provider_1:region_2": {"average_runtime": 12.5, "tail_runtime": 12.5, "unit": "s"},
+          "provider_1:region_1": {"runtime_samples": [12.4, 12.6], "unit": "s"},
+          "provider_1:region_2": {"runtime_samples": [12.4, 12.6], "unit": "s"},
       },
       "invocation_summary": {},
   },
