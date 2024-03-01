@@ -2,52 +2,110 @@ from typing import Any
 
 import requests
 from bs4 import BeautifulSoup
+import numpy as np
+from scipy import stats, optimize
 
-from multi_x_serverless.data_collector.utils.constants import CLOUD_PING_AVG, CLOUD_PING_TAIL
+from multi_x_serverless.data_collector.utils.constants import CLOUD_PING
 from multi_x_serverless.data_collector.utils.latency_retriever.latency_retriever import LatencyRetriever
 
 
 class AWSLatencyRetriever(LatencyRetriever):
-    def __init__(self, utilize_tail_latency: bool = False) -> None:
+    def __init__(self) -> None:
         super().__init__()
         # This url returns a table with the latency between all AWS regions
-        # The latency is measured in ms
-        if utilize_tail_latency:
-            # The 90th percentile is used and the time frame is 1 day
-            cloudping_url = CLOUD_PING_TAIL
-        else:
-            # The 50th percentile is used and the time frame is 1 day
-            cloudping_url = CLOUD_PING_AVG
 
-        self._cloudping_page = requests.get(cloudping_url, timeout=10)
-        self._soup = BeautifulSoup(self._cloudping_page.content, "html.parser")
-        self._parse_table()
+        self._percentile_information = self._get_percentile_information()
 
-    def _parse_table(self) -> None:
-        table = self._soup.find("table", class_="table table-bordered table-sm")
+    def _get_percentile_information(self) -> dict[str, Any]:
+        percentiles = ["p_10", "p_25", "p_50", "p_75", "p_90", "p_98", "p_99"]
+
+        percentile_information = {}
+        for percentile in percentiles:
+            cloud_ping_url = f"{CLOUD_PING}{percentile}/timeframe/1W"
+
+            cloud_ping_page = requests.get(cloud_ping_url)
+
+            soup = BeautifulSoup(cloud_ping_page.content, "html.parser")
+
+            parsed_table = self._parse_table(soup)
+
+            for from_region, to_regions in parsed_table.items():
+                if from_region not in percentile_information:
+                    percentile_information[from_region] = {}
+                for to_region, latency in to_regions.items():
+                    if to_region not in percentile_information[from_region]:
+                        percentile_information[from_region][to_region] = {}
+                    percentile_information[from_region][to_region][percentile] = latency
+
+        return percentile_information
+
+    def _parse_table(self, soup: BeautifulSoup) -> dict[str, dict[str, float]]:
+        table = soup.find("table", class_="table table-bordered table-sm")
 
         headers = table.find_all("th", class_="region_title")
-        self.columns = [header.find("em").get_text(strip=True) for header in headers]  # Skip first header
+        columns = [header.find("em").get_text(strip=True) for header in headers]  # Skip first header
 
-        self.data = {}
+        data = {}
         rows = table.find_all("tr")[3:]  # Skip header row
         for row in rows:
             cols = row.find_all("td")
             region_code = row.find("th", class_="region_title").find("em").get_text(strip=True)
-            self.data[region_code] = [col.get_text(strip=True) for col in cols]
+            for i, col in enumerate(cols):
+                if i == 0:
+                    data[region_code] = {}
+                data[region_code][columns[i]] = float(col.get_text(strip=True))
+        return data
 
-    def get_latency(self, region_from: dict[str, Any], region_to: dict[str, Any]) -> float:
+    def get_latency_distribution(self, region_from: dict[str, Any], region_to: dict[str, Any]) -> list[float]:
+
         region_from_code = region_from["code"]
-        region_to_code = region_to["code"]
-        try:
-            column_index = self.columns.index(region_to_code)
-        except ValueError as e:
-            raise ValueError(f"Destination region code {region_to_code} not found") from e
+        if region_from["code"] not in self._percentile_information:
+            region_from_code = region_from_code[:-1] + "1"
+        if region_from_code == "me-central-1" or region_from_code == "il-central-1":
+            region_from_code = "me-south-1"
+        if region_from_code == "ca-west-1":
+            region_from_code = "us-west-2"
 
-        try:
-            latency_str = self.data[region_from_code][column_index]
-            return float(latency_str)
-        except KeyError as e:
-            raise ValueError(f"Source region code {region_from_code} not found") from e
-        except ValueError as e:
-            raise ValueError("Invalid latency value") from e
+        if region_from_code not in self._percentile_information:
+            return [150, 150, 150, 150, 150, 150, 150]
+
+        region_to_code = region_to["code"]
+        if region_to["code"] not in self._percentile_information[region_from_code]:
+            region_to_code = region_to_code[:-1] + "1"
+        if region_to_code == "me-central-1" or region_to_code == "il-central-1":
+            region_to_code = "me-south-1"
+        if region_to_code == "ca-west-1":
+            region_to_code = "us-west-2"
+
+        if region_to_code not in self._percentile_information[region_from_code]:
+            return [150, 150, 150, 150, 150, 150, 150]
+
+        latency_information = self._percentile_information[region_from_code][region_to_code]
+
+        log_percentiles = np.log([value for value in latency_information.values()])
+
+        percentile_ranks = np.array([10, 25, 50, 75, 90, 98, 99]) / 100.0
+
+        def objective_function(params, log_percentiles, percentile_ranks):
+            mu, sigma = params
+            theoretical_percentiles = stats.norm.ppf(percentile_ranks, loc=mu, scale=sigma)
+            return np.sum((log_percentiles - theoretical_percentiles) ** 2)
+
+        initial_guess = [np.mean(log_percentiles), np.std(log_percentiles)]
+        bounds = [(None, None), (1e-5, None)]
+
+        result = optimize.minimize(
+            objective_function,
+            initial_guess,
+            args=(log_percentiles, percentile_ranks),
+            method="L-BFGS-B",
+            bounds=bounds,
+        )
+
+        mu_optimized, sigma_optimized = result.x
+
+        samples = np.random.lognormal(mean=mu_optimized, sigma=sigma_optimized, size=100)
+
+        samples = samples / 1000.0  # Convert to seconds
+
+        return samples.tolist()

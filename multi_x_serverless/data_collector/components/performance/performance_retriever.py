@@ -12,10 +12,8 @@ from multi_x_serverless.data_collector.utils.latency_retriever.integration_test_
 class PerformanceRetriever(DataRetriever):
     def __init__(self, client: RemoteClient) -> None:
         super().__init__(client)
-        self._aws_average_latency_retriever = AWSLatencyRetriever(False)
-        self._aws_tail_latency_retriever = AWSLatencyRetriever(True)
-        self._integration_test_average_latency_retriever = IntegrationTestLatencyRetriever(False)
-        self._integration_test_tail_latency_retriever = IntegrationTestLatencyRetriever(True)
+        self._aws_latency_retriever = AWSLatencyRetriever()
+        self._integration_test_latency_retriever = IntegrationTestLatencyRetriever()
         self._modified_regions: set[str] = set()
 
     def retrieve_runtime_region_data(self) -> dict[str, dict[str, Any]]:
@@ -24,44 +22,28 @@ class PerformanceRetriever(DataRetriever):
             transmission_latency_dict = {}
 
             for region_key_to, available_region_to in self._available_regions.items():
-                average_latency = self._get_total_latency(available_region, available_region_to, False)
-                tail_latency = self._get_total_latency(available_region, available_region_to, True)
+                latency_distribution = self._get_latency_distribution(available_region, available_region_to)
 
-                if average_latency >= 0.0 and tail_latency >= 0.0:
-                    transmission_latency_dict[region_key_to] = {
-                        "average_latency": average_latency,
-                        "tail_latency": tail_latency,
-                        "unit": "s",
-                    }
+                transmission_latency_dict[region_key_to] = {
+                    "latency_distribution": [latency_distribution],
+                    "unit": "s",
+                }
 
+            # Current assumption is that all regions have the same performance
+            # (At least within the same provider)
             result_dict[region_key] = {
                 "relative_performance": 1,
-                # Current assumption is that all regions have the same performance
-                # (At least within the same provider)
                 "transmission_latency": transmission_latency_dict,
             }
         return result_dict
 
-    def _get_total_latency(
-        self, region_from: dict[str, Any], region_to: dict[str, Any], utilize_tail_latency: bool = False
-    ) -> float:
+    def _get_latency_distribution(self, region_from: dict[str, Any], region_to: dict[str, Any]) -> list[float]:
         try:
             if region_from["provider"] == region_to["provider"]:
                 if region_from["provider"] == Provider.AWS.value:
-                    if utilize_tail_latency:
-                        return (
-                            self._aws_tail_latency_retriever.get_latency(region_from, region_to) / 1000
-                        )  # Convert to seconds
-                    return (
-                        self._aws_average_latency_retriever.get_latency(region_from, region_to) / 1000
-                    )  # Convert to seconds
+                    return self._aws_latency_retriever.get_latency_distribution(region_from, region_to)
                 if region_from["provider"] == Provider.INTEGRATION_TEST_PROVIDER.value:
-                    if utilize_tail_latency:
-                        return self._integration_test_tail_latency_retriever.get_latency(region_from, region_to) / 1000
-
-                    return (
-                        self._integration_test_average_latency_retriever.get_latency(region_from, region_to) / 1000
-                    )  # Convert to seconds
+                    return self._integration_test_latency_retriever.get_latency_distribution(region_from, region_to)
         except ValueError:
             return -1.0
 
