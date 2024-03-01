@@ -25,7 +25,15 @@ class TestClient(unittest.TestCase):
                                 "identifier": "function1",
                             }
                         }
-                    }
+                    },
+                    "home_deployment": {
+                        "instances": {
+                            "instance1": {
+                                "provider_region": {"provider": "aws", "region": "us-west-2"},
+                                "identifier": "function1",
+                            }
+                        }
+                    },
                 },
             }
         )
