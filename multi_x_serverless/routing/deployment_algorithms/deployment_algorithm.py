@@ -1,5 +1,6 @@
 import json
 from abc import ABC, abstractmethod
+from typing import Optional
 
 from multi_x_serverless.common.constants import WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE
 from multi_x_serverless.common.models.endpoints import Endpoints
@@ -21,17 +22,22 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
     def __init__(
         self,
         workflow_config: WorkflowConfig,
+        input_manager: Optional[InputManager] = None,
     ):
         self._workflow_config = workflow_config
 
-        self._input_manager = InputManager(
-            workflow_config=workflow_config,
-        )
+        if input_manager is None:
+            input_manager = InputManager(workflow_config=workflow_config)
+
+        self._input_manager = input_manager
 
         self._workflow_level_permitted_regions = self._get_workflow_level_permitted_regions()
 
         self._region_indexer = RegionIndexer(self._workflow_level_permitted_regions)
         self._instance_indexer = InstanceIndexer(self._workflow_config.instances)
+
+        # Complete the setup of the input manager
+        self._input_manager.setup(self._region_indexer, self._instance_indexer)
 
         self._deployment_metrics_calculator: DeploymentMetricsCalculator = SimpleDeploymentMetricsCalculator(
             workflow_config,
@@ -77,6 +83,7 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
         return deployments[0]
 
     def _get_workflow_level_permitted_regions(self) -> list[str]:
+        # Get all regions allowed for the workflow
         all_available_regions = self._input_manager.get_all_regions()
         workflow_level_permitted_regions = self._filter_regions(
             regions=all_available_regions,

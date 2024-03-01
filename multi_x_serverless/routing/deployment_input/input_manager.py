@@ -22,9 +22,7 @@ class InputManager:
     _transmission_distribution_cache: dict[str, tuple[np.ndarray, np.ndarray, np.ndarray]]
     _invocation_probability_cache: dict[str, float]
 
-    def __init__(
-        self, workflow_config: WorkflowConfig, setup_region_viability: bool = True, tail_threshold: int = 95
-    ) -> None:
+    def __init__(self, workflow_config: WorkflowConfig, tail_threshold: int = 95) -> None:
         super().__init__()
         # Set the workflow config
         self._workflow_config: WorkflowConfig = workflow_config
@@ -46,8 +44,7 @@ class InputManager:
         self._workflow_loader = WorkflowLoader(self._data_collector_client, workflow_config)
 
         # Setup the viability loader and load the availability regions
-        if setup_region_viability:
-            self._region_viability_loader.setup()  # Setup the viability loader -> This loads data from the database
+        self._region_viability_loader.setup()  # Setup the viability loader -> This loads data from the database
 
         # Setup the calculator
         self._runtime_calculator = RuntimeCalculator(self._performance_loader, self._workflow_loader)
