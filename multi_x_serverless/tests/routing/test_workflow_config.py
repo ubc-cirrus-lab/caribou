@@ -2,6 +2,8 @@ import unittest
 import numpy as np
 import json
 
+from unittest.mock import MagicMock
+
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
 
@@ -88,6 +90,29 @@ class TestWorkflowConfig(unittest.TestCase):
             self.workflow_config.constraints,
             {"hard_resource_constraints": {}, "priority_order": [], "soft_resource_constraints": {}},
         )
+
+    def test_solver(self):
+        # Mock the _lookup method to return a specific value
+        self.workflow_config._lookup = MagicMock()
+        self.workflow_config._lookup.return_value = "fine_grained_solver"
+
+        # Call the property
+        result = self.workflow_config.solver
+
+        # Define the expected result
+        expected_result = "fine_grained_solver"
+
+        # Assert that the result matches the expected result
+        self.assertEqual(result, expected_result)
+
+    def test_solver_invalid(self):
+        # Mock the _lookup method to return an invalid value
+        self.workflow_config._lookup = MagicMock()
+        self.workflow_config._lookup.return_value = "invalid_solver"
+
+        # Assert that calling the property raises a ValueError
+        with self.assertRaises(ValueError):
+            self.workflow_config.solver
 
     def test_start_hops(self):
         self.assertEqual(self.workflow_config.start_hops, "provider1:region1")
