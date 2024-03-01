@@ -1,7 +1,7 @@
 import json
 import logging
-from typing import Any, Optional
 import random
+from typing import Any, Optional
 
 import botocore.exceptions
 
@@ -51,7 +51,7 @@ class Client:
 
         send_to_home_region = random.random() < self._home_region_threshold
 
-        logger.info(f"Sending to home region: {send_to_home_region}")
+        logger.info("Sending to home region: %s", send_to_home_region)
 
         provider, region, identifier = self.__get_initial_node_workflow_placement_decision(
             workflow_placement_decision, send_to_home_region

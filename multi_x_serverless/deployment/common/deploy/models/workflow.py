@@ -134,14 +134,14 @@ class Workflow(Resource):
         workflow_config = WorkflowConfig(workflow_description)
         return workflow_config
 
-    def _get_instances(self) -> dict[dict[str, Any]]:
+    def _get_instances(self) -> dict[str, dict[str, Any]]:
         instances = {function_instance.name: function_instance.to_json() for function_instance in self._functions}
 
         for instance in instances.values():
             self._get_instance(instance)
         return instances
 
-    def _get_instance(self, instance: dict[str, Any]) -> dict[str, Any]:
+    def _get_instance(self, instance: dict[str, Any]) -> None:
         if not isinstance(instance, dict):
             raise RuntimeError("Error in workflow config creation, this should not happen")
 
@@ -287,7 +287,7 @@ class Workflow(Resource):
         ]["home_deployment"]
         return staging_area_placement
 
-    def _get_entry_point_from_previous_instances(self, previous_instances: list[dict]) -> str:
+    def _get_entry_point_from_previous_instances(self, previous_instances: dict[str, Any]) -> str:
         for instance in previous_instances.values():
             if "instance_name" in instance and instance["instance_name"].split(":")[1] == "entry_point":
                 return instance["instance_name"]

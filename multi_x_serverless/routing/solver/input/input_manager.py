@@ -35,7 +35,7 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         self._datacenter_loader = DatacenterLoader(self._data_collector_client)
         self._performance_loader = PerformanceLoader(self._data_collector_client)
         self._carbon_loader = CarbonLoader(self._data_collector_client)
-        self._workflow_loader = WorkflowLoader(self._data_collector_client, self._config.instances.values())
+        self._workflow_loader = WorkflowLoader(self._data_collector_client, self._config.instances)
 
         # Setup the viability loader and load available regions
         if setup_region_viability:

@@ -11,8 +11,8 @@ from multi_x_serverless.routing.workflow_config import WorkflowConfig
 class TestStochasticHeuristicDescentSolver(unittest.TestCase):
     def setUp(self):
         self.workflow_config = Mock(spec=WorkflowConfig)
-        self.workflow_config.instances = [
-            {
+        self.workflow_config.instances = {
+            "node1": {
                 "instance_name": "node1",
                 "succeeding_instances": ["node2"],
                 "preceding_instances": [],
@@ -29,7 +29,7 @@ class TestStochasticHeuristicDescentSolver(unittest.TestCase):
                     },
                 },
             },
-            {
+            "node2": {
                 "instance_name": "node2",
                 "succeeding_instances": [],
                 "preceding_instances": ["node1"],
@@ -46,7 +46,7 @@ class TestStochasticHeuristicDescentSolver(unittest.TestCase):
                     },
                 },
             },
-        ]
+        }
         self.workflow_config.regions_and_providers = {
             "allowed_regions": None,
             "disallowed_regions": None,
@@ -337,7 +337,10 @@ class TestStochasticHeuristicDescentSolver(unittest.TestCase):
         )
         solver._workflow_config = Mock()
         solver._workflow_config.start_hops = "p1:r1"
-        solver._workflow_config.instances = [{"instance_name": "instance1"}, {"instance_name": "instance2"}]
+        solver._workflow_config.instances = {
+            "instance1": {"instance_name": "instance1"},
+            "instance2": {"instance_name": "instance2"},
+        }
         solver._region_indexer = Mock()
         solver._region_indexer.value_to_index.side_effect = [0, 1]
         solver._topological_order = ["instance1", "instance2"]

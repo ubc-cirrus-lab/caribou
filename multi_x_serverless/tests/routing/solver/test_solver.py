@@ -32,8 +32,8 @@ class OtherSolverSubclass(Solver):
 class TestSolver(unittest.TestCase):
     def setUp(self):
         self.workflow_config = Mock(spec=WorkflowConfig)
-        self.workflow_config.instances = [
-            {
+        self.workflow_config.instances = {
+            "node1": {
                 "instance_name": "node1",
                 "succeeding_instances": ["node2"],
                 "preceding_instances": [],
@@ -43,7 +43,7 @@ class TestSolver(unittest.TestCase):
                     "providers": {"provider1": None},
                 },
             },
-            {
+            "node2": {
                 "instance_name": "node2",
                 "succeeding_instances": [],
                 "preceding_instances": ["node1"],
@@ -53,7 +53,7 @@ class TestSolver(unittest.TestCase):
                     "providers": {"provider1": None},
                 },
             },
-        ]
+        }
         self.workflow_config.regions_and_providers = {
             "allowed_regions": None,
             "disallowed_regions": None,
@@ -122,15 +122,15 @@ class TestSolver(unittest.TestCase):
         self.assertEqual(filtered_regions, ["provider1:region1"])
 
     def test_filter_regions_instance(self):
-        self.workflow_config.instances = [
-            {
+        self.workflow_config.instances = {
+            "node1": {
                 "regions_and_providers": {
                     "providers": {"provider1": {}},
                     "allowed_regions": ["provider1:region1"],
                     "disallowed_regions": ["provider2:region2"],
                 }
             }
-        ]
+        }
         regions = ["provider1:region1", "provider2:region2"]
         filtered_regions = self.solver._filter_regions_instance(regions, 0)
         self.assertEqual(filtered_regions, ["provider1:region1"])

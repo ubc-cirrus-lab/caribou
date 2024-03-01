@@ -15,22 +15,22 @@ class TestWorkflowConfig(unittest.TestCase):
                 "allowed_regions": [{"provider": "provider1", "region": "region1"}],
                 "providers": {"provider1": {"config": {"timeout": 60, "memory": 128}}},
             },
-            "instances": [
-                {
+            "instances": {
+                "function1": {
                     "function_name": "function1",
                     "instance_name": "instance1",
                     "regions_and_providers": {"providers": {"provider1": {"config": {"timeout": 120, "memory": 128}}}},
                     "succeeding_instances": [],
                     "preceding_instances": [],
                 },
-                {
+                "function2": {
                     "function_name": "function2",
                     "instance_name": "instance2",
                     "regions_and_providers": {"providers": {"provider1": {"config": {"timeout": 120, "memory": 128}}}},
                     "succeeding_instances": [],
                     "preceding_instances": [],
                 },
-            ],
+            },
             "constraints": {
                 "hard_resource_constraints": {},
                 "soft_resource_constraints": {},
@@ -65,22 +65,22 @@ class TestWorkflowConfig(unittest.TestCase):
     def test_instances(self):
         self.assertEqual(
             self.workflow_config.instances,
-            [
-                {
+            {
+                "function1": {
                     "function_name": "function1",
                     "instance_name": "instance1",
                     "preceding_instances": [],
                     "regions_and_providers": {"providers": {"provider1": {"config": {"memory": 128, "timeout": 120}}}},
                     "succeeding_instances": [],
                 },
-                {
+                "function2": {
                     "function_name": "function2",
                     "instance_name": "instance2",
                     "preceding_instances": [],
                     "regions_and_providers": {"providers": {"provider1": {"config": {"memory": 128, "timeout": 120}}}},
                     "succeeding_instances": [],
                 },
-            ],
+            },
         )
 
     def test_constraints(self):

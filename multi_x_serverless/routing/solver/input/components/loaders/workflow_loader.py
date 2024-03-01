@@ -19,11 +19,11 @@ class WorkflowLoader(InputLoader):
     _workflow_data: dict[str, Any]
     _instances_regions_and_providers: dict[str, Any]
 
-    def __init__(self, client: RemoteClient, instances_data: list[dict]) -> None:
+    def __init__(self, client: RemoteClient, instances_data: dict) -> None:
         super().__init__(client, WORKFLOW_INSTANCE_TABLE)
 
         self._instances_regions_and_providers = {}
-        for instance in instances_data:
+        for instance in instances_data.values():
             providers = instance.get("regions_and_providers", {}).get("providers", {})
             self._instances_regions_and_providers[instance["instance_name"]] = providers
 

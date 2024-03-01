@@ -145,7 +145,9 @@ class MultiXServerlessWorkflow:
 
         expected_counter = -1
         if is_successor_sync_node:
-            expected_counter = len(workflow_placement_decision["instances"][current_instance_name]["preceding_instances"])
+            expected_counter = len(
+                workflow_placement_decision["instances"][successor_instance_name]["preceding_instances"]
+            )
 
         logger.info(
             "INVOKING_SUCCESSOR: RUN_ID (%s): INSTANCE (%s) calling SUCCESSOR (%s) with PAYLOAD_SIZE (%s) GB",
@@ -207,7 +209,7 @@ class MultiXServerlessWorkflow:
     def get_successor_workflow_placement_decision(
         self, successor_instance_name: str, workflow_placement_decision: dict[str, Any]
     ) -> tuple[str, str, str]:
-        if workflow_placement_decision["send_to_home_region"]:
+        if "send_to_home_region" in workflow_placement_decision and workflow_placement_decision["send_to_home_region"]:
             key = "home_deployment"
         else:
             key = "current_deployment"
@@ -354,7 +356,7 @@ class MultiXServerlessWorkflow:
         current_instance_name = workflow_placement_decision["current_instance_name"]
         workflow_instance_id = workflow_placement_decision["run_id"]
 
-        if workflow_placement_decision["send_to_home_region"]:
+        if "send_to_home_region" in workflow_placement_decision and workflow_placement_decision["send_to_home_region"]:
             key = "home_deployment"
         else:
             key = "current_deployment"
@@ -376,7 +378,7 @@ class MultiXServerlessWorkflow:
 
         raise RuntimeError("Could not get workflow_placement decision from platform")
 
-    def register_function(
+    def register_function(  # pylint: disable=too-many-statements
         self,
         function: Callable[..., Any],
         name: str,
@@ -400,7 +402,7 @@ class MultiXServerlessWorkflow:
         self._function_names.add(name)
         self.functions[function.__name__] = wrapper
 
-    def serverless_function(
+    def serverless_function(  # pylint: disable=too-many-statements
         self,
         name: Optional[str] = None,
         entry_point: bool = False,

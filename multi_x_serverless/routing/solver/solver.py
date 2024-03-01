@@ -230,7 +230,9 @@ class Solver(ABC):  # pylint: disable=too-many-instance-attributes
             and carbon > hard_resource_constraints["carbon"]["value"]
         )
 
-    def init_deployment_to_region(self, region_index: int) -> tuple[
+    def init_deployment_to_region(
+        self, region_index: int
+    ) -> tuple[
         dict[int, int],
         tuple[float, float],
         tuple[float, float],
