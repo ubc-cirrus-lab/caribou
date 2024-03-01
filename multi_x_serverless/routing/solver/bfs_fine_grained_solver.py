@@ -61,7 +61,7 @@ class BFSFineGrainedSolver(Solver):
             # serverless region related information - per instance level
             # Where start hop and end hop should be already integrated into restrictions
             permitted_regions: list[str] = self._filter_regions_instance(regions, current_instance_index)
-            if len(permitted_regions) == 0:  # Should never happen in a valid DAG
+            if current_instance_index != -1 and len(permitted_regions) == 0:  # Should never happen in a valid DAG
                 raise ValueError("There are no permitted regions for this instance")
 
             permitted_regions_indices = np.array([all_regions_indices[region] for region in permitted_regions])

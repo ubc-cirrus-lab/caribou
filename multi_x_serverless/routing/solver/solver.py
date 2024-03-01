@@ -179,6 +179,9 @@ class Solver(ABC):  # pylint: disable=too-many-instance-attributes
         return self._filter_regions(regions, self._workflow_config.regions_and_providers)
 
     def _filter_regions_instance(self, regions: list[str], instance_index: int) -> list[str]:
+        if instance_index == -1:  # Ignore virtual end node
+            return []
+
         return self._filter_regions(
             regions, self._workflow_config.instances[self._dag.index_to_value(instance_index)]["regions_and_providers"]
         )
