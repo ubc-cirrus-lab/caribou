@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 from pydantic import BaseModel, Field
 
@@ -7,7 +7,6 @@ from multi_x_serverless.deployment.common.config.config_schema import Constraint
 
 class Instance(BaseModel):
     instance_name: str = Field(..., title="The name of the instance")
-    function_name: str = Field(..., title="The name of the function")
     regions_and_providers: RegionAndProviders = Field(..., title="List of regions and providers")
     succeeding_instances: List[str] = Field(..., title="List of succeeding instances")
     preceding_instances: List[str] = Field(..., title="List of preceding instances")
@@ -18,7 +17,7 @@ class WorkflowConfigSchema(BaseModel):
     workflow_version: str = Field(..., title="The version of the workflow")
     workflow_id: str = Field(..., title="The id of the workflow")
     regions_and_providers: RegionAndProviders = Field(..., title="List of regions and providers")
-    instances: List[Instance] = Field(..., title="List of instances")
+    instances: Dict[str, Instance] = Field(..., title="List of instances")
     constraints: Constraints = Field(..., title="Constraints")
     start_hops: List[ProviderRegion] = Field(..., title="List of home regions")
     num_calls_in_one_month: Optional[int] = Field(None, title="Number of function calls in 1 hour")

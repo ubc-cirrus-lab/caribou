@@ -139,7 +139,7 @@ class Workflow(Resource):
 
         for instance in instances.values():
             self._get_instance(instance)
-        return instance
+        return instances
 
     def _get_instance(self, instance: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(instance, dict):
