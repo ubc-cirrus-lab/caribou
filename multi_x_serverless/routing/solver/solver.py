@@ -146,12 +146,32 @@ class Solver(ABC):  # pylint: disable=too-many-instance-attributes
         regions = [region for region in regions if region.split(":")[0] in provider_names]
 
         # Then if the user set a allowed_regions, only permit those regions and return
-        if "allowed_regions" in regions_and_providers and regions_and_providers["allowed_regions"] is not None:
-            return [region for region in regions if region in regions_and_providers["allowed_regions"]]
+        if (
+            "allowed_regions" in regions_and_providers
+            and regions_and_providers["allowed_regions"] is not None
+            and len(regions_and_providers["allowed_regions"]) > 0
+        ):
+            if isinstance(regions_and_providers["allowed_regions"][0], str):
+                return [region for region in regions if region in regions_and_providers["allowed_regions"]]
+            allowed_regions = [
+                provider_region["provider"] + ":" + provider_region["region"]
+                for provider_region in regions_and_providers["allowed_regions"]
+            ]
+            return [region for region in regions if region in allowed_regions]
 
         # Finally we filter out regions that the user doesn't want to use
-        if "disallowed_regions" in regions_and_providers and regions_and_providers["disallowed_regions"] is not None:
-            regions = [region for region in regions if region not in regions_and_providers["disallowed_regions"]]
+        if (
+            "disallowed_regions" in regions_and_providers
+            and regions_and_providers["disallowed_regions"] is not None
+            and len(regions_and_providers["disallowed_regions"]) > 0
+        ):
+            if isinstance(regions_and_providers["disallowed_regions"][0], str):
+                return [region for region in regions if region not in regions_and_providers["disallowed_regions"]]
+            disallowed_regions = [
+                provider_region["provider"] + ":" + provider_region["region"]
+                for provider_region in regions_and_providers["disallowed_regions"]
+            ]
+            regions = [region for region in regions if region not in disallowed_regions]
 
         return regions
 
@@ -159,7 +179,9 @@ class Solver(ABC):  # pylint: disable=too-many-instance-attributes
         return self._filter_regions(regions, self._workflow_config.regions_and_providers)
 
     def _filter_regions_instance(self, regions: list[str], instance_index: int) -> list[str]:
-        return self._filter_regions(regions, self._workflow_config.instances[instance_index]["regions_and_providers"])
+        return self._filter_regions(
+            regions, self._workflow_config.instances[self._dag.index_to_value(instance_index)]["regions_and_providers"]
+        )
 
     def rank_solved_results(
         self, results: list[tuple[dict, float, float, float]]
@@ -208,9 +230,7 @@ class Solver(ABC):  # pylint: disable=too-many-instance-attributes
             and carbon > hard_resource_constraints["carbon"]["value"]
         )
 
-    def init_deployment_to_region(
-        self, region_index: int
-    ) -> tuple[
+    def init_deployment_to_region(self, region_index: int) -> tuple[
         dict[int, int],
         tuple[float, float],
         tuple[float, float],

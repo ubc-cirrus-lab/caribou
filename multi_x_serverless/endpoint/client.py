@@ -51,6 +51,8 @@ class Client:
 
         send_to_home_region = random.random() < self._home_region_threshold
 
+        logger.info(f"Sending to home region: {send_to_home_region}")
+
         provider, region, identifier = self.__get_initial_node_workflow_placement_decision(
             workflow_placement_decision, send_to_home_region
         )
@@ -124,12 +126,11 @@ class Client:
 
         self._endpoints.get_deployment_manager_client().remove_key(DEPLOYMENT_MANAGER_RESOURCE_TABLE, self._workflow_id)
 
-        self._endpoints.get_deployment_manager_client().remove_key(
-            MULTI_X_SERVERLESS_WORKFLOW_IMAGES_TABLE, self._workflow_id
-        )
+        self._endpoints.get_deployment_manager_client().remove_key(WORKFLOW_INSTANCE_TABLE, self._workflow_id)
 
+        workflow_id_alternative = self._workflow_id.replace(".", "_")
         self._endpoints.get_data_collector_client().remove_key(
-            WORKFLOW_INSTANCE_TABLE, self._workflow_id.replace(".", "_")
+            MULTI_X_SERVERLESS_WORKFLOW_IMAGES_TABLE, workflow_id_alternative
         )
 
         print(f"Removed workflow {self._workflow_id}")

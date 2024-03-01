@@ -205,9 +205,7 @@ class Workflow(Resource):
                 "function_identifier": self._deployed_regions[instance.function_resource_name]["function_identifier"],
             }
         return {
-            "instances": {
-                workflow_placement_instances,
-            },
+            "instances": workflow_placement_instances,
             "metrics": {},
         }
 
@@ -216,19 +214,21 @@ class Workflow(Resource):
     ) -> dict[str, dict[str, Any]]:
         function_instance_to_resource_name = self._get_function_instance_to_resource_name(staging_area_placement)
 
-        for instance_name in staging_area_placement["workflow_placement"]:
-            staging_area_placement["workflow_placement"]["current_deployment"]["instances"][instance_name][
-                "identifier"
-            ] = self._deployed_regions[function_instance_to_resource_name[instance_name]]["message_topic"]
-            staging_area_placement["workflow_placement"]["current_deployment"]["instances"][instance_name][
+        for instance_name, instance in staging_area_placement["workflow_placement"]["current_deployment"][
+            "instances"
+        ].items():
+            instance["identifier"] = self._deployed_regions[function_instance_to_resource_name[instance_name]][
+                "message_topic"
+            ]
+            instance["function_identifier"] = self._deployed_regions[function_instance_to_resource_name[instance_name]][
                 "function_identifier"
-            ] = self._deployed_regions[function_instance_to_resource_name[instance_name]]["function_identifier"]
+            ]
 
         return staging_area_placement
 
     def _get_function_instance_to_resource_name(self, staging_area_placement: dict[str, Any]) -> dict[str, str]:
         function_instance_to_resource_name = {}
-        for function_instance in staging_area_placement["instances"]:
+        for function_instance in staging_area_placement["instances"].values():
             instance_name = function_instance["instance_name"]
 
             function_name = instance_name.split(":")[0]
@@ -238,13 +238,7 @@ class Workflow(Resource):
             ]["provider_region"]
 
             function_resource_name = (
-                self._config.workflow_id
-                + "-"
-                + function_name
-                + "_"
-                + actual_placement["provider"]
-                + "-"
-                + actual_placement["region"]
+                function_name + "_" + actual_placement["provider"] + "-" + actual_placement["region"]
             )
 
             function_instance_to_resource_name[instance_name] = function_resource_name
@@ -277,20 +271,24 @@ class Workflow(Resource):
     def get_workflow_placement_decision_extend_staging(
         self,
         staging_area_placement: dict[str, Any],
-        previous_instances: dict[str, dict[str, Any]],
+        previous_workflow_placement_decision_json: dict[str, dict[str, Any]],
     ) -> dict[str, Any]:
         """
         The desired output format is explained in the `docs/design.md` file under `Workflow Placement Decision`.
         """
+        previous_instances = previous_workflow_placement_decision_json["instances"]
         staging_area_placement["instances"] = previous_instances
         staging_area_placement["current_instance_name"] = self._get_entry_point_from_previous_instances(
             previous_instances
         )
         self._extend_stage_area_workflow_placement(staging_area_placement)
+        staging_area_placement["workflow_placement"]["home_deployment"] = previous_workflow_placement_decision_json[
+            "workflow_placement"
+        ]["home_deployment"]
         return staging_area_placement
 
     def _get_entry_point_from_previous_instances(self, previous_instances: list[dict]) -> str:
-        for instance in previous_instances:
+        for instance in previous_instances.values():
             if "instance_name" in instance and instance["instance_name"].split(":")[1] == "entry_point":
                 return instance["instance_name"]
         raise RuntimeError("No entry point instance found, this should not happen")
