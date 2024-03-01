@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Optional
+from typing import Optional, Any
 
 import botocore.exceptions
 
@@ -209,7 +209,9 @@ class Deployer:
             SOLVER_UPDATE_CHECKER_RESOURCE_TABLE, self._config.workflow_id
         )
 
-    def _update_workflow_placement_decision(self, staging_area_data: str, previous_instances: list[dict]) -> None:
+    def _update_workflow_placement_decision(
+        self, workflow: Workflow, staging_area_data: str, previous_instances: dict[str, dict[str, Any]]
+    ) -> None:
         assert self._workflow is not None, "Workflow is None, this should not happen"
         if staging_area_data is None:
             raise RuntimeError("Staging area data is None")

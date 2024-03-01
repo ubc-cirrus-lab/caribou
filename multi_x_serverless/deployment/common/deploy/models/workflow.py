@@ -134,22 +134,19 @@ class Workflow(Resource):
         workflow_config = WorkflowConfig(workflow_description)
         return workflow_config
 
-    def _get_instances(self) -> list[dict]:
-        instances = [function_instance.to_json() for function_instance in self._functions]
+    def _get_instances(self) -> dict[dict[str, Any]]:
+        instances = {function_instance.name: function_instance.to_json() for function_instance in self._functions}
 
-        finished_instances = []
-        for instance in instances:
-            finished_instances.append(self._get_instance(instance))
-        return finished_instances
+        for instance in instances.values():
+            self._get_instance(instance)
+        return instance
 
     def _get_instance(self, instance: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(instance, dict):
             raise RuntimeError("Error in workflow config creation, this should not happen")
 
-        new_instance: dict[str, Any] = {}
-        new_instance.update(instance)
         if "regions_and_providers" not in instance:
-            new_instance["regions_and_providers"] = self._config.regions_and_providers
+            instance["regions_and_providers"] = self._config.regions_and_providers
         preceding_instances = []
         succeeding_instances = []
         for edge in self._edges:
@@ -157,8 +154,8 @@ class Workflow(Resource):
                 succeeding_instances.append(edge[1])
             if edge[1] == instance["instance_name"]:
                 preceding_instances.append(edge[0])
-        new_instance["succeeding_instances"] = succeeding_instances
-        new_instance["preceding_instances"] = preceding_instances
+        instance["succeeding_instances"] = succeeding_instances
+        instance["preceding_instances"] = preceding_instances
 
         if len(instance["instance_name"].split(":")) != 3:
             raise RuntimeError("Error in workflow config creation, this should not happen")
@@ -167,8 +164,7 @@ class Workflow(Resource):
         predecessors_to_sync_nodes_and_sync_nodes = []
         if paths_to_sync_nodes:
             predecessors_to_sync_nodes_and_sync_nodes = [path[-2:] for path in paths_to_sync_nodes]
-        new_instance["dependent_sync_predecessors"] = predecessors_to_sync_nodes_and_sync_nodes
-        return new_instance
+        instance["dependent_sync_predecessors"] = predecessors_to_sync_nodes_and_sync_nodes
 
     def _find_all_paths_to_any_sync_node(
         self, start_instance: str, visited: Optional[set[str]] = None, path: Optional[list[str]] = None
@@ -201,14 +197,19 @@ class Workflow(Resource):
         raise RuntimeError("No entry point instance found, this should not happen")
 
     def _get_workflow_placement(self) -> dict[str, dict[str, Any]]:
-        workflow_placement = {}
+        workflow_placement_instances = {}
         for instance in self._functions:
-            workflow_placement[instance.name] = {
+            workflow_placement_instances[instance.name] = {
                 "identifier": self._deployed_regions[instance.function_resource_name]["message_topic"],
                 "provider_region": self._config.home_regions[0],  # TODO (#68): Make multi-home region workflows work
                 "function_identifier": self._deployed_regions[instance.function_resource_name]["function_identifier"],
             }
-        return workflow_placement
+        return {
+            "instances": {
+                workflow_placement_instances,
+            },
+            "metrics": {},
+        }
 
     def _extend_stage_area_workflow_placement(
         self, staging_area_placement: dict[str, Any]
@@ -216,12 +217,12 @@ class Workflow(Resource):
         function_instance_to_resource_name = self._get_function_instance_to_resource_name(staging_area_placement)
 
         for instance_name in staging_area_placement["workflow_placement"]:
-            staging_area_placement["workflow_placement"][instance_name]["identifier"] = self._deployed_regions[
-                function_instance_to_resource_name[instance_name]
-            ]["message_topic"]
-            staging_area_placement["workflow_placement"][instance_name]["function_identifier"] = self._deployed_regions[
-                function_instance_to_resource_name[instance_name]
-            ]["function_identifier"]
+            staging_area_placement["workflow_placement"]["current_deployment"]["instances"][instance_name][
+                "identifier"
+            ] = self._deployed_regions[function_instance_to_resource_name[instance_name]]["message_topic"]
+            staging_area_placement["workflow_placement"]["current_deployment"]["instances"][instance_name][
+                "function_identifier"
+            ] = self._deployed_regions[function_instance_to_resource_name[instance_name]]["function_identifier"]
 
         return staging_area_placement
 
@@ -229,12 +230,17 @@ class Workflow(Resource):
         function_instance_to_resource_name = {}
         for function_instance in staging_area_placement["instances"]:
             instance_name = function_instance["instance_name"]
-            function_resource_name = function_instance["function_name"]
 
-            actual_placement = staging_area_placement["workflow_placement"][instance_name]["provider_region"]
+            function_name = instance_name.split(":")[0]
+
+            actual_placement = staging_area_placement["workflow_placement"]["current_deployment"]["instances"][
+                instance_name
+            ]["provider_region"]
 
             function_resource_name = (
-                function_resource_name.rsplit("_", 1)[0]
+                self._config.workflow_id
+                + "-"
+                + function_name
                 + "_"
                 + actual_placement["provider"]
                 + "-"
@@ -261,13 +267,17 @@ class Workflow(Resource):
 
         result["instances"] = self._get_instances()
         result["current_instance_name"] = self._get_entry_point_instance_name()
-        result["workflow_placement"] = self._get_workflow_placement()
+
+        result["workflow_placement"] = {}
+        result["workflow_placement"]["current_deployment"] = self._get_workflow_placement()
+        result["workflow_placement"]["home_deployment"] = self._get_workflow_placement()
+
         return result
 
     def get_workflow_placement_decision_extend_staging(
         self,
         staging_area_placement: dict[str, Any],
-        previous_instances: list[dict],
+        previous_instances: dict[str, dict[str, Any]],
     ) -> dict[str, Any]:
         """
         The desired output format is explained in the `docs/design.md` file under `Workflow Placement Decision`.
@@ -277,7 +287,6 @@ class Workflow(Resource):
             previous_instances
         )
         self._extend_stage_area_workflow_placement(staging_area_placement)
-        self._update_instances(staging_area_placement)
         return staging_area_placement
 
     def _get_entry_point_from_previous_instances(self, previous_instances: list[dict]) -> str:
@@ -285,10 +294,3 @@ class Workflow(Resource):
             if "instance_name" in instance and instance["instance_name"].split(":")[1] == "entry_point":
                 return instance["instance_name"]
         raise RuntimeError("No entry point instance found, this should not happen")
-
-    def _update_instances(self, staging_area_placement: dict[str, Any]) -> None:
-        for instance in staging_area_placement["instances"]:
-            function_identifier = staging_area_placement["workflow_placement"][instance["instance_name"]][
-                "function_identifier"
-            ]
-            instance["function_name"] = function_identifier.split(":")[-1]

@@ -486,3 +486,6 @@ class IntegrationTestRemoteClient(RemoteClient):  # pylint: disable=too-many-pub
         cursor.execute(f"UPDATE {table_name} SET value=? WHERE key=?", (value, key))
         conn.commit()
         conn.close()
+
+    def get_current_provider_region(self) -> str:
+        return "test_provider-rivendell"

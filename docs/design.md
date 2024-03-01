@@ -273,40 +273,42 @@ The dictionary contains the following information:
 {
   "run_id": "test_run_id",
   "workflow_placement": {
-    "function_name:entry_point:0": {
-      "provider_region": {
-        "provider": "aws",
-        "region": "region"
+    "current_deployment": {
+      "instances": {
+        "function_name:entry_point:0": {
+          "provider_region": {
+            "provider": "aws",
+            "region": "region"
+          },
+          "identifier": "test_identifier",
+          "function_identifier": "test_function_identifier"
+        },
+        "function_name_2:function_name_0_0:1": {
+          "provider_region": {
+            "provider": "aws",
+            "region": "region"
+          },
+          "identifier": "test_identifier",
+          "function_identifier": "test_function_identifier"
+        },
       },
-      "identifier": "test_identifier",
-      "function_identifier": "test_function_identifier"
     },
-    "function_name_2:function_name_0_0:1": {
-      "provider_region": {
-        "provider": "aws",
-        "region": "region"
-      },
-      "identifier": "test_identifier",
-      "function_identifier": "test_function_identifier"
-    }
   },
   "current_instance_name": "function_name:entry_point:0",
-  "instances": [
-    {
+  "instances": {
+    "workflow_id-function_name:entry_point:0": {
       "instance_name": "workflow_id-function_name:entry_point:0",
-      "function_name": "workflow_id-function_name_provider-region",
       "succeeding_instances": ["function_name_2:function_name_0_0:1"],
       "preceding_instances": [],
       "dependent_sync_predecessors": [],
     },
-    {
+    "function_name_2:function_name_0_0:1": {
       "instance_name": "function_name_2:function_name_0_0:1",
-      "function_name": "workflow_id-function_name_2_provider-region",
       "succeeding_instances": [],
       "preceding_instances": ["function_name:entry_point:0"],
       "dependent_sync_predecessors": [],
     }
-  ]
+  }
 }
 ```
 

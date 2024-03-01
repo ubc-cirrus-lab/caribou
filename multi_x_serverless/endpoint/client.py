@@ -1,6 +1,7 @@
 import json
 import logging
 from typing import Any, Optional
+import random
 
 import botocore.exceptions
 
@@ -28,6 +29,7 @@ class Client:
     def __init__(self, workflow_id: Optional[str] = None) -> None:
         self._workflow_id = workflow_id
         self._endpoints = Endpoints()
+        self._home_region_threshold = 0.1  # 10% of the time run in home region
 
     def run(self, input_data: Optional[str] = None) -> None:
         if self._workflow_id is None:
@@ -47,9 +49,15 @@ class Client:
 
         workflow_placement_decision = json.loads(result)
 
-        provider, region, identifier = self.__get_initial_node_workflow_placement_decision(workflow_placement_decision)
+        send_to_home_region = random.random() < self._home_region_threshold
 
-        json_payload = json.dumps(input_data)
+        provider, region, identifier = self.__get_initial_node_workflow_placement_decision(
+            workflow_placement_decision, send_to_home_region
+        )
+
+        wrapped_input_data = {"input_data": input_data, "send_to_home_region": send_to_home_region}
+
+        json_payload = json.dumps(wrapped_input_data)
 
         RemoteClientFactory.get_remote_client(provider, region).invoke_function(
             message=json_payload,
@@ -58,11 +66,19 @@ class Client:
         )
 
     def __get_initial_node_workflow_placement_decision(
-        self, workflow_placement_decision: dict[str, Any]
+        self, workflow_placement_decision: dict[str, Any], send_to_home_region: bool
     ) -> tuple[str, str, str]:
         initial_instance_name = workflow_placement_decision["current_instance_name"]
-        provider_region = workflow_placement_decision["workflow_placement"][initial_instance_name]["provider_region"]
-        identifier = workflow_placement_decision["workflow_placement"][initial_instance_name]["identifier"]
+        if send_to_home_region:
+            key = "home_deployment"
+        else:
+            key = "current_deployment"
+        provider_region = workflow_placement_decision["workflow_placement"][key]["instances"][initial_instance_name][
+            "provider_region"
+        ]
+        identifier = workflow_placement_decision["workflow_placement"][key]["instances"][initial_instance_name][
+            "identifier"
+        ]
         return provider_region["provider"], provider_region["region"], identifier
 
     def list_workflows(self) -> None:

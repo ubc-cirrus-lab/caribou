@@ -21,6 +21,10 @@ class RemoteClient(ABC):  # pylint: disable=too-many-public-methods
         additional_docker_commands: Optional[list[str]] = None,
     ) -> str:
         raise NotImplementedError()
+    
+    @abstractmethod
+    def get_current_provider_region(self) -> str:
+        raise NotImplementedError()
 
     @abstractmethod
     def resource_exists(self, resource: Resource) -> bool:

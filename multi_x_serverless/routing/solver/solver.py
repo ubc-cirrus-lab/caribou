@@ -185,10 +185,10 @@ class Solver(ABC):  # pylint: disable=too-many-instance-attributes
     def get_dag_representation(self) -> DAG:
         nodes = [
             {k: v for k, v in node.items() if k not in ("succeeding_instances", "preceding_instances")}
-            for node in self._workflow_config.instances
+            for node in self._workflow_config.instances.values()
         ]
         dag = DAG(nodes)
-        for instance in self._workflow_config.instances:
+        for instance in self._workflow_config.instances.values():
             for succeeding_instance in instance["succeeding_instances"]:
                 dag.add_edge(instance["instance_name"], succeeding_instance)
         return dag
@@ -225,7 +225,7 @@ class Solver(ABC):  # pylint: disable=too-many-instance-attributes
         average_edge_weights = np.zeros((3, len(self._topological_order), len(self._topological_order)))
         tail_edge_weights = np.zeros((3, len(self._topological_order), len(self._topological_order)))
 
-        for instance in self._workflow_config.instances:
+        for instance in self._workflow_config.instances.values():
             instance_index = self._dag.value_to_index(instance["instance_name"])
             deployment[instance_index] = region_index
 

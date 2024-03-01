@@ -15,8 +15,6 @@ class FunctionInstance:
         """
         return {
             "instance_name": self.name,
-            "function_name": self.function_resource_name,
-            "regions_and_providers": self.regions_and_providers,
         }
 
     def __repr__(self) -> str:
