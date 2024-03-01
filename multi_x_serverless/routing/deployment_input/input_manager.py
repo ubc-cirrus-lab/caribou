@@ -93,7 +93,7 @@ class InputManager:
         # Convert the instance indices to their names
         from_instance_name = self._instance_indexer.index_to_value(from_instance_index)
         to_instance_name = self._instance_indexer.index_to_value(to_instance_index)
-
+        
         # If not, retrieve the value from the workflow loader
         invocation_probability = self._workflow_loader.get_invocation_probability(from_instance_name, to_instance_name)
         self._invocation_probability_cache[key] = invocation_probability
