@@ -64,7 +64,6 @@ class TestFormatter(unittest.TestCase):
 
         output = self.formatter.format(results, index_to_instance_name, index_to_region_provider_name)
 
-        print(output)
         self.assertEqual(output, expected_output)
 
 
