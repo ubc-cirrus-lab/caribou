@@ -20,7 +20,7 @@ class DeploymentMetricsCalculator(ABC):
         self._input_manager: InputManager = input_manager
 
         # Set up the DAG structure and get the prerequisites and successor dictionaries
-        dag: DAG = self._get_dag_representation(workflow_config.instances, instance_indexer)
+        dag: DAG = DAG(workflow_config.instances, instance_indexer)
         self._prerequisites_dictionary = dag.get_prerequisites_dict()
         self._successor_dictionary = dag.get_preceeding_dict()
 
@@ -165,14 +165,3 @@ class DeploymentMetricsCalculator(ABC):
 
         invocation_probability = self._input_manager.get_invocation_probability(from_instance_index, to_instance_index)
         return random.random() < invocation_probability
-
-    def _get_dag_representation(self, workflow_config_instances: list[dict], instance_indexer: InstanceIndexer) -> DAG:
-        nodes = [
-            {k: v for k, v in node.items() if k not in ("succeeding_instances", "preceding_instances")}
-            for node in workflow_config_instances
-        ]
-        dag = DAG(nodes, instance_indexer)
-        for instance in workflow_config_instances:
-            for succeeding_instance in instance["succeeding_instances"]:
-                dag.add_edge(instance["instance_name"], succeeding_instance)
-        return dag

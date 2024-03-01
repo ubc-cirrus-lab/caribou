@@ -6,15 +6,23 @@ from multi_x_serverless.routing.models.instance_indexer import InstanceIndexer
 
 
 class DAG:
-    def __init__(self, nodes: list[dict], instance_indexer: InstanceIndexer) -> None:
+    def __init__(self, workflow_config_instances: list[dict], instance_indexer: InstanceIndexer) -> None:
         super().__init__()
-        self._nodes: list[dict] = nodes
-        self._num_nodes: int = len(nodes)
+        self._nodes: list[dict] = [
+            {k: v for k, v in node.items() if k not in ("succeeding_instances", "preceding_instances")}
+            for node in workflow_config_instances
+        ]
+
+        self._num_nodes: int = len(self._nodes)
         self._adj_matrix: np.ndarray = np.zeros((self.num_nodes, self.num_nodes), dtype=int)
+
+        for instance in workflow_config_instances:
+            for succeeding_instance in instance["succeeding_instances"]:
+                self._add_edge(instance["instance_name"], succeeding_instance)
 
         self._value_indices: dict[str, int] = instance_indexer.get_value_indices()
 
-    def add_edge(self, from_node: str, to_node: str) -> None:
+    def _add_edge(self, from_node: str, to_node: str) -> None:
         if from_node in self._value_indices and to_node in self._value_indices:
             from_index: int = self._value_indices[from_node]
             to_index: int = self._value_indices[to_node]
