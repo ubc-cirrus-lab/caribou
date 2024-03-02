@@ -5,6 +5,9 @@ WORKFLOW_PLACEMENT_DECISION_TABLE = "workflow_placement_decision_table"
 # Solver Tables
 SOLVER_UPDATE_CHECKER_RESOURCE_TABLE = "solver_update_checker_resources_table"
 
+# Solver Update Checker Tables
+SOLVER_UPDATE_CHECKER_WORKFLOW_INFO_TABLE = "solver_update_checker_workflow_info_table"
+
 # Deployment Manager Tables
 DEPLOYMENT_MANAGER_RESOURCE_TABLE = "deployment_manager_resources_table"
 
