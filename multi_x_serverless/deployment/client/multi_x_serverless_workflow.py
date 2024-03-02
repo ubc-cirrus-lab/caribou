@@ -126,7 +126,7 @@ class MultiXServerlessWorkflow:
             self._successor_index += 1
 
             # However, for the sync nodes we still need to inform the platform that the function has finished.
-            self._inform_sync_node_of_conditional_non_execution(workflow_placement_decision, successor_instance_name)
+            self._inform_sync_node_of_conditional_non_execution(workflow_placement_decision, current_instance_name)
             return
 
         # Wrap the payload and add the workflow_placement decision
@@ -169,10 +169,10 @@ class MultiXServerlessWorkflow:
         )
 
     def _inform_sync_node_of_conditional_non_execution(
-        self, workflow_placement_decision: dict[str, Any], successor_instance_name: str
+        self, workflow_placement_decision: dict[str, Any], current_instance_name: str
     ) -> None:
         for instance in workflow_placement_decision["instances"]:
-            if instance["instance_name"] == successor_instance_name and "dependent_sync_predecessors" in instance:
+            if instance["instance_name"] == current_instance_name and "dependent_sync_predecessors" in instance:
                 for predecessor_and_sync in instance["dependent_sync_predecessors"]:
                     predecessor = predecessor_and_sync[0]
                     sync_node = predecessor_and_sync[1]
@@ -192,6 +192,13 @@ class MultiXServerlessWorkflow:
                         sync_node_name=sync_node,
                         workflow_instance_id=workflow_placement_decision["run_id"],
                         direct_call=False,
+                    )
+
+                    logger.info(
+                        "INFORMING_SYNC_NODE: RUN_ID (%s): INSTANCE (%s) informing SYNC_NODE (%s) of non-execution",
+                        workflow_placement_decision["run_id"],
+                        predecessor,
+                        sync_node,
                     )
 
                     # If all the predecessors have been reached and any of them have directly reached the sync node
@@ -495,7 +502,7 @@ class MultiXServerlessWorkflow:
                         raise RuntimeError("Could not get workflow_placement decision from message")
                     wrapper.workflow_placement_decision = argument["workflow_placement_decision"]  # type: ignore
                     if "payload" not in argument:
-                        return func()
+                        return func({})
                     payload = argument.get("payload", {})
 
                 logger.info(

@@ -177,10 +177,13 @@ class Workflow(Resource):
             visited = set()
         if path is None:
             path = []
+        edge_visited = set()
         visited.add(start_instance)
         path = path + [start_instance]
         paths: list[list[str]] = []
         for edge in self._edges:
+            if edge in edge_visited:
+                continue
             if edge[0] == start_instance:
                 next_instance = edge[1]
                 if next_instance.split(":")[1] == "sync":
@@ -188,6 +191,7 @@ class Workflow(Resource):
                     paths.append(path)
                 elif next_instance not in visited:
                     paths.extend(self._find_all_paths_to_any_sync_node(next_instance, visited, list(path)))
+            edge_visited.add(edge)
         visited.remove(start_instance)
         return paths
 

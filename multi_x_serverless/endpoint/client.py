@@ -108,12 +108,12 @@ class Client:
 
         self._endpoints.get_deployment_manager_client().remove_key(DEPLOYMENT_MANAGER_RESOURCE_TABLE, self._workflow_id)
 
-        self._endpoints.get_deployment_manager_client().remove_key(
-            MULTI_X_SERVERLESS_WORKFLOW_IMAGES_TABLE, self._workflow_id
+        self._endpoints.get_data_collector_client().remove_key(
+            WORKFLOW_INSTANCE_TABLE, self._workflow_id
         )
 
-        self._endpoints.get_data_collector_client().remove_key(
-            WORKFLOW_INSTANCE_TABLE, self._workflow_id.replace(".", "_")
+        self._endpoints.get_deployment_manager_client().remove_key(
+            MULTI_X_SERVERLESS_WORKFLOW_IMAGES_TABLE, self._workflow_id.replace(".", "_")
         )
 
         print(f"Removed workflow {self._workflow_id}")
