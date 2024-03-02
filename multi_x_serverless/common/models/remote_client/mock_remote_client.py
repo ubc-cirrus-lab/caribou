@@ -66,7 +66,9 @@ class MockRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
     def get_key_present_in_table(self, table_name: str, key: str) -> bool:
         pass
 
-    def set_predecessor_reached(self, predecessor_name: str, sync_node_name: str, workflow_instance_id: str) -> int:
+    def set_predecessor_reached(
+        self, predecessor_name: str, sync_node_name: str, workflow_instance_id: str, direct_call: bool
+    ) -> list[bool]:
         pass
 
     def get_all_values_from_table(self, table_name: str) -> dict:

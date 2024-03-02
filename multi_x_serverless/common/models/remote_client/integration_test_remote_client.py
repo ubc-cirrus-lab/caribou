@@ -93,6 +93,7 @@ class IntegrationTestRemoteClient(RemoteClient):  # pylint: disable=too-many-pub
                     predecessor_name TEXT,
                     sync_node_name TEXT,
                     workflow_instance_id TEXT,
+                    direct_call INTEGER,
                     PRIMARY KEY (predecessor_name, sync_node_name, workflow_instance_id)
                 )
             """
@@ -249,21 +250,23 @@ class IntegrationTestRemoteClient(RemoteClient):  # pylint: disable=too-many-pub
         conn.close()
         return result is not None
 
-    def set_predecessor_reached(self, predecessor_name: str, sync_node_name: str, workflow_instance_id: str) -> int:
+    def set_predecessor_reached(
+        self, predecessor_name: str, sync_node_name: str, workflow_instance_id: str, direct_call: bool
+    ) -> list[bool]:
         conn = self._db_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO predecessor_reached (predecessor_name, sync_node_name, workflow_instance_id) VALUES (?, ?, ?)",
-            (predecessor_name, sync_node_name, workflow_instance_id),
+            "INSERT INTO predecessor_reached (predecessor_name, sync_node_name, workflow_instance_id, direct_call) VALUES (?, ?, ?, ?)",
+            (predecessor_name, sync_node_name, workflow_instance_id, int(direct_call)),
         )
         cursor.execute(
-            "SELECT COUNT(*) FROM predecessor_reached WHERE sync_node_name=? AND workflow_instance_id=?",
+            "SELECT direct_call FROM predecessor_reached WHERE sync_node_name=? AND workflow_instance_id=?",
             (sync_node_name, workflow_instance_id),
         )
         result = cursor.fetchone()
         conn.commit()
         conn.close()
-        return result[0]
+        return [bool(res) for res in result]
 
     def get_all_values_from_table(self, table_name: str) -> dict:
         conn = self._db_connection()

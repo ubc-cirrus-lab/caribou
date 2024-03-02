@@ -187,13 +187,16 @@ class MultiXServerlessWorkflow:
                             expected_counter = len(instance["preceding_instances"])
                             break
 
-                    counter = RemoteClientFactory.get_remote_client(provider, region).set_predecessor_reached(
+                    reached_states = RemoteClientFactory.get_remote_client(provider, region).set_predecessor_reached(
                         predecessor_name=predecessor,
                         sync_node_name=sync_node,
                         workflow_instance_id=workflow_placement_decision["run_id"],
+                        direct_call=False,
                     )
 
-                    if counter == expected_counter:
+                    # If all the predecessors have been reached and any of them have directly reached the sync node
+                    # then we can call the sync node
+                    if len(reached_states) == expected_counter and any(reached_states):
                         successor_workflow_placement_decision = (
                             self.get_successor_workflow_placement_decision_dictionary(
                                 workflow_placement_decision, sync_node
