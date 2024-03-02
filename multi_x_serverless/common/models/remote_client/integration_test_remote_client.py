@@ -256,7 +256,7 @@ class IntegrationTestRemoteClient(RemoteClient):  # pylint: disable=too-many-pub
         conn = self._db_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO predecessor_reached (predecessor_name, sync_node_name, workflow_instance_id, direct_call) VALUES (?, ?, ?, ?)",
+            "INSERT INTO predecessor_reached (predecessor_name, sync_node_name, workflow_instance_id, direct_call) VALUES (?, ?, ?, ?)",  # pylint: disable=line-too-long
             (predecessor_name, sync_node_name, workflow_instance_id, int(direct_call)),
         )
         cursor.execute(

@@ -396,7 +396,7 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
         ) as mock_factory_class:
 
             @self.workflow.serverless_function(name="test_func")
-            def test_func() -> dict[str, Any]:
+            def test_func(event: dict[str, Any]) -> dict[str, Any]:
                 # Call invoke_serverless_function from within test_func
                 self.workflow.invoke_serverless_function(test_func)
 
@@ -471,7 +471,7 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
                     {"instance_name": "test_func", "succeeding_instances": ["test-workflow-0_0_1-test_func::"]},
                 ],
             },
-            "test-workflow-0_0_1-test_func::",
+            "test_func",
         )
 
     def test_invoke_serverless_function_json_argument(self):
@@ -856,7 +856,7 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
             "multi_x_serverless.deployment.client.multi_x_serverless_workflow.RemoteClientFactory",
             return_value=mock_remote_client_factory,
         ) as mock_factory_class:
-            mock_factory_class.get_remote_client("provider1", "region1").set_predecessor_reached.return_value = 1
+            mock_factory_class.get_remote_client("provider1", "region1").set_predecessor_reached.return_value = [True]
             mock_factory_class.get_remote_client("provider1", "region1").invoke_function.return_value = None
             self.workflow.get_successor_workflow_placement_decision = Mock(
                 return_value=("provider1", "region1", "identifier")
@@ -876,6 +876,7 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
                 predecessor_name="next_instance",
                 sync_node_name="sync_node",
                 workflow_instance_id="workflow_instance_id",
+                direct_call=False,
             )
             mock_factory_class.get_remote_client("provider1", "region1").invoke_function.assert_called_once_with(
                 message='{"workflow_placement_decision": {"current_instance_name": "not_called_instance", "run_id": "workflow_instance_id", "workflow_placement": {"not_called_instance": {"provider_region": {"provider": "provider1", "region": "region1"}}, "next_instance": {"provider_region": {"provider": "provider1", "region": "region1"}}, "sync_node": {"provider_region": {"provider": "provider1", "region": "region1"}}}, "instances": [{"instance_name": "not_called_instance", "succeeding_instances": ["next_instance"], "dependent_sync_predecessors": [["next_instance", "sync_node"]]}, {"instance_name": "next_instance", "preceding_instances": ["not_called_instance"], "successor_sync_node": "sync_node"}, {"instance_name": "sync_node", "preceding_instances": ["next_instance"]}]}}',

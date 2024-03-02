@@ -322,7 +322,7 @@ class TestWorkflow(unittest.TestCase):
         ]
 
         expected_paths = [
-            [ 
+            [
                 "small_sync_example-0_0_1-initial_function:entry_point:0",
                 "small_sync_example-0_0_1-sync_function:sync:",
             ]

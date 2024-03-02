@@ -70,22 +70,23 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
             return False
         return function is not None
 
-    def set_predecessor_reached(self, predecessor_name: str, sync_node_name: str, workflow_instance_id: str, direct_call: bool) -> list[bool]:
+    def set_predecessor_reached(
+        self, predecessor_name: str, sync_node_name: str, workflow_instance_id: str, direct_call: bool
+    ) -> list[bool]:
         client = self._client("dynamodb")
         response = client.update_item(
             TableName=SYNC_PREDECESSOR_COUNTER_TABLE,
             Key={"id": {"S": workflow_instance_id}},
-            UpdateExpression="SET #s = list_append(if_not_exists(#s, :empty_list), :new_predecessor), #d = list_append(if_not_exists(#d, :empty_list), :new_direct_call)",
-            ExpressionAttributeNames={"#s": sync_node_name, "#d": "direct_call"},
+            UpdateExpression="SET #s = list_append(if_not_exists(#s, :empty_list), :new_direct_call)",  # pylint: disable=line-too-long
+            ExpressionAttributeNames={"#s": sync_node_name},
             ExpressionAttributeValues={
-                ":new_predecessor": {"L": [{"S": predecessor_name}]}, 
                 ":empty_list": {"L": []},
-                ":new_direct_call": {"L": [{"BOOL": direct_call}]}
+                ":new_direct_call": {"L": [{"BOOL": direct_call}]},
             },
             ReturnValues="UPDATED_NEW",
         )
 
-        return [item["BOOL"] for item in response["Attributes"]["direct_call"]["L"]]
+        return [item["BOOL"] for item in response["Attributes"][sync_node_name]["L"]]
 
     def create_sync_tables(self) -> None:
         # Check if table exists
