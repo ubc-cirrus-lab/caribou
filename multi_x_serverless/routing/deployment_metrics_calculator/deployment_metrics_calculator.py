@@ -2,7 +2,7 @@ import random
 from abc import ABC, abstractmethod
 
 from multi_x_serverless.routing.deployment_input.input_manager import InputManager
-from multi_x_serverless.routing.deployment_metrics_calculator.models.dag import DAG
+from multi_x_serverless.routing.models.dag import DAG
 from multi_x_serverless.routing.models.instance_indexer import InstanceIndexer
 from multi_x_serverless.routing.models.region_indexer import RegionIndexer
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
