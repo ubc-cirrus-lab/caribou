@@ -26,12 +26,8 @@ class TestDatacenterLoader(unittest.TestCase):
     def test_init(self):
         self.assertEqual(self.loader._client, self.client)
 
-    @patch.object(
-        DatacenterLoader, "_retrieve_region_data"
-    )
-    @patch.object(
-        DatacenterLoader, "_retrieve_provider_data"
-    )
+    @patch.object(DatacenterLoader, "_retrieve_region_data")
+    @patch.object(DatacenterLoader, "_retrieve_provider_data")
     def test_setup(self, mock_retrieve_provider_data, mock_retrieve_region_data):
         mock_retrieve_region_data.return_value = self.loader._datacenter_data
         mock_retrieve_provider_data.return_value = {}

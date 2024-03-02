@@ -1,9 +1,9 @@
 from typing import Any
 
+import numpy as np
 import requests
 from bs4 import BeautifulSoup
-import numpy as np
-from scipy import stats, optimize
+from scipy import optimize, stats
 
 from multi_x_serverless.data_collector.utils.constants import CLOUD_PING
 from multi_x_serverless.data_collector.utils.latency_retriever.latency_retriever import LatencyRetriever
@@ -19,11 +19,11 @@ class AWSLatencyRetriever(LatencyRetriever):
     def _get_percentile_information(self) -> dict[str, Any]:
         percentiles = ["p_10", "p_25", "p_50", "p_75", "p_90", "p_98", "p_99"]
 
-        percentile_information = {}
+        percentile_information: dict[str, Any] = {}
         for percentile in percentiles:
             cloud_ping_url = f"{CLOUD_PING}{percentile}/timeframe/1W"
 
-            cloud_ping_page = requests.get(cloud_ping_url)
+            cloud_ping_page = requests.get(cloud_ping_url, timeout=10)
 
             soup = BeautifulSoup(cloud_ping_page.content, "html.parser")
 
@@ -45,7 +45,7 @@ class AWSLatencyRetriever(LatencyRetriever):
         headers = table.find_all("th", class_="region_title")
         columns = [header.find("em").get_text(strip=True) for header in headers]  # Skip first header
 
-        data = {}
+        data: dict[str, dict[str, float]] = {}
         rows = table.find_all("tr")[3:]  # Skip header row
         for row in rows:
             cols = row.find_all("td")
@@ -57,11 +57,10 @@ class AWSLatencyRetriever(LatencyRetriever):
         return data
 
     def get_latency_distribution(self, region_from: dict[str, Any], region_to: dict[str, Any]) -> list[float]:
-
         region_from_code = region_from["code"]
         if region_from["code"] not in self._percentile_information:
             region_from_code = region_from_code[:-1] + "1"
-        if region_from_code == "me-central-1" or region_from_code == "il-central-1":
+        if region_from_code in ["me-central-1", "il-central-1"]:
             region_from_code = "me-south-1"
         if region_from_code == "ca-west-1":
             region_from_code = "us-west-2"
@@ -72,7 +71,7 @@ class AWSLatencyRetriever(LatencyRetriever):
         region_to_code = region_to["code"]
         if region_to["code"] not in self._percentile_information[region_from_code]:
             region_to_code = region_to_code[:-1] + "1"
-        if region_to_code == "me-central-1" or region_to_code == "il-central-1":
+        if region_to_code in ["me-central-1", "il-central-1"]:
             region_to_code = "me-south-1"
         if region_to_code == "ca-west-1":
             region_to_code = "us-west-2"
@@ -82,11 +81,11 @@ class AWSLatencyRetriever(LatencyRetriever):
 
         latency_information = self._percentile_information[region_from_code][region_to_code]
 
-        log_percentiles = np.log([value for value in latency_information.values()])
+        log_percentiles = np.log(list(latency_information.values()))
 
         percentile_ranks = np.array([10, 25, 50, 75, 90, 98, 99]) / 100.0
 
-        def objective_function(params, log_percentiles, percentile_ranks):
+        def objective_function(params: list[float], log_percentiles: np.ndarray, percentile_ranks: np.ndarray) -> float:
             mu, sigma = params
             theoretical_percentiles = stats.norm.ppf(percentile_ranks, loc=mu, scale=sigma)
             return np.sum((log_percentiles - theoretical_percentiles) ** 2)

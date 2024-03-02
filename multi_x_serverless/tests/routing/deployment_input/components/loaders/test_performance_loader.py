@@ -20,9 +20,7 @@ class TestPerformanceLoader(unittest.TestCase):
     def test_init(self):
         self.assertEqual(self.loader._client, self.client)
 
-    @patch.object(
-        PerformanceLoader, "_retrieve_region_data"
-    )
+    @patch.object(PerformanceLoader, "_retrieve_region_data")
     def test_setup(self, mock_retrieve_region_data):
         mock_retrieve_region_data.return_value = self.loader._performance_data
         self.loader.setup({"aws:region1"})

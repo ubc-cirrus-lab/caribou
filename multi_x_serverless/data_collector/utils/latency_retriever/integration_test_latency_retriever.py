@@ -4,7 +4,7 @@ from multi_x_serverless.data_collector.utils.latency_retriever.latency_retriever
 
 
 class IntegrationTestLatencyRetriever(LatencyRetriever):
-    def __init__(self, utilize_tail_latency: bool = False) -> None:
+    def __init__(self) -> None:
         super().__init__()
 
         self._latency_matrix = [[10, 150, 80, 200], [150, 10, 100, 250], [80, 100, 10, 150], [200, 250, 150, 10]]

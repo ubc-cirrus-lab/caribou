@@ -34,16 +34,23 @@ class TestCarbonCalculator(unittest.TestCase):
         self.runtime_calculator.calculate_latency_distribution.return_value = np.array([1 * 3600, 2 * 3600, 3 * 3600])
         self.carbon_loader.get_transmission_carbon_intensity.return_value = (0.5, 100)
 
-        result = self.carbon_calculator.calculate_transmission_carbon_distribution("instance1", "instance2", "provider1:region1", "provider1:region2")
+        result = self.carbon_calculator.calculate_transmission_carbon_distribution(
+            "instance1", "instance2", "provider1:region1", "provider1:region2"
+        )
         expected_result = np.array([0.3, 0.6])
         np.testing.assert_array_equal(result, expected_result)
 
-
         # Now for the case of CARBON_TRANSMISSION_CARBON_METHOD is set to "latency"
-        with patch("multi_x_serverless.routing.deployment_input.components.calculators.carbon_calculator.CARBON_TRANSMISSION_CARBON_METHOD", "latency"):
-            result = self.carbon_calculator.calculate_transmission_carbon_distribution("instance1", "instance2", "provider1:region1", "provider1:region2")
+        with patch(
+            "multi_x_serverless.routing.deployment_input.components.calculators.carbon_calculator.CARBON_TRANSMISSION_CARBON_METHOD",
+            "latency",
+        ):
+            result = self.carbon_calculator.calculate_transmission_carbon_distribution(
+                "instance1", "instance2", "provider1:region1", "provider1:region2"
+            )
             expected_result = np.array([9.05, 18.05, 18.1, 27.05, 36.1, 54.1])
             np.testing.assert_array_equal(result, expected_result)
-            
+
+
 if __name__ == "__main__":
     unittest.main()

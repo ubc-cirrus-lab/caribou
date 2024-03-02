@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
 from multi_x_serverless.routing.solver.input.components.loaders.workflow_loader import WorkflowLoader
 

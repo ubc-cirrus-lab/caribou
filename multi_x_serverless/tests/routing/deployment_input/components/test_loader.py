@@ -19,7 +19,6 @@ class TestInputLoader(unittest.TestCase):
         result = self.loader._retrieve_data("table", "key")
         self.assertEqual(result, {"key": "value"})
 
-
     @patch.object(InputLoader, "_retrieve_data", return_value={"key": "value"})
     def test_retrieve_region_data(self, mock_retrieve_data):
         result = self.loader._retrieve_region_data({"provider1:region1", "provider1:region2"})

@@ -45,6 +45,6 @@ class PerformanceRetriever(DataRetriever):
                 if region_from["provider"] == Provider.INTEGRATION_TEST_PROVIDER.value:
                     return self._integration_test_latency_retriever.get_latency_distribution(region_from, region_to)
         except ValueError:
-            return -1.0
+            return []
 
-        return -1.0  # Default value, maybe a better default or an error message will be desired
+        return []

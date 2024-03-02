@@ -8,7 +8,7 @@ from multi_x_serverless.routing.workflow_config import WorkflowConfig
 class TestWorkflowLoader(unittest.TestCase):
     def setUp(self):
         self.workflow_config = MagicMock(spec=WorkflowConfig)
-        self.workflow_config.start_hops = 'start_hops'
+        self.workflow_config.start_hops = "start_hops"
         self.workflow_config.instances = [{"instance_name": "instance_1", "regions_and_providers": {"providers": {}}}]
         self.workflow_data = {
             "instance_1": {
@@ -26,9 +26,7 @@ class TestWorkflowLoader(unittest.TestCase):
                                 "provider_1:region_1": {"latency_distribution": [0.00125]},
                                 "provider_1:region_2": {"latency_distribution": [0.125]},
                             },
-                            "provider_1:region_2": {
-                                "provider_1:region_1": {"latency_distribution": [0.095]}
-                            },
+                            "provider_1:region_2": {"provider_1:region_1": {"latency_distribution": [0.095]}},
                         },
                     }
                 },
@@ -45,9 +43,7 @@ class TestWorkflowLoader(unittest.TestCase):
         self.client = Mock(spec=RemoteClient)
         self.loader = WorkflowLoader(self.client, self.workflow_config)
 
-    @patch.object(
-        WorkflowLoader, "_retrieve_workflow_data"
-    )
+    @patch.object(WorkflowLoader, "_retrieve_workflow_data")
     def test_setup(self, mock_retrieve_workflow_data):
         mock_retrieve_workflow_data.return_value = self.workflow_data
         self.loader.setup({"aws:region1"})
@@ -64,7 +60,9 @@ class TestWorkflowLoader(unittest.TestCase):
 
     def test_get_latency_distribution(self):
         self.loader._workflow_data = self.workflow_data
-        latency = self.loader.get_latency_distribution("instance_1", "instance_2", "provider_1:region_1", "provider_1:region_1")
+        latency = self.loader.get_latency_distribution(
+            "instance_1", "instance_2", "provider_1:region_1", "provider_1:region_1"
+        )
         self.assertEqual(latency, [0.00125])
 
     def test_get_data_transfer_size_distribution(self):

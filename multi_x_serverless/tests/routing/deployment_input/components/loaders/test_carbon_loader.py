@@ -22,9 +22,7 @@ class TestCarbonLoader(unittest.TestCase):
     def test_init(self):
         self.assertEqual(self.loader._client, self.client)
 
-    @patch.object(
-        CarbonLoader, "_retrieve_region_data"
-    )
+    @patch.object(CarbonLoader, "_retrieve_region_data")
     def test_setup(self, mock_retrieve_region_data):
         mock_retrieve_region_data.return_value = self.loader._carbon_data
         self.loader.setup({"aws:eu-south-1"})
