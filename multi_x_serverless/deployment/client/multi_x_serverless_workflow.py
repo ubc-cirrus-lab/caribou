@@ -126,7 +126,9 @@ class MultiXServerlessWorkflow:
             self._successor_index += 1
 
             # However, for the sync nodes we still need to inform the platform that the function has finished.
-            self._inform_sync_node_of_conditional_non_execution(workflow_placement_decision, current_instance_name)
+            self._inform_sync_node_of_conditional_non_execution(
+                workflow_placement_decision, successor_instance_name, current_instance_name
+            )
             return
 
         # Wrap the payload and add the workflow_placement decision
@@ -147,7 +149,7 @@ class MultiXServerlessWorkflow:
         if is_successor_sync_node:
             for instance in workflow_placement_decision["instances"]:
                 if instance["instance_name"] == successor_instance_name:
-                    expected_counter = len(instance["preceding_instances"])
+                    expected_counter = len(set(instance["preceding_instances"]))
                     break
 
         logger.info(
@@ -169,57 +171,68 @@ class MultiXServerlessWorkflow:
         )
 
     def _inform_sync_node_of_conditional_non_execution(
-        self, workflow_placement_decision: dict[str, Any], current_instance_name: str
+        self, workflow_placement_decision: dict[str, Any], successor_instance_name: str, current_instance_name: str
     ) -> None:
+        # If the successor is a sync node, we need to inform the platform that the function has finished.
+        if successor_instance_name.split(":", maxsplit=2)[1] == "sync":
+            self._inform_and_invoke_sync_node(
+                workflow_placement_decision, successor_instance_name, current_instance_name
+            )
+
+        # If the successor has dependent sync predecessors, we need to inform the platform that the function has finished.
         for instance in workflow_placement_decision["instances"]:
-            if instance["instance_name"] == current_instance_name and "dependent_sync_predecessors" in instance:
+            if instance["instance_name"] == successor_instance_name and "dependent_sync_predecessors" in instance:
                 for predecessor_and_sync in instance["dependent_sync_predecessors"]:
                     predecessor = predecessor_and_sync[0]
                     sync_node = predecessor_and_sync[1]
 
-                    provider, region, identifier = self.get_successor_workflow_placement_decision(
-                        sync_node, workflow_placement_decision
-                    )
-
-                    expected_counter = -1
-                    for instance in workflow_placement_decision["instances"]:
-                        if instance["instance_name"] == sync_node:
-                            expected_counter = len(instance["preceding_instances"])
-                            break
-
-                    reached_states = RemoteClientFactory.get_remote_client(provider, region).set_predecessor_reached(
-                        predecessor_name=predecessor,
-                        sync_node_name=sync_node,
-                        workflow_instance_id=workflow_placement_decision["run_id"],
-                        direct_call=False,
-                    )
-
-                    logger.info(
-                        "INFORMING_SYNC_NODE: RUN_ID (%s): INSTANCE (%s) informing SYNC_NODE (%s) of non-execution",
-                        workflow_placement_decision["run_id"],
-                        predecessor,
-                        sync_node,
-                    )
-
-                    # If all the predecessors have been reached and any of them have directly reached the sync node
-                    # then we can call the sync node
-                    if len(reached_states) == expected_counter and any(reached_states):
-                        successor_workflow_placement_decision = (
-                            self.get_successor_workflow_placement_decision_dictionary(
-                                workflow_placement_decision, sync_node
-                            )
-                        )
-                        payload_wrapper = {}
-                        payload_wrapper["workflow_placement_decision"] = successor_workflow_placement_decision
-                        json_payload = json.dumps(payload_wrapper)
-
-                        RemoteClientFactory.get_remote_client(provider, region).invoke_function(
-                            message=json_payload,
-                            identifier=identifier,
-                            workflow_instance_id=workflow_placement_decision["run_id"],
-                            sync=False,
-                        )
+                    self._inform_and_invoke_sync_node(workflow_placement_decision, sync_node, predecessor)
                 break
+
+    def _inform_and_invoke_sync_node(
+        self, workflow_placement_decision: dict[str, Any], successor_instance_name: str, predecessor_instance_name: str
+    ) -> None:
+        provider, region, identifier = self.get_successor_workflow_placement_decision(
+            successor_instance_name, workflow_placement_decision
+        )
+
+        expected_counter = -1
+        for instance in workflow_placement_decision["instances"]:
+            if instance["instance_name"] == successor_instance_name:
+                expected_counter = len(set(instance["preceding_instances"]))
+                break
+
+        reached_states = RemoteClientFactory.get_remote_client(provider, region).set_predecessor_reached(
+            predecessor_name=predecessor_instance_name,
+            sync_node_name=successor_instance_name,
+            workflow_instance_id=workflow_placement_decision["run_id"],
+            direct_call=False,
+        )
+
+        logger.info(
+            "INFORMING_SYNC_NODE: RUN_ID (%s): INSTANCE (%s) informing SYNC_NODE (%s) of non-execution",
+            workflow_placement_decision["run_id"],
+            predecessor_instance_name,
+            successor_instance_name,
+        )
+
+        # If all the predecessors have been reached and any of them have directly reached the sync node
+        # then we can call the sync node
+
+        if len(reached_states) == expected_counter and any(reached_states):
+            successor_workflow_placement_decision = self.get_successor_workflow_placement_decision_dictionary(
+                workflow_placement_decision, successor_instance_name
+            )
+            payload_wrapper = {}
+            payload_wrapper["workflow_placement_decision"] = successor_workflow_placement_decision
+            json_payload = json.dumps(payload_wrapper)
+
+            RemoteClientFactory.get_remote_client(provider, region).invoke_function(
+                message=json_payload,
+                identifier=identifier,
+                workflow_instance_id=workflow_placement_decision["run_id"],
+                sync=False,
+            )
 
     def get_successor_workflow_placement_decision(
         self, successor_instance_name: str, workflow_placement_decision: dict[str, Any]
