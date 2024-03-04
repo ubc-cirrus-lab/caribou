@@ -214,10 +214,10 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         original_region = parts[0].split(".")[3]
         original_image_name = parts[1]
 
-        new_region = self._client("ecr").meta.region_name
+        ecr_client = self._client("ecr")
+        new_region = ecr_client.meta.region_name
         new_image_name = original_image_name.replace(original_region, new_region)
 
-        ecr_client = self._client("ecr")
         # Assume AWS CLI is configured. Customize these commands based on your AWS setup.
         repository_name = new_image_name.split(":")[0]
         try:

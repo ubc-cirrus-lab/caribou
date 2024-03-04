@@ -471,6 +471,7 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
                     {"instance_name": "test_func", "succeeding_instances": ["test-workflow-0_0_1-test_func::"]},
                 ],
             },
+            "test-workflow-0_0_1-test_func::",
             "test_func",
         )
 
@@ -866,23 +867,17 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
             )
 
             self.workflow._inform_sync_node_of_conditional_non_execution(
-                workflow_placement_decision, "not_called_instance"
+                workflow_placement_decision, "not_called_instance:sync:", "current_node::"
             )
 
             mock_factory_class.get_remote_client.assert_called_with("provider1", "region1")
             mock_factory_class.get_remote_client(
                 "provider1", "region1"
             ).set_predecessor_reached.assert_called_once_with(
-                predecessor_name="next_instance",
-                sync_node_name="sync_node",
+                predecessor_name="current_node::",
+                sync_node_name="not_called_instance:sync:",
                 workflow_instance_id="workflow_instance_id",
                 direct_call=False,
-            )
-            mock_factory_class.get_remote_client("provider1", "region1").invoke_function.assert_called_once_with(
-                message='{"workflow_placement_decision": {"current_instance_name": "not_called_instance", "run_id": "workflow_instance_id", "workflow_placement": {"not_called_instance": {"provider_region": {"provider": "provider1", "region": "region1"}}, "next_instance": {"provider_region": {"provider": "provider1", "region": "region1"}}, "sync_node": {"provider_region": {"provider": "provider1", "region": "region1"}}}, "instances": [{"instance_name": "not_called_instance", "succeeding_instances": ["next_instance"], "dependent_sync_predecessors": [["next_instance", "sync_node"]]}, {"instance_name": "next_instance", "preceding_instances": ["not_called_instance"], "successor_sync_node": "sync_node"}, {"instance_name": "sync_node", "preceding_instances": ["next_instance"]}]}}',
-                identifier="identifier",
-                workflow_instance_id="workflow_instance_id",
-                sync=False,
             )
 
 

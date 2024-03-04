@@ -179,7 +179,8 @@ class MultiXServerlessWorkflow:
                 workflow_placement_decision, successor_instance_name, current_instance_name
             )
 
-        # If the successor has dependent sync predecessors, we need to inform the platform that the function has finished.
+        # If the successor has dependent sync predecessors,
+        # we need to inform the platform that the function has finished.
         for instance in workflow_placement_decision["instances"]:
             if instance["instance_name"] == successor_instance_name and "dependent_sync_predecessors" in instance:
                 for predecessor_and_sync in instance["dependent_sync_predecessors"]:
