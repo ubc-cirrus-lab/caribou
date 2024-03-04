@@ -15,7 +15,7 @@ from multi_x_serverless.routing.models.region_indexer import RegionIndexer
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
 
-class InputManager:
+class InputManager:  # pylint: disable=too-many-instance-attributes
     _region_indexer: RegionIndexer
     _instance_indexer: InstanceIndexer
     _execution_distribution_cache: dict[str, tuple[np.ndarray, np.ndarray, np.ndarray]]
@@ -133,7 +133,8 @@ class InputManager:
         to_region_index: int,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
-        Return the transmission cost, carbon, and runtime sample distribution of the transmission between the two instances (while taking into account regions).
+        Return the transmission cost, carbon, and runtime sample distribution
+        of the transmission between the two instances (while taking into account regions).
         """
         # Check if the value is already in the cache
         key = f"{from_instance_index}_{to_instance_index}_{from_region_index}_{to_region_index}"

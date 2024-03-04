@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import Mock
 
-from multi_x_serverless.routing.solver.input.components.calculators.runtime_calculator import RuntimeCalculator
+from multi_x_serverless.routing.deployment_input.components.calculators.runtime_calculator import RuntimeCalculator
 
 
 class TestRuntimeCalculator(unittest.TestCase):

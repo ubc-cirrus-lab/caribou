@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any
 
 from multi_x_serverless.common.constants import (
     SOLVER_INPUT_ARCHITECTURE_DEFAULT,

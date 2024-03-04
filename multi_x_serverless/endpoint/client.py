@@ -13,10 +13,16 @@ from multi_x_serverless.common.constants import (
 from multi_x_serverless.common.models.endpoints import Endpoints
 from multi_x_serverless.common.models.remote_client.aws_remote_client import AWSRemoteClient
 from multi_x_serverless.common.models.remote_client.remote_client_factory import RemoteClientFactory
-from multi_x_serverless.routing.solver.bfs_fine_grained_solver import BFSFineGrainedSolver
-from multi_x_serverless.routing.solver.coarse_grained_solver import CoarseGrainedSolver
-from multi_x_serverless.routing.solver.solver import Solver
-from multi_x_serverless.routing.solver.stochastic_heuristic_descent_solver import StochasticHeuristicDescentSolver
+from multi_x_serverless.routing.deployment_algorithms.coarse_grained_deployment_algorithm import (
+    CoarseGrainedDeploymentAlgorithm,
+)
+from multi_x_serverless.routing.deployment_algorithms.deployment_algorithm import DeploymentAlgorithm
+from multi_x_serverless.routing.deployment_algorithms.fine_grained_deployment_algorithm import (
+    FineGrainedDeploymentAlgorithm,
+)
+from multi_x_serverless.routing.deployment_algorithms.stochastic_heuristic_deployment_algorithm import (
+    StochasticHeuristicDeploymentAlgorithm,
+)
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
 logger = logging.getLogger(__name__)
@@ -166,18 +172,18 @@ class Client:
 
         workflow_config_instance = WorkflowConfig(workflow_config)
 
-        solver_instance: Optional[Solver] = None
+        solver_instance: Optional[DeploymentAlgorithm] = None
 
         if solver is None or solver == "coarse-grained":
-            solver_instance = CoarseGrainedSolver(workflow_config_instance)
+            solver_instance = CoarseGrainedDeploymentAlgorithm(workflow_config_instance)
         elif solver == "fine-grained":
-            solver_instance = BFSFineGrainedSolver(workflow_config_instance)
+            solver_instance = FineGrainedDeploymentAlgorithm(workflow_config_instance)
         elif solver == "heuristic":
-            solver_instance = StochasticHeuristicDescentSolver(workflow_config_instance)
+            solver_instance = StochasticHeuristicDeploymentAlgorithm(workflow_config_instance)
         else:
             raise ValueError(f"Solver {solver} not supported")
 
         if solver_instance is None:
             raise RuntimeError("Solver instance is None")
 
-        solver_instance.solve()
+        solver_instance.run()

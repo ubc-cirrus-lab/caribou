@@ -1,9 +1,9 @@
 import unittest
 from unittest.mock import Mock
-from multi_x_serverless.routing.solver.input.components.calculators.runtime_calculator import RuntimeCalculator
-from multi_x_serverless.routing.solver.input.components.loaders.datacenter_loader import DatacenterLoader
-from multi_x_serverless.routing.solver.input.components.loaders.workflow_loader import WorkflowLoader
-from multi_x_serverless.routing.solver.input.components.calculators.cost_calculator import CostCalculator
+from multi_x_serverless.routing.deployment_input.components.calculators.runtime_calculator import RuntimeCalculator
+from multi_x_serverless.routing.deployment_input.components.loaders.datacenter_loader import DatacenterLoader
+from multi_x_serverless.routing.deployment_input.components.loaders.workflow_loader import WorkflowLoader
+from multi_x_serverless.routing.deployment_input.components.calculators.cost_calculator import CostCalculator
 
 
 class TestCostCalculator(unittest.TestCase):
