@@ -100,9 +100,12 @@ class TestWorkflow(unittest.TestCase):
         workflow_config = self.workflow.get_workflow_config()
         self.assertIsInstance(workflow_config, WorkflowConfig)
         self.assertEqual(
-            workflow_config._workflow_config["instances"][0]["succeeding_instances"], ["function_instance_2::"]
+            workflow_config._workflow_config["instances"]["function_instance_1::"]["succeeding_instances"],
+            ["function_instance_2::"],
         )
-        self.assertEqual(workflow_config._workflow_config["instances"][0]["preceding_instances"], [])
+        self.assertEqual(
+            workflow_config._workflow_config["instances"]["function_instance_1::"]["preceding_instances"], []
+        )
 
     def test_get_instance_description_error_no_config(self):
         self.workflow._config = None
@@ -225,54 +228,6 @@ class TestWorkflow(unittest.TestCase):
         # Assert that the result matches the expected result
         self.assertEqual(result, expected_result)
 
-    def test_update_instances(self):
-        staging_area_placement = {
-            "workflow_placement": {
-                "function_instance_1::": {
-                    "provider_region": {"provider": "provider2", "region": "region2"},
-                    "function_identifier": "function_resource_1_provider2-region2",
-                },
-                "function_instance_2::": {
-                    "provider_region": {"provider": "provider2", "region": "region2"},
-                    "function_identifier": "function_resource_2_provider2-region2",
-                },
-            },
-            "instances": [
-                {
-                    "instance_name": "function_instance_1::",
-                    "function_name": "function_resource_1_provider1-region1",
-                },
-                {
-                    "instance_name": "function_instance_2::",
-                    "function_name": "function_resource_2_provider1-region1",
-                },
-            ],
-        }
-        expected_output = {
-            "workflow_placement": {
-                "function_instance_1::": {
-                    "provider_region": {"provider": "provider2", "region": "region2"},
-                    "function_identifier": "function_resource_1_provider2-region2",
-                },
-                "function_instance_2::": {
-                    "provider_region": {"provider": "provider2", "region": "region2"},
-                    "function_identifier": "function_resource_2_provider2-region2",
-                },
-            },
-            "instances": [
-                {
-                    "instance_name": "function_instance_1::",
-                    "function_name": "function_resource_1_provider2-region2",
-                },
-                {
-                    "instance_name": "function_instance_2::",
-                    "function_name": "function_resource_2_provider2-region2",
-                },
-            ],
-        }
-        self.workflow._update_instances(staging_area_placement)
-        self.assertEqual(staging_area_placement, expected_output)
-
     def test_find_all_paths_to_any_sync_node(self):
         self.workflow._edges = [
             ("node1:test:1", "node2:test2:2"),
@@ -358,11 +313,14 @@ class TestWorkflow(unittest.TestCase):
 
         # Define the expected result
         expected_result = {
-            "function1": {
-                "identifier": "topic1",
-                "provider_region": "region1",
-                "function_identifier": "identifier1",
+            "instances": {
+                "function1": {
+                    "identifier": "topic1",
+                    "provider_region": "region1",
+                    "function_identifier": "identifier1",
+                }
             },
+            "metrics": {},
         }
 
         # Assert that the result matches the expected result
@@ -386,7 +344,16 @@ class TestWorkflow(unittest.TestCase):
         # Define the input
         staging_area_placement = {
             "workflow_placement": {
-                "instance1": {},
+                "current_deployment": {
+                    "instances": {
+                        "instance1": {
+                            "provider_region": {
+                                "provider": "provider1",
+                                "region": "region1",
+                            },
+                        },
+                    }
+                }
             },
         }
 
@@ -396,11 +363,19 @@ class TestWorkflow(unittest.TestCase):
         # Define the expected result
         expected_result = {
             "workflow_placement": {
-                "instance1": {
-                    "identifier": "topic1",
-                    "function_identifier": "identifier1",
+                "current_deployment": {
+                    "instances": {
+                        "instance1": {
+                            "function_identifier": "identifier1",
+                            "identifier": "topic1",
+                            "provider_region": {
+                                "provider": "provider1",
+                                "region": "region1",
+                            },
+                        },
+                    }
                 },
-            },
+            }
         }
 
         # Assert that the result matches the expected result
@@ -409,19 +384,22 @@ class TestWorkflow(unittest.TestCase):
     def test_get_function_instance_to_resource_name(self):
         # Define the input
         staging_area_placement = {
-            "instances": [
-                {
-                    "instance_name": "instance1",
-                    "function_name": "function1",
-                },
-            ],
-            "workflow_placement": {
+            "instances": {
                 "instance1": {
-                    "provider_region": {
-                        "provider": "provider1",
-                        "region": "region1",
-                    },
+                    "instance_name": "instance1",
                 },
+            },
+            "workflow_placement": {
+                "current_deployment": {
+                    "instances": {
+                        "instance1": {
+                            "provider_region": {
+                                "provider": "provider1",
+                                "region": "region1",
+                            },
+                        },
+                    }
+                }
             },
         }
 
@@ -430,7 +408,7 @@ class TestWorkflow(unittest.TestCase):
 
         # Define the expected result
         expected_result = {
-            "instance1": "function1_provider1-region1",
+            "instance1": "instance1_provider1-region1",
         }
 
         # Assert that the result matches the expected result
@@ -469,7 +447,7 @@ class TestWorkflow(unittest.TestCase):
         expected_result = {
             "instances": "instances",
             "current_instance_name": "entry_point_instance_name",
-            "workflow_placement": "workflow_placement",
+            "workflow_placement": {"current_deployment": "workflow_placement", "home_deployment": "workflow_placement"},
         }
 
         # Assert that the result matches the expected result
@@ -482,18 +460,30 @@ class TestWorkflow(unittest.TestCase):
         self.workflow._update_instances = MagicMock()
 
         # Define the input
-        staging_area_placement = {}
-        previous_instances = ["instance1", "instance2"]
+        staging_area_placement = {
+            "workflow_placement": {
+                "home_deployment": {"instances": {"instance1": {}, "instance2": {}}},
+            },
+        }
+        previous_workflow_placement_decision_json = {
+            "instances": {"instance1": {}, "instance2": {}},
+            "workflow_placement": {
+                "home_deployment": {"instances": {"instance1": {}, "instance2": {}}},
+            },
+        }
 
         # Call the method
         result = self.workflow.get_workflow_placement_decision_extend_staging(
-            staging_area_placement, previous_instances
+            staging_area_placement, previous_workflow_placement_decision_json
         )
 
         # Define the expected result
         expected_result = {
-            "instances": ["instance1", "instance2"],
+            "instances": {"instance1": {}, "instance2": {}},
             "current_instance_name": "entry_point_instance_name",
+            "workflow_placement": {
+                "home_deployment": {"instances": {"instance1": {}, "instance2": {}}},
+            },
         }
 
         # Assert that the result matches the expected result
@@ -501,10 +491,10 @@ class TestWorkflow(unittest.TestCase):
 
     def test_get_entry_point_from_previous_instances(self):
         # Define the input
-        previous_instances = [
-            {"instance_name": "instance1:entry_point"},
-            {"instance_name": "instance2:other"},
-        ]
+        previous_instances = {
+            "instance1:entry_point": {"instance_name": "instance1:entry_point"},
+            "instance2:other": {"instance_name": "instance2:other"},
+        }
 
         # Call the method
         result = self.workflow._get_entry_point_from_previous_instances(previous_instances)

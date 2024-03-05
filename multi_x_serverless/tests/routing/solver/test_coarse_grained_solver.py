@@ -42,8 +42,8 @@ class TestCoarseGrainedSolver(unittest.TestCase):
         self, mock_init_deployment_to_region, mock_fail_hard_resource_constraints, mock_get_permitted_region_indices
     ):
         workflow_config = Mock(spec=WorkflowConfig)
-        workflow_config.instances = [
-            {
+        workflow_config.instances = {
+            "node1": {
                 "instance_name": "node1",
                 "succeeding_instances": ["node2"],
                 "preceding_instances": [],
@@ -53,7 +53,7 @@ class TestCoarseGrainedSolver(unittest.TestCase):
                     "providers": {"provider1": None},
                 },
             },
-            {
+            "node2": {
                 "instance_name": "node2",
                 "succeeding_instances": [],
                 "preceding_instances": ["node1"],
@@ -63,7 +63,7 @@ class TestCoarseGrainedSolver(unittest.TestCase):
                     "providers": {"provider1": None},
                 },
             },
-        ]
+        }
         workflow_config.regions_and_providers = {
             "allowed_regions": None,
             "disallowed_regions": None,
@@ -79,15 +79,15 @@ class TestCoarseGrainedSolver(unittest.TestCase):
             )
         )
 
-        input_manager.get_transmission_cost_carbon_runtime.side_effect = (
-            lambda previous_instance_index, current_instance_index, from_region_index, to_region_index, consider_probabilistic_invocations=False: (
+        input_manager.get_transmission_cost_carbon_runtime.side_effect = lambda previous_instance_index, current_instance_index, from_region_index, to_region_index, consider_probabilistic_invocations=False: (
+            (
                 (self.transmission_matrix[from_region_index][to_region_index]),
                 (self.transmission_matrix[from_region_index][to_region_index] * 2),
                 (self.transmission_matrix[from_region_index][to_region_index]),
             )
             if from_region_index is not None and previous_instance_index is not None
-            else (0, 0, 0)  # Do not consider start hop
-        )
+            else (0, 0, 0)
+        )  # Do not consider start hop
         workflow_config.workflow_id = "workflow_id"
         workflow_config.start_hops = "provider1:region1"
         # Arrange

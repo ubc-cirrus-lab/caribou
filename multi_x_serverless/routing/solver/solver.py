@@ -146,12 +146,32 @@ class Solver(ABC):  # pylint: disable=too-many-instance-attributes
         regions = [region for region in regions if region.split(":")[0] in provider_names]
 
         # Then if the user set a allowed_regions, only permit those regions and return
-        if "allowed_regions" in regions_and_providers and regions_and_providers["allowed_regions"] is not None:
-            return [region for region in regions if region in regions_and_providers["allowed_regions"]]
+        if (
+            "allowed_regions" in regions_and_providers
+            and regions_and_providers["allowed_regions"] is not None
+            and len(regions_and_providers["allowed_regions"]) > 0
+        ):
+            if isinstance(regions_and_providers["allowed_regions"][0], str):
+                return [region for region in regions if region in regions_and_providers["allowed_regions"]]
+            allowed_regions = [
+                provider_region["provider"] + ":" + provider_region["region"]
+                for provider_region in regions_and_providers["allowed_regions"]
+            ]
+            return [region for region in regions if region in allowed_regions]
 
         # Finally we filter out regions that the user doesn't want to use
-        if "disallowed_regions" in regions_and_providers and regions_and_providers["disallowed_regions"] is not None:
-            regions = [region for region in regions if region not in regions_and_providers["disallowed_regions"]]
+        if (
+            "disallowed_regions" in regions_and_providers
+            and regions_and_providers["disallowed_regions"] is not None
+            and len(regions_and_providers["disallowed_regions"]) > 0
+        ):
+            if isinstance(regions_and_providers["disallowed_regions"][0], str):
+                return [region for region in regions if region not in regions_and_providers["disallowed_regions"]]
+            disallowed_regions = [
+                provider_region["provider"] + ":" + provider_region["region"]
+                for provider_region in regions_and_providers["disallowed_regions"]
+            ]
+            regions = [region for region in regions if region not in disallowed_regions]
 
         return regions
 
@@ -159,7 +179,12 @@ class Solver(ABC):  # pylint: disable=too-many-instance-attributes
         return self._filter_regions(regions, self._workflow_config.regions_and_providers)
 
     def _filter_regions_instance(self, regions: list[str], instance_index: int) -> list[str]:
-        return self._filter_regions(regions, self._workflow_config.instances[instance_index]["regions_and_providers"])
+        if instance_index == -1:  # Ignore virtual end node
+            return []
+
+        return self._filter_regions(
+            regions, self._workflow_config.instances[self._dag.index_to_value(instance_index)]["regions_and_providers"]
+        )
 
     def rank_solved_results(
         self, results: list[tuple[dict, float, float, float]]
@@ -185,10 +210,10 @@ class Solver(ABC):  # pylint: disable=too-many-instance-attributes
     def get_dag_representation(self) -> DAG:
         nodes = [
             {k: v for k, v in node.items() if k not in ("succeeding_instances", "preceding_instances")}
-            for node in self._workflow_config.instances
+            for node in self._workflow_config.instances.values()
         ]
         dag = DAG(nodes)
-        for instance in self._workflow_config.instances:
+        for instance in self._workflow_config.instances.values():
             for succeeding_instance in instance["succeeding_instances"]:
                 dag.add_edge(instance["instance_name"], succeeding_instance)
         return dag
@@ -225,7 +250,7 @@ class Solver(ABC):  # pylint: disable=too-many-instance-attributes
         average_edge_weights = np.zeros((3, len(self._topological_order), len(self._topological_order)))
         tail_edge_weights = np.zeros((3, len(self._topological_order), len(self._topological_order)))
 
-        for instance in self._workflow_config.instances:
+        for instance in self._workflow_config.instances.values():
             instance_index = self._dag.value_to_index(instance["instance_name"])
             deployment[instance_index] = region_index
 

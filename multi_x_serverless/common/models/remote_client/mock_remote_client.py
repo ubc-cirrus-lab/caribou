@@ -22,6 +22,9 @@ class MockRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
     def resource_exists(self, resource):
         pass
 
+    def get_current_provider_region(self) -> str:
+        pass
+
     def create_role(self, role_name, policy, trust_policy):
         pass
 

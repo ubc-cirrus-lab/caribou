@@ -179,7 +179,7 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
 
         self.assertEqual(
             test_func(
-                '{"payload": 2, "workflow_placement_decision": {"run_id": "123", "workflow_placement": {"test_instance_1": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}}, "current_instance_name": "test_instance", "instances": [{"instance_name": "test_instance", "succeeding_instances": ["test_instance_1"]}]}}'
+                '{"payload": 2, "workflow_placement_decision": {"run_id": "123", "workflow_placement": {"test_instance_1": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}}, "current_instance_name": "test_instance", "instances": {"test_instance": {"instance_name": "test_instance", "succeeding_instances": ["test_instance_1"]}}}}'
             ),
             4,
         )
@@ -195,7 +195,9 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
                     }
                 },
                 "current_instance_name": "test_instance",
-                "instances": [{"instance_name": "test_instance", "succeeding_instances": ["test_instance_1"]}],
+                "instances": {
+                    "test_instance": {"instance_name": "test_instance", "succeeding_instances": ["test_instance_1"]}
+                },
                 "run_id": "123",
             },
         )
@@ -229,14 +231,42 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
 
             # Call test_func with a payload
             response = test_func(
-                '{"payload": 2, "workflow_placement_decision": {"run_id": "123", "workflow_placement": {"test_func": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}, "test-workflow-0_0_1-test_func::": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}}, "current_instance_name": "test_func", "instances": [{"instance_name": "test_func", "succeeding_instances": ["test-workflow-0_0_1-test_func::"]}]}}'
+                """
+{
+  "payload": 2,
+  "workflow_placement_decision": {
+    "run_id": "123",
+    "workflow_placement": {
+      "current_deployment": {
+        "instances": {
+          "test_func": {
+            "provider_region": { "provider": "provider1", "region": "region" },
+            "identifier": "test_identifier"
+          },
+          "test-workflow-0_0_1-test_func::": {
+            "provider_region": { "provider": "provider1", "region": "region" },
+            "identifier": "test_identifier"
+          }
+        }
+      }
+    },
+    "current_instance_name": "test_func",
+    "instances": {
+      "test_func": {
+        "instance_name": "test_func",
+        "succeeding_instances": ["test-workflow-0_0_1-test_func::"]
+      }
+    }
+  }
+}
+"""
             )
 
             mock_factory_class.get_remote_client.assert_called_once_with("provider1", "region")
 
             # Check if invoke_serverless_function was called with the correct arguments
             mock_factory_class.get_remote_client("provider1", "region").invoke_function.assert_called_once_with(
-                message='{"payload": 2, "workflow_placement_decision": {"run_id": "123", "workflow_placement": {"test_func": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}, "test-workflow-0_0_1-test_func::": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}}, "current_instance_name": "test-workflow-0_0_1-test_func::", "instances": [{"instance_name": "test_func", "succeeding_instances": ["test-workflow-0_0_1-test_func::"]}]}}',
+                message='{"payload": 2, "workflow_placement_decision": {"run_id": "123", "workflow_placement": {"current_deployment": {"instances": {"test_func": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}, "test-workflow-0_0_1-test_func::": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}}}}, "current_instance_name": "test-workflow-0_0_1-test_func::", "instances": {"test_func": {"instance_name": "test_func", "succeeding_instances": ["test-workflow-0_0_1-test_func::"]}}}}',
                 identifier="test_identifier",
                 workflow_instance_id="123",
                 sync=False,
@@ -287,16 +317,48 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
             self.assertEqual(args[1:], ("sync_func", False, {}, []))
             self.workflow.functions["sync_func"] = registered_func
 
+            message = """
+{
+  "payload": 2,
+  "workflow_placement_decision": {
+    "run_id": "123",
+    "workflow_placement": {
+      "current_deployment": {
+        "instances": {
+          "test_func": {
+            "provider_region": { "provider": "provider1", "region": "region" },
+            "identifier": "test_identifier"
+          },
+          "test-workflow-0_0_1-sync_func:sync:": {
+            "provider_region": { "provider": "provider1", "region": "region" },
+            "identifier": "test_identifier"
+          }
+        }
+      }
+    },
+    "current_instance_name": "test_func",
+    "instances": {
+      "test_func": {
+        "instance_name": "test_func",
+        "succeeding_instances": ["test-workflow-0_0_1-sync_func:sync:"]
+      },
+      "test-workflow-0_0_1-sync_func:sync:": {
+        "instance_name": "test-workflow-0_0_1-sync_func:sync:",
+        "preceding_instances": ["test_func"]
+      }
+    }
+  }
+}
+"""
+
             # Call test_func with a payload
-            response = test_func(
-                '{"payload": 2, "workflow_placement_decision": {"run_id": "123", "workflow_placement": {"test_func": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}, "test-workflow-0_0_1-sync_func:sync:": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}}, "current_instance_name": "test_func", "instances": [{"instance_name": "test_func", "succeeding_instances": ["test-workflow-0_0_1-sync_func:sync:"]}, {"instance_name": "test-workflow-0_0_1-sync_func:sync:", "preceding_instances": ["test_func"]}]}}'
-            )
+            response = test_func(message)
 
             mock_factory_class.get_remote_client.assert_called_once_with("provider1", "region")
 
             # Check if invoke_serverless_function was called with the correct arguments
             mock_factory_class.get_remote_client("provider1", "region").invoke_function.assert_called_once_with(
-                message='{"payload": 2, "workflow_placement_decision": {"run_id": "123", "workflow_placement": {"test_func": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}, "test-workflow-0_0_1-sync_func:sync:": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}}, "current_instance_name": "test-workflow-0_0_1-sync_func:sync:", "instances": [{"instance_name": "test_func", "succeeding_instances": ["test-workflow-0_0_1-sync_func:sync:"]}, {"instance_name": "test-workflow-0_0_1-sync_func:sync:", "preceding_instances": ["test_func"]}]}}',
+                message='{"payload": 2, "workflow_placement_decision": {"run_id": "123", "workflow_placement": {"current_deployment": {"instances": {"test_func": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}, "test-workflow-0_0_1-sync_func:sync:": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}}}}, "current_instance_name": "test-workflow-0_0_1-sync_func:sync:", "instances": {"test_func": {"instance_name": "test_func", "succeeding_instances": ["test-workflow-0_0_1-sync_func:sync:"]}, "test-workflow-0_0_1-sync_func:sync:": {"instance_name": "test-workflow-0_0_1-sync_func:sync:", "preceding_instances": ["test_func"]}}}}',
                 identifier="test_identifier",
                 workflow_instance_id="123",
                 sync=True,
@@ -364,14 +426,63 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
 
             # Call test_func with a payload
             response = test_func(
-                '{"payload": 2, "workflow_placement_decision": {"run_id": "123", "workflow_placement": {"test_func": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}, "test_func2": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}, "test-workflow-0_0_1-sync_func:sync:": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}}, "current_instance_name": "test_func", "instances": [{"instance_name": "test_func", "succeeding_instances": ["test-workflow-0_0_1-sync_func:sync:"]}, {"instance_name": "test_func2", "succeeding_instances": ["test-workflow-0_0_1-sync_func:sync:"]}, {"instance_name": "test-workflow-0_0_1-sync_func:sync:", "preceding_instances": ["test_func", "test_func2"]}]}}'
+                """
+{
+  "payload": 2,
+  "workflow_placement_decision": {
+    "run_id": "123",
+    "workflow_placement": {
+      "current_deployment": {
+        "instances": {
+          "test_func": {
+            "provider_region": {
+              "provider": "provider1",
+              "region": "region"
+            },
+            "identifier": "test_identifier"
+          },
+          "test_func2": {
+            "provider_region": {
+              "provider": "provider1",
+              "region": "region"
+            },
+            "identifier": "test_identifier"
+          },
+          "test-workflow-0_0_1-sync_func:sync:": {
+            "provider_region": {
+              "provider": "provider1",
+              "region": "region"
+            },
+            "identifier": "test_identifier"
+          }
+        }
+      }
+    },
+    "current_instance_name": "test_func",
+    "instances": {
+      "test_func": {
+        "instance_name": "test_func",
+        "succeeding_instances": ["test-workflow-0_0_1-sync_func:sync:"]
+      },
+      "test_func2": {
+        "instance_name": "test_func2",
+        "succeeding_instances": ["test-workflow-0_0_1-sync_func:sync:"]
+      },
+      "test-workflow-0_0_1-sync_func:sync:": {
+        "instance_name": "test-workflow-0_0_1-sync_func:sync:",
+        "preceding_instances": ["test_func", "test_func2"]
+      }
+    }
+  }
+}
+"""
             )
 
             mock_factory_class.get_remote_client.assert_called_once_with("provider1", "region")
 
             # Check if invoke_serverless_function was called with the correct arguments
             mock_factory_class.get_remote_client("provider1", "region").invoke_function.assert_called_once_with(
-                message='{"payload": 2, "workflow_placement_decision": {"run_id": "123", "workflow_placement": {"test_func": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}, "test_func2": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}, "test-workflow-0_0_1-sync_func:sync:": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}}, "current_instance_name": "test-workflow-0_0_1-sync_func:sync:", "instances": [{"instance_name": "test_func", "succeeding_instances": ["test-workflow-0_0_1-sync_func:sync:"]}, {"instance_name": "test_func2", "succeeding_instances": ["test-workflow-0_0_1-sync_func:sync:"]}, {"instance_name": "test-workflow-0_0_1-sync_func:sync:", "preceding_instances": ["test_func", "test_func2"]}]}}',
+                message='{"payload": 2, "workflow_placement_decision": {"run_id": "123", "workflow_placement": {"current_deployment": {"instances": {"test_func": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}, "test_func2": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}, "test-workflow-0_0_1-sync_func:sync:": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}}}}, "current_instance_name": "test-workflow-0_0_1-sync_func:sync:", "instances": {"test_func": {"instance_name": "test_func", "succeeding_instances": ["test-workflow-0_0_1-sync_func:sync:"]}, "test_func2": {"instance_name": "test_func2", "succeeding_instances": ["test-workflow-0_0_1-sync_func:sync:"]}, "test-workflow-0_0_1-sync_func:sync:": {"instance_name": "test-workflow-0_0_1-sync_func:sync:", "preceding_instances": ["test_func", "test_func2"]}}}}',
                 identifier="test_identifier",
                 workflow_instance_id="123",
                 sync=True,
@@ -412,14 +523,41 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
 
             # Call test_func with a payload
             response = test_func(
-                '{"workflow_placement_decision": {"run_id": "123", "workflow_placement": {"test_func": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}, "test-workflow-0_0_1-test_func::": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}}, "current_instance_name": "test_func", "instances": [{"instance_name": "test_func", "succeeding_instances": ["test-workflow-0_0_1-test_func::"]}]}}'
+                """
+{
+  "workflow_placement_decision": {
+    "run_id": "123",
+    "workflow_placement": {
+      "current_deployment": {
+        "instances": {
+          "test_func": {
+            "provider_region": { "provider": "provider1", "region": "region" },
+            "identifier": "test_identifier"
+          },
+          "test-workflow-0_0_1-test_func::": {
+            "provider_region": { "provider": "provider1", "region": "region" },
+            "identifier": "test_identifier"
+          }
+        }
+      }
+    },
+    "current_instance_name": "test_func",
+    "instances": {
+      "test_func": {
+        "instance_name": "test_func",
+        "succeeding_instances": ["test-workflow-0_0_1-test_func::"]
+      }
+    }
+  }
+}
+"""
             )
 
             mock_factory_class.get_remote_client.assert_called_once_with("provider1", "region")
 
             # Check if invoke_serverless_function was called with the correct arguments
             mock_factory_class.get_remote_client("provider1", "region").invoke_function.assert_called_once_with(
-                message='{"workflow_placement_decision": {"run_id": "123", "workflow_placement": {"test_func": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}, "test-workflow-0_0_1-test_func::": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}}, "current_instance_name": "test-workflow-0_0_1-test_func::", "instances": [{"instance_name": "test_func", "succeeding_instances": ["test-workflow-0_0_1-test_func::"]}]}}',
+                message='{"workflow_placement_decision": {"run_id": "123", "workflow_placement": {"current_deployment": {"instances": {"test_func": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}, "test-workflow-0_0_1-test_func::": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}}}}, "current_instance_name": "test-workflow-0_0_1-test_func::", "instances": {"test_func": {"instance_name": "test_func", "succeeding_instances": ["test-workflow-0_0_1-test_func::"]}}}}',
                 identifier="test_identifier",
                 workflow_instance_id="123",
                 sync=False,
@@ -449,27 +587,69 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
         self.workflow.functions["test_func"] = registered_func
 
         response = test_func(
-            r'{"payload": "{\"key\": \"value\"}", "workflow_placement_decision": {"run_id": "123", "workflow_placement": {"test_func": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}, "test-workflow-0_0_1-test_func": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}}, "current_instance_name": "test_func", "instances": [{"instance_name": "some_instance", "succeeding_instances": ["test-workflow-0_0_1-test_func::"]}, {"instance_name": "test_func", "succeeding_instances": ["test-workflow-0_0_1-test_func::"]}]}}'
+            r"""
+{
+  "payload": "{\"key\": \"value\"}",
+  "workflow_placement_decision": {
+    "run_id": "123",
+    "workflow_placement": {
+      "current_deployment": {
+        "instances": {
+          "test_func": {
+            "provider_region": { "provider": "provider1", "region": "region" },
+            "identifier": "test_identifier"
+          },
+          "test-workflow-0_0_1-test_func": {
+            "provider_region": { "provider": "provider1", "region": "region" },
+            "identifier": "test_identifier"
+          }
+        }
+      }
+    },
+    "current_instance_name": "test_func",
+    "instances": {
+      "some_instance": {
+        "instance_name": "some_instance",
+        "succeeding_instances": ["test-workflow-0_0_1-test_func::"]
+      },
+      "test_func": {
+        "instance_name": "test_func",
+        "succeeding_instances": ["test-workflow-0_0_1-test_func::"]
+      }
+    }
+  }
+}
+"""
         )
 
         self.workflow._inform_sync_node_of_conditional_non_execution.assert_called_once_with(
             {
                 "run_id": "123",
                 "workflow_placement": {
-                    "test_func": {
-                        "provider_region": {"provider": "provider1", "region": "region"},
-                        "identifier": "test_identifier",
-                    },
-                    "test-workflow-0_0_1-test_func": {
-                        "provider_region": {"provider": "provider1", "region": "region"},
-                        "identifier": "test_identifier",
-                    },
+                    "current_deployment": {
+                        "instances": {
+                            "test_func": {
+                                "provider_region": {"provider": "provider1", "region": "region"},
+                                "identifier": "test_identifier",
+                            },
+                            "test-workflow-0_0_1-test_func": {
+                                "provider_region": {"provider": "provider1", "region": "region"},
+                                "identifier": "test_identifier",
+                            },
+                        }
+                    }
                 },
                 "current_instance_name": "test_func",
-                "instances": [
-                    {"instance_name": "some_instance", "succeeding_instances": ["test-workflow-0_0_1-test_func::"]},
-                    {"instance_name": "test_func", "succeeding_instances": ["test-workflow-0_0_1-test_func::"]},
-                ],
+                "instances": {
+                    "some_instance": {
+                        "instance_name": "some_instance",
+                        "succeeding_instances": ["test-workflow-0_0_1-test_func::"],
+                    },
+                    "test_func": {
+                        "instance_name": "test_func",
+                        "succeeding_instances": ["test-workflow-0_0_1-test_func::"],
+                    },
+                },
             },
             "test-workflow-0_0_1-test_func::",
             "test_func",
@@ -504,14 +684,46 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
 
             # Call test_func with a payload
             response = test_func(
-                r'{"payload": "{\"key\": \"value\"}", "workflow_placement_decision": {"run_id": "123", "workflow_placement": {"test_func": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}, "test-workflow-0_0_1-test_func::": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}}, "current_instance_name": "test_func", "instances": [{"instance_name": "some_instance", "succeeding_instances": ["test-workflow-0_0_1-test_func::"]}, {"instance_name": "test_func", "succeeding_instances": ["test-workflow-0_0_1-test_func::"]}]}}'
+                r"""
+{
+  "payload": "{\"key\": \"value\"}",
+  "workflow_placement_decision": {
+    "run_id": "123",
+    "workflow_placement": {
+      "current_deployment": {
+        "instances": {
+          "test_func": {
+            "provider_region": { "provider": "provider1", "region": "region" },
+            "identifier": "test_identifier"
+          },
+          "test-workflow-0_0_1-test_func::": {
+            "provider_region": { "provider": "provider1", "region": "region" },
+            "identifier": "test_identifier"
+          }
+        }
+      }
+    },
+    "current_instance_name": "test_func",
+    "instances": {
+        "some_instance": {
+        "instance_name": "some_instance",
+        "succeeding_instances": ["test-workflow-0_0_1-test_func::"]
+      },
+      "test_func": {
+        "test_func": "instance_name",
+        "succeeding_instances": ["test-workflow-0_0_1-test_func::"]
+      }
+    }
+  }
+}
+"""
             )
 
             mock_factory_class.get_remote_client.assert_called_once_with("provider1", "region")
 
             # Check if invoke_serverless_function was called with the correct arguments
             mock_factory_class.get_remote_client("provider1", "region").invoke_function.assert_called_once_with(
-                message='{"payload": "{\\"key\\": \\"value\\"}", "workflow_placement_decision": {"run_id": "123", "workflow_placement": {"test_func": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}, "test-workflow-0_0_1-test_func::": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}}, "current_instance_name": "test-workflow-0_0_1-test_func::", "instances": [{"instance_name": "some_instance", "succeeding_instances": ["test-workflow-0_0_1-test_func::"]}, {"instance_name": "test_func", "succeeding_instances": ["test-workflow-0_0_1-test_func::"]}]}}',
+                message='{"payload": "{\\"key\\": \\"value\\"}", "workflow_placement_decision": {"run_id": "123", "workflow_placement": {"current_deployment": {"instances": {"test_func": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}, "test-workflow-0_0_1-test_func::": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}}}}, "current_instance_name": "test-workflow-0_0_1-test_func::", "instances": {"some_instance": {"instance_name": "some_instance", "succeeding_instances": ["test-workflow-0_0_1-test_func::"]}, "test_func": {"test_func": "instance_name", "succeeding_instances": ["test-workflow-0_0_1-test_func::"]}}}}',
                 identifier="test_identifier",
                 workflow_instance_id="123",
                 sync=False,
@@ -626,21 +838,21 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
 
     def test_get_next_instance_name(self):
         workflow_placement_decision = {
-            "instances": [
-                {
+            "instances": {
+                "current_instance": {
                     "instance_name": "current_instance",
                     "succeeding_instances": [
                         f"{self.workflow.name}-{self.workflow.version.replace('.', '_')}-successor_function:sync:",
                         f"{self.workflow.name}-{self.workflow.version.replace('.', '_')}-successor_function:0_1",
                     ],
                 },
-                {
+                "other_instance": {
                     "instance_name": "other_instance",
                     "succeeding_instances": [
                         f"{self.workflow.name}-{self.workflow.version.replace('.', '_')}-other_successor_function:sync:"
                     ],
                 },
-            ]
+            }
         }
         current_instance_name = "current_instance"
         successor_function_name = "successor_function"
@@ -656,21 +868,21 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
 
     def test_get_next_instance_name_non_sync_successor(self):
         workflow_placement_decision = {
-            "instances": [
-                {
+            "instances": {
+                "current_instance": {
                     "instance_name": "current_instance",
                     "succeeding_instances": [
                         f"{self.workflow.name}-{self.workflow.version.replace('.', '_')}-successor_function:current_instance_0_0",
                         f"{self.workflow.name}-{self.workflow.version.replace('.', '_')}-successor_function:current_instance_0_1",
                     ],
                 },
-                {
+                "other_instance": {
                     "instance_name": "other_instance",
                     "succeeding_instances": [
                         f"{self.workflow.name}-{self.workflow.version.replace('.', '_')}-other_successor_function:sync:"
                     ],
                 },
-            ]
+            }
         }
         current_instance_name = "current_instance"
         successor_function_name = "successor_function"
@@ -816,7 +1028,11 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
                 "current_instance_name": "current_instance",
                 "run_id": "workflow_instance_id",
                 "workflow_placement": {
-                    "current_instance": {"provider_region": {"provider": "provider1", "region": "region1"}}
+                    "current_deployment": {
+                        "instances": {
+                            "current_instance": {"provider_region": {"provider": "provider1", "region": "region1"}}
+                        },
+                    }
                 },
             }
         )
@@ -838,19 +1054,19 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
                 "next_instance": {"provider_region": {"provider": "provider1", "region": "region1"}},
                 "sync_node": {"provider_region": {"provider": "provider1", "region": "region1"}},
             },
-            "instances": [
-                {
+            "instances": {
+                "not_called_instance": {
                     "instance_name": "not_called_instance",
                     "succeeding_instances": ["next_instance"],
                     "dependent_sync_predecessors": [["next_instance", "sync_node"]],
                 },
-                {
+                "next_instance": {
                     "instance_name": "next_instance",
                     "preceding_instances": ["not_called_instance"],
                     "successor_sync_node": "sync_node",
                 },
-                {"instance_name": "sync_node", "preceding_instances": ["next_instance"]},
-            ],
+                "sync_node": {"instance_name": "sync_node", "preceding_instances": ["next_instance"]},
+            },
         }
 
         with patch(
@@ -878,6 +1094,12 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
                 sync_node_name="not_called_instance:sync:",
                 workflow_instance_id="workflow_instance_id",
                 direct_call=False,
+            )
+            mock_factory_class.get_remote_client("provider1", "region1").invoke_function.assert_called_once_with(
+                message='{"workflow_placement_decision": {"current_instance_name": "not_called_instance", "run_id": "workflow_instance_id", "workflow_placement": {"not_called_instance": {"provider_region": {"provider": "provider1", "region": "region1"}}, "next_instance": {"provider_region": {"provider": "provider1", "region": "region1"}}, "sync_node": {"provider_region": {"provider": "provider1", "region": "region1"}}}, "instances": {"not_called_instance": {"instance_name": "not_called_instance", "succeeding_instances": ["next_instance"], "dependent_sync_predecessors": [["next_instance", "sync_node"]]}, "next_instance": {"instance_name": "next_instance", "preceding_instances": ["not_called_instance"], "successor_sync_node": "sync_node"}, "sync_node": {"instance_name": "sync_node", "preceding_instances": ["next_instance"]}}}}',
+                identifier="identifier",
+                workflow_instance_id="workflow_instance_id",
+                sync=False,
             )
 
 

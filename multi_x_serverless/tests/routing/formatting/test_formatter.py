@@ -5,6 +5,7 @@ from multi_x_serverless.routing.formatter.formatter import Formatter
 class TestFormatter(unittest.TestCase):
     def setUp(self):
         self.formatter = Formatter()
+        self.maxDiff = None
 
     def test_format(self):
         results = ({0: 1, 1: 0}, 0.0, 0.0, 0.0)
@@ -13,8 +14,12 @@ class TestFormatter(unittest.TestCase):
 
         expected_output = {
             "workflow_placement": {
-                "instance1": {"provider_region": {"provider": "provider2", "region": "region2"}},
-                "instance2": {"provider_region": {"provider": "provider1", "region": "region1"}},
+                "current_deployment": {
+                    "instances": {
+                        "instance1": {"provider_region": {"provider": "provider2", "region": "region2"}},
+                        "instance2": {"provider_region": {"provider": "provider1", "region": "region1"}},
+                    }
+                },
             },
         }
 
