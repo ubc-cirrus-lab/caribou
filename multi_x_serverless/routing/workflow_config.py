@@ -13,29 +13,12 @@ class WorkflowConfig:
         self._modified_regions_and_providers = self._create_altered_regions_and_providers(
             self._workflow_config["regions_and_providers"]
         )
-        self._modified_instances = self._create_altered_instances(self._workflow_config["instances"])
 
     def _verify(self, workflow_config: dict) -> None:
         try:
             WorkflowConfigSchema(**workflow_config)
         except ValidationError as exc:
             raise RuntimeError(f"Invalid workflow config: {exc}") from exc
-
-    def _create_altered_instances(self, instances: list[dict]) -> list[dict]:
-        altered_instances = []
-
-        for instance in instances:
-            altered_instance = {
-                "instance_name": instance["instance_name"],
-                "function_name": instance["function_name"],
-                "regions_and_providers": self._create_altered_regions_and_providers(instance["regions_and_providers"]),
-                "succeeding_instances": instance.get("succeeding_instances", []),
-                "preceding_instances": instance.get("preceding_instances", []),
-            }
-
-            altered_instances.append(altered_instance)
-
-        return altered_instances
 
     def _create_altered_regions_and_providers(self, regions_and_providers: dict) -> dict:
         altered_regions_and_providers = {"providers": regions_and_providers.get("providers", {})}
@@ -88,7 +71,7 @@ class WorkflowConfig:
         allowed_solvers = {"coarse_grained_solver", "fine_grained_solver", "stochastic_heuristic_solver"}
         result = self._lookup("solver", "coarse_grained_solver")
         if len(result) == 0:
-            result = "stochastic_heuristic_solver"
+            result = "coarse_grained_solver"
         if result not in allowed_solvers:
             raise ValueError(f"Invalid solver: {result}")
         return result
@@ -107,8 +90,8 @@ class WorkflowConfig:
         return self._modified_regions_and_providers
 
     @property
-    def instances(self) -> list[dict]:
-        return self._modified_instances
+    def instances(self) -> dict[str, dict[str, Any]]:
+        return self._lookup("instances")
 
     @property
     def constraints(self) -> dict:

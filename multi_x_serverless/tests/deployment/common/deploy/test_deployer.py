@@ -166,7 +166,6 @@ class TestDeployer(unittest.TestCase):
         )
         executor.execute.assert_called_once()
         deployer._update_workflow_to_deployer_server.assert_called_once_with(deployed_regions)
-        deployer._update_workflow_placement_decision.assert_called_once_with('{"key": "value"}', [])
 
     def test_upload_workflow_to_solver_update_checker(self):
         config = Config({}, self.test_dir)

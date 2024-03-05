@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 import botocore.exceptions
 
@@ -105,13 +105,13 @@ class Deployer:
         self._executor.execute(deployment_plan)
 
         self._update_workflow_to_deployer_server(deployed_regions)
-        self._update_workflow_placement_decision(
-            staging_area_data, previous_workflow_placement_decision_json["instances"]
-        )
+        self._update_workflow_placement_decision(staging_area_data, previous_workflow_placement_decision_json)
 
     def _get_function_to_deployment_regions(self, staging_area_data: dict) -> dict[str, dict[str, str]]:
         function_to_deployment_regions: dict[str, dict[str, str]] = {}
-        for instance_name, placement in staging_area_data["workflow_placement"].items():
+        for instance_name, placement in staging_area_data["workflow_placement"]["current_deployment"][
+            "instances"
+        ].items():
             function_name = (
                 instance_name.split(":", maxsplit=1)[0]
                 + "_"
@@ -209,7 +209,9 @@ class Deployer:
             SOLVER_UPDATE_CHECKER_RESOURCE_TABLE, self._config.workflow_id
         )
 
-    def _update_workflow_placement_decision(self, staging_area_data: str, previous_instances: list[dict]) -> None:
+    def _update_workflow_placement_decision(
+        self, staging_area_data: str, previous_workflow_placement_decision_json: dict[str, dict[str, Any]]
+    ) -> None:
         assert self._workflow is not None, "Workflow is None, this should not happen"
         if staging_area_data is None:
             raise RuntimeError("Staging area data is None")
@@ -223,7 +225,7 @@ class Deployer:
             raise RuntimeError("Cannot deploy with deletion deployer")
 
         workflow_placement_decision = self._workflow.get_workflow_placement_decision_extend_staging(
-            staging_area_data_json, previous_instances
+            staging_area_data_json, previous_workflow_placement_decision_json
         )
         workflow_placement_decision_json = json.dumps(workflow_placement_decision)
 

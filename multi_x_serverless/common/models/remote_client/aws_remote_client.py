@@ -32,6 +32,9 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         self._client_cache: dict[str, Any] = {}
         self._workflow_image_cache: dict[str, dict[str, str]] = {}
 
+    def get_current_provider_region(self) -> str:
+        return f"aws_{self._session.region_name}"
+
     def _client(self, service_name: str) -> Any:
         if service_name not in self._client_cache:
             self._client_cache[service_name] = self._session.client(service_name)

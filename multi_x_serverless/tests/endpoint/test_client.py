@@ -18,10 +18,22 @@ class TestClient(unittest.TestCase):
             {
                 "current_instance_name": "instance1",
                 "workflow_placement": {
-                    "instance1": {
-                        "provider_region": {"provider": "aws", "region": "us-east-1"},
-                        "identifier": "function1",
-                    }
+                    "current_deployment": {
+                        "instances": {
+                            "instance1": {
+                                "provider_region": {"provider": "aws", "region": "us-east-1"},
+                                "identifier": "function1",
+                            }
+                        }
+                    },
+                    "home_deployment": {
+                        "instances": {
+                            "instance1": {
+                                "provider_region": {"provider": "aws", "region": "us-west-2"},
+                                "identifier": "function1",
+                            }
+                        }
+                    },
                 },
             }
         )
@@ -37,7 +49,7 @@ class TestClient(unittest.TestCase):
         # Verify the remote client was invoked with the correct parameters
         mock_get_remote_client.assert_called_with("aws", "us-east-1")
         mock_remote_client.invoke_function.assert_called_once_with(
-            message=json.dumps({"key": "value"}),
+            message='{"input_data": {"key": "value"}, "send_to_home_region": false}',
             identifier="function1",
             workflow_instance_id="0",
         )

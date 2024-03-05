@@ -7,7 +7,6 @@ class TestWorkflowConfigSchema(unittest.TestCase):
     def setUp(self):
         self.instance_data = {
             "instance_name": "instance1",
-            "function_name": "function1",
             "regions_and_providers": {
                 "allowed_regions": [
                     {
@@ -33,6 +32,7 @@ class TestWorkflowConfigSchema(unittest.TestCase):
             "succeeding_instances": ["instance2"],
             "preceding_instances": ["instance3"],
         }
+        self.maxDiff = None
 
     def test_instance(self):
         instance = Instance(**self.instance_data)
@@ -66,7 +66,7 @@ class TestWorkflowConfigSchema(unittest.TestCase):
                     },
                 },
             },
-            "instances": [self.instance_data],
+            "instances": {"instance1": self.instance_data},
             "constraints": {
                 "hard_resource_constraints": {"runtime": {"value": 100, "type": "absolute"}},
                 "soft_resource_constraints": {},

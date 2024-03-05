@@ -61,8 +61,8 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
 
     def test_find_common_elements(self):
         self.workflow_config.regions_and_providers = {"providers": {"p1": None, "p2": None}}
-        self.workflow_config.instances = [
-            {
+        self.workflow_config.instances = {
+            "i1": {
                 "instance_name": "i1",
                 "function_name": "f1",
                 "succeeding_instances": [],
@@ -73,7 +73,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                     "providers": {"p1": None, "p2": None},
                 },
             },
-        ]
+        }
         solver = BFSFineGrainedSolver(self.workflow_config, self._all_regions, input_manager=self.input_manager)
 
         # Test case 1: empty list_of_sets
@@ -86,8 +86,8 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
 
     def test_calculate_wc_pc_cost_carbon_cl_placements(self):
         self.workflow_config.regions_and_providers = {"providers": {"p1": None, "p2": None}}
-        self.workflow_config.instances = [
-            {
+        self.workflow_config.instances = {
+            "i1": {
                 "instance_name": "i1",
                 "function_name": "f1",
                 "succeeding_instances": [],
@@ -98,7 +98,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                     "providers": {"p1": None, "p2": None},
                 },
             },
-        ]
+        }
         solver = BFSFineGrainedSolver(self.workflow_config, self._all_regions, self.input_manager)
 
         # Test case 1: empty instance_placement_data
@@ -121,8 +121,8 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
         """
         self.workflow_config.start_hops = "p1:r1"
         self.workflow_config.regions_and_providers = {"providers": {"p1": None, "p2": None}}
-        self.workflow_config.instances = [
-            {
+        self.workflow_config.instances = {
+            "i1": {
                 "instance_name": "i1",
                 "function_name": "f1",
                 "succeeding_instances": [],
@@ -133,7 +133,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                     "providers": {"p1": None, "p2": None},
                 },
             },
-        ]
+        }
         self.workflow_config.constraints = None
 
         solver = BFSFineGrainedSolver(self.workflow_config, self._all_regions, self.input_manager)
@@ -151,8 +151,8 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
         """
         self.workflow_config.start_hops = "p1:r1"
         self.workflow_config.regions_and_providers = {"providers": {"p1": None, "p2": None}}
-        self.workflow_config.instances = [
-            {
+        self.workflow_config.instances = {
+            "i1": {
                 "instance_name": "i1",
                 "function_name": "f1",
                 "succeeding_instances": ["i2"],
@@ -163,7 +163,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                     "providers": {"p1": None, "p2": None},
                 },
             },
-            {
+            "i2": {
                 "instance_name": "i2",
                 "function_name": "f2",
                 "succeeding_instances": [],
@@ -174,7 +174,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                     "providers": {"p1": None, "p2": None},
                 },
             },
-        ]
+        }
         self.workflow_config.constraints = None
 
         solver = BFSFineGrainedSolver(self.workflow_config, self._all_regions, self.input_manager)
@@ -197,8 +197,8 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
         """
         self.workflow_config.start_hops = "p1:r1"
         self.workflow_config.regions_and_providers = {"providers": {"p1": None, "p2": None}}
-        self.workflow_config.instances = [
-            {
+        self.workflow_config.instances = {
+            "i1": {
                 "instance_name": "i1",
                 "function_name": "f1",
                 "succeeding_instances": ["i2"],
@@ -209,7 +209,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                     "providers": {"p1": None, "p2": None},
                 },
             },
-            {
+            "i2": {
                 "instance_name": "i2",
                 "function_name": "f2",
                 "succeeding_instances": ["i3"],
@@ -220,7 +220,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                     "providers": {"p1": None, "p2": None},
                 },
             },
-            {
+            "i3": {
                 "instance_name": "i3",
                 "function_name": "f3",
                 "succeeding_instances": [],
@@ -231,7 +231,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                     "providers": {"p1": None},
                 },
             },
-        ]
+        }
         self.workflow_config.constraints = None
 
         solver = BFSFineGrainedSolver(self.workflow_config, self._all_regions, self.input_manager)
@@ -254,8 +254,8 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
         """
         self.workflow_config.start_hops = "p1:r1"
         self.workflow_config.regions_and_providers = {"providers": {"p1": None, "p2": None}}
-        self.workflow_config.instances = [
-            {
+        self.workflow_config.instances = {
+            "i1": {
                 "instance_name": "i1",
                 "function_name": "f1",
                 "succeeding_instances": ["i2", "i3"],
@@ -266,7 +266,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                     "providers": {"p1": None, "p2": None},
                 },
             },
-            {
+            "i2": {
                 "instance_name": "i2",
                 "function_name": "f2",
                 "succeeding_instances": [],
@@ -277,7 +277,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                     "providers": {"p1": None, "p2": None},
                 },
             },
-            {
+            "i3": {
                 "instance_name": "i3",
                 "function_name": "f3",
                 "succeeding_instances": [],
@@ -288,7 +288,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                     "providers": {"p1": None},
                 },
             },
-        ]
+        }
         self.workflow_config.constraints = None
 
         solver = BFSFineGrainedSolver(self.workflow_config, self._all_regions, self.input_manager)
@@ -311,8 +311,8 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
         """
         self.workflow_config.start_hops = "p1:r1"
         self.workflow_config.regions_and_providers = {"providers": {"p1": None, "p2": None}}
-        self.workflow_config.instances = [
-            {
+        self.workflow_config.instances = {
+            "i1": {
                 "instance_name": "i1",
                 "function_name": "f1",
                 "succeeding_instances": ["i2", "i3", "i4"],
@@ -323,7 +323,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                     "providers": {"p1": None, "p2": None},
                 },
             },
-            {
+            "i2": {
                 "instance_name": "i2",
                 "function_name": "f2",
                 "succeeding_instances": [],
@@ -336,7 +336,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                     },
                 },
             },
-            {
+            "i3": {
                 "instance_name": "i3",
                 "function_name": "f3",
                 "succeeding_instances": [],
@@ -349,7 +349,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                     },
                 },
             },
-            {
+            "i4": {
                 "instance_name": "i4",
                 "function_name": "f4",
                 "succeeding_instances": [],
@@ -360,7 +360,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                     "providers": {"p1": None, "p2": None},
                 },
             },
-        ]
+        }
         self.workflow_config.constraints = None
 
         solver = BFSFineGrainedSolver(self.workflow_config, self._all_regions, self.input_manager)
@@ -383,8 +383,8 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
         """
         self.workflow_config.start_hops = "p1:r1"
         self.workflow_config.regions_and_providers = {"providers": {"p1": None, "p2": None}}
-        self.workflow_config.instances = [
-            {
+        self.workflow_config.instances = {
+            "i1": {
                 "instance_name": "i1",
                 "function_name": "f1",
                 "succeeding_instances": ["i2", "i3"],
@@ -395,7 +395,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                     "providers": {"p1": None, "p2": None},
                 },
             },
-            {
+            "i2": {
                 "instance_name": "i2",
                 "function_name": "f2",
                 "succeeding_instances": ["i4"],
@@ -406,7 +406,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                     "providers": {"p1": None},
                 },
             },
-            {
+            "i3": {
                 "instance_name": "i3",
                 "function_name": "f3",
                 "succeeding_instances": ["i4"],
@@ -417,7 +417,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                     "providers": {"p1": None},
                 },
             },
-            {
+            "i4": {
                 "instance_name": "i4",
                 "function_name": "f4",
                 "succeeding_instances": [],
@@ -428,7 +428,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                     "providers": {"p1": None, "p2": None},
                 },
             },
-        ]
+        }
         self.workflow_config.constraints = None
 
         solver = BFSFineGrainedSolver(self.workflow_config, self._all_regions, self.input_manager)
@@ -451,8 +451,8 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
         """
         self.workflow_config.start_hops = "p1:r1"
         self.workflow_config.regions_and_providers = {"providers": {"p1": None, "p2": None}}
-        self.workflow_config.instances = [
-            {
+        self.workflow_config.instances = {
+            "i1": {
                 "instance_name": "i1",
                 "function_name": "f1",
                 "succeeding_instances": ["i2", "i3"],
@@ -463,7 +463,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                     "providers": {"p1": None, "p2": None},
                 },
             },
-            {
+            "i2": {
                 "instance_name": "i2",
                 "function_name": "f2",
                 "succeeding_instances": ["i4"],
@@ -474,7 +474,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                     "providers": {"p1": None},
                 },
             },
-            {
+            "i3": {
                 "instance_name": "i3",
                 "function_name": "f3",
                 "succeeding_instances": ["i4", "i5"],
@@ -485,7 +485,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                     "providers": {"p1": None},
                 },
             },
-            {
+            "i4": {
                 "instance_name": "i4",
                 "function_name": "f4",
                 "succeeding_instances": [],
@@ -496,7 +496,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                     "providers": {"p1": None},
                 },
             },
-            {
+            "i5": {
                 "instance_name": "i5",
                 "function_name": "f5",
                 "succeeding_instances": [],
@@ -507,7 +507,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                     "providers": {"p1": None, "p2": None},
                 },
             },
-        ]
+        }
         self.workflow_config.constraints = None
 
         solver = BFSFineGrainedSolver(self.workflow_config, self._all_regions, self.input_manager)
@@ -530,8 +530,8 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
         """
         self.workflow_config.start_hops = "p1:r1"
         self.workflow_config.regions_and_providers = {"providers": {"p1": None, "p2": None}}
-        self.workflow_config.instances = [
-            {
+        self.workflow_config.instances = {
+            "i1": {
                 "instance_name": "i1",
                 "function_name": "f1",
                 "succeeding_instances": ["i2", "i3"],
@@ -542,7 +542,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                     "providers": {"p1": None, "p2": None},
                 },
             },
-            {
+            "i2": {
                 "instance_name": "i2",
                 "function_name": "f2",
                 "succeeding_instances": ["i4"],
@@ -553,7 +553,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                     "providers": {"p1": None},
                 },
             },
-            {
+            "i3": {
                 "instance_name": "i3",
                 "function_name": "f3",
                 "succeeding_instances": ["i4", "i5"],
@@ -564,7 +564,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                     "providers": {"p1": None},
                 },
             },
-            {
+            "i4": {
                 "instance_name": "i4",
                 "function_name": "f4",
                 "succeeding_instances": ["i6"],
@@ -575,7 +575,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                     "providers": {"p1": None},
                 },
             },
-            {
+            "i5": {
                 "instance_name": "i5",
                 "function_name": "f5",
                 "succeeding_instances": ["i6"],
@@ -586,7 +586,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                     "providers": {"p1": None},
                 },
             },
-            {
+            "i6": {
                 "instance_name": "i6",
                 "function_name": "f6",
                 "succeeding_instances": [],
@@ -597,7 +597,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                     "providers": {"p1": None, "p2": None},
                 },
             },
-        ]
+        }
         self.workflow_config.constraints = None
 
         solver = BFSFineGrainedSolver(self.workflow_config, self._all_regions, self.input_manager)
@@ -621,8 +621,8 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
         """
         self.workflow_config.start_hops = "p1:r1"
         self.workflow_config.regions_and_providers = {"providers": {"p1": None, "p2": None}}
-        self.workflow_config.instances = [
-            {
+        self.workflow_config.instances = {
+            "i1": {
                 "instance_name": "i1",
                 "function_name": "f1",
                 "succeeding_instances": ["i2", "i3"],
@@ -633,7 +633,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                     "providers": {"p1": None, "p2": None},
                 },
             },
-            {
+            "i2": {
                 "instance_name": "i2",
                 "function_name": "f2",
                 "succeeding_instances": ["i4"],
@@ -644,7 +644,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                     "providers": {"p1": None},
                 },
             },
-            {
+            "i3": {
                 "instance_name": "i3",
                 "function_name": "f3",
                 "succeeding_instances": ["i4", "i5"],
@@ -655,7 +655,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                     "providers": {"p1": None},
                 },
             },
-            {
+            "i4": {
                 "instance_name": "i4",
                 "function_name": "f4",
                 "succeeding_instances": ["i6"],
@@ -666,7 +666,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                     "providers": {"p1": None},
                 },
             },
-            {
+            "i5": {
                 "instance_name": "i5",
                 "function_name": "f5",
                 "succeeding_instances": ["i6"],
@@ -677,7 +677,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                     "providers": {"p1": None},
                 },
             },
-            {
+            "i6": {
                 "instance_name": "i6",
                 "function_name": "f6",
                 "succeeding_instances": [],
@@ -688,7 +688,7 @@ class TestBFSFineGrainedSolver(unittest.TestCase):
                     "providers": {"p1": None, "p2": None},
                 },
             },
-        ]
+        }
         self.workflow_config.constraints = {
             "hard_resource_constraints": {
                 "cost": {"value": 67.0},

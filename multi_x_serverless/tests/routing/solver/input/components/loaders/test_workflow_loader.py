@@ -6,7 +6,9 @@ from multi_x_serverless.routing.solver.input.components.loaders.workflow_loader 
 
 class TestWorkflowLoader(unittest.TestCase):
     def setUp(self):
-        self.instances_data = [{"instance_name": "instance_1", "regions_and_providers": {"providers": {}}}]
+        self.instances_data = {
+            "instance_1": {"instance_name": "instance_1", "regions_and_providers": {"providers": {}}}
+        }
         self.workflow_data = {
             "instance_1": {
                 "favourite_home_region": "provider_1:region_1",
