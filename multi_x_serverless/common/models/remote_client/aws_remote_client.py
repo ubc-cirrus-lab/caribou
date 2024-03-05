@@ -73,18 +73,41 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
             return False
         return function is not None
 
-    def set_predecessor_reached(self, predecessor_name: str, sync_node_name: str, workflow_instance_id: str) -> int:
+    def set_predecessor_reached(
+        self, predecessor_name: str, sync_node_name: str, workflow_instance_id: str, direct_call: bool
+    ) -> list[bool]:
         client = self._client("dynamodb")
-        response = client.update_item(
+
+        # Check if the map exists and create it if not
+        client.update_item(
             TableName=SYNC_PREDECESSOR_COUNTER_TABLE,
             Key={"id": {"S": workflow_instance_id}},
-            UpdateExpression="SET #s = list_append(if_not_exists(#s, :empty_list), :new_predecessor)",
+            UpdateExpression="SET #s = if_not_exists(#s, :empty_map)",
             ExpressionAttributeNames={"#s": sync_node_name},
-            ExpressionAttributeValues={":new_predecessor": {"L": [{"S": predecessor_name}]}, ":empty_list": {"L": []}},
-            ReturnValues="UPDATED_NEW",
+            ExpressionAttributeValues={":empty_map": {"M": {}}},
         )
 
-        return len(response["Attributes"][sync_node_name]["L"])
+        # Update the map with the new predecessor_name and direct_call
+        if not direct_call:
+            response = client.update_item(
+                TableName=SYNC_PREDECESSOR_COUNTER_TABLE,
+                Key={"id": {"S": workflow_instance_id}},
+                UpdateExpression="SET #s.#p = if_not_exists(#s.#p, :direct_call)",
+                ExpressionAttributeNames={"#s": sync_node_name, "#p": predecessor_name},
+                ExpressionAttributeValues={":direct_call": {"BOOL": direct_call}},
+                ReturnValues="ALL_NEW",
+            )
+        else:
+            response = client.update_item(
+                TableName=SYNC_PREDECESSOR_COUNTER_TABLE,
+                Key={"id": {"S": workflow_instance_id}},
+                UpdateExpression="SET #s.#p = :direct_call",
+                ExpressionAttributeNames={"#s": sync_node_name, "#p": predecessor_name},
+                ExpressionAttributeValues={":direct_call": {"BOOL": direct_call}},
+                ReturnValues="ALL_NEW",
+            )
+
+        return [item["BOOL"] for item in response["Attributes"][sync_node_name]["M"].values()]
 
     def create_sync_tables(self) -> None:
         # Check if table exists
@@ -194,10 +217,10 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         original_region = parts[0].split(".")[3]
         original_image_name = parts[1]
 
-        new_region = self._client("ecr").meta.region_name
+        ecr_client = self._client("ecr")
+        new_region = ecr_client.meta.region_name
         new_image_name = original_image_name.replace(original_region, new_region)
 
-        ecr_client = self._client("ecr")
         # Assume AWS CLI is configured. Customize these commands based on your AWS setup.
         repository_name = new_image_name.split(":")[0]
         try:

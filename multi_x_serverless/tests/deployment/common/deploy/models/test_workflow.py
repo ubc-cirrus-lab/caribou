@@ -269,6 +269,25 @@ class TestWorkflow(unittest.TestCase):
         actual_paths = self.workflow._find_all_paths_to_any_sync_node("node3:sync:4")
         self.assertEqual(actual_paths, expected_paths)
 
+    def test_find_all_paths_to_any_sync_node_small_sync_example(self):
+        self.workflow._edges = [
+            ("small_sync_example-0_0_1-initial_function:entry_point:0", "small_sync_example-0_0_1-sync_function:sync:"),
+            ("small_sync_example-0_0_1-initial_function:entry_point:0", "small_sync_example-0_0_1-sync_function:sync:"),
+            ("small_sync_example-0_0_1-initial_function:entry_point:0", "small_sync_example-0_0_1-sync_function:sync:"),
+        ]
+
+        expected_paths = [
+            [
+                "small_sync_example-0_0_1-initial_function:entry_point:0",
+                "small_sync_example-0_0_1-sync_function:sync:",
+            ]
+        ]
+
+        actual_paths = self.workflow._find_all_paths_to_any_sync_node(
+            "small_sync_example-0_0_1-initial_function:entry_point:0"
+        )
+        self.assertEqual(actual_paths, expected_paths)
+
     def test_get_workflow_placement(self):
         # Mock the _functions attribute
         mock_function = MagicMock()
