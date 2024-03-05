@@ -25,7 +25,7 @@ class PerformanceRetriever(DataRetriever):
                 latency_distribution = self._get_latency_distribution(available_region, available_region_to)
 
                 transmission_latency_dict[region_key_to] = {
-                    "latency_distribution": [latency_distribution],
+                    "latency_distribution": latency_distribution,
                     "unit": "s",
                 }
 

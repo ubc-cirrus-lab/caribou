@@ -67,7 +67,7 @@ class SolverUpdateChecker(UpdateChecker):
             if total_invocations / months_between_summary > workflow_config.num_calls_in_one_month:
                 deployment_algorithm_class = deployment_algorithm_mapping.get(workflow_config.deployment_algorithm)
                 if deployment_algorithm_class:
-                    deployment_algorithm: DeploymentAlgorithm = deployment_algorithm_class(workflow_config)
+                    deployment_algorithm: DeploymentAlgorithm = deployment_algorithm_class(workflow_config)  # type: ignore
                     deployment_algorithm.run()
                 else:
                     # we should never reach here

@@ -1,6 +1,5 @@
 import json
 from abc import ABC, abstractmethod
-from typing import Optional
 
 from multi_x_serverless.common.constants import WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE
 from multi_x_serverless.common.models.endpoints import Endpoints
@@ -19,17 +18,10 @@ from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
 
 class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
-    def __init__(
-        self,
-        workflow_config: WorkflowConfig,
-        input_manager: Optional[InputManager] = None,
-    ):
+    def __init__(self, workflow_config: WorkflowConfig):
         self._workflow_config = workflow_config
 
-        if input_manager is None:
-            input_manager = InputManager(workflow_config=workflow_config)
-
-        self._input_manager = input_manager
+        self._input_manager = InputManager(workflow_config=workflow_config)
 
         self._workflow_level_permitted_regions = self._get_workflow_level_permitted_regions()
 
@@ -48,6 +40,8 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
 
         self._home_region_index = self._region_indexer.value_to_index(self._workflow_config.start_hops)
 
+        self._number_of_instances = len(self._instance_indexer.get_value_indices().values())
+
         self._home_deployment, self._home_deployment_metrics = self._initialise_home_deployment()
 
         self._ranker = Ranker(workflow_config, self._home_deployment_metrics)
@@ -55,8 +49,6 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
         self._formatter = Formatter(self._home_deployment, self._home_deployment_metrics)
 
         self._endpoints = Endpoints()
-
-        self._number_of_instances = len(self._instance_indexer.get_value_indices().values())
 
         self._per_instance_permitted_regions = [
             self._get_permitted_region_indices(self._workflow_level_permitted_regions, instance)

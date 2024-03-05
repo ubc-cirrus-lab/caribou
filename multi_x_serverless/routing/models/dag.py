@@ -16,11 +16,11 @@ class DAG:
         self._num_nodes: int = len(self._nodes)
         self._adj_matrix: np.ndarray = np.zeros((self.num_nodes, self.num_nodes), dtype=int)
 
+        self._value_indices: dict[str, int] = instance_indexer.get_value_indices()
+
         for instance in workflow_config_instances:
             for succeeding_instance in instance["succeeding_instances"]:
                 self._add_edge(instance["instance_name"], succeeding_instance)
-
-        self._value_indices: dict[str, int] = instance_indexer.get_value_indices()
 
     def _add_edge(self, from_node: str, to_node: str) -> None:
         if from_node in self._value_indices and to_node in self._value_indices:
