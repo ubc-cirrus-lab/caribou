@@ -15,6 +15,7 @@ class TestFormatter(unittest.TestCase):
                 "tail_carbon": 0.0,
             },
         )
+        self.maxDiff = None
 
     def test_format(self):
         results = (

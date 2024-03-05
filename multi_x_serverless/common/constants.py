@@ -12,6 +12,9 @@ DEPLOYMENT_MANAGER_RESOURCE_TABLE = "deployment_manager_resources_table"
 SYNC_MESSAGES_TABLE = "sync_messages_table"
 SYNC_PREDECESSOR_COUNTER_TABLE = "sync_predecessor_counter_table"
 
+# Image names
+MULTI_X_SERVERLESS_WORKFLOW_IMAGES_TABLE = "multi_x_serverless_workflow_images_table"
+
 # Code Resources Bucket
 MULTI_X_SERVERLESS_CODE_RESOURCES_BUCKET = "multi-x-serverless-code-resource-bucket"
 

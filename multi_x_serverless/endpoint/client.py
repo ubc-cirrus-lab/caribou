@@ -1,12 +1,15 @@
 import json
 import logging
+import random
 from typing import Any, Optional
 
 import botocore.exceptions
 
 from multi_x_serverless.common.constants import (
     DEPLOYMENT_MANAGER_RESOURCE_TABLE,
+    MULTI_X_SERVERLESS_WORKFLOW_IMAGES_TABLE,
     SOLVER_UPDATE_CHECKER_RESOURCE_TABLE,
+    WORKFLOW_INSTANCE_TABLE,
     WORKFLOW_PLACEMENT_DECISION_TABLE,
     WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE,
 )
@@ -32,6 +35,7 @@ class Client:
     def __init__(self, workflow_id: Optional[str] = None) -> None:
         self._workflow_id = workflow_id
         self._endpoints = Endpoints()
+        self._home_region_threshold = 0.1  # 10% of the time run in home region
 
     def run(self, input_data: Optional[str] = None) -> None:
         if self._workflow_id is None:
@@ -51,9 +55,17 @@ class Client:
 
         workflow_placement_decision = json.loads(result)
 
-        provider, region, identifier = self.__get_initial_node_workflow_placement_decision(workflow_placement_decision)
+        send_to_home_region = random.random() < self._home_region_threshold
 
-        json_payload = json.dumps(input_data)
+        logger.info("Sending to home region: %s", send_to_home_region)
+
+        provider, region, identifier = self.__get_initial_node_workflow_placement_decision(
+            workflow_placement_decision, send_to_home_region
+        )
+
+        wrapped_input_data = {"input_data": input_data, "send_to_home_region": send_to_home_region}
+
+        json_payload = json.dumps(wrapped_input_data)
 
         RemoteClientFactory.get_remote_client(provider, region).invoke_function(
             message=json_payload,
@@ -62,11 +74,19 @@ class Client:
         )
 
     def __get_initial_node_workflow_placement_decision(
-        self, workflow_placement_decision: dict[str, Any]
+        self, workflow_placement_decision: dict[str, Any], send_to_home_region: bool
     ) -> tuple[str, str, str]:
         initial_instance_name = workflow_placement_decision["current_instance_name"]
-        provider_region = workflow_placement_decision["workflow_placement"][initial_instance_name]["provider_region"]
-        identifier = workflow_placement_decision["workflow_placement"][initial_instance_name]["identifier"]
+        if send_to_home_region:
+            key = "home_deployment"
+        else:
+            key = "current_deployment"
+        provider_region = workflow_placement_decision["workflow_placement"][key]["instances"][initial_instance_name][
+            "provider_region"
+        ]
+        identifier = workflow_placement_decision["workflow_placement"][key]["instances"][initial_instance_name][
+            "identifier"
+        ]
         return provider_region["provider"], provider_region["region"], identifier
 
     def list_workflows(self) -> None:
@@ -111,15 +131,23 @@ class Client:
         self._endpoints.get_deployment_manager_client().remove_resource(f"deployment_package_{self._workflow_id}")
 
         self._endpoints.get_deployment_manager_client().remove_key(DEPLOYMENT_MANAGER_RESOURCE_TABLE, self._workflow_id)
+
+        self._endpoints.get_deployment_manager_client().remove_key(WORKFLOW_INSTANCE_TABLE, self._workflow_id)
+
+        workflow_id_alternative = self._workflow_id.replace(".", "_")
+        self._endpoints.get_data_collector_client().remove_key(
+            MULTI_X_SERVERLESS_WORKFLOW_IMAGES_TABLE, workflow_id_alternative
+        )
+
         print(f"Removed workflow {self._workflow_id}")
 
     def _remove_workflow(self, deployment_manager_config_json: str) -> None:
         deployment_manager_config = json.loads(deployment_manager_config_json)
         deployed_region_json = deployment_manager_config.get("deployed_regions")
-        deployed_region: dict[str, dict[str, str]] = json.loads(deployed_region_json)
+        deployed_region: dict[str, dict[str, Any]] = json.loads(deployed_region_json)
 
         for function_physical_instance, provider_region in deployed_region.items():
-            self._remove_function_instance(function_physical_instance, provider_region)
+            self._remove_function_instance(function_physical_instance, provider_region["deploy_region"])
 
     def _remove_function_instance(self, function_instance: str, provider_region: dict[str, str]) -> None:
         provider = provider_region["provider"]
@@ -133,6 +161,8 @@ class Client:
             if isinstance(client, AWSRemoteClient):
                 client.remove_ecr_repository(identifier)
         except RuntimeError as e:
+            print(f"Could not remove ecr repository {identifier}: {str(e)}")
+        except botocore.exceptions.ClientError as e:
             print(f"Could not remove ecr repository {identifier}: {str(e)}")
 
         try:

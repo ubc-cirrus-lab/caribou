@@ -28,8 +28,8 @@ class WorkflowLoader(InputLoader):
 
         ## Get the enabled providers for each instance
         self._instances_regions_and_providers = {}
-        instances_data: list[dict] = workflow_config.instances
-        for instance in instances_data:
+        instances_data: dict[str, dict[str, Any]] = workflow_config.instances
+        for instance in instances_data.values():
             providers = instance.get("regions_and_providers", {}).get("providers", {})
             self._instances_regions_and_providers[instance["instance_name"]] = providers
 

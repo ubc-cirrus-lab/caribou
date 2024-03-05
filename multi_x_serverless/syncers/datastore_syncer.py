@@ -43,8 +43,8 @@ class DatastoreSyncer:
         deployment_manager_config = json.loads(deployment_manager_config_json)
         self._validate_deployment_manager_config(deployment_manager_config, workflow_id)
 
-        deployed_region_json = deployment_manager_config.get("deployed_regions")
-        deployed_region: dict[str, dict[str, str]] = json.loads(deployed_region_json)
+        deployed_region_json = deployment_manager_config.get("deployed_regions", "{}")
+        deployed_region: dict[str, dict[str, Any]] = json.loads(deployed_region_json)
 
         latency_summary: dict[str, dict[str, dict[str, dict[str, Any]]]] = defaultdict(
             lambda: defaultdict(lambda: defaultdict(dict))
@@ -54,7 +54,8 @@ class DatastoreSyncer:
         )
 
         total_invocations = 0
-        for function_physical_instance, provider_region in deployed_region.items():
+        for function_physical_instance, instance_information in deployed_region.items():
+            provider_region = instance_information["deploy_region"]
             total_invocations += self._process_function_instance(
                 function_physical_instance,
                 provider_region,

@@ -18,10 +18,22 @@ class TestClient(unittest.TestCase):
             {
                 "current_instance_name": "instance1",
                 "workflow_placement": {
-                    "instance1": {
-                        "provider_region": {"provider": "aws", "region": "us-east-1"},
-                        "identifier": "function1",
-                    }
+                    "current_deployment": {
+                        "instances": {
+                            "instance1": {
+                                "provider_region": {"provider": "aws", "region": "us-east-1"},
+                                "identifier": "function1",
+                            }
+                        }
+                    },
+                    "home_deployment": {
+                        "instances": {
+                            "instance1": {
+                                "provider_region": {"provider": "aws", "region": "us-west-2"},
+                                "identifier": "function1",
+                            }
+                        }
+                    },
                 },
             }
         )
@@ -37,7 +49,7 @@ class TestClient(unittest.TestCase):
         # Verify the remote client was invoked with the correct parameters
         mock_get_remote_client.assert_called_with("aws", "us-east-1")
         mock_remote_client.invoke_function.assert_called_once_with(
-            message=json.dumps({"key": "value"}),
+            message='{"input_data": {"key": "value"}, "send_to_home_region": false}',
             identifier="function1",
             workflow_instance_id="0",
         )
@@ -118,7 +130,11 @@ class TestClient(unittest.TestCase):
         # Mock the return value of get_all_values_from_table
         mock_deployment_manager_client.get_all_values_from_table.return_value = {
             "workflow_id": json.dumps(
-                {"deployed_regions": json.dumps({"function_instance": {"provider": "provider", "region": "region"}})}
+                {
+                    "deployed_regions": json.dumps(
+                        {"function_instance": {"deploy_region": {"provider": "provider", "region": "region"}}}
+                    )
+                }
             )
         }
 
@@ -139,7 +155,11 @@ class TestClient(unittest.TestCase):
 
         # Mock the input to _remove_workflow
         deployment_manager_config_json = json.dumps(
-            {"deployed_regions": json.dumps({"function_instance": {"provider": "provider", "region": "region"}})}
+            {
+                "deployed_regions": json.dumps(
+                    {"function_instance": {"deploy_region": {"provider": "provider", "region": "region"}}}
+                )
+            }
         )
 
         # Capture the output of the print statements

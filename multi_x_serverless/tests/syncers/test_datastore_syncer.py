@@ -312,7 +312,11 @@ class TestDatastoreSyncer(unittest.TestCase):
         syncer.endpoints.get_datastore_client().put_value_to_sort_key_table = MagicMock()
 
         deployment_manager_config_json = json.dumps(
-            {"deployed_regions": json.dumps({"function_physical_instance": {"provider": "aws", "region": "us-east-1"}})}
+            {
+                "deployed_regions": json.dumps(
+                    {"function_physical_instance": {"deploy_region": {"provider": "aws", "region": "us-east-1"}}}
+                )
+            }
         )
 
         mock_process_function_instance.return_value = 1
