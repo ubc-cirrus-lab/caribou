@@ -34,7 +34,7 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
         self._workflow_level_permitted_regions = self._get_workflow_level_permitted_regions()
 
         self._region_indexer = RegionIndexer(self._workflow_level_permitted_regions)
-        self._instance_indexer = InstanceIndexer(self._workflow_config.instances)
+        self._instance_indexer = InstanceIndexer(list(self._workflow_config.instances.values()))
 
         # Complete the setup of the input manager
         self._input_manager.setup(self._region_indexer, self._instance_indexer)
@@ -92,7 +92,12 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
         return workflow_level_permitted_regions
 
     def _filter_regions_instance(self, regions: list[str], instance_index: int) -> list[str]:
-        return self._filter_regions(regions, self._workflow_config.instances[instance_index]["regions_and_providers"])
+        return self._filter_regions(
+            regions,
+            self._workflow_config.instances[self._instance_indexer.index_to_value(instance_index)][
+                "regions_and_providers"
+            ],
+        )
 
     def _filter_regions(self, regions: list[str], regions_and_providers: dict) -> list[str]:
         # Take in a list of regions, then apply filters to remove regions that do not satisfy the constraints

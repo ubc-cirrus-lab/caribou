@@ -1,5 +1,6 @@
 from itertools import product
 from multiprocessing import Pool
+from typing import Optional
 
 from multi_x_serverless.routing.deployment_algorithms.deployment_algorithm import DeploymentAlgorithm
 
@@ -18,7 +19,9 @@ class FineGrainedDeploymentAlgorithm(DeploymentAlgorithm):
             deployments = pool.map(self._generate_and_check_deployment, all_combinations)
         return [deployment for deployment in deployments if deployment is not None]
 
-    def _generate_and_check_deployment(self, deployment_tuple: tuple[int, ...]) -> list[int]:
+    def _generate_and_check_deployment(
+        self, deployment_tuple: tuple[int, ...]
+    ) -> Optional[tuple[list[int], dict[str, float]]]:
         if any(
             deployment_tuple[instance] not in self._per_instance_permitted_regions[instance]
             for instance in range(self._number_of_instances)

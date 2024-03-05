@@ -20,7 +20,7 @@ class DeploymentMetricsCalculator(ABC):
         self._input_manager: InputManager = input_manager
 
         # Set up the DAG structure and get the prerequisites and successor dictionaries
-        dag: DAG = DAG(workflow_config.instances, instance_indexer)
+        dag: DAG = DAG(list(workflow_config.instances.values()), instance_indexer)
         self._prerequisites_dictionary = dag.get_prerequisites_dict()
         self._successor_dictionary = dag.get_preceeding_dict()
 
