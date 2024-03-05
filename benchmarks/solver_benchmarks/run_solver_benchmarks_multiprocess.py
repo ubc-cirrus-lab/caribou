@@ -189,7 +189,7 @@ class SolverBenchmark:
 def run_benchmark_wrapper(benchmark, deployment_algorithm_class):
     return benchmark.run_benchmark(
         deployment_algorithm_class=deployment_algorithm_class,
-        number_of_runs=10,
+        number_of_runs=4,
     )
 
 
@@ -234,7 +234,7 @@ if __name__ == "__main__":
     results = []
     inputs = []
     deployment_algorithms = []
-    scenarios = {"total_nodes": range(3, 6), "sync_nodes": range(1, 3), "num_regions": range(3, 8, 2)}
+    scenarios = {"total_nodes": range(3, 7), "sync_nodes": range(1, 3), "num_regions": range(4, 7)}
 
     counter = 0
     for total_nodes in scenarios["total_nodes"]:
