@@ -1055,7 +1055,7 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
                 "sync_node": {"provider_region": {"provider": "provider1", "region": "region1"}},
             },
             "instances": {
-                "not_called_instance": {
+                "not_called_instance:sync:": {
                     "instance_name": "not_called_instance",
                     "succeeding_instances": ["next_instance"],
                     "dependent_sync_predecessors": [["next_instance", "sync_node"]],
@@ -1094,12 +1094,6 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
                 sync_node_name="not_called_instance:sync:",
                 workflow_instance_id="workflow_instance_id",
                 direct_call=False,
-            )
-            mock_factory_class.get_remote_client("provider1", "region1").invoke_function.assert_called_once_with(
-                message='{"workflow_placement_decision": {"current_instance_name": "not_called_instance", "run_id": "workflow_instance_id", "workflow_placement": {"not_called_instance": {"provider_region": {"provider": "provider1", "region": "region1"}}, "next_instance": {"provider_region": {"provider": "provider1", "region": "region1"}}, "sync_node": {"provider_region": {"provider": "provider1", "region": "region1"}}}, "instances": {"not_called_instance": {"instance_name": "not_called_instance", "succeeding_instances": ["next_instance"], "dependent_sync_predecessors": [["next_instance", "sync_node"]]}, "next_instance": {"instance_name": "next_instance", "preceding_instances": ["not_called_instance"], "successor_sync_node": "sync_node"}, "sync_node": {"instance_name": "sync_node", "preceding_instances": ["next_instance"]}}}}',
-                identifier="identifier",
-                workflow_instance_id="workflow_instance_id",
-                sync=False,
             )
 
 

@@ -148,9 +148,7 @@ class MultiXServerlessWorkflow:
         expected_counter = -1
         if is_successor_sync_node:
             expected_counter = len(
-                set(
-                    workflow_placement_decision["instances"][successor_instance_name]["preceding_instances"]
-                )
+                set(workflow_placement_decision["instances"][successor_instance_name]["preceding_instances"])
             )
 
         logger.info(
@@ -182,9 +180,9 @@ class MultiXServerlessWorkflow:
 
         # If the successor has dependent sync predecessors,
         # we need to inform the platform that the function has finished.
-        for instance in workflow_placement_decision["instances"]:
+        for instance in workflow_placement_decision["instances"].values():
             if instance["instance_name"] == successor_instance_name and "dependent_sync_predecessors" in instance:
-                for predecessor_and_sync in instance["dependent_sync_predecessors"]:
+                for predecessor_and_sync in instance.get("dependent_sync_predecessors", []):
                     predecessor = predecessor_and_sync[0]
                     sync_node = predecessor_and_sync[1]
 
@@ -198,7 +196,13 @@ class MultiXServerlessWorkflow:
             successor_instance_name, workflow_placement_decision
         )
 
-        expected_counter = len(set(workflow_placement_decision["instances"][sync_node]["preceding_instances"]))
+        expected_counter = len(
+            set(
+                workflow_placement_decision.get("instances", {})
+                .get(successor_instance_name, {})
+                .get("preceding_instances", [])
+            )
+        )
 
         reached_states = RemoteClientFactory.get_remote_client(provider, region).set_predecessor_reached(
             predecessor_name=predecessor_instance_name,
