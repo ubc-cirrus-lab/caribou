@@ -10,11 +10,12 @@ class CoarseGrainedDeploymentAlgorithm(DeploymentAlgorithm):
         return deployments
 
     def _generate_all_possible_coarse_deployments(self) -> list[tuple[list[int], dict[str, float]]]:
-        with Pool() as pool:
-            deployments = pool.map(
-                self._generate_and_check_deployment, self._region_indexer.get_value_indices().values()
-            )
-        return [deployment for deployment in deployments if deployment is not None]
+        deployments = []
+        for index_value in self._region_indexer.get_value_indices().values():    
+            deployment = self._generate_and_check_deployment(index_value)
+            if deployment is not None:
+                deployments.append(deployment)
+        return deployments
 
     def _generate_and_check_deployment(self, region_index: int) -> Optional[tuple[list[int], dict[str, float]]]:
         if any(

@@ -70,7 +70,7 @@ class CostCalculator(InputCalculator):
 
         # Get the cost of transmission
         transmission_cost_gb: float = self._datacenter_loader.get_transmission_cost(
-            to_provider, intra_provider_transfer
+            to_region_name, intra_provider_transfer
         )
 
         # Both in units of gb

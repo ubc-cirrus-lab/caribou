@@ -11,13 +11,16 @@ class FineGrainedDeploymentAlgorithm(DeploymentAlgorithm):
         return deployments
 
     def _generate_all_possible_fine_deployments(self) -> list[tuple[list[int], dict[str, float]]]:
-        with Pool() as pool:
-            all_combinations = product(
-                self._region_indexer.get_value_indices().values(),
-                repeat=self._number_of_instances,
-            )
-            deployments = pool.map(self._generate_and_check_deployment, all_combinations)
-        return [deployment for deployment in deployments if deployment is not None]
+        deployments = []
+        all_combinations = product(
+            self._region_indexer.get_value_indices().values(),
+            repeat=self._number_of_instances,
+        )
+        for deployment_tuple in all_combinations:
+            deployment = self._generate_and_check_deployment(deployment_tuple)
+            if deployment is not None:
+                deployments.append(deployment)
+        return deployments
 
     def _generate_and_check_deployment(
         self, deployment_tuple: tuple[int, ...]

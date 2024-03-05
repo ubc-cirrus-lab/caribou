@@ -36,7 +36,7 @@ class BenchmarkRemoteClient(MockRemoteClient):
         for instance in self._config["instances"]:
             self._workflow_data[self._config["workflow_id"]][instance] = {
                 "execution_summary": {
-                    region: {"runtime_distribution": [random.lognormvariate(1.2, 0.4) for _ in range(100)]}
+                    region: {"runtime_distribution": [self._random.lognormvariate(0.5, 0.3) for _ in range(100)]}
                     for region in self._regions
                 },
                 "invocation_summary": {},
@@ -44,10 +44,10 @@ class BenchmarkRemoteClient(MockRemoteClient):
             for to_instance in self._config["instances"]:
                 self._workflow_data[self._config["workflow_id"]][instance]["invocation_summary"][to_instance] = {
                     "probability_of_invocation": self._random.uniform(0, 1),
-                    "data_transfer_size_distribution": [random.lognormvariate(0.5, 0.3) for _ in range(100)],
+                    "data_transfer_size_distribution": [self._random.lognormvariate(0.01, 0.3) for _ in range(100)],
                     "transmission_summary": {
                         from_region: {
-                            to_region: {"latency_distribution": [random.lognormvariate(0.1, 0.04) for _ in range(100)]}
+                            to_region: {"latency_distribution": [self._random.lognormvariate(0.08, 0.3) for _ in range(100)]}
                             for to_region in self._regions
                         }
                         for from_region in self._regions
@@ -61,7 +61,7 @@ class BenchmarkRemoteClient(MockRemoteClient):
         }
         for to_region in self._regions:
             performance_data["transmission_latency"][to_region] = {
-                "latency_distribution": [random.lognormvariate(0.1, 0.04) for _ in range(100)]
+                "latency_distribution": [self._random.lognormvariate(0.1, 0.04) for _ in range(100)]
             }
         self._performance_data[region] = performance_data
 
@@ -75,20 +75,20 @@ class BenchmarkRemoteClient(MockRemoteClient):
         }
         execution_cost = {
             "invocation_cost": {
-                "arm64": self._random.uniform(1e-7, 2e-7),
-                "x86_64": self._random.uniform(1e-7, 2e-7),
+                "arm64": self._random.lognormvariate(1e-7, 5e-7),
+                "x86_64": self._random.lognormvariate(1e-7, 5e-7),
                 "free_tier_invocations": 1000000,
             },
             "compute_cost": {
-                "arm64": self._random.uniform(1e-7, 2e-7),
-                "x86_64": self._random.uniform(1e-7, 2e-7),
+                "arm64": self._random.lognormvariate(1e-5, 5e-5),
+                "x86_64": self._random.lognormvariate(1e-5, 5e-5),
                 "free_tier_compute_gb_s": 400000,
             },
             "unit": "USD",
         }
         transmission_cost = {
-            "global_data_transfer": self._random.uniform(0, 0.1),
-            "provider_data_transfer": self._random.uniform(0, 0.1),
+            "global_data_transfer": self._random.uniform(0.09, 0.18),
+            "provider_data_transfer": self._random.uniform(0.01, 0.09),
             "unit": "USD/GB",
         }
         datacenter_data["execution_cost"] = execution_cost
