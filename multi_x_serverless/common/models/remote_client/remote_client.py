@@ -65,9 +65,11 @@ class RemoteClient(ABC):  # pylint: disable=too-many-public-methods
             payload = message_dictionary["payload"]
             json_payload = json.dumps(payload)
             self.upload_predecessor_data_at_sync_node(function_name, workflow_instance_id, json_payload)
-            counter = self.set_predecessor_reached(current_instance_name, function_name, workflow_instance_id)
+            reached_states = self.set_predecessor_reached(
+                current_instance_name, function_name, workflow_instance_id, direct_call=True
+            )
 
-            if counter != expected_counter:
+            if len(reached_states) != expected_counter:
                 return
         try:
             self.send_message_to_messaging_service(identifier, message)
@@ -75,7 +77,9 @@ class RemoteClient(ABC):  # pylint: disable=too-many-public-methods
             raise RuntimeError(f"Could not invoke function through SNS: {str(e)}") from e
 
     @abstractmethod
-    def set_predecessor_reached(self, predecessor_name: str, sync_node_name: str, workflow_instance_id: str) -> int:
+    def set_predecessor_reached(
+        self, predecessor_name: str, sync_node_name: str, workflow_instance_id: str, direct_call: bool
+    ) -> list[bool]:
         raise NotImplementedError()
 
     @abstractmethod

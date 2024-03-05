@@ -519,13 +519,13 @@ class TestAWSRemoteClient(unittest.TestCase):
 
         # Mock the return value of update_item
         mock_dynamodb_client.update_item.return_value = {
-            "Attributes": {"sync_node_name": {"L": [{"S": "predecessor_name"}]}}
+            "Attributes": {"sync_node_name": {"M": {"workflow_instance_id": {"BOOL": True}}}}
         }
 
-        result = client.set_predecessor_reached("predecessor_name", "sync_node_name", "workflow_instance_id")
+        result = client.set_predecessor_reached("predecessor_name", "sync_node_name", "workflow_instance_id", True)
 
         # Check that the return value is correct
-        self.assertEqual(result, 1)
+        self.assertEqual(result, [True])
 
     @patch.object(AWSRemoteClient, "_client")
     def test_create_sync_tables(self, mock_client):
@@ -897,6 +897,61 @@ class TestAWSRemoteClient(unittest.TestCase):
 
         # Check that the delete_repository method was called
         mock_ecr_client.delete_repository.assert_called()
+
+    @patch("botocore.session.Session")
+    def test_get_deployed_image_uri(self, mock_session):
+        # Mocking the scenario where the image URI is retrieved successfully
+        mock_dynamodb_client = MagicMock()
+        mock_session.return_value.create_client.return_value = mock_dynamodb_client
+
+        client = AWSRemoteClient("region1")
+
+        # Define the input
+        function_name = "image_processing-0_0_1-getinput_aws-us-east-1"
+
+        # Mock the return value of get_item
+        mock_dynamodb_client.get_item.return_value = {
+            "Item": {
+                "key": {"S": "image_processing-0_0_1"},
+                "value": {"M": {"getinput": {"S": "image_uri"}}},
+            }
+        }
+
+        result = client._get_deployed_image_uri(function_name)
+
+        # Check that the return value is correct
+        self.assertEqual(result, "image_uri")
+
+    @patch.object(AWSRemoteClient, "_client")
+    @patch("subprocess.check_output")
+    @patch("subprocess.run")
+    def test_copy_image_to_region(self, mock_run, mock_check_output, mock_client):
+        # Mocking the scenario where the image is copied successfully
+        mock_ecr_client = MagicMock()
+        mock_sts_client = MagicMock()
+        mock_client.side_effect = [mock_ecr_client, mock_sts_client]
+
+        mock_ecr_client.meta.region_name = "region1"
+
+        client = AWSRemoteClient("region1")
+
+        # Define the input
+        deployed_image_uri = "123456789012.dkr.ecr.us-west-2.amazonaws.com/my-web-app:latest"
+
+        # Mock the return value of get_caller_identity
+        mock_sts_client.get_caller_identity.return_value = {"Account": "123456789012"}
+
+        # Mock the return value of check_output
+        mock_check_output.return_value = b"my_password"
+
+        result = client._copy_image_to_region(deployed_image_uri)
+
+        # Check that the return value is correct
+        expected_result = "123456789012.dkr.ecr.region1.amazonaws.com/my-web-app:latest"
+        self.assertEqual(result, expected_result)
+
+        # Check that the subprocess.run method was called
+        mock_run.assert_called()
 
 
 if __name__ == "__main__":

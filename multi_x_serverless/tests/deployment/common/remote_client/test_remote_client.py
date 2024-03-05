@@ -9,7 +9,7 @@ class TestRemoteClient(unittest.TestCase):
     def test_invoke_function(self):
         client = MockRemoteClient()
         client.send_message_to_messaging_service = Mock()
-        client.set_predecessor_reached = Mock(return_value=1)
+        client.set_predecessor_reached = Mock(return_value=[True])
         client.upload_predecessor_data_at_sync_node = Mock()
 
         message = json.dumps({"payload": "test"})
@@ -19,7 +19,7 @@ class TestRemoteClient(unittest.TestCase):
 
         client.send_message_to_messaging_service.assert_called_once_with("identifier", message)
         client.set_predecessor_reached.assert_called_once_with(
-            "function_name", "sync_node_name", "workflow_instance_id"
+            "function_name", "sync_node_name", "workflow_instance_id", direct_call=True
         )
         client.upload_predecessor_data_at_sync_node.assert_called_once_with(
             "sync_node_name", "workflow_instance_id", '"test"'
