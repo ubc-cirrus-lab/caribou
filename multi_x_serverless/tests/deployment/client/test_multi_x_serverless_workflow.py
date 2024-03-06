@@ -1096,6 +1096,40 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
                 direct_call=False,
             )
 
+    def test_inform_sync_node_of_conditional_non_execution_no_sync(self):
+        mock_remote_client = Mock()
+        mock_remote_client_factory = Mock()
+        mock_remote_client_factory.get_remote_client = Mock(return_value=mock_remote_client)
+
+        workflow_placement_decision = {
+            "current_instance_name": "not_called_instance",
+            "run_id": "workflow_instance_id",
+            "workflow_placement": {
+                "not_called_instance": {"provider_region": {"provider": "provider1", "region": "region1"}},
+                "next_instance": {"provider_region": {"provider": "provider1", "region": "region1"}},
+            },
+            "instances": {
+                "not_called_instance::": {
+                    "instance_name": "not_called_instance",
+                    "succeeding_instances": ["next_instance"],
+                },
+                "next_instance": {
+                    "instance_name": "next_instance",
+                    "preceding_instances": ["not_called_instance"],
+                },
+            },
+        }
+
+        with patch(
+            "multi_x_serverless.deployment.client.multi_x_serverless_workflow.RemoteClientFactory",
+            return_value=mock_remote_client_factory,
+        ) as mock_factory_class:
+            self.workflow._inform_sync_node_of_conditional_non_execution(
+                workflow_placement_decision, "not_called_instance::", "current_node::"
+            )
+
+            mock_factory_class.get_remote_client.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()

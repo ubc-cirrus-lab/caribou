@@ -13,6 +13,15 @@ class ConcreteDeploymentAlgorithm(DeploymentAlgorithm):
         return [(["r1"], {"cost": 100})]
 
 
+class ConcreteDeploymentAlgorithmCallingSuper(DeploymentAlgorithm):
+    def __init__(self, workflow_config):
+        super().__init__(workflow_config)
+
+    def _run_algorithm(self):
+        # Example implementation for testing
+        return [(["r1"], {"cost": 100})]
+
+
 class TestDeploymentAlgorithm(unittest.TestCase):
     @patch("multi_x_serverless.routing.deployment_algorithms.deployment_algorithm.InputManager")
     def setUp(self, mock_input_manager):
@@ -21,6 +30,65 @@ class TestDeploymentAlgorithm(unittest.TestCase):
         self.workflow_config_mock = MagicMock(spec=WorkflowConfig)
         self.workflow_config_mock.start_hops = "r1:p1"
         self.deployment_algorithm = ConcreteDeploymentAlgorithm(self.workflow_config_mock)
+
+    @patch("multi_x_serverless.routing.deployment_algorithms.deployment_algorithm.InputManager")
+    @patch("multi_x_serverless.routing.deployment_algorithms.deployment_algorithm.RegionIndexer")
+    @patch("multi_x_serverless.routing.deployment_algorithms.deployment_algorithm.InstanceIndexer")
+    @patch("multi_x_serverless.routing.deployment_algorithms.deployment_algorithm.SimpleDeploymentMetricsCalculator")
+    @patch("multi_x_serverless.routing.deployment_algorithms.deployment_algorithm.Ranker")
+    @patch("multi_x_serverless.routing.deployment_algorithms.deployment_algorithm.Formatter")
+    @patch("multi_x_serverless.routing.deployment_algorithms.deployment_algorithm.Endpoints")
+    def test_init(
+        self,
+        mock_endpoints,
+        mock_formatter,
+        mock_ranker,
+        mock_simple_deployment_metrics_calculator,
+        mock_instance_indexer,
+        mock_region_indexer,
+        mock_input_manager,
+    ):
+        # Arrange
+        mock_workflow_config = MagicMock()
+        mock_workflow_config.start_hops = "r1"
+        mock_workflow_config.instances.values.return_value = [{"instance_name": "instance1"}]
+
+        # Act
+        deployment_algorithm = ConcreteDeploymentAlgorithmCallingSuper(mock_workflow_config)
+
+        # Assert
+        self.assertEqual(deployment_algorithm._workflow_config, mock_workflow_config)
+        self.assertIsInstance(deployment_algorithm._input_manager, MagicMock)
+        self.assertIsInstance(deployment_algorithm._region_indexer, MagicMock)
+        self.assertIsInstance(deployment_algorithm._instance_indexer, MagicMock)
+        self.assertIsInstance(deployment_algorithm._deployment_metrics_calculator, MagicMock)
+        self.assertIsInstance(deployment_algorithm._ranker, MagicMock)
+        self.assertIsInstance(deployment_algorithm._formatter, MagicMock)
+        self.assertIsInstance(deployment_algorithm._endpoints, MagicMock)
+
+    def test_run(self):
+        # Arrange
+        self.deployment_algorithm._ranker = MagicMock()
+        self.deployment_algorithm._ranker.rank.return_value = [(["r1"], {"cost": 100})]
+        self.deployment_algorithm._formatter = MagicMock()
+        self.deployment_algorithm._formatter.format.return_value = "formatted_deployment"
+        self.deployment_algorithm._region_indexer = MagicMock()
+        self.deployment_algorithm._region_indexer.indicies_to_values.return_value = {0: "region1"}
+        self.deployment_algorithm._instance_indexer = MagicMock()
+        self.deployment_algorithm._instance_indexer.indicies_to_values.return_value = {0: "instance1"}
+        self.deployment_algorithm._select_deployment = MagicMock()
+        self.deployment_algorithm._select_deployment.return_value = (["r1"], {"cost": 100})
+        self.deployment_algorithm._upload_result = MagicMock()
+        self.deployment_algorithm._upload_result.return_value = "formatted_deployment"
+
+        # Act
+        self.deployment_algorithm.run()
+
+        # Assert
+        self.deployment_algorithm._ranker.rank.assert_called_once()
+        self.deployment_algorithm._select_deployment.assert_called_once()
+        self.deployment_algorithm._formatter.format.assert_called_once()
+        self.deployment_algorithm._upload_result.assert_called_once()
 
     @patch("multi_x_serverless.routing.deployment_algorithms.deployment_algorithm.InputManager.get_all_regions")
     def test_get_workflow_level_permitted_regions(self, mock_get_all_regions):
@@ -133,6 +201,25 @@ class TestDeploymentAlgorithm(unittest.TestCase):
 
         self.assertEqual(home_deployment, [0])
         self.assertEqual(home_deployment_metrics, {"cost": 100})
+
+    @patch.object(DeploymentAlgorithm, "_filter_regions_instance")
+    def test_get_permitted_region_indices(self, mock_filter_regions_instance):
+        # Arrange
+        mock_regions = ["r1", "r2", "r3"]
+        mock_instance = 0
+        mock_filter_regions_instance.return_value = ["r1", "r3"]
+
+        self.deployment_algorithm._region_indexer = MagicMock()
+        self.deployment_algorithm._region_indexer.get_value_indices.return_value = {"r1": 0, "r2": 1, "r3": 2}
+        self.deployment_algorithm._instance_indexer = MagicMock()
+
+        # Act
+        result = self.deployment_algorithm._get_permitted_region_indices(mock_regions, mock_instance)
+
+        # Assert
+        self.assertEqual(result, [0, 2])
+        mock_filter_regions_instance.assert_called_once_with(mock_regions, mock_instance)
+        self.deployment_algorithm._region_indexer.get_value_indices.assert_called_once()
 
 
 if __name__ == "__main__":
