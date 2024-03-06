@@ -67,13 +67,17 @@ class WorkflowConfig:
         return self._lookup("num_calls_in_one_month", 100)
 
     @property
-    def solver(self) -> str:
-        allowed_solvers = {"coarse_grained_solver", "fine_grained_solver", "stochastic_heuristic_solver"}
-        result = self._lookup("solver", "coarse_grained_solver")
+    def deployment_algorithm(self) -> str:
+        allowed_deployment_algorithms = {
+            "coarse_grained_deployment_algorithm",
+            "fine_grained_deployment_algorithm",
+            "stochastic_heuristic_deployment_algorithm",
+        }
+        result = self._lookup("deployment_algorithm", "coarse_grained_deployment_algorithm")
         if len(result) == 0:
-            result = "coarse_grained_solver"
-        if result not in allowed_solvers:
-            raise ValueError(f"Invalid solver: {result}")
+            result = "coarse_grained_deployment_algorithm"
+        if result not in allowed_deployment_algorithms:
+            raise ValueError(f"Invalid deployment algorithm: {result}")
         return result
 
     def write_back(self, key: str, value: Any) -> None:

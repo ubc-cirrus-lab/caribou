@@ -9,12 +9,12 @@ from multi_x_serverless.common.models.remote_client.remote_client_factory import
 
 class TestClient(unittest.TestCase):
     @patch("multi_x_serverless.deployment.client.multi_x_serverless_workflow.RemoteClientFactory.get_remote_client")
-    @patch.object(Endpoints, "get_solver_workflow_placement_decision_client")
+    @patch.object(Endpoints, "get_deployment_algorithm_workflow_placement_decision_client")
     def test_successful_workflow_placement_decision_retrieval_and_invocation(
-        self, mock_get_solver_workflow_placement_decision_client, mock_get_remote_client
+        self, mock_get_deployment_algorithm_workflow_placement_decision_client, mock_get_remote_client
     ):
-        mock_solver_client = MagicMock()
-        mock_solver_client.get_value_from_table.return_value = json.dumps(
+        mock_deployment_algorithm_client = MagicMock()
+        mock_deployment_algorithm_client.get_value_from_table.return_value = json.dumps(
             {
                 "current_instance_name": "instance1",
                 "workflow_placement": {
@@ -37,13 +37,14 @@ class TestClient(unittest.TestCase):
                 },
             }
         )
-        mock_get_solver_workflow_placement_decision_client.return_value = mock_solver_client
+        mock_get_deployment_algorithm_workflow_placement_decision_client.return_value = mock_deployment_algorithm_client
 
         # Mocking the remote client invocation
         mock_remote_client = MagicMock()
         mock_get_remote_client.return_value = mock_remote_client
 
         client = Client("workflow_name")
+        client._home_region_threshold = 0.0  # Never send to home region
         client.run({"key": "value"})
 
         # Verify the remote client was invoked with the correct parameters
@@ -54,12 +55,14 @@ class TestClient(unittest.TestCase):
             workflow_instance_id="0",
         )
 
-    @patch.object(Endpoints, "get_solver_workflow_placement_decision_client")
-    def test_no_workflow_placement_decision_found(self, mock_get_solver_workflow_placement_decision_client):
+    @patch.object(Endpoints, "get_deployment_algorithm_workflow_placement_decision_client")
+    def test_no_workflow_placement_decision_found(
+        self, mock_get_deployment_algorithm_workflow_placement_decision_client
+    ):
         # Mocking the scenario where no workflow placement decision is found
-        mock_solver_client = MagicMock()
-        mock_solver_client.get_value_from_table.return_value = None
-        mock_get_solver_workflow_placement_decision_client.return_value = mock_solver_client
+        mock_deployment_algorithm_client = MagicMock()
+        mock_deployment_algorithm_client.get_value_from_table.return_value = None
+        mock_get_deployment_algorithm_workflow_placement_decision_client.return_value = mock_deployment_algorithm_client
 
         client = Client("workflow_name")
 
@@ -71,12 +74,12 @@ class TestClient(unittest.TestCase):
             "No workflow placement decision found for workflow, did you deploy the workflow and is the workflow id (workflow_name) correct?",
         )
 
-    @patch.object(Endpoints, "get_solver_update_checker_client")
-    def test_list_workflows_no_workflows_deployed(self, mock_get_solver_update_checker_client):
+    @patch.object(Endpoints, "get_deployment_algorithm_update_checker_client")
+    def test_list_workflows_no_workflows_deployed(self, mock_get_deployment_algorithm_update_checker_client):
         # Mocking the scenario where no workflows are deployed
-        mock_solver_client = MagicMock()
-        mock_solver_client.get_keys.return_value = None
-        mock_get_solver_update_checker_client.return_value = mock_solver_client
+        mock_deployment_algorithm_client = MagicMock()
+        mock_deployment_algorithm_client.get_keys.return_value = None
+        mock_get_deployment_algorithm_update_checker_client.return_value = mock_deployment_algorithm_client
 
         client = Client()
 
@@ -87,12 +90,12 @@ class TestClient(unittest.TestCase):
         # Check that the print statement in the if block was executed
         mocked_print.assert_called_once_with("No workflows deployed")
 
-    @patch.object(Endpoints, "get_solver_update_checker_client")
-    def test_list_workflows_workflows_deployed(self, mock_get_solver_update_checker_client):
+    @patch.object(Endpoints, "get_deployment_algorithm_update_checker_client")
+    def test_list_workflows_workflows_deployed(self, mock_get_deployment_algorithm_update_checker_client):
         # Mocking the scenario where workflows are deployed
-        mock_solver_client = MagicMock()
-        mock_solver_client.get_keys.return_value = ["workflow1", "workflow2"]
-        mock_get_solver_update_checker_client.return_value = mock_solver_client
+        mock_deployment_algorithm_client = MagicMock()
+        mock_deployment_algorithm_client.get_keys.return_value = ["workflow1", "workflow2"]
+        mock_get_deployment_algorithm_update_checker_client.return_value = mock_deployment_algorithm_client
 
         client = Client()
 
@@ -104,23 +107,23 @@ class TestClient(unittest.TestCase):
         calls = [call("Deployed workflows:"), call("workflow1"), call("workflow2")]
         mocked_print.assert_has_calls(calls)
 
-    @patch.object(Endpoints, "get_solver_workflow_placement_decision_client")
-    @patch.object(Endpoints, "get_solver_update_checker_client")
+    @patch.object(Endpoints, "get_deployment_algorithm_workflow_placement_decision_client")
+    @patch.object(Endpoints, "get_deployment_algorithm_update_checker_client")
     @patch.object(Endpoints, "get_deployment_manager_client")
     @patch.object(RemoteClientFactory, "get_remote_client")
     def test_remove(
         self,
         mock_get_remote_client,
         mock_get_deployment_manager_client,
-        mock_get_solver_update_checker_client,
-        mock_get_solver_workflow_placement_decision_client,
+        mock_get_deployment_algorithm_update_checker_client,
+        mock_get_deployment_algorithm_workflow_placement_decision_client,
     ):
         # Mocking the scenario where the workflow id is provided and the workflow is removed successfully
-        mock_solver_client = MagicMock()
+        mock_deployment_algorithm_client = MagicMock()
         mock_deployment_manager_client = MagicMock()
         mock_remote_client = MagicMock()
-        mock_get_solver_workflow_placement_decision_client.return_value = mock_solver_client
-        mock_get_solver_update_checker_client.return_value = mock_solver_client
+        mock_get_deployment_algorithm_workflow_placement_decision_client.return_value = mock_deployment_algorithm_client
+        mock_get_deployment_algorithm_update_checker_client.return_value = mock_deployment_algorithm_client
         mock_get_deployment_manager_client.return_value = mock_deployment_manager_client
         mock_get_remote_client.return_value = mock_remote_client
 
@@ -188,52 +191,54 @@ class TestClient(unittest.TestCase):
         # Check that the print statement was executed
         mocked_print.assert_called_with("Removed function function_instance from provider provider in region region")
 
-    @patch.object(Endpoints, "get_solver_update_checker_client")
-    def test_solve(self, mock_get_solver_update_checker_client):
-        # Mocking the scenario where the workflow id is provided and the solver is solved successfully
-        mock_solver_client = MagicMock()
-        mock_get_solver_update_checker_client.return_value = mock_solver_client
+    @patch.object(Endpoints, "get_deployment_algorithm_update_checker_client")
+    def test_solve(self, mock_get_deployment_algorithm_update_checker_client):
+        # Mocking the scenario where the workflow id is provided and the deployment_algorithm is solved successfully
+        mock_deployment_algorithm_client = MagicMock()
+        mock_get_deployment_algorithm_update_checker_client.return_value = mock_deployment_algorithm_client
 
         client = Client()
         client._workflow_id = "workflow_id"
 
         # Mock the return value of get_value_from_table
-        mock_solver_client.get_value_from_table.return_value = json.dumps(
+        mock_deployment_algorithm_client.get_value_from_table.return_value = json.dumps(
             {"workflow_config": json.dumps({"key": "value"})}
         )
 
-        # Mock the solver classes
-        with patch("multi_x_serverless.endpoint.client.CoarseGrainedSolver") as MockCoarseGrainedSolver, patch(
-            "multi_x_serverless.endpoint.client.BFSFineGrainedSolver"
+        # Mock the deployment_algorithm classes
+        with patch(
+            "multi_x_serverless.endpoint.client.CoarseGrainedDeploymentAlgorithm"
+        ) as MockCoarseGrainedSolver, patch(
+            "multi_x_serverless.endpoint.client.FineGrainedDeploymentAlgorithm"
         ) as MockBFSFineGrainedSolver, patch(
-            "multi_x_serverless.endpoint.client.StochasticHeuristicDescentSolver"
+            "multi_x_serverless.endpoint.client.StochasticHeuristicDeploymentAlgorithm"
         ) as MockStochasticHeuristicDescentSolver, patch(
             "multi_x_serverless.endpoint.client.WorkflowConfig"
         ) as MockWorkflowConfig:
-            mock_coarse_grained_solver = MockCoarseGrainedSolver.return_value
-            mock_bfs_fine_grained_solver = MockBFSFineGrainedSolver.return_value
-            mock_stochastic_heuristic_descent_solver = MockStochasticHeuristicDescentSolver.return_value
+            mock_coarse_grained_deployment_algorithm = MockCoarseGrainedSolver.return_value
+            mock_bfs_fine_grained_deployment_algorithm = MockBFSFineGrainedSolver.return_value
+            mock_stochastic_heuristic_descent_deployment_algorithm = MockStochasticHeuristicDescentSolver.return_value
 
-            # Test with solver=None
+            # Test with deployment_algorithm=None
             client.solve()
-            mock_coarse_grained_solver.solve.assert_called_once()
+            mock_coarse_grained_deployment_algorithm.run.assert_called_once()
 
-            # Test with solver="coarse-grained"
+            # Test with deployment_algorithm="coarse-grained"
             client.solve("coarse-grained")
-            mock_coarse_grained_solver.solve.assert_called()
+            mock_coarse_grained_deployment_algorithm.run.assert_called()
 
-            # Test with solver="fine-grained"
+            # Test with deployment_algorithm="fine-grained"
             client.solve("fine-grained")
-            mock_bfs_fine_grained_solver.solve.assert_called_once()
+            mock_bfs_fine_grained_deployment_algorithm.run.assert_called_once()
 
-            # Test with solver="heuristic"
+            # Test with deployment_algorithm="heuristic"
             client.solve("heuristic")
-            mock_stochastic_heuristic_descent_solver.solve.assert_called_once()
+            mock_stochastic_heuristic_descent_deployment_algorithm.run.assert_called_once()
 
-            # Test with unsupported solver
+            # Test with unsupported deployment_algorithm
             with self.assertRaises(ValueError) as context:
-                client.solve("unsupported_solver")
-            self.assertEqual(str(context.exception), "Solver unsupported_solver not supported")
+                client.solve("unsupported_deployment_algorithm")
+            self.assertEqual(str(context.exception), "Solver unsupported_deployment_algorithm not supported")
 
 
 if __name__ == "__main__":

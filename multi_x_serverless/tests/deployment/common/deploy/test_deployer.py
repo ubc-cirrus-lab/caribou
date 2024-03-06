@@ -152,7 +152,7 @@ class TestDeployer(unittest.TestCase):
         deployer._merge_deployed_regions = Mock(return_value=deployed_regions)
         deployer._update_workflow_to_deployer_server = Mock()
         deployer._update_workflow_placement_decision = Mock()
-        deployer._endpoints.get_solver_update_checker_client().get_value_from_table = Mock(
+        deployer._endpoints.get_deployment_algorithm_update_checker_client().get_value_from_table = Mock(
             side_effect=['{"key": "value"}', '{"instances": []}']
         )
 
@@ -239,7 +239,9 @@ class TestDeployer(unittest.TestCase):
         executor = Mock()
         deployer = Deployer(config, workflow_builder, deployment_packager, executor)
 
-        deployer._endpoints.get_solver_update_checker_client().get_key_present_in_table = Mock(return_value=True)
+        deployer._endpoints.get_deployment_algorithm_update_checker_client().get_key_present_in_table = Mock(
+            return_value=True
+        )
         result = deployer._get_workflow_already_deployed()
         self.assertTrue(result)
 
@@ -257,17 +259,19 @@ class TestDeployer(unittest.TestCase):
         staging_area_data = '{"key": "value"}'
         previous_instances = [{"instance_key": "instance_value"}]
 
-        deployer._endpoints.get_solver_workflow_placement_decision_client().remove_value_from_table = Mock()
-        deployer._endpoints.get_solver_update_checker_client().set_value_in_table = Mock()
+        deployer._endpoints.get_deployment_algorithm_workflow_placement_decision_client().remove_value_from_table = (
+            Mock()
+        )
+        deployer._endpoints.get_deployment_algorithm_update_checker_client().set_value_in_table = Mock()
 
         deployer._workflow = mock_workflow
 
         deployer._update_workflow_placement_decision(staging_area_data, previous_instances)
 
-        deployer._endpoints.get_solver_update_checker_client().set_value_in_table.assert_called_once_with(
+        deployer._endpoints.get_deployment_algorithm_update_checker_client().set_value_in_table.assert_called_once_with(
             WORKFLOW_PLACEMENT_DECISION_TABLE, "workflow_id", '{"key": "value"}'
         )
-        deployer._endpoints.get_solver_workflow_placement_decision_client().remove_value_from_table.assert_called_once_with(
+        deployer._endpoints.get_deployment_algorithm_workflow_placement_decision_client().remove_value_from_table.assert_called_once_with(
             WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE, "workflow_id"
         )
 
@@ -281,10 +285,10 @@ class TestDeployer(unittest.TestCase):
 
         mock_workflow = Mock()
         mock_workflow.get_workflow_placement_decision = Mock(return_value={"key": "value"})
-        deployer._endpoints.get_solver_update_checker_client().set_value_in_table = Mock()
+        deployer._endpoints.get_deployment_algorithm_update_checker_client().set_value_in_table = Mock()
         deployer._workflow = mock_workflow
         deployer._upload_workflow_placement_decision()
-        deployer._endpoints.get_solver_update_checker_client().set_value_in_table.assert_called_once()
+        deployer._endpoints.get_deployment_algorithm_update_checker_client().set_value_in_table.assert_called_once()
 
     def test_update_workflow_to_deployer_server(self):
         config = Mock()

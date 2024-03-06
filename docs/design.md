@@ -21,8 +21,8 @@ In this document we will discuss the design decisions that have been made for th
     2. [Carbon Collector](#carbon-collector)
     3. [Performance Collector](#performance-collector)
     4. [Workflow Collector](#workflow-collector)
-6. [Solver Inputs](#solver-inputs)
-7. [Solvers](#solvers)
+6. [Deployment Algorithm Inputs](#deployment-algorithm-inputs)
+7. [Deployment Algorithms](#deployment-algorithms)
     1. [Coarse Grained](#coarse-grained)
     2. [Stochastic Heuristic Descent](#stochastic-heuristic-descent)
     3. [Brute Force](#brute-force)
@@ -99,13 +99,13 @@ There are two exceptions with regards to physical nodes in the logical represent
 
 These representations gave been chosen because they are simple and easy to understand.
 The logical representation is a DAG, which is a well known data structure and easy to work with.
-The representation of a DAG was chosen because it opens the avenues for graph optimizations in the solver.
+The representation of a DAG was chosen because it opens the avenues for graph optimizations in the deployment algorithm.
 We ended up choosing a graph instead of a multigraph because we do not need to represent multiple edges between two nodes.
 The dataflow between the functions is furthermore directed and acyclic because we do not allow for loops in the workflow.
 
 The physical representation is a set of nodes because we do not need to represent any edges between the nodes.
 The physical representation is furthermore a set because we do not need to represent the same node multiple times.
-This notation is only used for the deployment utilities and is hidden from the solver.
+This notation is only used for the deployment utilities and is hidden from the deployment algorithm.
 
 ## Source Code Annotation
 
@@ -251,11 +251,11 @@ The following section will outline the order in which the components interact wi
 
 The following is the order in which the different components interact with each other:
 
-1. The deployment client uploads an initial version of the [Workflow Placement Decision](#workflow-placement-decision), the [Deployment Manager Resource](#deployment-manager-resource) of this workflow, as well as the [Workflow Config](#workflow-config) for the solver update checker to the corresponding tables in the distributed key-value store.
+1. The deployment client uploads an initial version of the [Workflow Placement Decision](#workflow-placement-decision), the [Deployment Manager Resource](#deployment-manager-resource) of this workflow, as well as the [Workflow Config](#workflow-config) for the deployment algorithm update checker to the corresponding tables in the distributed key-value store.
 It aditionally uploads the [Deployment Package](#deployment-package) (source code) of the workflow to the distributed blob store.
-2. The solver update checker is informed of a new workflow to be solved.
-3. The solver update checker triggers the solver to solve the workflow.
-4. The solver updates the workflow placement decision with the current placement of the function instances in a staging distributed key-value store.
+2. The deployment algorithm update checker is informed of a new workflow to be solved.
+3. The deployment algorithm update checker triggers the deployment algorithm to solve the workflow.
+4. The deployment algorithm updates the workflow placement decision with the current placement of the function instances in a staging distributed key-value store.
 5. The deployment update checker checks the staging distributed key-value store for updates to the workflow placement decision and re-deploys function instances if necessary.
 6. The deployment server uploads the updated workflow placement decision to the distributed key-value store.
 
@@ -315,8 +315,8 @@ The dictionary contains the following information:
 Different parts of this dictionary are provided by different components of the system.
 
 - The `run_id` is set by the initial function of the workflow.
-- The `workflow_placement` is set by the solver and contains the current placement of the function instances.
-  - The `provider_region` is either set at initial deployment or is set by the solver  in the staging area and moved over at deployment and contains the provider and region of the function instance.
+- The `workflow_placement` is set by the deployment algorithm and contains the current placement of the function instances.
+  - The `provider_region` is either set at initial deployment or is set by the deployment algorithm  in the staging area and moved over at deployment and contains the provider and region of the function instance.
   - The `identifier` is a unique identifier for the messaging queue instance at a provider.
     This is used to identify the calling point of the function instance.
     This is provided and updated by the deployment utilities.
@@ -632,37 +632,32 @@ Below is an example of the `workflow_summary_table` for a workflow with 2 instan
               "execution_summary": {
                   "provider_1:region_1": {
                       "invocation_count": 90,
-                      "average_runtime": 20,
-                      "tail_runtime": 30,
+                      "runtime_samples": [26.0, 31.0]
                   },
                   "provider_1:region_2": {
                       "invocation_count": 10,
-                      "average_runtime": 17,
-                      "tail_runtime": 25,
+                      "runtime_samples": [26.0, 31.0]
                   },
               },
               "invocation_summary": {
                   "instance_2": {
                       "invocation_count": 80,
-                      "average_data_transfer_size": 0.0007,
+                      "data_transfer_samples": [0.0072, 0.0075],
                       "transmission_summary": {
                           "provider_1:region_1": {
                               "provider_1:region_1": {
                                   "transmission_count": 50,
-                                  "average_latency": 0.001,
-                                  "tail_latency": 0.002,
+                                  "latency_samples": [0.00125, 0.00175]
                               },
                               "provider_1:region_2": {
                                   "transmission_count": 22,
-                                  "average_latency": 0.12,
-                                  "tail_latency": 0.15,
+                                  "latency_samples": [0.00125, 0.00175]
                               },
                           },
                           "provider_1:region_2": {
                               "provider_1:region_1": {
                                   "transmission_count": 8,
-                                  "average_latency": 0.1,
-                                  "tail_latency": 0.12,
+                                  "latency_samples": [0.00125, 0.00175]
                               }
                           },
                       },
@@ -674,13 +669,11 @@ Below is an example of the `workflow_summary_table` for a workflow with 2 instan
               "execution_summary": {
                   "provider_1:region_1": {
                       "invocation_count": 58,
-                      "average_runtime": 10,
-                      "tail_runtime": 15,
+                      "runtime_samples": [26.0, 31.0]
                   },
                   "provider_1:region_2": {
                       "invocation_count": 22,
-                      "average_runtime": 12,
-                      "tail_runtime": 17,
+                      "runtime_samples": [26.0, 31.0]
                   },
               },
           },
@@ -715,48 +708,42 @@ Below is an example of the `workflow_instance_table` output for a workflow with 
 ```json
 {
   "instance_1": {
-      "favourite_home_region": "provider_1:region_1",
-      "favourite_home_region_average_runtime": 26.0,
-      "favourite_home_region_tail_runtime": 31.0,
       "projected_monthly_invocations": 12.5,
       "execution_summary": {
-          "provider_1:region_1": {"average_runtime": 26.0, "tail_runtime": 31.0, "unit": "s"},
-          "provider_1:region_2": {"average_runtime": 26.0, "tail_runtime": 31.0, "unit": "s"},
+          "provider_1:region_1": {"runtime_samples": [26.0, 31.0], "unit": "s"},
+          "provider_1:region_2": {"runtime_samples": [26.0, 31.5], "unit": "s"},
       },
       "invocation_summary": {
           "instance_2": {
               "probability_of_invocation": 0.8,
-              "average_data_transfer_size": 0.0007,
+              "data_transfer_samples": [0.0072, 0.0075],
               "transmission_summary": {
                   "provider_1:region_1": {
-                      "provider_1:region_1": {"average_latency": 0.00125, "tail_latency": 0.00175, "unit": "s"},
-                      "provider_1:region_2": {"average_latency": 0.125, "tail_latency": 0.155, "unit": "s"},
+                      "provider_1:region_1": {"latency_samples": [0.00125, 0.00175], "unit": "s"},
+                      "provider_1:region_2": {"latency_samples": [0.00125, 0.00175], "unit": "s"},
                   },
                   "provider_1:region_2": {
-                      "provider_1:region_1": {"average_latency": 0.095, "tail_latency": 0.125, "unit": "s"},
+                      "provider_1:region_1": {"latency_samples": [0.095, 0.125], "unit": "s"},
                   },
               },
           },
       },
   },
   "instance_2": {
-      "favourite_home_region": "provider_1:region_1",
-      "favourite_home_region_average_runtime": 12.5,
-      "favourite_home_region_tail_runtime": 12.5,
       "projected_monthly_invocations": 11.25,
       "execution_summary": {
-          "provider_1:region_1": {"average_runtime": 12.5, "tail_runtime": 12.5, "unit": "s"},
-          "provider_1:region_2": {"average_runtime": 12.5, "tail_runtime": 12.5, "unit": "s"},
+          "provider_1:region_1": {"runtime_samples": [12.4, 12.6], "unit": "s"},
+          "provider_1:region_2": {"runtime_samples": [12.4, 12.6], "unit": "s"},
       },
       "invocation_summary": {},
   },
 }
 ```
 
-## Solver Inputs
+## Deployment Algorithm Inputs
 
 Solver Inputs is a subcomponent of Solver responsible for providing input to the Solver.
-It serves as an interface for the solver instances to obtain execution and transmission data.
+It serves as an interface for the deployment algorithm instances to obtain execution and transmission data.
 It accesses the necessary information from tables created and managed by the Data Collectors, including [`workflow_instance_table`](#workflow-collector-output-table), [`performance_region_table`](#performance-region-table), [`carbon_region_table`](#carbon-region-table), [`available_regions_table`](#available-regions-table), [`provider_region_table`](#provider-region-table), and [`provider_table`](#at-provider-table).
 
 It consists of the `InputManager`, responsible for managing and setting up all appropriate loaders and calculators.
@@ -769,10 +756,10 @@ Below is a diagram showing the overall access of data in the Solver Inputs:
 
 ![Solver Input Data Flow](./img/solver_input_architecture.png)
 
-## Solvers
+## Deployment Algorithms
 
-The solvers are responsible for determining the optimal placement of the function instances across the available regions.
-Every solver must create valid and unique deployments.
+The deployment algorithms are responsible for determining the optimal placement of the function instances across the available regions.
+Every deployment algorithm must create valid and unique deployments.
 A valid deployment is one that satisfies the hard constraints of the workflow in terms of resource requirements for the worst-case runtime (tail).
 The provided constraints will then be valid as quality of service (QoS) requirements for the average-case runtime.
 Prioritisation of the deployments is based on the average-case runtime.
@@ -781,7 +768,7 @@ Prioritisation of the deployments is based on the average-case runtime.
 
 The Coarse Grained Solver is a simplified optimization algorithm designed to quickly identify viable deployment configurations across a limited set of permitted regions.
 It does this by evaluating each permitted region for all instances in a topologically ordered manner, ensuring that the deployment satisfies hard resource constraints such as cost, runtime, and carbon footprint.
-Unlike more complex solvers, the Coarse Grained Solver does not iterate over multiple configurations per instance but rather selects a single region that is permissible for all instances, thereby simplifying the decision-making process.
+Unlike more complex deployment algorithms, the Coarse Grained Solver does not iterate over multiple configurations per instance but rather selects a single region that is permissible for all instances, thereby simplifying the decision-making process.
 
 #### Coarse Grained Workflow
 
@@ -801,13 +788,13 @@ Unlike more complex solvers, the Coarse Grained Solver does not iterate over mul
 
 ### Stochastic Heuristic Descent
 
-The Stochastic Heuristic Descent solver is a heuristic optimization algorithm that utilizes a stochastic approach to explore different deployment configurations.
+The Stochastic Heuristic deployment algorithm is a heuristic optimization algorithm that utilizes a stochastic approach to explore different deployment configurations.
 It employs a heuristic method for quick and efficient problem-solving.
-The solver is not guaranteed to find the optimal solution, nor to be exhaustive in its search.
-The solver optimizes for multiple objectives including cost, runtime, and carbon footprint.
+The deployment algorithm is not guaranteed to find the optimal solution, nor to be exhaustive in its search.
+The deployment algorithm optimizes for multiple objectives including cost, runtime, and carbon footprint.
 It ensures that solutions adhere to specified resource constraints.
-Similar to the other solvers it uses worst-case estimates with regards to conditional calls (all conditional calls are assumed to be true) and the tail latency for the function runtimes and the network latencies to filter for hard constraints.
-The solver is implemented as a hill-climbing algorithm with a stochastic approach.
+Similar to the other deployment algorithms it uses worst-case estimates with regards to conditional calls (all conditional calls are assumed to be true) and the tail latency for the function runtimes and the network latencies to filter for hard constraints.
+The deployment algorithm is implemented as a hill-climbing algorithm with a stochastic approach.
 
 #### Stochastic Heuristic Descent Workflow
 
@@ -825,11 +812,25 @@ The solver is implemented as a hill-climbing algorithm with a stochastic approac
 
 4. **Result Compilation**:
    - Upon completion of the iterations, compiles a list of valid and unique average case deployments.
-   - These deployments represent the optimized configurations discovered by the solver.
+   - These deployments represent the optimized configurations discovered by the deployment algorithm.
 
-### Brute Force
+### Fine Grained
 
-TODO (#87)
+The Fine Grained Solver is a more complex optimization algorithm designed to identify the optimal deployment configurations across a wide range of permitted regions.
+It does this by evaluating every possible configuration for each instance, ensuring that the deployment satisfies hard resource constraints such as cost, runtime, and carbon footprint.
+The Fine Grained Solver iterates over multiple configurations per instance, selecting the best configuration based on the average-case runtime.
+This search is exhaustive and guarantees the optimal solution, but it is computationally expensive and time-consuming.
+
+#### Fine Grained Workflow
+
+1. **Initialization**:
+   - Identifies the set of regions permitted for all instances by intersecting the permissible regions of individual instances.
+   - Initializes the deployment configuration with the selected region.
+2. **Deployment Generation**:
+    - For each permitted region and each instance, a deployment configuration is generated if it does not violate the specified hard resource constraints.
+    - Ensures the uniqueness of the deployment configuration to avoid redundant solutions.
+3. **Evaluation of Deployment**:
+    - Checks if the generated deployment configuration meets the hard resource constraints specified and filter out the ones that do not meet these constraints.
 
 ##  References
 

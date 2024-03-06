@@ -80,4 +80,4 @@ class ConfigSchema(BaseModel):
     regions_and_providers: RegionAndProviders = Field(..., title="List of regions and providers")
     constraints: Constraints = Field(..., title="Constraints")
     num_calls_in_one_month: Optional[int] = Field(None, title="Number of calls in one month")
-    solver: Optional[str] = Field(None, title="The solver to use")
+    deployment_algorithm: Optional[str] = Field(None, title="The deployment algorithm to use")

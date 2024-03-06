@@ -91,28 +91,28 @@ class TestWorkflowConfig(unittest.TestCase):
             {"hard_resource_constraints": {}, "priority_order": [], "soft_resource_constraints": {}},
         )
 
-    def test_solver(self):
+    def test_deployment_algorithm(self):
         # Mock the _lookup method to return a specific value
         self.workflow_config._lookup = MagicMock()
-        self.workflow_config._lookup.return_value = "fine_grained_solver"
+        self.workflow_config._lookup.return_value = "fine_grained_deployment_algorithm"
 
         # Call the property
-        result = self.workflow_config.solver
+        result = self.workflow_config.deployment_algorithm
 
         # Define the expected result
-        expected_result = "fine_grained_solver"
+        expected_result = "fine_grained_deployment_algorithm"
 
         # Assert that the result matches the expected result
         self.assertEqual(result, expected_result)
 
-    def test_solver_invalid(self):
+    def test_deployment_algorithm_invalid(self):
         # Mock the _lookup method to return an invalid value
         self.workflow_config._lookup = MagicMock()
-        self.workflow_config._lookup.return_value = "invalid_solver"
+        self.workflow_config._lookup.return_value = "invalid_deployment_algorithm"
 
         # Assert that calling the property raises a ValueError
         with self.assertRaises(ValueError):
-            self.workflow_config.solver
+            self.workflow_config.deployment_algorithm
 
     def test_start_hops(self):
         self.assertEqual(self.workflow_config.start_hops, "provider1:region1")

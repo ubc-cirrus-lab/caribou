@@ -400,7 +400,7 @@ class MultiXServerlessWorkflow:
         """
         Get the workflow_placement decision from the platform.
         """
-        result = self._endpoint.get_solver_workflow_placement_decision_client().get_value_from_table(
+        result = self._endpoint.get_deployment_algorithm_workflow_placement_decision_client().get_value_from_table(
             WORKFLOW_PLACEMENT_DECISION_TABLE, f"{self.name}-{self.version}"
         )
         if result is not None:
@@ -419,7 +419,8 @@ class MultiXServerlessWorkflow:
         """
         Register a function as a serverless function.
 
-        Where the function is deployed depends on the workflow_placement decision which will be made by the solver.
+        Where the function is deployed depends on the workflow_placement decision which will be made by the
+        deployment algorithm.
 
         At this point we only need to register the function with the wrapper, the actual deployment will be done
         later by the deployment manager.

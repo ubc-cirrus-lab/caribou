@@ -1,131 +1,140 @@
 import unittest
-import numpy as np
-
+from unittest.mock import MagicMock, patch
 from multi_x_serverless.routing.models.dag import DAG
-import time
+from multi_x_serverless.routing.models.instance_indexer import InstanceIndexer
+import numpy as np
 
 
 class TestDAG(unittest.TestCase):
-    def setUp(self):
-        self.nodes = [{"instance_name": "node1"}, {"instance_name": "node2"}, {"instance_name": "node3"}]
-        self.dag = DAG(self.nodes)
-
-    def test_init(self):
-        self.assertEqual(self.dag.nodes, self.nodes)
-        self.assertEqual(self.dag.num_nodes, len(self.nodes))
-        np.testing.assert_array_equal(self.dag.get_adj_matrix(), np.zeros((len(self.nodes), len(self.nodes))))
+    @patch.object(DAG, "__init__", return_value=None)
+    def setUp(self, mock_init):
+        self.dag = DAG()
+        self.dag._value_indices = {"node1": 0, "node2": 1}
+        self.dag._adj_matrix = np.zeros((2, 2), dtype=int)
 
     def test_add_edge(self):
-        self.dag.add_edge("node1", "node2")
-        expected_matrix = np.zeros((len(self.nodes), len(self.nodes)))
-        expected_matrix[0, 1] = 1
-        np.testing.assert_array_equal(self.dag.get_adj_matrix(), expected_matrix)
+        # Act
+        self.dag._add_edge("node1", "node2")
 
-    def test_add_edge_nonexistent_nodes(self):
-        self.dag.add_edge("node4", "node5")
-        expected_matrix = np.zeros((len(self.nodes), len(self.nodes)))
-        np.testing.assert_array_equal(self.dag.get_adj_matrix(), expected_matrix)
+        # Assert
+        self.assertEqual(self.dag._adj_matrix[0, 1], 1)
+
+    @patch.object(DAG, "_add_edge")
+    def test_init(self, mock_add_edge):
+        # Arrange
+        workflow_config_instances = [
+            {
+                "instance_name": "instance1",
+                "succeeding_instances": ["instance2"],
+                "preceding_instances": [],
+            },
+            {
+                "instance_name": "instance2",
+                "succeeding_instances": [],
+                "preceding_instances": ["instance1"],
+            },
+        ]
+        mock_instance_indexer = MagicMock(spec=InstanceIndexer)
+        mock_instance_indexer.get_value_indices.return_value = {"instance1": 0, "instance2": 1}
+
+        # Act
+        dag = DAG(workflow_config_instances, mock_instance_indexer)
+
+        # Assert
+        self.assertEqual(dag._nodes, [{"instance_name": "instance1"}, {"instance_name": "instance2"}])
+        self.assertEqual(dag._num_nodes, 2)
+        self.assertEqual(dag._value_indices, {"instance1": 0, "instance2": 1})
+        mock_add_edge.assert_called_once_with("instance1", "instance2")
 
     def test_topological_sort(self):
-        self.dag.add_edge("node1", "node2")
-        self.dag.add_edge("node2", "node3")
-        self.dag.add_edge("node1", "node3")
+        # Arrange
+        self.dag._num_nodes = 3
+        self.dag._adj_matrix = np.array([[0, 1, 0], [0, 0, 1], [0, 0, 0]])
 
-        self.assertEqual(self.dag.topological_sort(), [0, 1, 2])
+        # Act
+        result = self.dag.topological_sort()
 
-    def test_topological_sort_complex_1(self):
-        dag = DAG(
-            [
-                {"instance_name": "node1"},
-                {"instance_name": "node2"},
-                {"instance_name": "node3"},
-                {"instance_name": "node4"},
-                {"instance_name": "node5"},
-            ]
-        )
-        dag.add_edge("node1", "node2")
-        dag.add_edge("node2", "node3")
-        dag.add_edge("node3", "node4")
-        dag.add_edge("node4", "node5")
+        # Assert
+        self.assertEqual(result, [0, 1, 2])
 
-        self.assertEqual(dag.topological_sort(), [0, 1, 2, 3, 4])
+    def test_topological_sort_with_cycle(self):
+        # Arrange
+        self.dag._num_nodes = 3
+        self.dag._adj_matrix = np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])
 
-    def test_topological_sort_complex_2(self):
-        dag = DAG(
-            [
-                {"instance_name": "node1"},
-                {"instance_name": "node2"},
-                {"instance_name": "node3"},
-                {"instance_name": "node4"},
-            ]
-        )
-        dag.add_edge("node1", "node2")
-        dag.add_edge("node1", "node3")
-        dag.add_edge("node2", "node4")
-        dag.add_edge("node3", "node4")
-
-        self.assertEqual(dag.topological_sort(), [0, 1, 2, 3])
-
-    def test_topological_sort_complex_3(self):
-        self.dag.add_edge("node1", "node2")
-        self.dag.add_edge("node2", "node3")
-        self.dag.add_edge("node3", "node1")
-
-        with self.assertRaises(Exception):
-            self.dag.topological_sort()
-
-    def test_topological_sort_complex_4(self):
-        dag = DAG(
-            [
-                {"instance_name": "node1"},
-                {"instance_name": "node2"},
-                {"instance_name": "node3"},
-                {"instance_name": "node4"},
-            ]
-        )
-        dag.add_edge("node1", "node2")
-        dag.add_edge("node2", "node3")
-        dag.add_edge("node3", "node4")
-        dag.add_edge("node4", "node1")
-
-        with self.assertRaises(Exception):
-            dag.topological_sort()
-
-    def test_topological_sort_complex_5(self):
-        dag = DAG(
-            [
-                {"instance_name": "node1"},
-                {"instance_name": "node2"},
-                {"instance_name": "node3"},
-                {"instance_name": "node4"},
-                {"instance_name": "node5"},
-                {"instance_name": "node6"},
-            ]
-        )
-        dag.add_edge("node1", "node2")
-        dag.add_edge("node2", "node3")
-        dag.add_edge("node3", "node4")
-        dag.add_edge("node4", "node5")
-        dag.add_edge("node5", "node6")
-
-        self.assertEqual(dag.topological_sort(), [0, 1, 2, 3, 4, 5])
-
-    def test_topological_sort_complex_large(self):
-        nodes = [{"instance_name": f"node{i}"} for i in range(1, 1001)]
-        dag = DAG(nodes)
-
-        for i in range(1, 1000):
-            dag.add_edge(f"node{i}", f"node{i+1}")
-
-        self.assertEqual(dag.topological_sort(), list(range(1000)))
-
-    def test_topological_sort_cycle(self):
-        self.dag.add_edge("node1", "node2")
-        self.dag.add_edge("node2", "node3")
-        self.dag.add_edge("node3", "node1")
-
+        # Act & Assert
         with self.assertRaises(ValueError):
             self.dag.topological_sort()
+
+    def test_get_preceeding_dict(self):
+        # Arrange
+        self.dag._adj_matrix = np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])
+
+        # Act
+        result = self.dag.get_preceeding_dict()
+
+        # Assert
+        self.assertEqual(result, {0: [1], 1: [2], 2: [0]})
+
+    def test_get_leaf_nodes(self):
+        # Arrange
+        self.dag._adj_matrix = np.array([[0, 1, 0], [0, 0, 1], [0, 0, 0]])
+        self.dag._num_nodes = 3
+        self.dag._nodes = [{"instance_name": "node1"}, {"instance_name": "node2"}, {"instance_name": "node3"}]
+        self.dag._value_indices = {"node1": 0, "node2": 1, "node3": 2}
+
+        # Act
+        result = self.dag.get_leaf_nodes()
+
+        # Assert
+        self.assertEqual(result, [2])
+
+    def test_get_adj_matrix(self):
+        # Act
+        result = self.dag.get_adj_matrix()
+
+        # Assert
+        np.testing.assert_array_equal(result, self.dag._adj_matrix)
+
+    def test_num_nodes(self):
+        # Arrange
+        self.dag._num_nodes = 3
+
+        # Act
+        result = self.dag.num_nodes
+
+        # Assert
+        self.assertEqual(result, self.dag._num_nodes)
+
+    def test_nodes(self):
+        # Arrange
+        self.dag._nodes = [1, 2, 3]
+
+        # Act
+        result = self.dag.nodes
+
+        # Assert
+        self.assertEqual(result, self.dag._nodes)
+
+    def test_number_of_edges(self):
+        # Arrange
+        self.dag._adj_matrix = np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])
+
+        # Act
+        result = self.dag.number_of_edges
+
+        # Assert
+        self.assertEqual(result, 3)
+
+    def test_get_prerequisites_dict(self):
+        # Arrange
+        self.dag._adj_matrix = np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])
+
+        # Act
+        result = self.dag.get_prerequisites_dict()
+
+        # Assert
+        self.assertEqual(result, {0: [2], 1: [0], 2: [1]})
 
 
 if __name__ == "__main__":

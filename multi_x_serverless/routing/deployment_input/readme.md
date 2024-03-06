@@ -1,0 +1,1 @@
+# Dummy folder with solver input manager that deployment metrics calculator would expect.
