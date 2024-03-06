@@ -79,8 +79,14 @@ class TestDeploymentMetricsCalculator(unittest.TestCase):
     @patch.object(DeploymentMetricsCalculatorSubclass, "_perform_monte_carlo_simulation")
     def test_calculate_deployment_metrics(self, mock_monte_carlo):
         # Define the mock results
-        mock_monte_carlo.return_value = {"average_cost": 2.0, "average_runtime": 2.0, "average_carbon": 2.0
-                                         , "tail_cost": 1.0, "tail_runtime": 1.0, "tail_carbon": 1.0}
+        mock_monte_carlo.return_value = {
+            "average_cost": 2.0,
+            "average_runtime": 2.0,
+            "average_carbon": 2.0,
+            "tail_cost": 1.0,
+            "tail_runtime": 1.0,
+            "tail_carbon": 1.0,
+        }
 
         # Call the method with a test deployment
         deployment = [0, 1, 2]

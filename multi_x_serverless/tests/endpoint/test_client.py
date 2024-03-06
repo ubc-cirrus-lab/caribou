@@ -44,6 +44,7 @@ class TestClient(unittest.TestCase):
         mock_get_remote_client.return_value = mock_remote_client
 
         client = Client("workflow_name")
+        client._home_region_threshold = 0.0  # Never send to home region
         client.run({"key": "value"})
 
         # Verify the remote client was invoked with the correct parameters

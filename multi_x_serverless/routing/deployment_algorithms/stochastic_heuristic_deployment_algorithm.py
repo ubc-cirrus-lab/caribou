@@ -7,7 +7,9 @@ from multi_x_serverless.routing.workflow_config import WorkflowConfig
 class StochasticHeuristicDeploymentAlgorithm(DeploymentAlgorithm):
     def __init__(self, workflow_config: WorkflowConfig) -> None:
         super().__init__(workflow_config)
+        self._setup()
 
+    def _setup(self) -> None:
         # This learning rate should be an int -> Convert the float to an int
         self._learning_rate: int = int(self._number_of_instances * 0.1 + 1)
         self._num_iterations = (
@@ -26,8 +28,11 @@ class StochasticHeuristicDeploymentAlgorithm(DeploymentAlgorithm):
         current_deployment = self._home_deployment.copy()
 
         deployments = []
+        generated_deployments: set[tuple[int, ...]] = set()
         for _ in range(self._num_iterations):
             new_deployment = self._generate_new_deployment(current_deployment)
+            if tuple(new_deployment) in generated_deployments:
+                continue
             new_deployment_metrics = self._deployment_metrics_calculator.calculate_deployment_metrics(new_deployment)
 
             if self._is_hard_constraint_failed(new_deployment_metrics):
@@ -37,6 +42,7 @@ class StochasticHeuristicDeploymentAlgorithm(DeploymentAlgorithm):
                 current_deployment = new_deployment
                 current_deployment_metrics = new_deployment_metrics
                 deployments.append((current_deployment, current_deployment_metrics))
+                generated_deployments.add(tuple(current_deployment))
 
             self._temperature *= 0.99
 

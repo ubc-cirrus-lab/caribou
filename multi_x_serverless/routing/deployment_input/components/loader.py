@@ -21,6 +21,8 @@ class InputLoader(ABC):
     def _retrieve_data(self, table_name: str, data_key: str) -> dict[str, Any]:
         value = self._client.get_value_from_table(table_name, data_key)
 
+        print(self._client)
+
         loaded_data: dict[str, Any] = {}
         if value is not None and value != "":
             loaded_data = json.loads(value)
