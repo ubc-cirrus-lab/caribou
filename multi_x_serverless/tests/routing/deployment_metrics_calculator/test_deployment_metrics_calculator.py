@@ -101,7 +101,7 @@ class TestDeploymentMetricsCalculator(unittest.TestCase):
         self.assertEqual(metrics["tail_carbon"], 1.0)
 
         # Verify that the mock methods were called with the correct arguments
-        mock_monte_carlo.assert_called_once_with(deployment, 1000)
+        mock_monte_carlo.assert_called_once_with(deployment, 300)
 
     def test_is_invoked(self):
         self.input_manager.get_invocation_probability.return_value = 1.0
