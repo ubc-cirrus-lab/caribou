@@ -21,7 +21,9 @@ class SolverUpdateChecker(UpdateChecker):
 
     def check(self) -> None:
         # add which solver to use
-        workflow_ids = self._endpoints.get_solver_update_checker_client().get_keys(SOLVER_UPDATE_CHECKER_RESOURCE_TABLE)
+        workflow_ids = self._endpoints.get_deployment_algorithm_update_checker_client().get_keys(
+            SOLVER_UPDATE_CHECKER_RESOURCE_TABLE
+        )
         data_collector_client = self._endpoints.get_data_collector_client()
 
         deployment_algorithm_mapping = {

@@ -9,7 +9,9 @@ class TestWorkflowLoader(unittest.TestCase):
     def setUp(self):
         self.workflow_config = MagicMock(spec=WorkflowConfig)
         self.workflow_config.start_hops = "start_hops"
-        self.workflow_config.instances = [{"instance_name": "instance_1", "regions_and_providers": {"providers": {}}}]
+        self.workflow_config.instances = {
+            "instance_1": {"instance_name": "instance_1", "regions_and_providers": {"providers": {}}}
+        }
         self.workflow_data = {
             "instance_1": {
                 "projected_monthly_invocations": 12.5,

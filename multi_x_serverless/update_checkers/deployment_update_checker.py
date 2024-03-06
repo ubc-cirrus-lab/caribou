@@ -13,8 +13,10 @@ class DeploymentUpdateChecker(UpdateChecker):
 
     # This should be a timed update checker (every hour)
     def check(self) -> None:
-        updated_workflow_placements = self._endpoints.get_solver_workflow_placement_decision_client().get_keys(
-            WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE
+        updated_workflow_placements = (
+            self._endpoints.get_deployment_algorithm_workflow_placement_decision_client().get_keys(
+                WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE
+            )
         )
         for updated_workflow_placement in updated_workflow_placements:
             logger.info(f"Checking if the deployment should be updated for workflow: {updated_workflow_placement}")

@@ -112,7 +112,7 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
         result: dict,
     ) -> None:
         result_json = json.dumps(result)
-        self._endpoints.get_solver_workflow_placement_decision_client().set_value_in_table(
+        self._endpoints.get_deployment_algorithm_workflow_placement_decision_client().set_value_in_table(
             WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE, self._workflow_config.workflow_id, result_json
         )
 

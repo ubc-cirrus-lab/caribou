@@ -14,8 +14,8 @@ from multi_x_serverless.routing.workflow_config import WorkflowConfig
 class TestInputManager(unittest.TestCase):
     def setUp(self):
         self.workflow_config = Mock(spec=WorkflowConfig)
-        self.workflow_config.instances = [
-            {
+        self.workflow_config.instances = {
+            "node1": {
                 "instance_name": "node1",
                 "succeeding_instances": ["node2"],
                 "preceding_instances": [],
@@ -25,7 +25,7 @@ class TestInputManager(unittest.TestCase):
                     "providers": {"provider1": None},
                 },
             },
-            {
+            "node2": {
                 "instance_name": "node2",
                 "succeeding_instances": [],
                 "preceding_instances": ["node1"],
@@ -35,7 +35,7 @@ class TestInputManager(unittest.TestCase):
                     "providers": {"provider1": None},
                 },
             },
-        ]
+        }
         self.workflow_config.regions_and_providers = {
             "allowed_regions": None,
             "disallowed_regions": None,

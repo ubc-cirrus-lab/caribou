@@ -41,7 +41,7 @@ class Client:
         if self._workflow_id is None:
             raise RuntimeError("No workflow id provided")
 
-        result = self._endpoints.get_solver_workflow_placement_decision_client().get_value_from_table(
+        result = self._endpoints.get_deployment_algorithm_workflow_placement_decision_client().get_value_from_table(
             WORKFLOW_PLACEMENT_DECISION_TABLE, self._workflow_id
         )
 
@@ -90,7 +90,7 @@ class Client:
         return provider_region["provider"], provider_region["region"], identifier
 
     def list_workflows(self) -> None:
-        deployed_workflows = self._endpoints.get_solver_update_checker_client().get_keys(
+        deployed_workflows = self._endpoints.get_deployment_algorithm_update_checker_client().get_keys(
             SOLVER_UPDATE_CHECKER_RESOURCE_TABLE
         )
 
@@ -105,13 +105,13 @@ class Client:
         if self._workflow_id is None:
             raise RuntimeError("No workflow id provided")
 
-        self._endpoints.get_solver_workflow_placement_decision_client().remove_key(
+        self._endpoints.get_deployment_algorithm_workflow_placement_decision_client().remove_key(
             WORKFLOW_PLACEMENT_DECISION_TABLE, self._workflow_id
         )
-        self._endpoints.get_solver_update_checker_client().remove_key(
+        self._endpoints.get_deployment_algorithm_update_checker_client().remove_key(
             WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE, self._workflow_id
         )
-        self._endpoints.get_solver_update_checker_client().remove_key(
+        self._endpoints.get_deployment_algorithm_update_checker_client().remove_key(
             SOLVER_UPDATE_CHECKER_RESOURCE_TABLE, self._workflow_id
         )
 
@@ -183,7 +183,7 @@ class Client:
         if self._workflow_id is None:
             raise RuntimeError("No workflow id provided")
 
-        workflow_information = self._endpoints.get_solver_update_checker_client().get_value_from_table(
+        workflow_information = self._endpoints.get_deployment_algorithm_update_checker_client().get_value_from_table(
             SOLVER_UPDATE_CHECKER_RESOURCE_TABLE, self._workflow_id
         )
 

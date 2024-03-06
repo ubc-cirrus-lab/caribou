@@ -65,12 +65,14 @@ class Deployer:
                 f"Workflow {self._config.workflow_name} with version {self._config.workflow_version} not deployed, something went wrong"  # pylint: disable=line-too-long
             )
 
-        staging_area_data = self._endpoints.get_solver_update_checker_client().get_value_from_table(
+        staging_area_data = self._endpoints.get_deployment_algorithm_update_checker_client().get_value_from_table(
             WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE, self._config.workflow_id
         )
 
-        previous_workflow_placement_decision = self._endpoints.get_solver_update_checker_client().get_value_from_table(
-            WORKFLOW_PLACEMENT_DECISION_TABLE, self._config.workflow_id
+        previous_workflow_placement_decision = (
+            self._endpoints.get_deployment_algorithm_update_checker_client().get_value_from_table(
+                WORKFLOW_PLACEMENT_DECISION_TABLE, self._config.workflow_id
+            )
         )
 
         if previous_workflow_placement_decision is None:
@@ -200,12 +202,12 @@ class Deployer:
 
         payload_json = json.dumps(payload)
 
-        self._endpoints.get_solver_update_checker_client().set_value_in_table(
+        self._endpoints.get_deployment_algorithm_update_checker_client().set_value_in_table(
             SOLVER_UPDATE_CHECKER_RESOURCE_TABLE, self._config.workflow_id, payload_json
         )
 
     def _get_workflow_already_deployed(self) -> bool:
-        return self._endpoints.get_solver_update_checker_client().get_key_present_in_table(
+        return self._endpoints.get_deployment_algorithm_update_checker_client().get_key_present_in_table(
             SOLVER_UPDATE_CHECKER_RESOURCE_TABLE, self._config.workflow_id
         )
 
@@ -229,10 +231,10 @@ class Deployer:
         )
         workflow_placement_decision_json = json.dumps(workflow_placement_decision)
 
-        self._endpoints.get_solver_update_checker_client().set_value_in_table(
+        self._endpoints.get_deployment_algorithm_update_checker_client().set_value_in_table(
             WORKFLOW_PLACEMENT_DECISION_TABLE, self._config.workflow_id, workflow_placement_decision_json
         )
-        self._endpoints.get_solver_workflow_placement_decision_client().remove_value_from_table(
+        self._endpoints.get_deployment_algorithm_workflow_placement_decision_client().remove_value_from_table(
             WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE, self._config.workflow_id
         )
 
@@ -243,7 +245,7 @@ class Deployer:
         workflow_placement_decision = self._workflow.get_workflow_placement_decision()
         workflow_placement_decision_json = json.dumps(workflow_placement_decision)
 
-        self._endpoints.get_solver_update_checker_client().set_value_in_table(
+        self._endpoints.get_deployment_algorithm_update_checker_client().set_value_in_table(
             WORKFLOW_PLACEMENT_DECISION_TABLE, self._config.workflow_id, workflow_placement_decision_json
         )
 

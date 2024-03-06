@@ -1,49 +1,50 @@
 import unittest
-from unittest.mock import Mock
-from multi_x_serverless.routing.deployment_input.components.calculators.runtime_calculator import RuntimeCalculator
+from unittest.mock import MagicMock
+import numpy as np
+from multi_x_serverless.routing.deployment_input.components.calculators.cost_calculator import CostCalculator
 from multi_x_serverless.routing.deployment_input.components.loaders.datacenter_loader import DatacenterLoader
 from multi_x_serverless.routing.deployment_input.components.loaders.workflow_loader import WorkflowLoader
-from multi_x_serverless.routing.deployment_input.components.calculators.cost_calculator import CostCalculator
+from multi_x_serverless.routing.deployment_input.components.calculators.runtime_calculator import RuntimeCalculator
 
 
 class TestCostCalculator(unittest.TestCase):
-    def setUp(self):
-        self.datacenter_loader = Mock(spec=DatacenterLoader)
-        self.workflow_loader = Mock(spec=WorkflowLoader)
-        self.runtime_calculator = Mock(spec=RuntimeCalculator)
-        self.cost_calculator = CostCalculator(self.datacenter_loader, self.workflow_loader, self.runtime_calculator)
+    def test_calculate_execution_cost_distribution(self):
+        # Arrange
+        mock_datacenter_loader = MagicMock(spec=DatacenterLoader)
+        mock_workflow_loader = MagicMock(spec=WorkflowLoader)
+        mock_runtime_calculator = MagicMock(spec=RuntimeCalculator)
+        cost_calculator = CostCalculator(mock_datacenter_loader, mock_workflow_loader, mock_runtime_calculator)
+        mock_runtime_calculator.calculate_runtime_distribution.return_value = np.array([0.2, 0.1, 0.3])
+        mock_workflow_loader.get_vcpu.return_value = 2.0
+        mock_workflow_loader.get_memory.return_value = 2048.0
+        mock_workflow_loader.get_architecture.return_value = "x86"
+        mock_datacenter_loader.get_compute_cost.return_value = 0.01
+        mock_datacenter_loader.get_invocation_cost.return_value = 0.00001
 
-    def test_calculate_execution_cost(self):
-        self.cost_calculator._calculate_raw_execution_cost = Mock(return_value=10.0)
-        result = self.cost_calculator.calculate_execution_cost("instance1", "provider1:region1")
-        self.assertEqual(result, 10.0)
-
-    def test_calculate_transmission_cost(self):
-        self.cost_calculator._calculate_raw_transmission_cost = Mock(return_value=5.0)
-        result = self.cost_calculator.calculate_transmission_cost(
-            "instance1", "instance2", "provider1:region1", "provider1:region2"
+        # Act
+        execution_cost_distribution = cost_calculator.calculate_execution_cost_distribution(
+            "instance1", "AWS:us-east-1"
         )
-        self.assertEqual(result, 5.0)
 
-    def test__calculate_raw_execution_cost(self):
-        self.runtime_calculator.calculate_raw_runtime.return_value = 3600
-        self.workflow_loader.get_vcpu.return_value = 2
-        self.workflow_loader.get_memory.return_value = 4096
-        self.workflow_loader.get_architecture.return_value = "x86"
-        self.datacenter_loader.get_compute_cost.return_value = 0.01
-        self.datacenter_loader.get_invocation_cost.return_value = 0.00001
+        # Assert
+        np.testing.assert_array_almost_equal(execution_cost_distribution, np.array([0.00401, 0.00801, 0.01201]))
 
-        result = self.cost_calculator._calculate_raw_execution_cost("instance1", "provider1:region1")
-        self.assertEqual(result, 0.01 * 2 * 4 * 3600 + 0.00001)
+    def test_calculate_transmission_cost_distribution(self):
+        # Arrange
+        mock_datacenter_loader = MagicMock(spec=DatacenterLoader)
+        mock_workflow_loader = MagicMock(spec=WorkflowLoader)
+        mock_runtime_calculator = MagicMock(spec=RuntimeCalculator)
+        cost_calculator = CostCalculator(mock_datacenter_loader, mock_workflow_loader, mock_runtime_calculator)
+        mock_workflow_loader.get_data_transfer_size_distribution.return_value = [0.2, 0.1, 0.3]
+        mock_datacenter_loader.get_transmission_cost.return_value = 0.01
 
-    def test__calculate_raw_transmission_cost(self):
-        self.workflow_loader.get_data_transfer_size.return_value = 2
-        self.datacenter_loader.get_transmission_cost.return_value = 0.01
-
-        result = self.cost_calculator._calculate_raw_transmission_cost(
-            "instance1", "instance2", "provider1:region1", "provider1:region2"
+        # Act
+        transmission_cost_distribution = cost_calculator.calculate_transmission_cost_distribution(
+            "instance1", "instance2", "AWS:us-east-1", "AWS:us-west-2"
         )
-        self.assertEqual(result, 2 * 0.01)
+
+        # Assert
+        np.testing.assert_array_almost_equal(transmission_cost_distribution, np.array([0.001, 0.002, 0.003]))
 
 
 if __name__ == "__main__":

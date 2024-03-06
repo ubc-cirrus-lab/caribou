@@ -8,7 +8,7 @@ from multi_x_serverless.routing.deployment_algorithms.coarse_grained_deployment_
 class TestCoarseGrainedDeploymentAlgorithm(unittest.TestCase):
     @patch("multi_x_serverless.routing.deployment_input.input_manager.Endpoints")
     @patch("multiprocessing.Pool")
-    def test_run_algorithm(self, mock_pool, mock_endpoints):
+    def test_run_algorithm(self, mock_endpoints, mock_pool):
         mock_workflow_config = MagicMock()
 
         # Create a mock for the _generate_and_check_deployment method
