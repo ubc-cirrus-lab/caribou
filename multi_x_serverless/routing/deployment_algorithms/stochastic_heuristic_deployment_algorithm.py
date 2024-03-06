@@ -10,7 +10,7 @@ class StochasticHeuristicDeploymentAlgorithm(DeploymentAlgorithm):
 
         # This learning rate should be an int -> Convert the float to an int
         self._learning_rate: int = int(self._number_of_instances * 0.1 + 1)
-        self._num_iterations = len(self._region_indexer.get_value_indices().values()) * len(self._instance_indexer.get_value_indices().values())
+        self._num_iterations = len(self._region_indexer.get_value_indices().values()) * len(self._instance_indexer.get_value_indices().values()) * 4
         self._temperature = 1.0
 
     def _run_algorithm(self) -> list[tuple[list[int], dict[str, float]]]:

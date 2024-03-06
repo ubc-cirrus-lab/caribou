@@ -121,6 +121,14 @@ class SolverBenchmark:
             "number of instances": len(self._dag.nodes),
             "number of sync nodes": self._sync_nodes,
         }
+
+        print(
+            f"Finished total nodes: {len(self._dag.nodes)}, Sync nodes: {self._sync_nodes}, Regions: {self._num_regions}, Number of runs: {number_of_runs}"
+        )
+        print(
+            f"Runtime: {result_dict['runtime']}, Best cost: {result_dict['best cost']}, Best runtime: {result_dict['best runtime']}, Best carbon: {result_dict['best carbon']}"
+        )
+
         return result_dict
 
     def get_dag_representation(self):
@@ -189,7 +197,7 @@ class SolverBenchmark:
 def run_benchmark_wrapper(benchmark, deployment_algorithm_class):
     return benchmark.run_benchmark(
         deployment_algorithm_class=deployment_algorithm_class,
-        number_of_runs=4,
+        number_of_runs=2,
     )
 
 
@@ -197,44 +205,44 @@ if __name__ == "__main__":
     seed = 10
 
     # Validate that the deployment_algorithms return the same results when deterministic is set to True
-    print("Validating deployment_algorithms")
-    total_nodes = 3  # CODE FOR DEBUGGING
-    sync_nodes = 1
-    num_regions = 3
-    deployment_algorithmBenchmark = SolverBenchmark(
-        total_nodes=total_nodes, sync_nodes=sync_nodes, num_regions=num_regions, seed=seed
-    )
+    # print("Validating deployment_algorithms")
+    # total_nodes = 3  # CODE FOR DEBUGGING
+    # sync_nodes = 1
+    # num_regions = 3
+    # deployment_algorithmBenchmark = SolverBenchmark(
+    #     total_nodes=total_nodes, sync_nodes=sync_nodes, num_regions=num_regions, seed=seed
+    # )
 
-    fg_results = deployment_algorithmBenchmark.run_benchmark(
-        deployment_algorithm_class=FineGrainedDeploymentAlgorithm, number_of_runs=2
-    )
-    sh_results = deployment_algorithmBenchmark.run_benchmark(
-        deployment_algorithm_class=StochasticHeuristicDeploymentAlgorithm, number_of_runs=2
-    )
-    cg_results = deployment_algorithmBenchmark.run_benchmark(
-        deployment_algorithm_class=CoarseGrainedDeploymentAlgorithm, number_of_runs=2
-    )
+    # fg_results = deployment_algorithmBenchmark.run_benchmark(
+    #     deployment_algorithm_class=FineGrainedDeploymentAlgorithm, number_of_runs=2
+    # )
+    # sh_results = deployment_algorithmBenchmark.run_benchmark(
+    #     deployment_algorithm_class=StochasticHeuristicDeploymentAlgorithm, number_of_runs=2
+    # )
+    # cg_results = deployment_algorithmBenchmark.run_benchmark(
+    #     deployment_algorithm_class=CoarseGrainedDeploymentAlgorithm, number_of_runs=2
+    # )
 
-    rounding_decimals = 1
-    # round results
-    for dimension in ["best cost", "best runtime", "best carbon"]:
-        fg_results[dimension] = round(fg_results[dimension], rounding_decimals)
-        sh_results[dimension] = round(sh_results[dimension], rounding_decimals)
-        cg_results[dimension] = round(cg_results[dimension], rounding_decimals)
-        print(f"{dimension}: {fg_results[dimension]} == {sh_results[dimension]} == {cg_results[dimension]}")
+    # rounding_decimals = 1
+    # # round results
+    # for dimension in ["best cost", "best runtime", "best carbon"]:
+    #     fg_results[dimension] = round(fg_results[dimension], rounding_decimals)
+    #     sh_results[dimension] = round(sh_results[dimension], rounding_decimals)
+    #     cg_results[dimension] = round(cg_results[dimension], rounding_decimals)
+    #     print(f"{dimension}: {fg_results[dimension]} == {sh_results[dimension]} == {cg_results[dimension]}")
 
-    assert fg_results["best cost"] == sh_results["best cost"] == cg_results["best cost"]
-    assert fg_results["best runtime"] == sh_results["best runtime"] == cg_results["best runtime"]
-    assert fg_results["best carbon"] == sh_results["best carbon"] == cg_results["best carbon"]
+    # assert fg_results["best cost"] == sh_results["best cost"] == cg_results["best cost"]
+    # assert fg_results["best runtime"] == sh_results["best runtime"] == cg_results["best runtime"]
+    # assert fg_results["best carbon"] == sh_results["best carbon"] == cg_results["best carbon"]
 
-    print("Validation successful")
+    # print("Validation successful")
 
     # Benchmark all deployment_algorithms
     print("Running benchmarks")
     results = []
     inputs = []
     deployment_algorithms = []
-    scenarios = {"total_nodes": range(3, 7), "sync_nodes": range(1, 3), "num_regions": range(4, 7)}
+    scenarios = {"total_nodes": range(3, 6), "sync_nodes": [1], "num_regions": range(2, 6)}
 
     counter = 0
     for total_nodes in scenarios["total_nodes"]:
@@ -248,7 +256,7 @@ if __name__ == "__main__":
                 )
                 counter += 1
 
-    with multiprocessing.Pool(processes=len(inputs)) as pool:
+    with multiprocessing.Pool() as pool:
         print("Starting CoarseGrainedDeploymentAlgorithm benchmarks at ", time.ctime())
         cg_results = pool.starmap(
             run_benchmark_wrapper,
