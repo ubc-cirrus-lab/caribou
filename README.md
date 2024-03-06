@@ -1,14 +1,27 @@
 # Multi-X-Serverless
 
+Multi-X-Serverless is a serverless framework for running and deploying complex workflows on AWS over multiple regions.
+The framework is designed to be self-adapting and self-optimizing with regards to the carbon footprint, cost, and performance of the workflows.
+A workflow that is developed and deployed using Multi-X-Serverless can be run and solved by the framework, which will then automatically, depending on constraints and objectives, adapt the workflow deployment to optimize the workflow's performance, cost, and carbon footprint.
+Optimization is done, when warranted by the type of application and frequency of its invocation, by using a suitable deployment algorithm that solves for new multi-region deployment configurations.
+The overhead of the system plays a crucial role in the optimization process and sets the frequency as well as the granularity of the optimization process.
+For more information, see the [design documentation](docs/design.md).
+
 ## Quick Start
 
-We are working with poetry, so you need to install it first.
+The following instructions will guide you through the process of setting up the project and running a workflow.
+
+### Prerequisites
+
+We are working with poetry for our dependency management, so you need to install it first.
 
 ```bash
 pip install poetry
 ```
 
-Alternatively if this doesn't work you will need to install poetry on Linux with:
+#### Note for Linux Users
+
+If this doesn't work for you and you are using a Linux machine, you will need to install poetry with:
 
 ```bash
 apt install python3-poetry
@@ -64,11 +77,7 @@ Where `<workflow_name>` is the name of the new workflow.
 
 ### Deployment Client
 
-The deployment client has an additional dependency on `docker`. To install it, use:
-
-```bash
-sudo apt-get install docker.io
-```
+The deployment client has an additional dependency on `docker`. To install it, follow the instructions on the [docker website](https://docs.docker.com/engine/install/).
 
 The deployment client can be found in `multi_x_serverless/deployment/client` and can be run with (needs to be run in the same directory as the workflow you want to deploy):
 
@@ -187,25 +196,31 @@ poetry run pytest
 
 #### Integration Tests
 
-TODO (#116): Add integration tests
+To run the integration tests, use:
+
+```bash
+poetry run python integration_tests/run_integration_tests.py
+```
 
 ### Benchmarking
 
-Currently we have the following system part benchmarks:
+Currently we have the following workflows for benchmarking:
 
-- Solver Benchmarks
+- `benchmarks/dna_visualization`
+- `benchmarks/image_processing`
+- `benchmarks/image_processing_light`
+- `benchmarks/regression_tuning`
+- `benchmarks/small_sync_example`
+- `benchmarks/text_2_speech_censoring`
+- `benchmarks/video_analytics`
+
+Information on how to run each of these are in the respective workflow's README.
 
 #### Solver Benchmarks
 
-To run the solver benchmarks, use either the following commands:
+For the solver benchmarks, we have the following scenarios:
 
-- Single process (runs the benchmark scenarios one after the other):
-
-```bash
-poetry run python benchmarks/solver_benchmarks/run_solver_benchmarks.py
-```
-
-- Multiprocess (uses all CPU cores to run the benchmark scenarios in parallel):
+To run the solver benchmarks, use the following commands:
 
 ```bash
 poetry run python benchmarks/solver_benchmarks/run_solver_benchmarks_multiprocess.py
