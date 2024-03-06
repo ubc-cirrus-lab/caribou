@@ -1,5 +1,6 @@
 import numpy as np
 
+from multi_x_serverless.common.constants import TAIL_LATENCY_THRESHOLD
 from multi_x_serverless.common.models.endpoints import Endpoints
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
 from multi_x_serverless.routing.deployment_input.components.calculators.carbon_calculator import CarbonCalculator
@@ -22,16 +23,16 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
     _transmission_distribution_cache: dict[str, tuple[np.ndarray, np.ndarray, np.ndarray]]
     _invocation_probability_cache: dict[str, float]
 
-    def __init__(self, workflow_config: WorkflowConfig, tail_threshold: int = 95) -> None:
+    def __init__(self, workflow_config: WorkflowConfig, tail_latency_threshold: int = TAIL_LATENCY_THRESHOLD) -> None:
         super().__init__()
         # Set the workflow config
         self._workflow_config: WorkflowConfig = workflow_config
 
         # Save the tail threshold (Number = percentile for tail runtime/latency)
         # This value MUST be between 50 and 100
-        if tail_threshold < 50 or tail_threshold > 100:
+        if tail_latency_threshold < 50 or tail_latency_threshold > 100:
             raise ValueError("Tail threshold must be between 50 and 100")
-        self._tail_threshold: float = tail_threshold
+        self._tail_latency_threshold: float = tail_latency_threshold
 
         # Initialize remote client
         self._data_collector_client: RemoteClient = Endpoints().get_data_collector_client()
@@ -235,8 +236,8 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
             return (cost, carbon, runtime)
 
         # If probabilistic_case is False, return the tail value from the distribution.
-        cost = np.percentile(cost_distribution, self._tail_threshold)
-        carbon = np.percentile(carbon_distribution, self._tail_threshold)
-        runtime = np.percentile(runtime_distribution, self._tail_threshold)
+        cost = np.percentile(cost_distribution, self._tail_latency_threshold)
+        carbon = np.percentile(carbon_distribution, self._tail_latency_threshold)
+        runtime = np.percentile(runtime_distribution, self._tail_latency_threshold)
 
         return (cost, carbon, runtime)

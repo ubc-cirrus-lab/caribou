@@ -1,6 +1,7 @@
 import random
 from abc import ABC, abstractmethod
 
+from multi_x_serverless.common.constants import TAIL_LATENCY_THRESHOLD
 from multi_x_serverless.routing.deployment_input.input_manager import InputManager
 from multi_x_serverless.routing.models.dag import DAG
 from multi_x_serverless.routing.models.instance_indexer import InstanceIndexer
@@ -15,9 +16,11 @@ class DeploymentMetricsCalculator(ABC):
         input_manager: InputManager,
         region_indexer: RegionIndexer,
         instance_indexer: InstanceIndexer,
+        tail_latency_threshold: int = TAIL_LATENCY_THRESHOLD,
     ):
         # Not all variables are relevant for other parts
         self._input_manager: InputManager = input_manager
+        self._tail_latency_threshold: int = tail_latency_threshold
 
         # Set up the DAG structure and get the prerequisites and successor dictionaries
         dag: DAG = DAG(list(workflow_config.instances.values()), instance_indexer)
@@ -28,17 +31,15 @@ class DeploymentMetricsCalculator(ABC):
         self._home_region_index = region_indexer.get_value_indices()[workflow_config.start_hops]
 
     def calculate_deployment_metrics(self, deployment: list[int], monte_carlo_runs: int = 1000) -> dict[str, float]:
-        # Get the tail results
-        tail_workflow_results = self._perform_tail_workflow_calculation(deployment)
-        tail_cost = tail_workflow_results["cost"]
-        tail_runtime = tail_workflow_results["runtime"]
-        tail_carbon = tail_workflow_results["carbon"]
+        # Get average and tail cost/carbon/runtime from Monte Carlo simulation
+        monte_carlo_results = self._perform_monte_carlo_simulation(deployment, monte_carlo_runs)
+        tail_cost = monte_carlo_results["tail_cost"]
+        tail_runtime = monte_carlo_results["tail_runtime"]
+        tail_carbon = monte_carlo_results["tail_carbon"]
 
-        # Get the average results through Monte Carlo simulation
-        average_workflow_results = self._perform_monte_carlo_simulation(deployment, monte_carlo_runs)
-        average_cost = average_workflow_results["cost"]
-        average_runtime = average_workflow_results["runtime"]
-        average_carbon = average_workflow_results["carbon"]
+        average_cost = monte_carlo_results["average_cost"]
+        average_runtime = monte_carlo_results["average_runtime"]
+        average_carbon = monte_carlo_results["average_carbon"]
 
         return {
             "average_cost": average_cost,
@@ -55,12 +56,6 @@ class DeploymentMetricsCalculator(ABC):
         Perform a Monte Carlo simulation to get the average cost, runtime, and carbon footprint of the deployment.
         """
         raise NotImplementedError
-
-    def _perform_tail_workflow_calculation(self, deployment: list[int]) -> dict[str, float]:
-        """
-        Perform a single calculation of the workflow to get the cost, runtime, and carbon footprint of the deployment.
-        """
-        return self._calculate_workflow(deployment, False)
 
     def _calculate_workflow(self, deployment: list[int], probabilistic_case: bool) -> dict[str, float]:
         total_cost = 0.0

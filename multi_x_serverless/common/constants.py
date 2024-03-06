@@ -81,3 +81,6 @@ KWH_PER_S_GB_ESTIMATE = 0.005
 
 # Logging
 LOG_VERSION = "0.0.1"
+
+# Tail latency threshold
+TAIL_LATENCY_THRESHOLD = 95

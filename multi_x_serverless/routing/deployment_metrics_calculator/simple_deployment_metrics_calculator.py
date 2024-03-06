@@ -1,3 +1,5 @@
+import numpy as np
+
 from multi_x_serverless.routing.deployment_metrics_calculator.deployment_metrics_calculator import (
     DeploymentMetricsCalculator,
 )
@@ -6,20 +8,33 @@ from multi_x_serverless.routing.deployment_metrics_calculator.deployment_metrics
 class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
     def _perform_monte_carlo_simulation(self, deployment: list[int], times: int) -> dict[str, float]:
         """
-        Perform a Monte Carlo simulation to get the average cost, runtime, and carbon footprint of the deployment.
+        Perform a Monte Carlo simulation to both the average and tail
+        cost, runtime, and carbon footprint of the deployment.
         """
-        total_cost = 0.0
-        total_runtime = 0.0
-        total_carbon = 0.0
+        costs_distribution_list: list[float] = []
+        runtimes_distribution_list: list[float] = []
+        carbons_distribution_list: list[float] = []
 
         for _ in range(times):
             results = self._calculate_workflow(deployment, True)
-            total_cost += results["cost"]
-            total_runtime += results["runtime"]
-            total_carbon += results["carbon"]
+            costs_distribution_list.append(results["cost"])
+            runtimes_distribution_list.append(results["runtime"])
+            carbons_distribution_list.append(results["carbon"])
+
+        # Sort and convert to numpy arrays
+        costs_distribution: np.ndarray = np.array(costs_distribution_list)
+        runtimes_distribution: np.ndarray = np.array(runtimes_distribution_list)
+        carbons_distribution: np.ndarray = np.array(carbons_distribution_list)
+
+        costs_distribution.sort()
+        runtimes_distribution.sort()
+        carbons_distribution.sort()
 
         return {
-            "cost": total_cost / times,
-            "runtime": total_runtime / times,
-            "carbon": total_carbon / times,
+            "average_cost": float(np.mean(costs_distribution_list)),
+            "average_runtime": float(np.mean(runtimes_distribution)),
+            "average_carbon": float(np.mean(carbons_distribution)),
+            "tail_cost": float(np.percentile(costs_distribution_list, self._tail_latency_threshold)),
+            "tail_runtime": float(np.percentile(runtimes_distribution, self._tail_latency_threshold)),
+            "tail_carbon": float(np.percentile(carbons_distribution, self._tail_latency_threshold)),
         }
