@@ -34,7 +34,6 @@ class TestWorkflowRetriever(unittest.TestCase):
                 "invocation_summary": {},
             }
         }
-        print(result)
         self.assertEqual(result, expected_result)
 
     def test_consolidate_logs(self):
