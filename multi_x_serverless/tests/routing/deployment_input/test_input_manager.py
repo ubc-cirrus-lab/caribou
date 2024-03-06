@@ -1,8 +1,7 @@
 import unittest
-from unittest.mock import MagicMock, Mock
+from unittest.mock import MagicMock, Mock, patch
 
 import numpy as np
-from requests import patch
 from multi_x_serverless.common.models.endpoints import Endpoints
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
 from multi_x_serverless.routing.models.instance_indexer import InstanceIndexer
@@ -12,7 +11,9 @@ from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
 
 class TestInputManager(unittest.TestCase):
-    def setUp(self):
+    @patch(InputManager.__module__ + ".RegionViabilityLoader")
+    @patch(InputManager.__module__ + ".Endpoints")
+    def setUp(self, mock_endpoints, mock_region_viability_loader):
         self.workflow_config = Mock(spec=WorkflowConfig)
         self.workflow_config.instances = {
             "node1": {
@@ -43,6 +44,8 @@ class TestInputManager(unittest.TestCase):
         }
         self.workflow_config.workflow_id = "workflow_id"
         self.workflow_config.start_hops = "provider1:region1"
+        mock_endpoints.get_data_collector_client = MagicMock(return_value=RemoteClient)
+        mock_region_viability_loader.get_available_regions = MagicMock(return_value=["region1", "region2"])
         self.input_manager = InputManager(self.workflow_config)
 
     def test_init(self):
