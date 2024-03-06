@@ -76,12 +76,11 @@ class TestDeploymentMetricsCalculator(unittest.TestCase):
 
         self.calculator._home_region_index = 0
 
-    @patch.object(DeploymentMetricsCalculator, "_perform_tail_workflow_calculation")
     @patch.object(DeploymentMetricsCalculatorSubclass, "_perform_monte_carlo_simulation")
-    def test_calculate_deployment_metrics(self, mock_monte_carlo, mock_tail_workflow):
+    def test_calculate_deployment_metrics(self, mock_monte_carlo):
         # Define the mock results
-        mock_tail_workflow.return_value = {"cost": 1.0, "runtime": 1.0, "carbon": 1.0}
-        mock_monte_carlo.return_value = {"cost": 2.0, "runtime": 2.0, "carbon": 2.0}
+        mock_monte_carlo.return_value = {"average_cost": 2.0, "average_runtime": 2.0, "average_carbon": 2.0
+                                         , "tail_cost": 1.0, "tail_runtime": 1.0, "tail_carbon": 1.0}
 
         # Call the method with a test deployment
         deployment = [0, 1, 2]
@@ -96,23 +95,7 @@ class TestDeploymentMetricsCalculator(unittest.TestCase):
         self.assertEqual(metrics["tail_carbon"], 1.0)
 
         # Verify that the mock methods were called with the correct arguments
-        mock_tail_workflow.assert_called_once_with(deployment)
         mock_monte_carlo.assert_called_once_with(deployment, 1000)
-
-    @patch.object(DeploymentMetricsCalculator, "_calculate_workflow")
-    def test_perform_tail_workflow_calculation(self, mock_calculate_workflow):
-        mock_calculate_workflow.return_value = {"cost": 1.0, "runtime": 1.0, "carbon": 1.0}
-
-        deployment = [0, 1, 2]
-        self.input_manager.get_transmission_cost_carbon_runtime.return_value = (1.0, 1.0, 1.0)
-        self.input_manager.get_execution_cost_carbon_runtime.return_value = (1.0, 1.0, 1.0)
-        self.input_manager.get_invocation_probability.return_value = 1.0
-
-        metrics = self.calculator._perform_tail_workflow_calculation(deployment)
-
-        self.assertEqual(metrics["cost"], 1.0)
-        self.assertEqual(metrics["runtime"], 1.0)
-        self.assertEqual(metrics["carbon"], 1.0)
 
     def test_is_invoked(self):
         self.input_manager.get_invocation_probability.return_value = 1.0
