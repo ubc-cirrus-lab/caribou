@@ -140,10 +140,10 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         key = f"{from_instance_index}_{to_instance_index}_{from_region_index}_{to_region_index}"
         if key in self._transmission_distribution_cache:
             return self._transmission_distribution_cache[key]
-        
+
         # Handle special case for start hop
         # For now we simply assume its 0.0
-        if from_instance_index == -1: 
+        if from_instance_index == -1:
             zero_distributions = (np.array([0.0]), np.array([0.0]), np.array([0.0]))
             self._transmission_distribution_cache[key] = zero_distributions
             return zero_distributions

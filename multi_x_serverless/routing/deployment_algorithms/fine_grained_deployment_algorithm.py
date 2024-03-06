@@ -1,5 +1,4 @@
 from itertools import product
-from multiprocessing import Pool
 from typing import Optional
 
 from multi_x_serverless.routing.deployment_algorithms.deployment_algorithm import DeploymentAlgorithm

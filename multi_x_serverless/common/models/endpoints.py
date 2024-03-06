@@ -2,7 +2,6 @@ import os
 
 from multi_x_serverless.common.constants import GLOBAL_SYSTEM_REGION, INTEGRATION_TEST_SYSTEM_REGION
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
-from benchmarks.solver_benchmarks.benchmark_remote_client import BenchmarkRemoteClient
 from multi_x_serverless.common.models.remote_client.remote_client_factory import RemoteClientFactory
 from multi_x_serverless.common.provider import Provider
 from multi_x_serverless.common.utils import str_to_bool
