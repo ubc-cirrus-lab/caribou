@@ -194,3 +194,7 @@ class RemoteClient(ABC):  # pylint: disable=too-many-public-methods
     @abstractmethod
     def remove_resource(self, key: str) -> None:
         raise NotImplementedError()
+
+    @abstractmethod
+    def remove_sort_key(self, table_name: str, key: str) -> None:
+        raise NotImplementedError()

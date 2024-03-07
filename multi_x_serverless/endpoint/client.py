@@ -15,6 +15,7 @@ from multi_x_serverless.common.constants import (
     WORKFLOW_INSTANCE_TABLE,
     WORKFLOW_PLACEMENT_DECISION_TABLE,
     WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE,
+    WORKFLOW_SUMMARY_TABLE
 )
 from multi_x_serverless.common.models.endpoints import Endpoints
 from multi_x_serverless.common.models.remote_client.aws_remote_client import AWSRemoteClient
@@ -155,6 +156,8 @@ class Client:
         self._endpoints.get_deployment_manager_client().remove_key(DEPLOYMENT_MANAGER_RESOURCE_TABLE, self._workflow_id)
 
         self._endpoints.get_data_collector_client().remove_key(WORKFLOW_INSTANCE_TABLE, self._workflow_id)
+
+        self._endpoints.get_datastore_client().remove_sort_key(WORKFLOW_SUMMARY_TABLE, self._workflow_id)
 
         self._endpoints.get_deployment_manager_client().remove_key(
             MULTI_X_SERVERLESS_WORKFLOW_IMAGES_TABLE, self._workflow_id.replace(".", "_")

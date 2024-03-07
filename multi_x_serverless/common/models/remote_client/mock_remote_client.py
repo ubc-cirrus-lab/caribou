@@ -123,3 +123,6 @@ class MockRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
 
     def update_value_in_table(self, table_name: str, key: str, value: str) -> None:
         pass
+
+    def remove_sort_key(self, table_name: str, key: str) -> None:
+        pass
