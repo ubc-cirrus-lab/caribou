@@ -152,23 +152,11 @@ class RemoteClient(ABC):  # pylint: disable=too-many-public-methods
         raise NotImplementedError()
 
     @abstractmethod
-    def get_all_values_from_sort_key_table(self, table_name: str, key: str) -> list[str]:
-        raise NotImplementedError()
-
-    @abstractmethod
-    def get_last_value_from_sort_key_table(self, table_name: str, key: str) -> tuple[str, str]:
-        raise NotImplementedError()
-
-    @abstractmethod
     def create_sync_tables(self) -> None:
         raise NotImplementedError()
 
     @abstractmethod
-    def put_value_to_sort_key_table(self, table_name: str, key: str, sort_key: str, value: str) -> None:
-        raise NotImplementedError()
-
-    @abstractmethod
-    def get_logs_since_last_sync(self, function_instance: str, last_synced_time: datetime) -> list[str]:
+    def get_logs_since(self, function_instance: str, since: datetime) -> list[str]:
         raise NotImplementedError()
 
     @abstractmethod
@@ -193,8 +181,4 @@ class RemoteClient(ABC):  # pylint: disable=too-many-public-methods
 
     @abstractmethod
     def remove_resource(self, key: str) -> None:
-        raise NotImplementedError()
-
-    @abstractmethod
-    def remove_sort_key(self, table_name: str, key: str) -> None:
         raise NotImplementedError()

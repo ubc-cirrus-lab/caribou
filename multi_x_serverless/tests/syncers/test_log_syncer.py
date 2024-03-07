@@ -332,7 +332,6 @@ class TestLogSyncer(unittest.TestCase):
         workflow_summary_instance = {"instance_summary": {}}
         syncer._initialize_workflow_summary_instance = MagicMock(return_value=workflow_summary_instance)
         syncer._get_last_synced_time = MagicMock(return_value=datetime(2022, 1, 1, tzinfo=GLOBAL_TIME_ZONE))
-        syncer.endpoints.get_datastore_client().put_value_to_sort_key_table = MagicMock()
 
         deployment_manager_config_json = json.dumps(
             {

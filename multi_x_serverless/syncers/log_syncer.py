@@ -11,6 +11,8 @@ from multi_x_serverless.common.constants import (
     LOG_VERSION,
     TIME_FORMAT,
     WORKFLOW_SUMMARY_TABLE,
+    FORGETTING_NUMBER,
+    FORGETTING_TIME,
 )
 from multi_x_serverless.common.models.endpoints import Endpoints
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
@@ -40,11 +42,7 @@ class LogSyncer:
     def process_workflow(self, workflow_id: str, deployment_manager_config_json: str) -> None:
         workflow_summary_instance = self._initialize_workflow_summary_instance()
 
-        last_synced_time = self._get_last_synced_time(workflow_id)
-        new_last_sync_time = datetime.now(GLOBAL_TIME_ZONE)
-        workflow_summary_instance["time_since_last_sync"] = (new_last_sync_time - last_synced_time).total_seconds() / (
-            24 * 60 * 60
-        )
+        now_minus_forgetting_time = datetime.now(GLOBAL_TIME_ZONE) - timedelta(seconds=FORGETTING_TIME)
 
         deployment_manager_config = json.loads(deployment_manager_config_json)
         self._validate_deployment_manager_config(deployment_manager_config, workflow_id)
@@ -65,7 +63,7 @@ class LogSyncer:
                 function_physical_instance,
                 provider_region,
                 workflow_summary_instance,
-                last_synced_time,
+                now_minus_forgetting_time,
                 latency_summary,  # type: ignore
                 latency_summary_successor_before_caller_store,  # type: ignore
             )
@@ -78,10 +76,9 @@ class LogSyncer:
 
         workflow_summary_instance_json = json.dumps(workflow_summary_instance)
 
-        self.endpoints.get_datastore_client().put_value_to_sort_key_table(
+        self.endpoints.get_datastore_client().update_value_in_table(
             WORKFLOW_SUMMARY_TABLE,
             workflow_id,
-            new_last_sync_time.strftime(TIME_FORMAT),
             workflow_summary_instance_json,
         )
 
@@ -142,16 +139,6 @@ class LogSyncer:
         workflow_summary_instance["total_invocations"] = 0
         return workflow_summary_instance
 
-    def _get_last_synced_time(self, workflow_id: str) -> datetime:
-        last_synced_log = self.endpoints.get_datastore_client().get_last_value_from_sort_key_table(
-            WORKFLOW_SUMMARY_TABLE, workflow_id
-        )
-
-        if last_synced_log and len(last_synced_log[0]) > 0:
-            last_synced_time_str = last_synced_log[0]
-            return datetime.strptime(last_synced_time_str, TIME_FORMAT)
-        return datetime.now(GLOBAL_TIME_ZONE) - timedelta(days=1)
-
     def _validate_deployment_manager_config(self, deployment_manager_config: dict[str, Any], workflow_id: str) -> None:
         if "deployed_regions" not in deployment_manager_config:
             raise RuntimeError(
@@ -163,7 +150,7 @@ class LogSyncer:
         function_instance: str,
         provider_region: dict[str, str],
         workflow_summary_instance: dict[str, Any],
-        last_synced_time: datetime,
+        time_window_start: datetime,
         latency_summary: dict[str, dict[str, dict[str, dict[str, Any]]]],
         latency_summary_successor_before_caller_store: dict[str, dict[str, dict[str, Any]]],
     ) -> None:
@@ -175,7 +162,7 @@ class LogSyncer:
 
         logs: list[str] = self._region_clients[
             (provider_region["provider"], provider_region["region"])
-        ].get_logs_since_last_sync(function_instance, last_synced_time)
+        ].get_logs_since(function_instance, time_window_start)
 
         self._process_logs(
             logs,

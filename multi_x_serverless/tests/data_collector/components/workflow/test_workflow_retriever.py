@@ -38,155 +38,82 @@ class TestWorkflowRetriever(unittest.TestCase):
         }
         self.assertEqual(result, expected_result)
 
-    def test_consolidate_logs(self):
-        logs = [
-            json.dumps(
-                {
-                    "time_since_last_sync": 240,
-                    "total_invocations": 200,
-                    "instance_summary": {
-                        "instance_1": {
-                            "invocation_count": 100,
-                            "execution_summary": {
-                                "provider_1:region_1": {
-                                    "init_data_transfer_size_samples": [2],  # In GB
-                                    "init_latency_samples": [500],  # In ms
-                                    "invocation_count": 80,
-                                    "runtime_samples": [25],  # In ms
-                                },
-                                "provider_1:region_2": {
-                                    "init_data_transfer_size_samples": [6],  # In GB
-                                    "init_latency_samples": [300],  # In ms
-                                    "invocation_count": 20,
-                                    "runtime_samples": [30, 30, 30],  # In ms
-                                },
+    def test_consolidate_log(self):
+        log = json.dumps(
+            {
+                "time_since_last_sync": 240,
+                "total_invocations": 200,
+                "instance_summary": {
+                    "instance_1": {
+                        "invocation_count": 100,
+                        "execution_summary": {
+                            "provider_1:region_1": {
+                                "init_data_transfer_size_samples": [2],  # In GB
+                                "init_latency_samples": [500],  # In ms
+                                "invocation_count": 80,
+                                "runtime_samples": [25],  # In ms
                             },
-                            "invocation_summary": {
-                                "instance_2": {
-                                    "invocation_count": 80,
-                                    "data_transfer_samples": [1, 11],  # In GB
-                                    "transmission_summary": {
-                                        "provider_1:region_1": {
-                                            "provider_1:region_1": {
-                                                "transmission_count": 65,
-                                                "latency_samples": [
-                                                    200,
-                                                    200,
-                                                ],  # In ms
-                                            },
-                                            "provider_1:region_2": {
-                                                "transmission_count": 5,
-                                                "latency_samples": [
-                                                    150,
-                                                    150,
-                                                ],  # In ms
-                                            },
-                                        },
-                                        "provider_1:region_2": {
-                                            "provider_1:region_1": {
-                                                "transmission_count": 10,
-                                                "latency_samples": [
-                                                    100,
-                                                    100,
-                                                ],  # In ms
-                                            }
-                                        },
-                                    },
-                                }
+                            "provider_1:region_2": {
+                                "init_data_transfer_size_samples": [6],  # In GB
+                                "init_latency_samples": [300],  # In ms
+                                "invocation_count": 20,
+                                "runtime_samples": [30, 30, 30],  # In ms
                             },
                         },
-                        "instance_2": {
-                            "invocation_count": 100,
-                            "execution_summary": {
-                                "provider_1:region_1": {
-                                    "invocation_count": 70,
-                                    "runtime_samples": [10, 10],  # In ms
+                        "invocation_summary": {
+                            "instance_2": {
+                                "invocation_count": 80,
+                                "data_transfer_samples": [1, 11],  # In GB
+                                "transmission_summary": {
+                                    "provider_1:region_1": {
+                                        "provider_1:region_1": {
+                                            "transmission_count": 65,
+                                            "latency_samples": [
+                                                200,
+                                                200,
+                                            ],  # In ms
+                                        },
+                                        "provider_1:region_2": {
+                                            "transmission_count": 5,
+                                            "latency_samples": [
+                                                150,
+                                                150,
+                                            ],  # In ms
+                                        },
+                                    },
+                                    "provider_1:region_2": {
+                                        "provider_1:region_1": {
+                                            "transmission_count": 10,
+                                            "latency_samples": [
+                                                100,
+                                                100,
+                                            ],  # In ms
+                                        }
+                                    },
                                 },
-                                "provider_1:region_2": {
-                                    "invocation_count": 10,
-                                    "runtime_samples": [15, 15, 15],  # In ms
-                                },
+                            }
+                        },
+                    },
+                    "instance_2": {
+                        "invocation_count": 100,
+                        "execution_summary": {
+                            "provider_1:region_1": {
+                                "invocation_count": 70,
+                                "runtime_samples": [10, 10],  # In ms
+                            },
+                            "provider_1:region_2": {
+                                "invocation_count": 10,
+                                "runtime_samples": [15, 15, 15],  # In ms
                             },
                         },
                     },
-                }
-            ),
-            json.dumps(
-                {
-                    "time_since_last_sync": 240,
-                    "total_invocations": 300,
-                    "instance_summary": {
-                        "instance_1": {
-                            "invocation_count": 100,
-                            "execution_summary": {
-                                "provider_1:region_1": {
-                                    "init_data_transfer_size_samples": [1],  # In GB
-                                    "init_latency_samples": [200],  # In ms
-                                    "invocation_count": 20,
-                                    "runtime_samples": [25, 25],  # In ms
-                                },
-                                "provider_1:region_2": {
-                                    "init_data_transfer_size_samples": [4],  # In GB
-                                    "init_latency_samples": [150],  # In ms
-                                    "invocation_count": 80,
-                                    "runtime_samples": [30, 30],  # In ms
-                                },
-                            },
-                            "invocation_summary": {
-                                "instance_2": {
-                                    "invocation_count": 80,
-                                    "data_transfer_samples": [10, 10],  # In GB
-                                    "transmission_summary": {
-                                        "provider_1:region_1": {
-                                            "provider_1:region_1": {
-                                                "transmission_count": 65,
-                                                "latency_samples": [
-                                                    200,
-                                                    200,
-                                                ],  # In ms
-                                            },
-                                            "provider_1:region_2": {
-                                                "transmission_count": 5,
-                                                "latency_samples": [
-                                                    150,
-                                                    150,
-                                                ],  # In ms
-                                            },
-                                        },
-                                        "provider_1:region_2": {
-                                            "provider_1:region_1": {
-                                                "transmission_count": 10,
-                                                "latency_samples": [
-                                                    100,
-                                                    100,
-                                                ],  # In ms
-                                            }
-                                        },
-                                    },
-                                }
-                            },
-                        },
-                        "instance_2": {
-                            "invocation_count": 80,
-                            "execution_summary": {
-                                "provider_1:region_1": {
-                                    "invocation_count": 70,
-                                    "runtime_samples": [10, 10, 10, 10],  # In ms
-                                },
-                                "provider_1:region_2": {
-                                    "invocation_count": 10,
-                                    "runtime_samples": [15, 15, 15, 15],  # In ms
-                                },
-                            },
-                        },
-                    },
-                }
-            ),
-        ]
+                },
+            }
+        )
 
         self.workflow_retriever._available_regions = {"provider_1:region_1": {}, "provider_1:region_2": {}}
 
-        result = self.workflow_retriever._consolidate_logs(logs=logs)
+        result = self.workflow_retriever._consolidate_log(logs=log)
 
         expected_result = {
             "total_invocations": 500,

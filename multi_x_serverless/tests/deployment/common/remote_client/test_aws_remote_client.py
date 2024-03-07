@@ -490,21 +490,6 @@ class TestAWSRemoteClient(unittest.TestCase):
         self.assertEqual(result, b"test_resource")
 
     @patch.object(AWSRemoteClient, "_client")
-    def test_get_all_values_from_sort_key_table(self, mock_client):
-        table_name = "test_table"
-        key = "test_key"
-        mock_client.return_value.query.return_value = {
-            "Items": [
-                {"key": {"S": "key1"}, "value": {"S": "value1"}},
-                {"key": {"S": "key2"}, "value": {"S": "value2"}},
-            ]
-        }
-        result = self.aws_client.get_all_values_from_sort_key_table(table_name, key)
-        self.assertEqual(len(result), 2)
-        self.assertEqual(result[0], "value1")
-        self.assertEqual(result[1], "value2")
-
-    @patch.object(AWSRemoteClient, "_client")
     def test_get_keys(self, mock_client):
         table_name = "test_table"
         mock_client.return_value.scan.return_value = {"Items": [{"key": {"S": "key1"}}, {"key": {"S": "key2"}}]}
@@ -751,36 +736,6 @@ class TestAWSRemoteClient(unittest.TestCase):
         self.assertEqual(result, "arn")
 
     @patch.object(AWSRemoteClient, "_client")
-    def test_get_last_value_from_sort_key_table(self, mock_client):
-        # Mocking the scenario where the last value is retrieved successfully
-        mock_dynamodb_client = MagicMock()
-        mock_client.return_value = mock_dynamodb_client
-
-        client = AWSRemoteClient("region1")
-
-        # Mock the return value of query
-        mock_dynamodb_client.query.return_value = {"Items": [{"sort_key": {"S": "sort_key"}, "value": {"S": "value"}}]}
-
-        result = client.get_last_value_from_sort_key_table("table_name", "key")
-
-        # Check that the return value is correct
-        self.assertEqual(result, ("sort_key", "value"))
-
-    @patch.object(AWSRemoteClient, "_client")
-    def test_put_value_to_sort_key_table(self, mock_client):
-        # Mocking the scenario where the value is put successfully
-        mock_dynamodb_client = MagicMock()
-        mock_client.return_value = mock_dynamodb_client
-
-        client = AWSRemoteClient("region1")
-
-        # Call the method with test values
-        client.put_value_to_sort_key_table("table_name", "key", "sort_key", "value")
-
-        # Check that the put_item method was called
-        mock_dynamodb_client.put_item.assert_called()
-
-    @patch.object(AWSRemoteClient, "_client")
     def test_get_logs_since_last_sync(self, mock_client):
         # Mocking the scenario where the logs are retrieved successfully
         mock_logs_client = MagicMock()
@@ -791,7 +746,7 @@ class TestAWSRemoteClient(unittest.TestCase):
         # Mock the return value of filter_log_events
         mock_logs_client.filter_log_events.return_value = {"events": [{"message": "log_message"}]}
 
-        result = client.get_logs_since_last_sync("function_instance", datetime.datetime.now(GLOBAL_TIME_ZONE))
+        result = client.get_logs_since("function_instance", datetime.datetime.now(GLOBAL_TIME_ZONE))
 
         # Check that the return value is correct
         self.assertEqual(result, ["log_message"])
