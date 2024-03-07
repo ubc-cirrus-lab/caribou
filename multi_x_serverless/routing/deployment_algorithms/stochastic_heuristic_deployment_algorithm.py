@@ -5,8 +5,8 @@ from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
 
 class StochasticHeuristicDeploymentAlgorithm(DeploymentAlgorithm):
-    def __init__(self, workflow_config: WorkflowConfig) -> None:
-        super().__init__(workflow_config)
+    def __init__(self, workflow_config: WorkflowConfig, expiry_time_delta_seconds: int = 604800) -> None:
+        super().__init__(workflow_config, expiry_time_delta_seconds)
         self._setup()
 
     def _setup(self) -> None:

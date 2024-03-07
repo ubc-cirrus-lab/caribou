@@ -5,7 +5,13 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Any, Optional
 
-from multi_x_serverless.common.constants import DEPLOYMENT_MANAGER_RESOURCE_TABLE, LOG_VERSION, WORKFLOW_SUMMARY_TABLE
+from multi_x_serverless.common.constants import (
+    DEPLOYMENT_MANAGER_RESOURCE_TABLE,
+    GLOBAL_TIME_ZONE,
+    LOG_VERSION,
+    TIME_FORMAT,
+    WORKFLOW_SUMMARY_TABLE,
+)
 from multi_x_serverless.common.models.endpoints import Endpoints
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
 from multi_x_serverless.common.models.remote_client.remote_client_factory import RemoteClientFactory
@@ -35,7 +41,7 @@ class DatastoreSyncer:
         workflow_summary_instance = self._initialize_workflow_summary_instance()
 
         last_synced_time = self._get_last_synced_time(workflow_id)
-        new_last_sync_time = datetime.now()
+        new_last_sync_time = datetime.now(GLOBAL_TIME_ZONE)
         workflow_summary_instance["time_since_last_sync"] = (new_last_sync_time - last_synced_time).total_seconds() / (
             24 * 60 * 60
         )
@@ -78,7 +84,7 @@ class DatastoreSyncer:
         self.endpoints.get_datastore_client().put_value_to_sort_key_table(
             WORKFLOW_SUMMARY_TABLE,
             workflow_id,
-            new_last_sync_time.strftime("%Y-%m-%d %H:%M:%S.%f"),
+            new_last_sync_time.strftime(TIME_FORMAT),
             workflow_summary_instance_json,
         )
 
@@ -145,8 +151,8 @@ class DatastoreSyncer:
 
         if last_synced_log and len(last_synced_log[0]) > 0:
             last_synced_time_str = last_synced_log[0]
-            return datetime.strptime(last_synced_time_str, "%Y-%m-%d %H:%M:%S.%f")
-        return datetime.now() - timedelta(days=1)
+            return datetime.strptime(last_synced_time_str, TIME_FORMAT)
+        return datetime.now(GLOBAL_TIME_ZONE) - timedelta(days=1)
 
     def _validate_deployment_manager_config(self, deployment_manager_config: dict[str, Any], workflow_id: str) -> None:
         if "deployed_regions" not in deployment_manager_config:
@@ -366,7 +372,7 @@ class DatastoreSyncer:
                 continue
             log_time = self._extract_from_string(log_entry, r"TIME \((.*?)\)")
             if log_time:
-                log_time = datetime.strptime(log_time, "%Y-%m-%d %H:%M:%S,%f").timestamp()  # type: ignore
+                log_time = datetime.strptime(log_time, "%Y-%m-%d %H:%M:%S,%f").timestamp()
             if not isinstance(log_time, float):
                 continue
             if "ENTRY_POINT" in log_entry:

@@ -7,6 +7,7 @@ import googlemaps
 import requests
 from bs4 import BeautifulSoup
 
+from multi_x_serverless.common.constants import GLOBAL_TIME_ZONE
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
 from multi_x_serverless.common.provider import Provider
 from multi_x_serverless.common.utils import str_to_bool
@@ -288,7 +289,7 @@ class ProviderRetriever(DataRetriever):
 
     def _retrieve_aws_execution_cost(self, available_region: list[str]) -> dict[str, Any]:
         execution_cost_response = self._aws_pricing_client.list_price_lists(
-            ServiceCode="AWSLambda", EffectiveDate=datetime.datetime.now(), CurrencyCode="USD"
+            ServiceCode="AWSLambda", EffectiveDate=datetime.datetime.now(GLOBAL_TIME_ZONE), CurrencyCode="USD"
         )
 
         available_region_code_to_key = {region_key.split(":")[1]: region_key for region_key in available_region}

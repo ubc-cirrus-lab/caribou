@@ -18,7 +18,7 @@ from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
 
 class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
-    def __init__(self, workflow_config: WorkflowConfig):
+    def __init__(self, workflow_config: WorkflowConfig, expiry_time_delta_seconds: int = 604800):  # 604800 = 7 days
         self._workflow_config = workflow_config
 
         self._input_manager = InputManager(workflow_config=workflow_config)
@@ -46,7 +46,7 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
 
         self._ranker = Ranker(workflow_config, self._home_deployment_metrics)
 
-        self._formatter = Formatter(self._home_deployment, self._home_deployment_metrics)
+        self._formatter = Formatter(self._home_deployment, self._home_deployment_metrics, expiry_time_delta_seconds)
 
         self._endpoints = Endpoints()
 

@@ -5,6 +5,7 @@ from typing import Any
 
 import requests
 
+from multi_x_serverless.common.constants import GLOBAL_TIME_ZONE
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
 from multi_x_serverless.common.utils import str_to_bool
 from multi_x_serverless.data_collector.components.carbon.carbon_transmission_cost_calculator.carbon_transmission_cost_calculator import (  # pylint: disable=line-too-long
@@ -24,7 +25,7 @@ class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attri
             raise ValueError("ELECTRICITY_MAPS_AUTH_TOKEN environment variable not set")
 
         self._request_backoff = 0.1
-        self._last_request = datetime.datetime.now()
+        self._last_request = datetime.datetime.now(GLOBAL_TIME_ZONE)
         self._global_average_worst_case_carbon_intensity = 475.0
         self._carbon_transmission_cost_calculator = CarbonTransmissionCostCalculator(
             self._get_carbon_intensity_from_coordinates
@@ -69,7 +70,7 @@ class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attri
             return self._carbon_intensity_cache[(latitude, longitude)]
         electricitymaps = "https://api-access.electricitymaps.com/free-tier/carbon-intensity/latest?"
 
-        if (datetime.datetime.now() - self._last_request).total_seconds() < self._request_backoff:
+        if (datetime.datetime.now(GLOBAL_TIME_ZONE) - self._last_request).total_seconds() < self._request_backoff:
             time.sleep(self._request_backoff)
 
         if self._electricity_maps_auth_token is None:
@@ -81,7 +82,7 @@ class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attri
             timeout=10,
         )
 
-        self._last_request = datetime.datetime.now()
+        self._last_request = datetime.datetime.now(GLOBAL_TIME_ZONE)
 
         result = self._global_average_worst_case_carbon_intensity
 

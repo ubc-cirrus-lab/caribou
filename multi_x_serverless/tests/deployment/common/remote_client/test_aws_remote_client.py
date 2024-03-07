@@ -13,7 +13,11 @@ import datetime
 from botocore.exceptions import ClientError
 from unittest.mock import call
 
-from multi_x_serverless.common.constants import SYNC_MESSAGES_TABLE, MULTI_X_SERVERLESS_WORKFLOW_IMAGES_TABLE
+from multi_x_serverless.common.constants import (
+    SYNC_MESSAGES_TABLE,
+    MULTI_X_SERVERLESS_WORKFLOW_IMAGES_TABLE,
+    GLOBAL_TIME_ZONE,
+)
 
 
 class TestAWSRemoteClient(unittest.TestCase):
@@ -787,7 +791,7 @@ class TestAWSRemoteClient(unittest.TestCase):
         # Mock the return value of filter_log_events
         mock_logs_client.filter_log_events.return_value = {"events": [{"message": "log_message"}]}
 
-        result = client.get_logs_since_last_sync("function_instance", datetime.datetime.now())
+        result = client.get_logs_since_last_sync("function_instance", datetime.datetime.now(GLOBAL_TIME_ZONE))
 
         # Check that the return value is correct
         self.assertEqual(result, ["log_message"])
