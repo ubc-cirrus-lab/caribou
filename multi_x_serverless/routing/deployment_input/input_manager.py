@@ -33,7 +33,7 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         if tail_latency_threshold < 50 or tail_latency_threshold > 100:
             raise ValueError("Tail threshold must be between 50 and 100")
         self._tail_latency_threshold: float = tail_latency_threshold
-
+        
         # Initialize remote client
         self._data_collector_client: RemoteClient = Endpoints().get_data_collector_client()
 
