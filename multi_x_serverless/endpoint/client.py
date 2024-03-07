@@ -15,7 +15,7 @@ from multi_x_serverless.common.constants import (
     WORKFLOW_INSTANCE_TABLE,
     WORKFLOW_PLACEMENT_DECISION_TABLE,
     WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE,
-    WORKFLOW_SUMMARY_TABLE
+    WORKFLOW_SUMMARY_TABLE,
 )
 from multi_x_serverless.common.models.endpoints import Endpoints
 from multi_x_serverless.common.models.remote_client.aws_remote_client import AWSRemoteClient
