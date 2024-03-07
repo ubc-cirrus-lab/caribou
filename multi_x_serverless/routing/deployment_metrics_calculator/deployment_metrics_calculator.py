@@ -30,25 +30,10 @@ class DeploymentMetricsCalculator(ABC):
         # Get the home region index -> this is the region that the workflow starts from
         self._home_region_index = region_indexer.get_value_indices()[workflow_config.start_hops]
 
-    def calculate_deployment_metrics(self, deployment: list[int], monte_carlo_runs: int = 1000) -> dict[str, float]:
+    def calculate_deployment_metrics(self, deployment: list[int], monte_carlo_runs: int = -1) -> dict[str, float]:
+        monte_carlo_runs = len(deployment) * 100 if monte_carlo_runs == -1 else monte_carlo_runs
         # Get average and tail cost/carbon/runtime from Monte Carlo simulation
-        monte_carlo_results = self._perform_monte_carlo_simulation(deployment, monte_carlo_runs)
-        tail_cost = monte_carlo_results["tail_cost"]
-        tail_runtime = monte_carlo_results["tail_runtime"]
-        tail_carbon = monte_carlo_results["tail_carbon"]
-
-        average_cost = monte_carlo_results["average_cost"]
-        average_runtime = monte_carlo_results["average_runtime"]
-        average_carbon = monte_carlo_results["average_carbon"]
-
-        return {
-            "average_cost": average_cost,
-            "average_runtime": average_runtime,
-            "average_carbon": average_carbon,
-            "tail_cost": tail_cost,
-            "tail_runtime": tail_runtime,
-            "tail_carbon": tail_carbon,
-        }
+        return self._perform_monte_carlo_simulation(deployment, monte_carlo_runs)
 
     @abstractmethod
     def _perform_monte_carlo_simulation(self, deployment: list[int], times: int) -> dict[str, float]:

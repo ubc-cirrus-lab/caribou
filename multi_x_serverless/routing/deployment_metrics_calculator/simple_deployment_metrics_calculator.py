@@ -26,15 +26,11 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
         runtimes_distribution: np.ndarray = np.array(runtimes_distribution_list)
         carbons_distribution: np.ndarray = np.array(carbons_distribution_list)
 
-        costs_distribution.sort()
-        runtimes_distribution.sort()
-        carbons_distribution.sort()
-
         return {
-            "average_cost": float(np.mean(costs_distribution_list)),
+            "average_cost": float(np.mean(costs_distribution)),
             "average_runtime": float(np.mean(runtimes_distribution)),
             "average_carbon": float(np.mean(carbons_distribution)),
-            "tail_cost": float(np.percentile(costs_distribution_list, self._tail_latency_threshold)),
+            "tail_cost": float(np.percentile(costs_distribution, self._tail_latency_threshold)),
             "tail_runtime": float(np.percentile(runtimes_distribution, self._tail_latency_threshold)),
             "tail_carbon": float(np.percentile(carbons_distribution, self._tail_latency_threshold)),
         }

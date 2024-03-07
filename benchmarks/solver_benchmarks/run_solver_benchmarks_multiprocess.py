@@ -89,7 +89,7 @@ class SolverBenchmark:
 
             best_avg_cost = min([deployment[1]["average_cost"] for deployment in deployments])
             best_avg_runtime = min([deployment[1]["average_runtime"] for deployment in deployments])
-            best_avg_carbon = min([deployment[1]["average_runtime"] for deployment in deployments])
+            best_avg_carbon = min([deployment[1]["average_carbon"] for deployment in deployments])
 
             worst_tail_cost = max([deployment[1]["tail_cost"] for deployment in deployments])
             worst_tail_runtime = max([deployment[1]["tail_runtime"] for deployment in deployments])
@@ -112,8 +112,8 @@ class SolverBenchmark:
             "runtime": sum(runtimes) / len(runtimes),
             "number of final results": sum(number_of_final_results) / len(number_of_final_results),
             "best cost": sum(best_avg_costs) / len(best_avg_costs),
-            "best runtime": sum(best_avg_costs) / len(best_avg_costs),
-            "best carbon": sum(best_avg_costs) / len(best_avg_costs),
+            "best runtime": sum(best_avg_runtimes) / len(best_avg_runtimes),
+            "best carbon": sum(best_avg_carbons) / len(best_avg_carbons),
             "worst tail cost": sum(worst_tail_costs) / len(worst_tail_costs),
             "worst tail runtime": sum(worst_tail_runtimes) / len(worst_tail_runtimes),
             "worst tail carbon": sum(worst_tail_carbons) / len(worst_tail_carbons),
@@ -242,7 +242,7 @@ if __name__ == "__main__":
     results = []
     inputs = []
     deployment_algorithms = []
-    scenarios = {"total_nodes": range(3, 6), "sync_nodes": [1], "num_regions": range(2, 6)}
+    scenarios = {"total_nodes": range(3, 11), "sync_nodes": [1], "num_regions": range(2, 9)}
 
     counter = 0
     for total_nodes in scenarios["total_nodes"]:
@@ -273,12 +273,12 @@ if __name__ == "__main__":
                 for deployment_algorithm in deployment_algorithms
             ],
         )
-        print("Starting FineGrainedDeploymentAlgorithm benchmarks at ", time.ctime())
-        fg_results = pool.starmap(
-            run_benchmark_wrapper,
-            [(deployment_algorithm, FineGrainedDeploymentAlgorithm) for deployment_algorithm in deployment_algorithms],
-        )
-        results = cg_results + sh_results + fg_results
+        # print("Starting FineGrainedDeploymentAlgorithm benchmarks at ", time.ctime())
+        # fg_results = pool.starmap(
+        #     run_benchmark_wrapper,
+        #     [(deployment_algorithm, FineGrainedDeploymentAlgorithm) for deployment_algorithm in deployment_algorithms],
+        # )
+        results = cg_results + sh_results # + fg_results
 
     per_deployment_algorithm_results = {}
 
