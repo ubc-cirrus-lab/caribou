@@ -372,7 +372,7 @@ class DatastoreSyncer:
                 continue
             log_time = self._extract_from_string(log_entry, r"TIME \((.*?)\)")
             if log_time:
-                log_time = datetime.strptime(log_time, "%Y-%m-%d %H:%M:%S,%f").timestamp()
+                log_time = datetime.strptime(log_time, "%Y-%m-%d %H:%M:%S,%f").timestamp()  # type: ignore
             if not isinstance(log_time, float):
                 continue
             if "ENTRY_POINT" in log_entry:
