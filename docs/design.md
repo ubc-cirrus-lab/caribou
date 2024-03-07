@@ -292,7 +292,15 @@ The dictionary contains the following information:
           "function_identifier": "test_function_identifier"
         },
       },
+      "metrics": {
+        ...
+      },
+      "expiry_time": "2021-05-01T00:00:00"
     },
+    "home_deployment": {
+      "instances": { ... },
+      "metrics": { ... },
+    }
   },
   "current_instance_name": "function_name:entry_point:0",
   "instances": {

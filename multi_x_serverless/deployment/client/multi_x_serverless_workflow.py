@@ -6,10 +6,16 @@ import logging
 import re
 import time
 import uuid
+from datetime import datetime
 from types import FrameType
 from typing import Any, Callable, Optional
 
-from multi_x_serverless.common.constants import LOG_VERSION, WORKFLOW_PLACEMENT_DECISION_TABLE
+from multi_x_serverless.common.constants import (
+    GLOBAL_TIME_ZONE,
+    LOG_VERSION,
+    TIME_FORMAT,
+    WORKFLOW_PLACEMENT_DECISION_TABLE,
+)
 from multi_x_serverless.common.models.endpoints import Endpoints
 from multi_x_serverless.common.models.remote_client.remote_client_factory import RemoteClientFactory
 from multi_x_serverless.common.utils import get_function_source
@@ -386,15 +392,28 @@ class MultiXServerlessWorkflow:
         current_instance_name = workflow_placement_decision["current_instance_name"]
         workflow_instance_id = workflow_placement_decision["run_id"]
 
-        if "send_to_home_region" in workflow_placement_decision and workflow_placement_decision["send_to_home_region"]:
-            key = "home_deployment"
-        else:
-            key = "current_deployment"
+        key = self._get_deployment_key(workflow_placement_decision)
 
         provider_region = workflow_placement_decision["workflow_placement"][key]["instances"][current_instance_name][
             "provider_region"
         ]
         return provider_region["provider"], provider_region["region"], current_instance_name, workflow_instance_id
+
+    def _get_deployment_key(self, workflow_placement_decision: dict[str, Any]) -> str:
+        key = "home_deployment"
+        if workflow_placement_decision.get("send_to_home_region", False):
+            return key
+
+        # Check if the deployment is not expired
+        deployment_expiry_time = workflow_placement_decision["workflow_placement"]["current_deployment"].get(
+            "expiry_time", None
+        )
+        if deployment_expiry_time is not None:
+            # If the deployment is expired, return the home deployment
+            if datetime.now(GLOBAL_TIME_ZONE) <= datetime.strptime(deployment_expiry_time, TIME_FORMAT):
+                key = "current_deployment"
+
+        return key
 
     def get_workflow_placement_decision_from_platform(self) -> dict[str, Any]:
         """

@@ -1,4 +1,5 @@
 import unittest
+from datetime import datetime
 from unittest.mock import Mock, patch
 from typing import Any
 from multi_x_serverless.deployment.client.multi_x_serverless_workflow import (
@@ -1019,23 +1020,28 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
 
             self.assertEqual(result, [{"key": "value"}])
 
-    def test_get_current_instance_provider_region_instance_name(self):
-        this_frame = inspect.currentframe()
+    @patch("multi_x_serverless.deployment.client.multi_x_serverless_workflow.datetime")
+    def test_get_current_instance_provider_region_instance_name(self, mock_datetime):
         wrapper_frame = Mock()
         self.workflow.get_wrapper_frame = Mock(return_value=(None, wrapper_frame))
         self.workflow.get_workflow_placement_decision = Mock(
             return_value={
                 "current_instance_name": "current_instance",
                 "run_id": "workflow_instance_id",
+                "send_to_home_region": False,
                 "workflow_placement": {
                     "current_deployment": {
                         "instances": {
                             "current_instance": {"provider_region": {"provider": "provider1", "region": "region1"}}
                         },
-                    }
+                        "expiry_time": "2022-01-01 00:01:00",
+                    },
                 },
             }
         )
+
+        mock_datetime.now.return_value = datetime(2022, 1, 1, 0, 0, 0)
+        mock_datetime.strptime.return_value = datetime(2022, 1, 1, 0, 1, 0)
 
         result = self.workflow.get_current_instance_provider_region_instance_name()
 
@@ -1129,6 +1135,30 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
             )
 
             mock_factory_class.get_remote_client.assert_not_called()
+
+    @patch("multi_x_serverless.deployment.client.multi_x_serverless_workflow.datetime")
+    def test_get_deployment_key(self, mock_datetime):
+        # Arrange
+        workflow_placement_decision = {
+            "workflow_placement": {"current_deployment": {"expiry_time": "2022-01-01 00:00:00"}},
+            "send_to_home_region": False,
+        }
+        mock_datetime.now.return_value = datetime(2022, 1, 1, 0, 1, 0)
+        mock_datetime.strptime.return_value = datetime(2022, 1, 1, 0, 0, 0)
+
+        # Act & Assert
+        self.assertEqual(self.workflow._get_deployment_key(workflow_placement_decision), "home_deployment")
+        workflow_placement_decision["send_to_home_region"] = True
+        self.assertEqual(self.workflow._get_deployment_key(workflow_placement_decision), "home_deployment")
+
+        # Change the current time to before the expiry time
+        mock_datetime.now.return_value = datetime(2021, 12, 31, 23, 59, 59)
+        workflow_placement_decision["send_to_home_region"] = False
+        self.assertEqual(self.workflow._get_deployment_key(workflow_placement_decision), "current_deployment")
+
+        # Test with no expiry time
+        workflow_placement_decision["workflow_placement"]["current_deployment"]["expiry_time"] = None
+        self.assertEqual(self.workflow._get_deployment_key(workflow_placement_decision), "home_deployment")
 
 
 if __name__ == "__main__":

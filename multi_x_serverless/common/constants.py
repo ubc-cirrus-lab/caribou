@@ -1,3 +1,5 @@
+import pytz
+
 # Workflow Placement Tables
 WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE = "workflow_placement_solver_staging_area_table"
 WORKFLOW_PLACEMENT_DECISION_TABLE = "workflow_placement_decision_table"
@@ -84,3 +86,7 @@ LOG_VERSION = "0.0.1"
 
 # Tail latency threshold
 TAIL_LATENCY_THRESHOLD = 95
+
+# datetime
+GLOBAL_TIME_ZONE = pytz.utc
+TIME_FORMAT = "%Y-%m-%d %H:%M:%S"

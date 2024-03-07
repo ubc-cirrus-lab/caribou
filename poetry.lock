@@ -2536,6 +2536,17 @@ files = [
 referencing = "*"
 
 [[package]]
+name = "types-pytz"
+version = "2024.1.0.20240203"
+description = "Typing stubs for pytz"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "types-pytz-2024.1.0.20240203.tar.gz", hash = "sha256:c93751ee20dfc6e054a0148f8f5227b9a00b79c90a4d3c9f464711a73179c89e"},
+    {file = "types_pytz-2024.1.0.20240203-py3-none-any.whl", hash = "sha256:9679eef0365db3af91ef7722c199dbb75ee5c1b67e3c4dd7bfbeb1b8a71c21a3"},
+]
+
+[[package]]
 name = "types-pyyaml"
 version = "6.0.12.12"
 description = "Typing stubs for PyYAML"
@@ -2602,4 +2613,4 @@ zstd = ["zstandard (>=0.18.0)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10,<3.12"
-content-hash = "0248510d343d4e8226ef69869da68411fe2db183e7c7f0b4c2231baf812cb02a"
+content-hash = "42a6e7e53a9c7443eb17d52dcf986bf5d63aa5e3882bca2b458d7938a339cc36"

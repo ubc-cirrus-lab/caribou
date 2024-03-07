@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch, MagicMock
 from multi_x_serverless.syncers.datastore_syncer import DatastoreSyncer
-from multi_x_serverless.common.constants import DEPLOYMENT_MANAGER_RESOURCE_TABLE
+from multi_x_serverless.common.constants import DEPLOYMENT_MANAGER_RESOURCE_TABLE, GLOBAL_TIME_ZONE
 
 import unittest
 import json
@@ -23,7 +23,7 @@ class TestDatastoreSyncer(unittest.TestCase):
         with patch.object(
             self.syncer.endpoints.get_datastore_client(), "get_last_value_from_sort_key_table"
         ) as mock_get_last_value:
-            mock_get_last_value.return_value = ["2022-01-01 00:00:00.000000"]
+            mock_get_last_value.return_value = ["2022-01-01 00:00:00"]
             result = self.syncer._get_last_synced_time("workflow_id")
             self.assertEqual(result.year, 2022)
 
@@ -308,7 +308,7 @@ class TestDatastoreSyncer(unittest.TestCase):
         syncer = DatastoreSyncer()
         workflow_summary_instance = {"instance_summary": {}}
         syncer._initialize_workflow_summary_instance = MagicMock(return_value=workflow_summary_instance)
-        syncer._get_last_synced_time = MagicMock(return_value=datetime(2022, 1, 1))
+        syncer._get_last_synced_time = MagicMock(return_value=datetime(2022, 1, 1, tzinfo=GLOBAL_TIME_ZONE))
         syncer.endpoints.get_datastore_client().put_value_to_sort_key_table = MagicMock()
 
         deployment_manager_config_json = json.dumps(

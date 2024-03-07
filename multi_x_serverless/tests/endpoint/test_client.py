@@ -1,4 +1,5 @@
 import unittest
+from datetime import datetime
 from unittest.mock import patch, MagicMock
 from multi_x_serverless.endpoint.client import Client
 import json
@@ -8,10 +9,11 @@ from multi_x_serverless.common.models.remote_client.remote_client_factory import
 
 
 class TestClient(unittest.TestCase):
+    @patch("multi_x_serverless.endpoint.client.datetime")
     @patch("multi_x_serverless.deployment.client.multi_x_serverless_workflow.RemoteClientFactory.get_remote_client")
     @patch.object(Endpoints, "get_deployment_algorithm_workflow_placement_decision_client")
     def test_successful_workflow_placement_decision_retrieval_and_invocation(
-        self, mock_get_deployment_algorithm_workflow_placement_decision_client, mock_get_remote_client
+        self, mock_get_deployment_algorithm_workflow_placement_decision_client, mock_get_remote_client, mock_datetime
     ):
         mock_deployment_algorithm_client = MagicMock()
         mock_deployment_algorithm_client.get_value_from_table.return_value = json.dumps(
@@ -24,7 +26,8 @@ class TestClient(unittest.TestCase):
                                 "provider_region": {"provider": "aws", "region": "us-east-1"},
                                 "identifier": "function1",
                             }
-                        }
+                        },
+                        "expiry_time": "2022-01-01 00:01:00",
                     },
                     "home_deployment": {
                         "instances": {
@@ -42,6 +45,10 @@ class TestClient(unittest.TestCase):
         # Mocking the remote client invocation
         mock_remote_client = MagicMock()
         mock_get_remote_client.return_value = mock_remote_client
+
+        # Mock the current time
+        mock_datetime.now.return_value = datetime(2022, 1, 1, 0, 0, 0)
+        mock_datetime.strptime.return_value = datetime(2022, 1, 1, 0, 1, 0)
 
         client = Client("workflow_name")
         client._home_region_threshold = 0.0  # Never send to home region
@@ -190,6 +197,28 @@ class TestClient(unittest.TestCase):
 
         # Check that the print statement was executed
         mocked_print.assert_called_with("Removed function function_instance from provider provider in region region")
+
+    @patch("multi_x_serverless.endpoint.client.datetime")
+    def test_get_deployment_key(self, mock_datetime):
+        # Arrange
+        client = Client()
+        workflow_placement_decision = {
+            "workflow_placement": {"current_deployment": {"expiry_time": "2022-01-01 00:00:00"}}
+        }
+        mock_datetime.now.return_value = datetime(2022, 1, 1, 0, 1, 0)
+        mock_datetime.strptime.return_value = datetime(2022, 1, 1, 0, 0, 0)
+
+        # Act & Assert
+        self.assertEqual(client._get_deployment_key(workflow_placement_decision, True), "home_deployment")
+        self.assertEqual(client._get_deployment_key(workflow_placement_decision, False), "home_deployment")
+
+        # Change the current time to before the expiry time
+        mock_datetime.now.return_value = datetime(2021, 12, 31, 23, 59, 59)
+        self.assertEqual(client._get_deployment_key(workflow_placement_decision, False), "current_deployment")
+
+        # Test with no expiry time
+        workflow_placement_decision["workflow_placement"]["current_deployment"]["expiry_time"] = None
+        self.assertEqual(client._get_deployment_key(workflow_placement_decision, False), "home_deployment")
 
     @patch.object(Endpoints, "get_deployment_algorithm_update_checker_client")
     def test_solve(self, mock_get_deployment_algorithm_update_checker_client):

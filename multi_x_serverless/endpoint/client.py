@@ -1,14 +1,17 @@
 import json
 import logging
 import random
+from datetime import datetime
 from typing import Any, Optional
 
 import botocore.exceptions
 
 from multi_x_serverless.common.constants import (
     DEPLOYMENT_MANAGER_RESOURCE_TABLE,
+    GLOBAL_TIME_ZONE,
     MULTI_X_SERVERLESS_WORKFLOW_IMAGES_TABLE,
     SOLVER_UPDATE_CHECKER_RESOURCE_TABLE,
+    TIME_FORMAT,
     WORKFLOW_INSTANCE_TABLE,
     WORKFLOW_PLACEMENT_DECISION_TABLE,
     WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE,
@@ -77,10 +80,7 @@ class Client:
         self, workflow_placement_decision: dict[str, Any], send_to_home_region: bool
     ) -> tuple[str, str, str]:
         initial_instance_name = workflow_placement_decision["current_instance_name"]
-        if send_to_home_region:
-            key = "home_deployment"
-        else:
-            key = "current_deployment"
+        key = self._get_deployment_key(workflow_placement_decision, send_to_home_region)
         provider_region = workflow_placement_decision["workflow_placement"][key]["instances"][initial_instance_name][
             "provider_region"
         ]
@@ -88,6 +88,22 @@ class Client:
             "identifier"
         ]
         return provider_region["provider"], provider_region["region"], identifier
+
+    def _get_deployment_key(self, workflow_placement_decision: dict[str, Any], send_to_home_region: bool) -> str:
+        key = "home_deployment"
+        if send_to_home_region:
+            return key
+
+        # Check if the deployment is not expired
+        deployment_expiry_time = workflow_placement_decision["workflow_placement"]["current_deployment"].get(
+            "expiry_time", None
+        )
+        if deployment_expiry_time is not None:
+            # If the deployment is expired, return the home deployment
+            if datetime.now(GLOBAL_TIME_ZONE) <= datetime.strptime(deployment_expiry_time, TIME_FORMAT):
+                key = "current_deployment"
+
+        return key
 
     def list_workflows(self) -> None:
         deployed_workflows = self._endpoints.get_deployment_algorithm_update_checker_client().get_keys(
