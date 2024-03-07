@@ -24,7 +24,9 @@ class WorkflowRetriever(DataRetriever):
         # Consolidate all the timestamps together to one summary and return the result
         return self._consolidate_logs(workflow_summarized_logs)
 
-    def _consolidate_logs(self, logs: list[str]) -> dict[str, Any]:  # pylint: disable=too-many-branches
+    def _consolidate_logs(  # pylint: disable=too-many-branches, too-many-statements
+        self, logs: list[str]
+    ) -> dict[str, Any]:
         # Here are the list of all keys in the available regions
         available_regions_set: set[str] = set(self._available_regions.keys())
 

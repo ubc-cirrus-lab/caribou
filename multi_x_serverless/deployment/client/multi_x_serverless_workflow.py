@@ -533,6 +533,7 @@ class MultiXServerlessWorkflow:
                         ) from e
 
                 send_to_home_region = False
+                time_invoked_at_client = None
                 if isinstance(argument, dict) and "send_to_home_region" in argument:
                     send_to_home_region = argument["send_to_home_region"]
                     time_invoked_at_client = argument.get("time_request_sent", None)
@@ -544,7 +545,7 @@ class MultiXServerlessWorkflow:
                         datetime_now = datetime.now(GLOBAL_TIME_ZONE)
                         time_difference_datetime = datetime_now - datetime_invoked_at_client
                         # Get ms from the time difference
-                        init_latency = time_difference_datetime.total_seconds() * 1000
+                        init_latency = str(time_difference_datetime.total_seconds() * 1000)
                     wrapper.workflow_placement_decision = self.get_workflow_placement_decision_from_platform()  # type: ignore  # pylint: disable=line-too-long
                     # This is the first function to be called, so we need to generate a run id
                     # This run id will be used to identify the workflow instance

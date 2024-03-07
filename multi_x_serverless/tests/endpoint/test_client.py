@@ -57,7 +57,7 @@ class TestClient(unittest.TestCase):
         # Verify the remote client was invoked with the correct parameters
         mock_get_remote_client.assert_called_with("aws", "us-east-1")
         mock_remote_client.invoke_function.assert_called_once_with(
-            message='{"input_data": {"key": "value"}, "send_to_home_region": false}',
+            message='{"input_data": {"key": "value"}, "send_to_home_region": false, "time_request_sent": "2022-01-01 00:00:00,000000"}',
             identifier="function1",
             workflow_instance_id="0",
         )

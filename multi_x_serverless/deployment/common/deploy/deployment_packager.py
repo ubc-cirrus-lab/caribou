@@ -9,11 +9,11 @@ import subprocess
 import sys
 import tempfile
 import zipfile
+from typing import Optional
 
 import boto3
 import pip
 import yaml
-import pytz
 
 import multi_x_serverless
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
@@ -24,7 +24,7 @@ from multi_x_serverless.deployment.common.deploy.models.workflow import Workflow
 class DeploymentPackager:
     def __init__(self, config: Config) -> None:
         self._config = config
-        self._pytz_version_cache = None
+        self._pytz_version_cache: Optional[str] = None
 
     def build(self, config: Config, workflow: Workflow) -> None:
         if config.project_dir is None:
@@ -90,6 +90,8 @@ class DeploymentPackager:
         pytz_version = next(
             line.split(":")[1].strip() for line in pytz_version.splitlines() if line.startswith("Version:")
         )
+        if pytz_version is None:
+            raise RuntimeError("Could not find pytz version")
         self._pytz_version_cache = pytz_version
         return pytz_version
 

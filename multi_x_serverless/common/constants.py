@@ -82,11 +82,11 @@ CARBON_TRANSMISSION_CARBON_METHOD = "distance"  # Or latency
 KWH_PER_S_GB_ESTIMATE = 0.005
 
 # Logging
-LOG_VERSION = "0.0.1"
+LOG_VERSION = "0.0.2"
 
 # Tail latency threshold
 TAIL_LATENCY_THRESHOLD = 95
 
 # datetime
 GLOBAL_TIME_ZONE = pytz.utc
-TIME_FORMAT = "%Y-%m-%d %H:%M:%S,%f"
+TIME_FORMAT = "%Y-%m-%d %H:%M:%S,%f%z"

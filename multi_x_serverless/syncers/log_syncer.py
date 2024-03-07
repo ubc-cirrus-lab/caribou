@@ -166,12 +166,12 @@ class LogSyncer:
         last_synced_time: datetime,
         latency_summary: dict[str, dict[str, dict[str, dict[str, Any]]]],
         latency_summary_successor_before_caller_store: dict[str, dict[str, dict[str, Any]]],
-    ) -> int:
+    ) -> None:
         logger.info("Processing function instance: %s", function_instance)
         if (provider_region["provider"], provider_region["region"]) not in self._region_clients:
-            self._region_clients[(provider_region["provider"], provider_region["region"])] = (
-                RemoteClientFactory.get_remote_client(provider_region["provider"], provider_region["region"])
-            )
+            self._region_clients[
+                (provider_region["provider"], provider_region["region"])
+            ] = RemoteClientFactory.get_remote_client(provider_region["provider"], provider_region["region"])
 
         logs: list[str] = self._region_clients[
             (provider_region["provider"], provider_region["region"])
@@ -373,19 +373,21 @@ class LogSyncer:
         function_invoked = self._extract_from_string(log_entry, r"INSTANCE \((.*?)\)")
         if not isinstance(function_invoked, str):
             return
-        self._initialize_instance_summary(function_invoked, provider_region, workflow_summary_instance)
+        self._initialize_instance_summary(
+            function_invoked, provider_region, workflow_summary_instance, entry_point=True
+        )
         data_transfer_size = self._extract_from_string(log_entry, r"PAYLOAD_SIZE \((.*?)\)")
         if data_transfer_size:
-            data_transfer_size = float(data_transfer_size)
+            data_transfer_size_fl = float(data_transfer_size)
             workflow_summary_instance["instance_summary"][function_invoked]["execution_summary"][
                 f"{provider_region['provider']}:{provider_region['region']}"
-            ]["init_data_transfer_size_samples"].append(data_transfer_size)
+            ]["init_data_transfer_size_samples"].append(data_transfer_size_fl)
         init_latency = self._extract_from_string(log_entry, r"INIT_LATENCY \((.*?)\)")
         if init_latency and init_latency != "N/A":
-            init_latency = float(init_latency)
+            init_latency_fl = float(init_latency)
             workflow_summary_instance["instance_summary"][function_invoked]["execution_summary"][
                 f"{provider_region['provider']}:{provider_region['region']}"
-            ]["init_latency_samples"].append(init_latency)
+            ]["init_latency_samples"].append(init_latency_fl)
 
     def _process_logs(
         self,
@@ -410,7 +412,7 @@ class LogSyncer:
             if not isinstance(log_time, float):
                 continue
             if "ENTRY_POINT" in log_entry:
-                self._extract_entry_point_log(log_entry, workflow_summary_instance)
+                self._extract_entry_point_log(log_entry, workflow_summary_instance, provider_region)
             if "INVOKED" in log_entry:
                 self._extract_invoked_logs(
                     log_entry,
