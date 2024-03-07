@@ -28,7 +28,7 @@ class TestCarbonLoader(unittest.TestCase):
                             "aws:us-west-2": {"carbon_intensity": 21269.19652594863, "unit": "gCO2eq/GB"},
                         },
                     },
-                }
+                },
             }
         }
 
@@ -48,6 +48,7 @@ class TestCarbonLoader(unittest.TestCase):
     def test_get_grid_carbon_intensity(self):
         result = self.loader.get_grid_carbon_intensity("aws:eu-south-1")
         self.assertEqual(result, 482)
+
 
 if __name__ == "__main__":
     unittest.main()
