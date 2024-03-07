@@ -1,7 +1,8 @@
-import datetime
 import os
 import time
-from typing import Any
+from datetime import datetime, timedelta
+from functools import partial
+from typing import Any, Callable
 
 import requests
 
@@ -25,44 +26,198 @@ class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attri
             raise ValueError("ELECTRICITY_MAPS_AUTH_TOKEN environment variable not set")
 
         self._request_backoff = 0.1
-        self._last_request = datetime.datetime.now(GLOBAL_TIME_ZONE)
+        self._last_request = datetime.now(GLOBAL_TIME_ZONE)
         self._global_average_worst_case_carbon_intensity = 475.0
-        self._carbon_transmission_cost_calculator = CarbonTransmissionCostCalculator(
-            self._get_carbon_intensity_from_coordinates
+
+        # Must be in UTC And enforced in the format "YYYY-MM-DDTHH:MM:SSZ"
+        self._start_timestamp = (
+            (datetime.now(GLOBAL_TIME_ZONE) - timedelta(days=6, hours=23))
+            .replace(minute=0, second=0, microsecond=0)
+            .isoformat()
+            .replace("+00:00", "Z")
         )
+        self._end_timestamp = (
+            datetime.now(GLOBAL_TIME_ZONE).replace(minute=0, second=0, microsecond=0).isoformat().replace("+00:00", "Z")
+        )
+
+        self._carbon_intensity_history_cache: dict[tuple[float, float], dict[str, Any]] = {}
 
         self._carbon_intensity_cache: dict[tuple[float, float], float] = {}
 
     def retrieve_carbon_region_data(self) -> dict[str, dict[str, Any]]:
         result_dict: dict[str, dict[str, Any]] = {}
         for region_key, available_region in self._available_regions.items():
-            latitude = available_region["latitude"]
-            longitude = available_region["longitude"]
-            carbon_intensity = self._get_carbon_intensity_from_coordinates(latitude, longitude)
+            # We have 2 methods to retrieve the carbon intensity
+            # One is overall average carbon intensity
+            # Another one is hourly average carbon intensity
 
-            transmission_carbon_dict = {}
+            ## Overall average carbon intensity
+            overall_average_data = self._get_execution_and_transmission_carbon_intensity(
+                available_region, self._get_overall_average_carbon_intensity
+            )
 
-            for region_key_to, available_region_to in self._available_regions.items():
-                (
-                    intensity,
-                    distance,
-                ) = self._carbon_transmission_cost_calculator.calculate_transmission_carbon_intensity(  # pylint: disable=line-too-long
-                    available_region, available_region_to
+            ## Hourly average carbon intensity
+            # For this we need a 24 hour loop
+            hourly_average_data: dict[str, dict[str, Any]] = {}
+            for hour in range(24):
+                hourly_average_data[str(hour)] = self._get_execution_and_transmission_carbon_intensity(
+                    available_region, partial(self._get_hour_average_carbon_intensity, hour=hour)
                 )
-                transmission_carbon_dict[region_key_to] = {
-                    "carbon_intensity": intensity,
-                    "distance": distance,
-                    "unit": "gCO2eq/GB",
-                }
 
+            # Store the result
             result_dict[region_key] = {
-                "carbon_intensity": carbon_intensity,
-                "unit": "gCO2eq/kWh",
-                "transmission_carbon": transmission_carbon_dict,
+                "overall_average": overall_average_data,
+                "hourly_averages": hourly_average_data,
             }
+
         return result_dict
 
+    def _get_execution_and_transmission_carbon_intensity(
+        self, available_region: dict[str, Any], get_carbon_intensity_from_coordinates: Callable
+    ) -> dict[str, Any]:
+        latitude = available_region["latitude"]
+        longitude = available_region["longitude"]
+
+        carbon_intensity = get_carbon_intensity_from_coordinates(latitude, longitude)
+
+        transmission_carbon_dict = {}
+        carbon_transmission_cost_calculator = CarbonTransmissionCostCalculator(get_carbon_intensity_from_coordinates)
+
+        for region_key_to, available_region_to in self._available_regions.items():
+            (
+                intensity,
+                distance,
+            ) = carbon_transmission_cost_calculator.calculate_transmission_carbon_intensity(  # pylint: disable=line-too-long
+                available_region, available_region_to
+            )
+            transmission_carbon_dict[region_key_to] = {
+                "carbon_intensity": intensity,
+                "distance": distance,
+                "unit": "gCO2eq/GB",
+            }
+
+        return {
+            "carbon_intensity": carbon_intensity,
+            "unit": "gCO2eq/kWh",
+            "transmission_carbon": transmission_carbon_dict,
+        }
+
+    def _get_hour_average_carbon_intensity(self, latitude: float, longitude: float, hour: int) -> float:
+        if self._integration_test_on:
+            return latitude + longitude
+
+        return self._get_carbon_intensity_information(latitude, longitude)["hourly_average"].get(
+            hour, self._global_average_worst_case_carbon_intensity
+        )
+
+    def _get_overall_average_carbon_intensity(self, latitude: float, longitude: float) -> float:
+        if self._integration_test_on:
+            return latitude + longitude
+
+        return self._get_carbon_intensity_information(latitude, longitude)["overall_average"]
+
+    def _get_carbon_intensity_information(self, latitude: float, longitude: float) -> dict[str, Any]:
+        # Check cache if the carbon intensity is already there
+        if (latitude, longitude) in self._carbon_intensity_history_cache:
+            return self._carbon_intensity_history_cache[(latitude, longitude)]
+
+        # If not, retrieve then process the raw carbon intensity history
+        raw_carbon_intensity_history = self._get_raw_carbon_intensity_history_range(
+            latitude, longitude, self._start_timestamp, self._end_timestamp
+        )
+        processed_carbon_intensity = self._process_raw_carbon_intensity_history(raw_carbon_intensity_history)
+        self._carbon_intensity_history_cache[(latitude, longitude)] = processed_carbon_intensity
+
+        return processed_carbon_intensity
+
+    def _process_raw_carbon_intensity_history(
+        self, raw_carbon_intensity_history: list[dict[str, str]]
+    ) -> dict[str, Any]:
+        if (len(raw_carbon_intensity_history)) == 0:
+            return {
+                "overall_average": self._global_average_worst_case_carbon_intensity,
+                "hourly_average": {hour: self._global_average_worst_case_carbon_intensity for hour in range(24)},
+            }
+        # We must process the raw information to aquire the necessary plans
+        # One of the plan is to get the hourly carbon intenity
+        # Another one is just overall average of the carbon intensity
+
+        # First convert to ordered history
+        total_carbon_intensity = 0.0
+        ordered_history: dict[int, list[float]] = {}
+        for time_slot in raw_carbon_intensity_history:
+            # Parse the datetime string into a datetime object
+            datetime_obj = datetime.fromisoformat(
+                time_slot["datetime"].replace("Z", "")
+            )  # For fromisoformat doesn't handle 'Z'.
+
+            # Retrieve the hour section
+            hour = datetime_obj.hour
+
+            # Create entry on carbon history if needed
+            if hour not in ordered_history:
+                ordered_history[hour] = []
+
+            # For carbon information
+            carbon_intensity = float(time_slot["carbonIntensity"])
+            total_carbon_intensity += carbon_intensity
+
+            ordered_history[hour].append(carbon_intensity)
+
+        # For for each hour we want to get the average carbon intensity
+        hourly_average_carbon_intensity: dict[int, float] = {}
+        for hour, carbon_intensity_list in ordered_history.items():
+            hourly_average_carbon_intensity[hour] = sum(carbon_intensity_list) / len(carbon_intensity_list)
+
+        average_carbon_intensity = total_carbon_intensity / len(raw_carbon_intensity_history)
+
+        return {
+            "overall_average": average_carbon_intensity,
+            "hourly_average": hourly_average_carbon_intensity,
+        }
+
+    def _get_raw_carbon_intensity_history_range(
+        self, latitude: float, longitude: float, start_timestamp: str, end_timestamp: str
+    ) -> list[dict[str, str]]:
+        # if self._integration_test_on:
+        #     return [{"carbon_intensity": latitude + longitude, "timestamp": 0}]
+
+        electricitymaps = "https://api-access.electricitymaps.com/free-tier/carbon-intensity/past-range?"
+
+        if (datetime.now(GLOBAL_TIME_ZONE) - self._last_request).total_seconds() < self._request_backoff:
+            time.sleep(self._request_backoff)
+
+        if self._electricity_maps_auth_token is None:
+            raise ValueError("ELECTRICITY_MAPS_AUTH_TOKEN environment variable not set")
+
+        response = requests.get(
+            electricitymaps
+            + "lat="
+            + str(latitude)
+            + "&lon="
+            + str(longitude)
+            + "&start="
+            + start_timestamp
+            + "&end="
+            + end_timestamp,
+            headers={"auth-token": self._electricity_maps_auth_token},
+            timeout=10,
+        )
+
+        self._last_request = datetime.now(GLOBAL_TIME_ZONE)
+
+        result: list[dict[str, str]] = []
+
+        if response.status_code == 200:
+            json_data = response.json()
+
+            if "data" in json_data:
+                result = json_data["data"]
+
+        return result
+
     def _get_carbon_intensity_from_coordinates(self, latitude: float, longitude: float) -> float:
+        # This is a legacy function, for now it is not used, it is here as it may be used in the future
         if self._integration_test_on:
             return latitude + longitude
 
@@ -70,7 +225,7 @@ class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attri
             return self._carbon_intensity_cache[(latitude, longitude)]
         electricitymaps = "https://api-access.electricitymaps.com/free-tier/carbon-intensity/latest?"
 
-        if (datetime.datetime.now(GLOBAL_TIME_ZONE) - self._last_request).total_seconds() < self._request_backoff:
+        if (datetime.now(GLOBAL_TIME_ZONE) - self._last_request).total_seconds() < self._request_backoff:
             time.sleep(self._request_backoff)
 
         if self._electricity_maps_auth_token is None:
@@ -82,7 +237,7 @@ class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attri
             timeout=10,
         )
 
-        self._last_request = datetime.datetime.now(GLOBAL_TIME_ZONE)
+        self._last_request = datetime.now(GLOBAL_TIME_ZONE)
 
         result = self._global_average_worst_case_carbon_intensity
 

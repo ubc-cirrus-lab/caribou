@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
 from multi_x_serverless.data_collector.components.carbon.carbon_transmission_cost_calculator.carbon_transmission_cost_calculator import (
     CarbonTransmissionCostCalculator,
@@ -15,10 +15,17 @@ class TestCarbonRetriever(unittest.TestCase):
             self.carbon_retriever = CarbonRetriever(self.mock_client)
         self.maxDiff = None
 
+    def test_init(self):
+        self.assertIsInstance(self.carbon_retriever, CarbonRetriever)
+
     @patch("requests.get")
     def test_retrieve_carbon_region_data(self, mock_get):
         mock_get.return_value.status_code = 200
-        mock_get.return_value.json.return_value = {"carbonIntensity": 100}
+        mock_get.return_value.json.return_value = {
+            "data": [{"carbonIntensity": 100, "datetime": "2021-01-01T00:00:00Z"}]
+        }
+
+        # .return_value = {"carbonIntensity": 100}
 
         self.carbon_retriever._available_regions = {
             "aws:region1": {"latitude": 1.0, "longitude": 1.0},
@@ -26,27 +33,210 @@ class TestCarbonRetriever(unittest.TestCase):
         }
 
         result = self.carbon_retriever.retrieve_carbon_region_data()
+        overall_accuracy_result = result["aws:region1"]["overall_average"]
+        overall_accuracy_expected_result = {
+            "carbon_intensity": 100.0,
+            "unit": "gCO2eq/kWh",
+            "transmission_carbon": {
+                "aws:region1": {"carbon_intensity": 0, "distance": 0.0, "unit": "gCO2eq/GB"},
+                "aws:region2": {"carbon_intensity": 100.0, "distance": 157.22543203807288, "unit": "gCO2eq/GB"},
+            },
+        }
+        self.assertEqual(overall_accuracy_result, overall_accuracy_expected_result)
 
+        hour0_result = result["aws:region1"]["hourly_averages"]["0"]
+        hour0_expected_result = {
+            "carbon_intensity": 100.0,
+            "unit": "gCO2eq/kWh",
+            "transmission_carbon": {
+                "aws:region1": {"carbon_intensity": 0, "distance": 0.0, "unit": "gCO2eq/GB"},
+                "aws:region2": {"carbon_intensity": 100.0, "distance": 157.22543203807288, "unit": "gCO2eq/GB"},
+            },
+        }
+        self.assertEqual(hour0_result, hour0_expected_result)
+
+        hour1_result = result["aws:region1"]["hourly_averages"]["1"]
+        hour1_expected_result = {
+            "carbon_intensity": 475.0,
+            "unit": "gCO2eq/kWh",
+            "transmission_carbon": {
+                "aws:region1": {"carbon_intensity": 0, "distance": 0.0, "unit": "gCO2eq/GB"},
+                "aws:region2": {"carbon_intensity": 475.0, "distance": 157.22543203807288, "unit": "gCO2eq/GB"},
+            },
+        }
+        self.assertEqual(hour1_result, hour1_expected_result)
+
+    @patch.object(CarbonRetriever, "_get_execution_and_transmission_carbon_intensity")
+    def test_retrieve_carbon_region_data(self, mock_get_carbon_intensity):
+        self.carbon_retriever._available_regions = {
+            "aws:region1": {"latitude": 1.0, "longitude": 1.0},
+            "aws:region2": {"latitude": 2.0, "longitude": 2.0},
+        }
+        mock_get_carbon_intensity.return_value = {}
+        result = self.carbon_retriever.retrieve_carbon_region_data()
         expected_result = {
             "aws:region1": {
-                "carbon_intensity": 100,
-                "unit": "gCO2eq/kWh",
-                "transmission_carbon": {
-                    "aws:region1": {"carbon_intensity": 0, "distance": 0.0, "unit": "gCO2eq/GB"},
-                    "aws:region2": {"carbon_intensity": 100.0, "distance": 157.22543203807288, "unit": "gCO2eq/GB"},
+                "overall_average": {},
+                "hourly_averages": {
+                    "0": {},
+                    "1": {},
+                    "2": {},
+                    "3": {},
+                    "4": {},
+                    "5": {},
+                    "6": {},
+                    "7": {},
+                    "8": {},
+                    "9": {},
+                    "10": {},
+                    "11": {},
+                    "12": {},
+                    "13": {},
+                    "14": {},
+                    "15": {},
+                    "16": {},
+                    "17": {},
+                    "18": {},
+                    "19": {},
+                    "20": {},
+                    "21": {},
+                    "22": {},
+                    "23": {},
                 },
             },
             "aws:region2": {
-                "carbon_intensity": 100,
-                "unit": "gCO2eq/kWh",
-                "transmission_carbon": {
-                    "aws:region1": {"carbon_intensity": 100.0, "distance": 157.22543203807288, "unit": "gCO2eq/GB"},
-                    "aws:region2": {"carbon_intensity": 0, "distance": 0.0, "unit": "gCO2eq/GB"},
+                "overall_average": {},
+                "hourly_averages": {
+                    "0": {},
+                    "1": {},
+                    "2": {},
+                    "3": {},
+                    "4": {},
+                    "5": {},
+                    "6": {},
+                    "7": {},
+                    "8": {},
+                    "9": {},
+                    "10": {},
+                    "11": {},
+                    "12": {},
+                    "13": {},
+                    "14": {},
+                    "15": {},
+                    "16": {},
+                    "17": {},
+                    "18": {},
+                    "19": {},
+                    "20": {},
+                    "21": {},
+                    "22": {},
+                    "23": {},
                 },
             },
         }
-
         self.assertEqual(result, expected_result)
+
+    def test_get_execution_and_transmission_carbon_intensity(self):
+        # Setup the mock object and its return value
+        # Call the method under test
+        result = self.carbon_retriever._get_execution_and_transmission_carbon_intensity(
+            {"latitude": 1.0, "longitude": 1.0}, MagicMock(return_value=0)
+        )
+
+        self.assertEqual(result, {"carbon_intensity": 0, "unit": "gCO2eq/kWh", "transmission_carbon": {}})
+        self.assertIsInstance(result, dict)
+
+    def test_get_hour_average_carbon_intensity(self):
+        self.carbon_retriever._get_hour_average_carbon_intensity = MagicMock(return_value=1)
+        result = self.carbon_retriever._get_hour_average_carbon_intensity(0, 0, 0)
+        self.assertEqual(result, 1)
+
+    def test_get_overall_average_carbon_intensity(self):
+        self.carbon_retriever._get_carbon_intensity_information = MagicMock(return_value={"overall_average": 2})
+        result = self.carbon_retriever._get_overall_average_carbon_intensity(0, 0)
+        self.assertEqual(result, 2)
+
+    def test_get_carbon_intensity_information(self):
+        self.carbon_retriever._get_raw_carbon_intensity_history_range = MagicMock(return_value={})
+        self.carbon_retriever._process_raw_carbon_intensity_history = MagicMock(return_value={"test": None})
+        result = self.carbon_retriever._get_carbon_intensity_information(0, 0)
+
+        # Check for invocation of the mock objects
+        self.carbon_retriever._get_raw_carbon_intensity_history_range.assert_called_once()
+        self.carbon_retriever._process_raw_carbon_intensity_history.assert_called_once()
+
+        self.assertEqual(result, {"test": None})
+
+    def test_process_raw_carbon_intensity_history(self):
+        result = self.carbon_retriever._process_raw_carbon_intensity_history([])
+        expected_result = {
+            "overall_average": 475.0,
+            "hourly_average": {
+                0: 475.0,
+                1: 475.0,
+                2: 475.0,
+                3: 475.0,
+                4: 475.0,
+                5: 475.0,
+                6: 475.0,
+                7: 475.0,
+                8: 475.0,
+                9: 475.0,
+                10: 475.0,
+                11: 475.0,
+                12: 475.0,
+                13: 475.0,
+                14: 475.0,
+                15: 475.0,
+                16: 475.0,
+                17: 475.0,
+                18: 475.0,
+                19: 475.0,
+                20: 475.0,
+                21: 475.0,
+                22: 475.0,
+                23: 475.0,
+            },
+        }
+        self.assertEqual(result, expected_result)
+
+        result = self.carbon_retriever._process_raw_carbon_intensity_history(
+            [
+                {"carbonIntensity": 100, "datetime": "2021-01-01T00:00:00Z"},
+                {"carbonIntensity": 200, "datetime": "2021-02-01T00:00:00Z"},
+                {"carbonIntensity": 175, "datetime": "2021-02-01T01:00:00Z"},
+            ]
+        )
+        expected_result = {"overall_average": 158.33333333333334, "hourly_average": {0: 150.0, 1: 175.0}}
+        self.assertEqual(result, expected_result)
+
+    @patch("requests.get")
+    def test_get_raw_carbon_intensity_history_range(self, mock_get):
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = {
+            "data": [{"carbonIntensity": 100, "datetime": "2021-01-01T00:00:00Z"}]
+        }
+
+        result = self.carbon_retriever._get_raw_carbon_intensity_history_range(1.0, 1.0, "", "")
+        self.assertEqual(result, [{"carbonIntensity": 100, "datetime": "2021-01-01T00:00:00Z"}])
+
+    @patch("requests.get")
+    def test_get_raw_carbon_intensity_history_range_no_data(self, mock_get):
+        mock_get.return_value.status_code = 404
+        mock_get.return_value.text = "No recent data for zone"
+
+        result = self.carbon_retriever._get_raw_carbon_intensity_history_range(1.0, 1.0, "", "")
+
+        self.assertEqual(result, [])
+
+    @patch("requests.get")
+    def test_get_raw_carbon_intensity_history_range_failure(self, mock_get):
+        mock_get.return_value.status_code = 500
+        mock_get.return_value.text = "Server error"
+
+        result = self.carbon_retriever._get_raw_carbon_intensity_history_range(1.0, 1.0, "", "")
+
+        self.assertEqual(result, [])
 
     @patch("requests.get")
     def test_get_carbon_intensity_from_coordinates_success(self, mock_get):
