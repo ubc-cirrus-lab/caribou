@@ -169,9 +169,9 @@ class LogSyncer:
     ) -> None:
         logger.info("Processing function instance: %s", function_instance)
         if (provider_region["provider"], provider_region["region"]) not in self._region_clients:
-            self._region_clients[
-                (provider_region["provider"], provider_region["region"])
-            ] = RemoteClientFactory.get_remote_client(provider_region["provider"], provider_region["region"])
+            self._region_clients[(provider_region["provider"], provider_region["region"])] = (
+                RemoteClientFactory.get_remote_client(provider_region["provider"], provider_region["region"])
+            )
 
         logs: list[str] = self._region_clients[
             (provider_region["provider"], provider_region["region"])
@@ -217,12 +217,19 @@ class LogSyncer:
         if entry_point:
             if (
                 "init_data_transfer_size_samples"
-                not in workflow_summary_instance["instance_summary"][function_instance]
+                not in workflow_summary_instance["instance_summary"][function_instance]["execution_summary"][
+                    f"{provider_region['provider']}:{provider_region['region']}"
+                ]
             ):
                 workflow_summary_instance["instance_summary"][function_instance]["execution_summary"][
                     f"{provider_region['provider']}:{provider_region['region']}"
                 ]["init_data_transfer_size_samples"] = []
-            if "init_latency_samples" not in workflow_summary_instance["instance_summary"][function_instance]:
+            if (
+                "init_latency_samples"
+                not in workflow_summary_instance["instance_summary"][function_instance]["execution_summary"][
+                    f"{provider_region['provider']}:{provider_region['region']}"
+                ]
+            ):
                 workflow_summary_instance["instance_summary"][function_instance]["execution_summary"][
                     f"{provider_region['provider']}:{provider_region['region']}"
                 ]["init_latency_samples"] = []
