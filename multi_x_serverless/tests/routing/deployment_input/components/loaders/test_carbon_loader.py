@@ -9,13 +9,26 @@ class TestCarbonLoader(unittest.TestCase):
         self.loader = CarbonLoader(self.client)
         self.loader._carbon_data = {
             "aws:eu-south-1": {
-                "carbon_intensity": 482,
-                "unit": "gCO2eq/kWh",
-                "transmission_carbon": {
-                    "aws:eu-south-1": {"carbon_intensity": 48.2, "unit": "gCO2eq/GB"},
-                    "aws:eu-central-1": {"carbon_intensity": 1337.9261964617801, "unit": "gCO2eq/GB"},
-                    "aws:us-west-2": {"carbon_intensity": 21269.19652594863, "unit": "gCO2eq/GB"},
+                "overall_average": {
+                    "carbon_intensity": 482,
+                    "unit": "gCO2eq/kWh",
+                    "transmission_carbon": {
+                        "aws:eu-south-1": {"carbon_intensity": 48.2, "unit": "gCO2eq/GB"},
+                        "aws:eu-central-1": {"carbon_intensity": 1337.9261964617801, "unit": "gCO2eq/GB"},
+                        "aws:us-west-2": {"carbon_intensity": 21269.19652594863, "unit": "gCO2eq/GB"},
+                    },
                 },
+                "hourly_averages": {
+                    "1": {
+                        "carbon_intensity": 482,
+                        "unit": "gCO2eq/kWh",
+                        "transmission_carbon": {
+                            "aws:eu-south-1": {"carbon_intensity": 48.2, "unit": "gCO2eq/GB"},
+                            "aws:eu-central-1": {"carbon_intensity": 1337.9261964617801, "unit": "gCO2eq/GB"},
+                            "aws:us-west-2": {"carbon_intensity": 21269.19652594863, "unit": "gCO2eq/GB"},
+                        },
+                    },
+                }
             }
         }
 
@@ -35,7 +48,6 @@ class TestCarbonLoader(unittest.TestCase):
     def test_get_grid_carbon_intensity(self):
         result = self.loader.get_grid_carbon_intensity("aws:eu-south-1")
         self.assertEqual(result, 482)
-
 
 if __name__ == "__main__":
     unittest.main()
