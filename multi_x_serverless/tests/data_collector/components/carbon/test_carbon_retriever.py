@@ -74,65 +74,14 @@ class TestCarbonRetriever(unittest.TestCase):
         }
         mock_get_carbon_intensity.return_value = {}
         result = self.carbon_retriever.retrieve_carbon_region_data()
+
+        hourly_averages_template = {str(hour): {} for hour in range(24)}
         expected_result = {
-            "aws:region1": {
+            region_id: {
                 "overall_average": {},
-                "hourly_averages": {
-                    "0": {},
-                    "1": {},
-                    "2": {},
-                    "3": {},
-                    "4": {},
-                    "5": {},
-                    "6": {},
-                    "7": {},
-                    "8": {},
-                    "9": {},
-                    "10": {},
-                    "11": {},
-                    "12": {},
-                    "13": {},
-                    "14": {},
-                    "15": {},
-                    "16": {},
-                    "17": {},
-                    "18": {},
-                    "19": {},
-                    "20": {},
-                    "21": {},
-                    "22": {},
-                    "23": {},
-                },
-            },
-            "aws:region2": {
-                "overall_average": {},
-                "hourly_averages": {
-                    "0": {},
-                    "1": {},
-                    "2": {},
-                    "3": {},
-                    "4": {},
-                    "5": {},
-                    "6": {},
-                    "7": {},
-                    "8": {},
-                    "9": {},
-                    "10": {},
-                    "11": {},
-                    "12": {},
-                    "13": {},
-                    "14": {},
-                    "15": {},
-                    "16": {},
-                    "17": {},
-                    "18": {},
-                    "19": {},
-                    "20": {},
-                    "21": {},
-                    "22": {},
-                    "23": {},
-                },
-            },
+                "hourly_averages": hourly_averages_template.copy(),
+            }
+            for region_id in self.carbon_retriever._available_regions.keys()
         }
         self.assertEqual(result, expected_result)
 
@@ -171,32 +120,7 @@ class TestCarbonRetriever(unittest.TestCase):
         result = self.carbon_retriever._process_raw_carbon_intensity_history([])
         expected_result = {
             "overall_average": 475.0,
-            "hourly_average": {
-                0: 475.0,
-                1: 475.0,
-                2: 475.0,
-                3: 475.0,
-                4: 475.0,
-                5: 475.0,
-                6: 475.0,
-                7: 475.0,
-                8: 475.0,
-                9: 475.0,
-                10: 475.0,
-                11: 475.0,
-                12: 475.0,
-                13: 475.0,
-                14: 475.0,
-                15: 475.0,
-                16: 475.0,
-                17: 475.0,
-                18: 475.0,
-                19: 475.0,
-                20: 475.0,
-                21: 475.0,
-                22: 475.0,
-                23: 475.0,
-            },
+            "hourly_average": {hour: 475.0 for hour in range(24)},
         }
         self.assertEqual(result, expected_result)
 
