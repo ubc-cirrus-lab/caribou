@@ -93,12 +93,12 @@ class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attri
             transmission_carbon_dict[region_key_to] = {
                 "carbon_intensity": intensity,
                 "distance": distance,
-                "unit": "gCO2eq/GB",
+                # "unit": "gCO2eq/GB",
             }
 
         return {
             "carbon_intensity": carbon_intensity,
-            "unit": "gCO2eq/kWh",
+            # "unit": "gCO2eq/kWh",
             "transmission_carbon": transmission_carbon_dict,
         }
 
