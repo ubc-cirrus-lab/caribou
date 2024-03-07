@@ -492,3 +492,10 @@ class IntegrationTestRemoteClient(RemoteClient):  # pylint: disable=too-many-pub
 
     def get_current_provider_region(self) -> str:
         return "test_provider-rivendell"
+
+    def remove_sort_key(self, table_name: str, key: str) -> None:
+        conn = self._db_connection()
+        cursor = conn.cursor()
+        cursor.execute(f"DELETE FROM {table_name} WHERE key=?", (key,))
+        conn.commit()
+        conn.close()

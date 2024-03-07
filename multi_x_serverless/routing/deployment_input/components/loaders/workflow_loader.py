@@ -54,6 +54,11 @@ class WorkflowLoader(InputLoader):
         from_region_name: str,
         to_region_name: str,
     ) -> list[float]:
+        if from_instance_name == "start_hop":
+            return (
+                self._workflow_data.get(to_instance_name, {}).get(to_region_name, {}).get("init_latency_samples", [0.0])
+            )
+
         return (
             self._workflow_data.get(from_instance_name, {})
             .get("invocation_summary", {})

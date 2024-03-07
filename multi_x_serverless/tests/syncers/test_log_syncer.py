@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import patch, MagicMock
-from multi_x_serverless.syncers.datastore_syncer import DatastoreSyncer
+from multi_x_serverless.syncers.log_syncer import LogSyncer
 from multi_x_serverless.common.constants import DEPLOYMENT_MANAGER_RESOURCE_TABLE, GLOBAL_TIME_ZONE
 
 import unittest
@@ -11,19 +11,19 @@ from typing import Any
 from multi_x_serverless.common.constants import LOG_VERSION
 
 
-class TestDatastoreSyncer(unittest.TestCase):
+class TestLogSyncer(unittest.TestCase):
     def setUp(self):
-        self.syncer = DatastoreSyncer()
+        self.syncer = LogSyncer()
 
     def test_initialize_workflow_summary_instance(self):
         result = self.syncer._initialize_workflow_summary_instance()
-        self.assertEqual(result, {"instance_summary": {}})
+        self.assertEqual(result, {"instance_summary": {}, "total_invocations": 0})
 
     def test_get_last_synced_time(self):
         with patch.object(
             self.syncer.endpoints.get_datastore_client(), "get_last_value_from_sort_key_table"
         ) as mock_get_last_value:
-            mock_get_last_value.return_value = ["2022-01-01 00:00:00"]
+            mock_get_last_value.return_value = ["2022-01-01 00:00:00,000000+00:00"]
             result = self.syncer._get_last_synced_time("workflow_id")
             self.assertEqual(result.year, 2022)
 
@@ -40,7 +40,7 @@ class TestDatastoreSyncer(unittest.TestCase):
 
     def test_process_logs(self):
         logs = [
-            f"TIME (2024-01-01 00:01:00,000000) LEVEL (info) MESSAGE (ENTRY_POINT: RUN_ID (123)) LOG_VERSION ({LOG_VERSION})",
+            f"TIME (2024-01-01 00:00:00,000000) LEVEL (info) MESSAGE (ENTRY_POINT: RUN_ID (123): Entry Point INSTANCE (function1) of workflow some called with PAYLOAD_SIZE (10) GB and INIT_LATENCY (100) ms) LOG_VERSION ({LOG_VERSION})",
             f"TIME (2024-01-01 00:02:00,000000) LEVEL (info) MESSAGE (INVOKED: RUN_ID (123) INSTANCE (function1)) LOG_VERSION ({LOG_VERSION})",
             f"TIME (2024-01-01 00:03:00,000000) LEVEL (info) MESSAGE (EXECUTED: RUN_ID (123) INSTANCE (function1) EXECUTION_TIME (100)) LOG_VERSION ({LOG_VERSION})",
             f"TIME (2024-01-01 00:04:00,000000) LEVEL (info) MESSAGE (INVOKED: RUN_ID (123) INSTANCE (function1)) LOG_VERSION ({LOG_VERSION})",
@@ -49,6 +49,7 @@ class TestDatastoreSyncer(unittest.TestCase):
         function_instance = "function1"
         provider_region = {"provider": "aws", "region": "us-east-1"}
         workflow_summary_instance = {
+            "total_invocations": 0,
             "instance_summary": {
                 function_instance: {
                     "invocation_count": 0,
@@ -60,7 +61,7 @@ class TestDatastoreSyncer(unittest.TestCase):
                     },
                     "invocation_summary": {},
                 }
-            }
+            },
         }
         latency_summary: dict[str, dict[str, dict[str, dict[str, Any]]]] = defaultdict(
             lambda: defaultdict(lambda: defaultdict(dict))
@@ -69,20 +70,31 @@ class TestDatastoreSyncer(unittest.TestCase):
             lambda: defaultdict(dict)
         )
 
-        entry_point_invocation_count = self.syncer._process_logs(
+        self.syncer._process_logs(
             logs,
             provider_region,
             workflow_summary_instance,
             latency_summary,
             latency_summary_successor_before_caller_store,
         )
-        self.assertEqual(entry_point_invocation_count, 1)
         self.assertEqual(workflow_summary_instance["instance_summary"][function_instance]["invocation_count"], 2)
         self.assertEqual(
             workflow_summary_instance["instance_summary"][function_instance]["execution_summary"][
                 f'{provider_region["provider"]}:{provider_region["region"]}'
             ]["invocation_count"],
             2,
+        )
+        self.assertEqual(
+            workflow_summary_instance["instance_summary"]["function1"]["execution_summary"][
+                f'{provider_region["provider"]}:{provider_region["region"]}'
+            ]["init_data_transfer_size_samples"],
+            [10],
+        )
+        self.assertEqual(
+            workflow_summary_instance["instance_summary"]["function1"]["execution_summary"][
+                f'{provider_region["provider"]}:{provider_region["region"]}'
+            ]["init_latency_samples"],
+            [100],
         )
         self.assertEqual(
             workflow_summary_instance["instance_summary"][function_instance]["execution_summary"][
@@ -93,7 +105,7 @@ class TestDatastoreSyncer(unittest.TestCase):
 
     def test_process_logs_with_invocation_summary(self):
         logs = [
-            f"TIME (1) LEVEL (info) MESSAGE (ENTRY_POINT: RUN_ID (123)) LOG_VERSION ({LOG_VERSION})",
+            f"TIME (1) LEVEL (info) MESSAGE (ENTRY_POINT: RUN_ID (123): Entry Point INSTANCE (function1) of workflow some called with PAYLOAD_SIZE (10) GB and INIT_LATENCY (100) ms) LOG_VERSION ({LOG_VERSION})",
             f"TIME (2) LEVEL (info) MESSAGE (INVOKED: RUN_ID (123) INSTANCE (function1)) LOG_VERSION ({LOG_VERSION})",
             f"TIME (3) LEVEL (info) MESSAGE (EXECUTED: RUN_ID (123) INSTANCE (function1) EXECUTION_TIME (100)) LOG_VERSION ({LOG_VERSION})",
             f"TIME (4) LEVEL (info) MESSAGE (INVOKED: RUN_ID (123) INSTANCE (function1)) LOG_VERSION ({LOG_VERSION})",
@@ -154,7 +166,7 @@ class TestDatastoreSyncer(unittest.TestCase):
 
     def test_process_logs_with_invocation_summary(self):
         logs = [
-            f"TIME (2024-01-01 00:00:00,000000) LEVEL (info) MESSAGE (ENTRY_POINT: RUN_ID (123)) LOG_VERSION ({LOG_VERSION})",
+            f"TIME (2024-01-01 00:00:00,000000) LEVEL (info) MESSAGE (ENTRY_POINT: RUN_ID (123): Entry Point INSTANCE (function1) of workflow some called with PAYLOAD_SIZE (10) GB and INIT_LATENCY (100) ms) LOG_VERSION ({LOG_VERSION})",
             f"TIME (2024-01-01 00:01:00,000000) LEVEL (info) MESSAGE (INVOKED: RUN_ID (123) INSTANCE (function1)) LOG_VERSION ({LOG_VERSION})",
             f"TIME (2024-01-01 00:02:00,000000) LEVEL (info) MESSAGE (EXECUTED: RUN_ID (123) INSTANCE (function1) EXECUTION_TIME (100)) LOG_VERSION ({LOG_VERSION})",
             f"TIME (2024-01-01 00:03:00,000000) LEVEL (info) MESSAGE (INVOKED: RUN_ID (123) INSTANCE (function1)) LOG_VERSION ({LOG_VERSION})",
@@ -168,7 +180,7 @@ class TestDatastoreSyncer(unittest.TestCase):
             f"TIME (2024-01-01 00:11:00,000000) LEVEL (info) MESSAGE (INVOKING_SUCCESSOR: RUN_ID (123): INSTANCE (function2) calling SUCCESSOR (function3) with PAYLOAD_SIZE (4) GB) LOG_VERSION ({LOG_VERSION})",
         ]
         provider_region = {"provider": "aws", "region": "us-east-1"}
-        workflow_summary_instance = {"instance_summary": {}}
+        workflow_summary_instance = {"instance_summary": {}, "total_invocations": 1}
         latency_summary: dict[str, dict[str, dict[str, dict[str, Any]]]] = defaultdict(
             lambda: defaultdict(lambda: defaultdict(dict))
         )
@@ -176,20 +188,31 @@ class TestDatastoreSyncer(unittest.TestCase):
             lambda: defaultdict(dict)
         )
 
-        entry_point_invocation_count = self.syncer._process_logs(
+        self.syncer._process_logs(
             logs,
             provider_region,
             workflow_summary_instance,
             latency_summary,
             latency_summary_successor_before_caller_store,
         )
-        self.assertEqual(entry_point_invocation_count, 1)
         self.assertEqual(workflow_summary_instance["instance_summary"]["function1"]["invocation_count"], 2)
         self.assertEqual(
             workflow_summary_instance["instance_summary"]["function1"]["execution_summary"][
                 f'{provider_region["provider"]}:{provider_region["region"]}'
             ]["invocation_count"],
             2,
+        )
+        self.assertEqual(
+            workflow_summary_instance["instance_summary"]["function1"]["execution_summary"][
+                f'{provider_region["provider"]}:{provider_region["region"]}'
+            ]["init_data_transfer_size_samples"],
+            [10],
+        )
+        self.assertEqual(
+            workflow_summary_instance["instance_summary"]["function1"]["execution_summary"][
+                f'{provider_region["provider"]}:{provider_region["region"]}'
+            ]["init_latency_samples"],
+            [100],
         )
         self.assertEqual(
             workflow_summary_instance["instance_summary"]["function1"]["execution_summary"][
@@ -250,7 +273,7 @@ class TestDatastoreSyncer(unittest.TestCase):
         mock_get_remote_client.return_value = mock_remote_client
 
         # Create a DatastoreSyncer instance and call the sync method
-        syncer = DatastoreSyncer()
+        syncer = LogSyncer()
         syncer.endpoints = mock_endpoints
         syncer.sync()
 
@@ -260,9 +283,9 @@ class TestDatastoreSyncer(unittest.TestCase):
             DEPLOYMENT_MANAGER_RESOURCE_TABLE
         )
 
-    @patch.object(DatastoreSyncer, "process_workflow")
-    @patch.object(DatastoreSyncer, "_get_last_synced_time")
-    @patch.object(DatastoreSyncer, "_initialize_workflow_summary_instance")
+    @patch.object(LogSyncer, "process_workflow")
+    @patch.object(LogSyncer, "_get_last_synced_time")
+    @patch.object(LogSyncer, "_initialize_workflow_summary_instance")
     @patch("multi_x_serverless.common.models.endpoints.Endpoints")
     @patch("multi_x_serverless.common.models.remote_client.remote_client_factory.RemoteClientFactory")
     def test_sync(
@@ -290,7 +313,7 @@ class TestDatastoreSyncer(unittest.TestCase):
         mock_get_last_synced_time.return_value = datetime(2022, 1, 1)
 
         # Create a DatastoreSyncer instance and call the sync method
-        syncer = DatastoreSyncer()
+        syncer = LogSyncer()
         syncer.endpoints = mock_endpoints
         syncer.sync()
 
@@ -301,11 +324,11 @@ class TestDatastoreSyncer(unittest.TestCase):
         )
         mock_process_workflow.assert_called_once_with("workflow_id", "deployment_manager_config_json")
 
-    @patch.object(DatastoreSyncer, "_process_function_instance")
-    @patch.object(DatastoreSyncer, "_validate_deployment_manager_config")
+    @patch.object(LogSyncer, "_process_function_instance")
+    @patch.object(LogSyncer, "_validate_deployment_manager_config")
     def test_process_workflow(self, mock_validate_deployment_manager_config, mock_process_function_instance):
         # Mocking the scenario where the process_workflow method is called successfully
-        syncer = DatastoreSyncer()
+        syncer = LogSyncer()
         workflow_summary_instance = {"instance_summary": {}}
         syncer._initialize_workflow_summary_instance = MagicMock(return_value=workflow_summary_instance)
         syncer._get_last_synced_time = MagicMock(return_value=datetime(2022, 1, 1, tzinfo=GLOBAL_TIME_ZONE))

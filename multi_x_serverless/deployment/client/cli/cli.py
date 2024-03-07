@@ -14,7 +14,7 @@ from multi_x_serverless.deployment.common.config.config import Config
 from multi_x_serverless.deployment.common.deploy.deployer import Deployer
 from multi_x_serverless.deployment.common.factories.deployer_factory import DeployerFactory
 from multi_x_serverless.endpoint.client import Client
-from multi_x_serverless.syncers.datastore_syncer import DatastoreSyncer
+from multi_x_serverless.syncers.log_syncer import LogSyncer
 from multi_x_serverless.update_checkers.deployment_update_checker import DeploymentUpdateChecker
 from multi_x_serverless.update_checkers.solver_update_checker import SolverUpdateChecker
 
@@ -85,10 +85,10 @@ def data_collect(_: click.Context, collector: str) -> None:
         workflow_collector.run()
 
 
-@cli.command("data_sync", help="Run data synchronization.")
-def data_sync() -> None:
-    datastore_syncer = DatastoreSyncer()
-    datastore_syncer.sync()
+@cli.command("log_sync", help="Run log synchronization.")
+def log_sync() -> None:
+    log_syncer = LogSyncer()
+    log_syncer.sync()
 
 
 @cli.command("solve", help="Solve the workflow.")

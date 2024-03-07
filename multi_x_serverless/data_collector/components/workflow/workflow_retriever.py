@@ -24,15 +24,19 @@ class WorkflowRetriever(DataRetriever):
         # Consolidate all the timestamps together to one summary and return the result
         return self._consolidate_logs(workflow_summarized_logs)
 
-    def _consolidate_logs(self, logs: list[str]) -> dict[str, Any]:  # pylint: disable=too-many-branches
+    def _consolidate_logs(  # pylint: disable=too-many-branches, too-many-statements
+        self, logs: list[str]
+    ) -> dict[str, Any]:
         # Here are the list of all keys in the available regions
         available_regions_set: set[str] = set(self._available_regions.keys())
 
         consolidated: dict[str, Any] = {}
+        total_invocations = 0
         total_days = 0
         for data in logs:  # pylint: disable=too-many-nested-blocks
             loaded_data = json.loads(data)
             total_days += loaded_data["time_since_last_sync"]
+            total_invocations += loaded_data["total_invocations"]
             for instance_id, instance_data in loaded_data["instance_summary"].items():
                 if instance_id not in consolidated:
                     consolidated[instance_id] = {
@@ -49,6 +53,28 @@ class WorkflowRetriever(DataRetriever):
                             "invocation_count": 0,
                             "runtime_samples": [],
                         }
+
+                    # Check if this node is an entry point and if yes, add the data transfer and latency samples
+                    if "init_data_transfer_size_samples" in region_data:
+                        if (
+                            "init_data_transfer_size_samples"
+                            not in consolidated[instance_id]["execution_summary"][region]
+                        ):
+                            consolidated[instance_id]["execution_summary"][region][
+                                "init_data_transfer_size_samples"
+                            ] = []
+                        consolidated[instance_id]["execution_summary"][region][
+                            "init_data_transfer_size_samples"
+                        ].extend(region_data["init_data_transfer_size_samples"])
+
+                    if "init_latency_samples" in region_data:
+                        if "init_latency_samples" not in consolidated[instance_id]["execution_summary"][region]:
+                            consolidated[instance_id]["execution_summary"][region]["init_latency_samples"] = []
+                        consolidated[instance_id]["execution_summary"][region]["init_latency_samples"].extend(
+                            [sample / 1000 for sample in region_data["init_latency_samples"]]  # Convert to seconds
+                        )
+
+                    # Add the runtime samples
                     consolidated[instance_id]["execution_summary"][region]["invocation_count"] += region_data[
                         "invocation_count"
                     ]
@@ -123,6 +149,7 @@ class WorkflowRetriever(DataRetriever):
 
         # Summarized data in proper output format
         workflow_summary_data: dict[str, Any] = {}
+        workflow_summary_data["total_invocations"] = total_invocations
         for instance_id, instance_data in consolidated.items():  # pylint: disable=too-many-nested-blocks
             # Home region average/tail runtime
             # Only regions within the available regions list is allowed
@@ -137,8 +164,16 @@ class WorkflowRetriever(DataRetriever):
             for region, region_data in filtered_execution_summary.items():
                 execution_summary[region] = {
                     "runtime_samples": region_data["runtime_samples"],
+                    "invocation_count": region_data["invocation_count"],
                     "unit": "s",
                 }
+
+                if "init_data_transfer_size_samples" in region_data:
+                    execution_summary[region]["init_data_transfer_size_samples"] = region_data[
+                        "init_data_transfer_size_samples"
+                    ]
+                if "init_latency_samples" in region_data:
+                    execution_summary[region]["init_latency_samples"] = region_data["init_latency_samples"]
 
             # Now for invocation summary
             # Region restrictions were already applied

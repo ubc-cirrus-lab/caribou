@@ -728,3 +728,15 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         repository_name = repository_name.lower()
         client = self._client("ecr")
         client.delete_repository(repositoryName=repository_name, force=True)
+
+    def remove_sort_key(self, table_name: str, key: str) -> None:
+        client = self._client("dynamodb")
+        response = client.query(
+            TableName=table_name,
+            KeyConditionExpression="#pk = :pkValue",
+            ExpressionAttributeValues={":pkValue": {"S": key}},
+            ExpressionAttributeNames={"#pk": "key"},
+        )
+
+        for item in response["Items"]:
+            client.delete_item(TableName=table_name, Key={"key": {"S": key}, "sort_key": item["sort_key"]})

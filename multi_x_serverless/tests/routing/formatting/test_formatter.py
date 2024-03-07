@@ -36,7 +36,7 @@ class TestFormatter(unittest.TestCase):
                             "instance2": {"provider_region": {"provider": "AWS", "region": "us-west-2"}},
                         },
                         "metrics": {"average_carbon": 0.2, "average_runtime": 0.3, "average_cost": 0.4},
-                        "expiry_time": "2021-01-08 00:00:00",
+                        "expiry_time": "2021-01-08 00:00:00,000000",
                     },
                     "home_deployment": {
                         "instances": {

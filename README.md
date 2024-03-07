@@ -119,12 +119,12 @@ poetry run multi_x_serverless remove <workflow_id>
 
 Where `<workflow_id>` is the id of the workflow you want to remove.
 
-### Datasync
+### Synchronize Execution Logs
 
 To sync the logs from all the workflows to the global table, you can use the following command:
 
 ```bash
-poetry run multi_x_serverless data_sync
+poetry run multi_x_serverless log_sync
 ```
 
 ### Data Collecting

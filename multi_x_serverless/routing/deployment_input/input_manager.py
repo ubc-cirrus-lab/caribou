@@ -142,15 +142,11 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         if key in self._transmission_distribution_cache:
             return self._transmission_distribution_cache[key]
 
-        # Handle special case for start hop
-        # For now we simply assume its 0.0
-        if from_instance_index == -1:
-            zero_distributions = (np.array([0.0]), np.array([0.0]), np.array([0.0]))
-            self._transmission_distribution_cache[key] = zero_distributions
-            return zero_distributions
-
         # Convert the instance and region indices to their names
-        from_instance_name = self._instance_indexer.index_to_value(from_instance_index)
+        if from_instance_index == -1:
+            from_instance_name = "start_hop"
+        else:
+            from_instance_name = self._instance_indexer.index_to_value(from_instance_index)
         to_instance_name = self._instance_indexer.index_to_value(to_instance_index)
         from_region_name = self._region_indexer.index_to_value(from_region_index)
         to_region_name = self._region_indexer.index_to_value(to_region_index)
