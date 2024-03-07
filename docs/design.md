@@ -610,8 +610,11 @@ The Workflow Collector is responsible for extracting information from the `workf
 - Sort Key (N): Timestamp of last summary (last summarized by Datastore Syncer)
 - Value (S):
   - Time between last summary to current summary (Months between summaries)
+  - Total number of invocations of the workflow.
   - At Instance `<instance_unique_id>`
-    Number of total invocation of this instance
+    - Number of total invocation of this instance
+    - This instance initial input data size empirical samples.
+    - This instance initial latency empirical samples.
     - At Region `<provider_unique_id>:<region_name>`
       - Number of invocation (of this instance in this region)
       - Region Average/Tail Runtime.
@@ -635,16 +638,22 @@ Below is an example of the `workflow_summary_table` for a workflow with 2 instan
       "time_since_last_sync": 8,
       "total_invocations": 180,
       "instance_summary": {
-          "instance_1": {
+          "instance_1:entry_point:0": {
               "invocation_count": 100,
               "execution_summary": {
                   "provider_1:region_1": {
+                      "init_data_transfer_size_samples": [0.0072, 0.0075],
+                      "init_latency_samples": [0.00125, 0.00175],
                       "invocation_count": 90,
-                      "runtime_samples": [26.0, 31.0]
+                      "runtime_samples": [26.0, 31.0],
+                      "unit": "s",
                   },
                   "provider_1:region_2": {
+                      "init_data_transfer_size_samples": [0.0072, 0.0075],
+                      "init_latency_samples": [0.00125, 0.00175],
                       "invocation_count": 10,
-                      "runtime_samples": [26.0, 31.0]
+                      "runtime_samples": [26.0, 31.0],
+                      "unit": "s",
                   },
               },
               "invocation_summary": {

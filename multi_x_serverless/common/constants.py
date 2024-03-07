@@ -89,4 +89,4 @@ TAIL_LATENCY_THRESHOLD = 95
 
 # datetime
 GLOBAL_TIME_ZONE = pytz.utc
-TIME_FORMAT = "%Y-%m-%d %H:%M:%S"
+TIME_FORMAT = "%Y-%m-%d %H:%M:%S,%f"

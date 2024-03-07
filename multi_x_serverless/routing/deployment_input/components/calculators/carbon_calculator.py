@@ -80,6 +80,9 @@ class CarbonCalculator(InputCalculator):
     def calculate_transmission_carbon_distribution(
         self, from_instance_name: str, to_instance_name: str, from_region_name: str, to_region_name: str
     ) -> np.ndarray:
+        # TODO (#166): This can be potentially done using what we do in this issue
+        if from_instance_name == "start_hop":
+            return np.array([0.0])
         # Get the data transfer size from the workflow loader (In units of GB)
         data_transfer_size_distribution: np.ndarray = np.array(
             self._workflow_loader.get_data_transfer_size_distribution(from_instance_name, to_instance_name)

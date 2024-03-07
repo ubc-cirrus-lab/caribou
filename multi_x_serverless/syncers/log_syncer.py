@@ -19,7 +19,7 @@ from multi_x_serverless.common.models.remote_client.remote_client_factory import
 logger = logging.getLogger(__name__)
 
 
-class DatastoreSyncer:
+class LogSyncer:
     def __init__(self) -> None:
         self.endpoints = Endpoints()
         self._region_clients: dict[tuple[str, str], RemoteClient] = {}
@@ -59,10 +59,9 @@ class DatastoreSyncer:
             lambda: defaultdict(dict)
         )
 
-        total_invocations = 0
         for function_physical_instance, instance_information in deployed_region.items():
             provider_region = instance_information["deploy_region"]
-            total_invocations += self._process_function_instance(
+            self._process_function_instance(
                 function_physical_instance,
                 provider_region,
                 workflow_summary_instance,
@@ -76,8 +75,6 @@ class DatastoreSyncer:
         )
 
         self._update_workflow_summary_with_latency_summary(workflow_summary_instance, latency_aggregates)
-
-        workflow_summary_instance["total_invocations"] = total_invocations
 
         workflow_summary_instance_json = json.dumps(workflow_summary_instance)
 
@@ -142,6 +139,7 @@ class DatastoreSyncer:
     def _initialize_workflow_summary_instance(self) -> dict[str, Any]:
         workflow_summary_instance: dict[str, Any] = {}
         workflow_summary_instance["instance_summary"] = {}
+        workflow_summary_instance["total_invocations"] = 0
         return workflow_summary_instance
 
     def _get_last_synced_time(self, workflow_id: str) -> datetime:
@@ -171,15 +169,15 @@ class DatastoreSyncer:
     ) -> int:
         logger.info("Processing function instance: %s", function_instance)
         if (provider_region["provider"], provider_region["region"]) not in self._region_clients:
-            self._region_clients[
-                (provider_region["provider"], provider_region["region"])
-            ] = RemoteClientFactory.get_remote_client(provider_region["provider"], provider_region["region"])
+            self._region_clients[(provider_region["provider"], provider_region["region"])] = (
+                RemoteClientFactory.get_remote_client(provider_region["provider"], provider_region["region"])
+            )
 
         logs: list[str] = self._region_clients[
             (provider_region["provider"], provider_region["region"])
         ].get_logs_since_last_sync(function_instance, last_synced_time)
 
-        return self._process_logs(
+        self._process_logs(
             logs,
             provider_region,
             workflow_summary_instance,
@@ -188,7 +186,11 @@ class DatastoreSyncer:
         )
 
     def _initialize_instance_summary(
-        self, function_instance: str, provider_region: dict[str, str], workflow_summary_instance: dict[str, Any]
+        self,
+        function_instance: str,
+        provider_region: dict[str, str],
+        workflow_summary_instance: dict[str, Any],
+        entry_point: bool = False,
     ) -> None:
         if function_instance not in workflow_summary_instance["instance_summary"]:
             workflow_summary_instance["instance_summary"][function_instance] = {
@@ -211,6 +213,19 @@ class DatastoreSyncer:
                 "invocation_count": 0,
                 "runtime_samples": [],
             }
+
+        if entry_point:
+            if (
+                "init_data_transfer_size_samples"
+                not in workflow_summary_instance["instance_summary"][function_instance]
+            ):
+                workflow_summary_instance["instance_summary"][function_instance]["execution_summary"][
+                    f"{provider_region['provider']}:{provider_region['region']}"
+                ]["init_data_transfer_size_samples"] = []
+            if "init_latency_samples" not in workflow_summary_instance["instance_summary"][function_instance]:
+                workflow_summary_instance["instance_summary"][function_instance]["execution_summary"][
+                    f"{provider_region['provider']}:{provider_region['region']}"
+                ]["init_latency_samples"] = []
 
     def _extract_invoked_logs(
         self,
@@ -351,6 +366,27 @@ class DatastoreSyncer:
             return
         data_transfer_sizes[caller_function][successor_function].append(data_transfer_size)
 
+    def _extract_entry_point_log(
+        self, log_entry: str, workflow_summary_instance: dict[str, Any], provider_region: dict[str, str]
+    ) -> None:
+        workflow_summary_instance["total_invocations"] += 1
+        function_invoked = self._extract_from_string(log_entry, r"INSTANCE \((.*?)\)")
+        if not isinstance(function_invoked, str):
+            return
+        self._initialize_instance_summary(function_invoked, provider_region, workflow_summary_instance)
+        data_transfer_size = self._extract_from_string(log_entry, r"PAYLOAD_SIZE \((.*?)\)")
+        if data_transfer_size:
+            data_transfer_size = float(data_transfer_size)
+            workflow_summary_instance["instance_summary"][function_invoked]["execution_summary"][
+                f"{provider_region['provider']}:{provider_region['region']}"
+            ]["init_data_transfer_size_samples"].append(data_transfer_size)
+        init_latency = self._extract_from_string(log_entry, r"INIT_LATENCY \((.*?)\)")
+        if init_latency and init_latency != "N/A":
+            init_latency = float(init_latency)
+            workflow_summary_instance["instance_summary"][function_invoked]["execution_summary"][
+                f"{provider_region['provider']}:{provider_region['region']}"
+            ]["init_latency_samples"].append(init_latency)
+
     def _process_logs(
         self,
         logs: list[str],
@@ -358,9 +394,7 @@ class DatastoreSyncer:
         workflow_summary_instance: dict[str, Any],
         latency_summary: dict[str, dict[str, dict[str, dict[str, Any]]]],
         latency_summary_successor_before_caller_store: dict[str, dict[str, dict[str, Any]]],
-    ) -> int:
-        entry_point_invocation_count = 0
-
+    ) -> None:
         data_transfer_sizes: dict[str, dict[str, list[float]]] = {}
         runtimes: dict[str, list[float]] = {}
 
@@ -376,7 +410,7 @@ class DatastoreSyncer:
             if not isinstance(log_time, float):
                 continue
             if "ENTRY_POINT" in log_entry:
-                entry_point_invocation_count += 1
+                self._extract_entry_point_log(log_entry, workflow_summary_instance)
             if "INVOKED" in log_entry:
                 self._extract_invoked_logs(
                     log_entry,
@@ -410,5 +444,3 @@ class DatastoreSyncer:
             workflow_summary_instance["instance_summary"][function_instance_str]["execution_summary"][
                 f"{provider_region['provider']}:{provider_region['region']}"
             ]["runtime_samples"].extend(runtimes_list)
-
-        return entry_point_invocation_count

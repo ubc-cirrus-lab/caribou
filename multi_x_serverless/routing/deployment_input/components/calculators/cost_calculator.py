@@ -54,6 +54,8 @@ class CostCalculator(InputCalculator):
     def calculate_transmission_cost_distribution(
         self, from_instance_name: str, to_instance_name: str, from_region_name: str, to_region_name: str
     ) -> np.ndarray:
+        if from_instance_name == "start_hop":
+            return np.array([0.0])
         # Get the data transfer size from the workflow loader (In units of GB)
         transmission_size: np.ndarray = np.array(
             self._workflow_loader.get_data_transfer_size_distribution(from_instance_name, to_instance_name)

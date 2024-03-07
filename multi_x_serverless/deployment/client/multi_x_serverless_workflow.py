@@ -535,8 +535,16 @@ class MultiXServerlessWorkflow:
                 send_to_home_region = False
                 if isinstance(argument, dict) and "send_to_home_region" in argument:
                     send_to_home_region = argument["send_to_home_region"]
+                    time_invoked_at_client = argument.get("time_request_sent", None)
                     argument = argument["input_data"]
                 if entry_point:
+                    init_latency = "N/A"
+                    if time_invoked_at_client:
+                        datetime_invoked_at_client = datetime.strptime(time_invoked_at_client, TIME_FORMAT)
+                        datetime_now = datetime.now(GLOBAL_TIME_ZONE)
+                        time_difference_datetime = datetime_now - datetime_invoked_at_client
+                        # Get ms from the time difference
+                        init_latency = time_difference_datetime.total_seconds() * 1000
                     wrapper.workflow_placement_decision = self.get_workflow_placement_decision_from_platform()  # type: ignore  # pylint: disable=line-too-long
                     # This is the first function to be called, so we need to generate a run id
                     # This run id will be used to identify the workflow instance
@@ -547,10 +555,12 @@ class MultiXServerlessWorkflow:
                     payload = argument
 
                     logger.info(
-                        "ENTRY_POINT: RUN_ID (%s): Entry Point of workflow %s called with payload size %s GB",
+                        "ENTRY_POINT: RUN_ID (%s): Entry Point INSTANCE (%s) of workflow %s called with PAYLOAD_SIZE (%s) GB and INIT_LATENCY (%s) ms",  # pylint: disable=line-too-long
                         wrapper.workflow_placement_decision["run_id"],  # type: ignore
+                        wrapper.workflow_placement_decision["current_instance_name"],  # type: ignore
                         f"{self.name}-{self.version}",
                         len(json.dumps(payload).encode("utf-8")) / (1024**3),
+                        init_latency,
                     )
                 else:
                     # Get the workflow_placement decision from the message received from the predecessor function

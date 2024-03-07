@@ -48,6 +48,9 @@ class RuntimeCalculator(InputCalculator):
 
         # If the latency is not found, then we need to use the performance loader to estimate the relative latency
         if len(raw_latency_distribution) == 0:
+            # TODO (#166): Potentially we can do something here? Take the home region latency?
+            if from_instance_name == "start_hop":
+                return np.array([0.0])
             # Currently our performance loader does not consider data transfer size for latency
             raw_latency_distribution = self._performance_loader.get_transmission_latency_distribution(
                 from_region_name, to_region_name

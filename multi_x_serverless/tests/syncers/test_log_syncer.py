@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import patch, MagicMock
-from multi_x_serverless.syncers.datastore_syncer import DatastoreSyncer
+from multi_x_serverless.syncers.log_syncer import LogSyncer
 from multi_x_serverless.common.constants import DEPLOYMENT_MANAGER_RESOURCE_TABLE, GLOBAL_TIME_ZONE
 
 import unittest
@@ -11,9 +11,9 @@ from typing import Any
 from multi_x_serverless.common.constants import LOG_VERSION
 
 
-class TestDatastoreSyncer(unittest.TestCase):
+class TestLogSyncer(unittest.TestCase):
     def setUp(self):
-        self.syncer = DatastoreSyncer()
+        self.syncer = LogSyncer()
 
     def test_initialize_workflow_summary_instance(self):
         result = self.syncer._initialize_workflow_summary_instance()
@@ -250,7 +250,7 @@ class TestDatastoreSyncer(unittest.TestCase):
         mock_get_remote_client.return_value = mock_remote_client
 
         # Create a DatastoreSyncer instance and call the sync method
-        syncer = DatastoreSyncer()
+        syncer = LogSyncer()
         syncer.endpoints = mock_endpoints
         syncer.sync()
 
@@ -260,9 +260,9 @@ class TestDatastoreSyncer(unittest.TestCase):
             DEPLOYMENT_MANAGER_RESOURCE_TABLE
         )
 
-    @patch.object(DatastoreSyncer, "process_workflow")
-    @patch.object(DatastoreSyncer, "_get_last_synced_time")
-    @patch.object(DatastoreSyncer, "_initialize_workflow_summary_instance")
+    @patch.object(LogSyncer, "process_workflow")
+    @patch.object(LogSyncer, "_get_last_synced_time")
+    @patch.object(LogSyncer, "_initialize_workflow_summary_instance")
     @patch("multi_x_serverless.common.models.endpoints.Endpoints")
     @patch("multi_x_serverless.common.models.remote_client.remote_client_factory.RemoteClientFactory")
     def test_sync(
@@ -290,7 +290,7 @@ class TestDatastoreSyncer(unittest.TestCase):
         mock_get_last_synced_time.return_value = datetime(2022, 1, 1)
 
         # Create a DatastoreSyncer instance and call the sync method
-        syncer = DatastoreSyncer()
+        syncer = LogSyncer()
         syncer.endpoints = mock_endpoints
         syncer.sync()
 
@@ -301,11 +301,11 @@ class TestDatastoreSyncer(unittest.TestCase):
         )
         mock_process_workflow.assert_called_once_with("workflow_id", "deployment_manager_config_json")
 
-    @patch.object(DatastoreSyncer, "_process_function_instance")
-    @patch.object(DatastoreSyncer, "_validate_deployment_manager_config")
+    @patch.object(LogSyncer, "_process_function_instance")
+    @patch.object(LogSyncer, "_validate_deployment_manager_config")
     def test_process_workflow(self, mock_validate_deployment_manager_config, mock_process_function_instance):
         # Mocking the scenario where the process_workflow method is called successfully
-        syncer = DatastoreSyncer()
+        syncer = LogSyncer()
         workflow_summary_instance = {"instance_summary": {}}
         syncer._initialize_workflow_summary_instance = MagicMock(return_value=workflow_summary_instance)
         syncer._get_last_synced_time = MagicMock(return_value=datetime(2022, 1, 1, tzinfo=GLOBAL_TIME_ZONE))
