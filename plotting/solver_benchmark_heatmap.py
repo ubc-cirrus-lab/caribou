@@ -60,7 +60,7 @@ def plot_all(data):
     # get this file location
         
     fig.text(0.5, 0.04, 'Number of Regions', ha='center', va='center')
-    fig.text(0.06, 0.5, 'Number of Instances', ha='center', va='center', rotation='vertical')
+    fig.text(0.1, 0.5, 'Number of Instances', ha='center', va='center', rotation='vertical')
 
     fig.suptitle(f'Comparison of Algorithms {algorithms[0]} and {algorithms[1]}', fontsize=16)
 

@@ -270,12 +270,12 @@ class SolverBenchmark:
 def run_benchmark_wrapper(benchmark, deployment_algorithm_class):
     return benchmark.run_benchmark(
         deployment_algorithm_class=deployment_algorithm_class,
-        number_of_runs=5,
+        number_of_runs=3,
     )
 
 
 if __name__ == "__main__":
-    seed = 10
+    seed = 42
 
     # benchmark = SolverBenchmark(total_nodes=4, sync_nodes=1, num_regions=12, seed=seed)
     # benchmark._fine_tune_hyperparameters_stochastic()

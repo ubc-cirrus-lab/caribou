@@ -15,7 +15,7 @@ class StochasticHeuristicDeploymentAlgorithm(DeploymentAlgorithm):
         self._num_iterations = (
             len(self._region_indexer.get_value_indices().values())
             * len(self._instance_indexer.get_value_indices().values())
-            * 10
+            * 6
         )
         self._temperature = 1.0
         self._bias_regions = set()
