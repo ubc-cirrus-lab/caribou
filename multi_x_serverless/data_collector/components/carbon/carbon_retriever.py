@@ -1,3 +1,4 @@
+import math
 import os
 import time
 from datetime import datetime, timedelta
@@ -9,11 +10,7 @@ import requests
 from multi_x_serverless.common.constants import GLOBAL_TIME_ZONE
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
 from multi_x_serverless.common.utils import str_to_bool
-from multi_x_serverless.data_collector.components.carbon.carbon_transmission_cost_calculator.carbon_transmission_cost_calculator import (  # pylint: disable=line-too-long
-    CarbonTransmissionCostCalculator,
-)
 from multi_x_serverless.data_collector.components.data_retriever import DataRetriever
-
 
 class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attributes
     def __init__(self, client: RemoteClient) -> None:
@@ -52,7 +49,7 @@ class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attri
             # Another one is hourly average carbon intensity
 
             ## Overall average carbon intensity
-            overall_average_data = self._get_execution_and_transmission_carbon_intensity(
+            overall_average_data = self._get_execution_carbon_intensity(
                 available_region, self._get_overall_average_carbon_intensity
             )
 
@@ -60,19 +57,23 @@ class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attri
             # For this we need a 24 hour loop
             hourly_average_data: dict[str, dict[str, Any]] = {}
             for hour in range(24):
-                hourly_average_data[str(hour)] = self._get_execution_and_transmission_carbon_intensity(
+                hourly_average_data[str(hour)] = self._get_execution_carbon_intensity(
                     available_region, partial(self._get_hour_average_carbon_intensity, hour=hour)
                 )
 
+            averages = {"overall": overall_average_data, **hourly_average_data}
+
             # Store the result
             result_dict[region_key] = {
-                "overall_average": overall_average_data,
-                "hourly_averages": hourly_average_data,
+                "averages": averages,
+                "units": "gCO2eq/kWh",
+                "transmission_distances": self._get_distance_between_all_regions(available_region),
+                "transmission_distances_unit": "km",
             }
 
         return result_dict
 
-    def _get_execution_and_transmission_carbon_intensity(
+    def _get_execution_carbon_intensity(
         self, available_region: dict[str, Any], get_carbon_intensity_from_coordinates: Callable
     ) -> dict[str, Any]:
         latitude = available_region["latitude"]
@@ -80,27 +81,44 @@ class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attri
 
         carbon_intensity = get_carbon_intensity_from_coordinates(latitude, longitude)
 
-        transmission_carbon_dict = {}
-        carbon_transmission_cost_calculator = CarbonTransmissionCostCalculator(get_carbon_intensity_from_coordinates)
-
-        for region_key_to, available_region_to in self._available_regions.items():
-            (
-                intensity,
-                distance,
-            ) = carbon_transmission_cost_calculator.calculate_transmission_carbon_intensity(  # pylint: disable=line-too-long
-                available_region, available_region_to
-            )
-            transmission_carbon_dict[region_key_to] = {
-                "carbon_intensity": intensity,
-                "distance": distance,
-                # "unit": "gCO2eq/GB",
-            }
-
         return {
             "carbon_intensity": carbon_intensity,
-            # "unit": "gCO2eq/kWh",
-            "transmission_carbon": transmission_carbon_dict,
         }
+
+    def _get_distance_between_all_regions(self, from_region: dict[str, float]) -> dict[str, dict[str, float]]:
+        distance_dict: dict[str, float] = {}
+        for region_key_to, available_region_to in self._available_regions.items():
+            distance = self._get_distance_between_coordinates(
+                from_region["latitude"],
+                from_region["longitude"],
+                available_region_to["latitude"],
+                available_region_to["longitude"],
+            )
+
+            distance_dict[region_key_to] = distance
+            
+        return distance_dict
+    
+    def _get_distance_between_coordinates(
+        self, latitude_from: float, longitude_from: float, latitude_to: float, longitude_to: float
+    ) -> float:
+        r = 6371.0
+
+        lat1 = math.radians(latitude_from)
+        lon1 = math.radians(longitude_from)
+        lat2 = math.radians(latitude_to)
+        lon2 = math.radians(longitude_to)
+
+        # Differences in latitude and longitude
+        dlat = lat2 - lat1
+        dlon = lon2 - lon1
+
+        # Haversine formula
+        a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+        distance = r * c
+
+        return distance
 
     def _get_hour_average_carbon_intensity(self, latitude: float, longitude: float, hour: int) -> float:
         if self._integration_test_on:
