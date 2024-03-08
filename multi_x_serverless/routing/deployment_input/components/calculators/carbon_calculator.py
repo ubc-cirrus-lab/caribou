@@ -78,9 +78,9 @@ class CarbonCalculator(InputCalculator):
         return self._execution_conversion_ratio_cache[key]
 
     def calculate_transmission_carbon(
-        self, from_instance_name: str, to_instance_name: str, from_region_name: str, to_region_name: str, data_transfer_size: float, transmission_latency: float
+        self, from_region_name: str, to_region_name: str, data_transfer_size: float, transmission_latency: float
     ) -> float:
-        distance_factor_distance, distance_factor_latency = self._get_transmission_conversion_ratio(from_instance_name, to_instance_name, from_region_name, to_region_name)
+        distance_factor_distance, distance_factor_latency = self._get_transmission_conversion_ratio(from_region_name, to_region_name)
 
         if CARBON_TRANSMISSION_CARBON_METHOD == "distance":
             return data_transfer_size * distance_factor_distance
@@ -90,9 +90,9 @@ class CarbonCalculator(InputCalculator):
         
         raise ValueError(f"Invalid carbon transmission method: {CARBON_TRANSMISSION_CARBON_METHOD}")
 
-    def _get_transmission_conversion_ratio(self, from_instance_name: str, to_instance_name: str, from_region_name: str, to_region_name: str) -> tuple[float, float]:
+    def _get_transmission_conversion_ratio(self, from_region_name: str, to_region_name: str) -> tuple[float, float]:
         # Check if the conversion ratio is in the cache
-        key = from_instance_name + "_" + to_instance_name + "_" + from_region_name + "_" + to_region_name
+        key = from_region_name + "_" + to_region_name
         if key in self._transmission_conversion_ratio_cache:
             return self._transmission_conversion_ratio_cache[key]
 
@@ -101,11 +101,9 @@ class CarbonCalculator(InputCalculator):
         if distance < 0:
             raise ValueError(f"Distance between {from_region_name} and {to_region_name} is not available")
 
-
-        # Get the carbon intesnity of transmission in units of gCo2eq/GB
-        transmission_carbon_intensity, distance = self._carbon_loader.get_transmission_carbon_intensity(
-            from_region_name, to_region_name
-        )
+        ## Get the carbon intensity of the grid in the given region (gCO2e/kWh)
+        from_region_carbon_intensity: float = self._carbon_loader.get_grid_carbon_intensity(from_region_name)
+        to_region_carbon_intensity: float = self._carbon_loader.get_grid_carbon_intensity(to_region_name)
 
         distance_factor_distance = transmission_carbon_intensity * KWH_PER_GB_ESTIMATE + KWH_PER_KM_GB_ESTIMATE * distance
         distance_factor_latency = transmission_carbon_intensity * KWH_PER_GB_ESTIMATE + KWH_PER_S_GB_ESTIMATE

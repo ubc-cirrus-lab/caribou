@@ -155,7 +155,7 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
 
         # Now we can calculate the cost and carbon
         cost = self._cost_calculator.calculate_transmission_cost(from_instance_name, to_instance_name, from_region_name, to_region_name, transmission_size, transmission_latency)
-        carbon = self._carbon_calculator.calculate_transmission_carbon(from_instance_name, to_instance_name, from_region_name, to_region_name, transmission_size, transmission_latency)
+        carbon = self._carbon_calculator.calculate_transmission_carbon(from_region_name, to_region_name, transmission_size, transmission_latency)
 
         return (cost, carbon, transmission_latency)
 
