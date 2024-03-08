@@ -11,6 +11,36 @@ class RuntimeCalculator(InputCalculator):
         self._performance_loader: PerformanceLoader = performance_loader
         self._workflow_loader: WorkflowLoader = workflow_loader
 
+    def get_transmission_size_distribution(self, from_instance_name: str, to_instance_name: str) -> np.ndarray:
+        # Get the data trasnfer size distribution
+        data_transfer_size_distribution = self._workflow_loader.get_data_transfer_size_distribution(
+            from_instance_name, to_instance_name
+        )
+
+        # Get the associated transmission latency distribution
+        transmission_latency_distribution_map = self._workflow_loader.get_transmission_latency_distribution_map(
+            from_instance_name,to_instance_name
+        )
+        
+
+
+
+
+        data_transfer_information = self._workflow_loader.get_data_transfer_information(from_instance_name, to_instance_name)
+
+
+        return np.array([0.0])
+
+
+
+    def get_home_region_execution_latency_distribution(self, instance_name: str) -> np.ndarray:
+        home_region = self._workflow_loader.get_home_region()
+        return self.calculate_runtime_distribution(instance_name, home_region)
+
+
+
+
+
     def calculate_runtime_distribution(self, instance_name: str, region_name: str) -> np.ndarray:
         raw_runtime_distribution: list[float] = self._workflow_loader.get_runtime_distribution(
             instance_name, region_name

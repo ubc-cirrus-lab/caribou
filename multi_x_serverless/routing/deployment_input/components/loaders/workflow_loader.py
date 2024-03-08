@@ -76,6 +76,15 @@ class WorkflowLoader(InputLoader):
             .get(to_instance_name, {})
             .get("data_transfer_size_distribution", [SOLVER_INPUT_DATA_TRANSFER_SIZE_DEFAULT])
         )
+    
+    def get_transmission_latency_distribution_map(self, from_instance_name: str, to_instance_name: str) -> dict[str, list[float]]:
+        return (
+            self._workflow_data.get(from_instance_name, {})
+            .get("invocation_summary", {})
+            .get(to_instance_name, {})
+            .get("transmission_latency_distribution_map", {})
+        )
+    
 
     def get_invocation_probability(self, from_instance_name: str, to_instance_name: str) -> float:
         if from_instance_name == to_instance_name:  # Special case for start node

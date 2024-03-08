@@ -29,6 +29,87 @@ class CarbonCalculator(InputCalculator):
         self._runtime_calculator: RuntimeCalculator = runtime_calculator
         self._consider_cfe: bool = consider_cfe
 
+        # Conversion ratio cache
+        self._execution_conversion_ratio_cache: dict[str, tuple[float, float, float]] = {}
+        self._transmission_conversion_ratio_cache: dict[str, tuple[float, float]] = {}
+
+
+    def calculate_execution_carbon(
+        self, instance_name: str, region_name: str, execution_latency: float) -> float:
+        compute_factor, memory_factor, power_factor = self._get_execution_conversion_ratio(instance_name, region_name)
+
+        cloud_provider_usage_kwh = execution_latency * (compute_factor + memory_factor)
+
+        return cloud_provider_usage_kwh * power_factor
+    
+    def _get_execution_conversion_ratio(self, instance_name: str, region_name: str) -> tuple[float, float, float]:
+        # Check if the conversion ratio is in the cache
+        key = instance_name + "_" + region_name
+        if key in self._execution_conversion_ratio_cache:
+            return self._execution_conversion_ratio_cache[key]
+        
+        # datacenter loader data
+        ## Get the average power consumption of the instance in the given region (kw_compute)
+        average_cpu_power: float = self._datacenter_loader.get_average_cpu_power(region_name)
+
+        ## Get the average power consumption of the instance in the given region (kw_mb)
+        average_memory_power: float = self._datacenter_loader.get_average_memory_power(region_name)
+
+        ## Get the carbon free energy of the grid in the given region
+        cfe: float = 0.0
+        if self._consider_cfe:
+            cfe = self._datacenter_loader.get_cfe(region_name)
+
+        ## Get the power usage effectiveness of the datacenter in the given region
+        pue: float = self._datacenter_loader.get_pue(region_name)
+
+        ## Get the carbon intensity of the grid in the given region (gCO2e/kWh)
+        grid_co2e: float = self._carbon_loader.get_grid_carbon_intensity(region_name)
+
+        ## Get the number of vCPUs and Memory of the instance
+        provider, _ = region_name.split(":")  # Get the provider from the region name
+        vcpu: float = self._workflow_loader.get_vcpu(instance_name, provider)
+        memory: float = self._workflow_loader.get_memory(instance_name, provider)
+
+        compute_factor = average_cpu_power * vcpu  / 3600  
+        memory_factor = average_memory_power * memory / 3600
+        power_factor =  (1 - cfe) * pue * grid_co2e
+
+        # Add the conversion ratio to the cache
+        self._execution_conversion_ratio_cache[key] = (compute_factor, memory_factor, power_factor)
+        return self._execution_conversion_ratio_cache[key]
+
+    def calculate_transmission_carbon(
+        self, from_instance_name: str, to_instance_name: str, from_region_name: str, to_region_name: str, data_transfer_size: float, transmission_latency: float
+    ) -> float:
+        distance_factor_distance, distance_factor_latency = self._get_transmission_conversion_ratio(from_instance_name, to_instance_name, from_region_name, to_region_name)
+
+        if CARBON_TRANSMISSION_CARBON_METHOD == "distance":
+            return data_transfer_size * distance_factor_distance
+        
+        if CARBON_TRANSMISSION_CARBON_METHOD == "latency":
+            return data_transfer_size * transmission_latency * distance_factor_latency
+        
+        raise ValueError(f"Invalid carbon transmission method: {CARBON_TRANSMISSION_CARBON_METHOD}")
+
+    def _get_transmission_conversion_ratio(self, from_instance_name: str, to_instance_name: str, from_region_name: str, to_region_name: str) -> tuple[float, float]:
+        # Check if the conversion ratio is in the cache
+        key = from_instance_name + "_" + to_instance_name + "_" + from_region_name + "_" + to_region_name
+        if key in self._transmission_conversion_ratio_cache:
+            return self._transmission_conversion_ratio_cache[key]
+
+        # Get the carbon intesnity of transmission in units of gCo2eq/GB
+        transmission_carbon_intensity, distance = self._carbon_loader.get_transmission_carbon_intensity(
+            from_region_name, to_region_name
+        )
+
+        distance_factor_distance = transmission_carbon_intensity * KWH_PER_GB_ESTIMATE + KWH_PER_KM_GB_ESTIMATE * distance
+        distance_factor_latency = transmission_carbon_intensity * KWH_PER_GB_ESTIMATE + KWH_PER_S_GB_ESTIMATE
+
+        # Add the conversion ratio to the cache
+        self._transmission_conversion_ratio_cache[key] = (distance_factor_distance, distance_factor_latency)
+        return self._transmission_conversion_ratio_cache[key]
+
     def calculate_execution_carbon_distribution(self, instance_name: str, region_name: str) -> np.ndarray:
         # Get the runtime of the instance in the given region (s)
         runtime_distributions: np.ndarray = self._runtime_calculator.calculate_runtime_distribution(
