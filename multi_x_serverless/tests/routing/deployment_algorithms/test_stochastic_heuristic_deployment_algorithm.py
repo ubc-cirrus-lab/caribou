@@ -123,6 +123,18 @@ class TestStochasticHeuristicDeploymentAlgorithm(unittest.TestCase):
         # Assert
         self.assertIn(result, [0, 1, 2])
 
+    def test_choose_biased_region(self):
+        # Arrange
+        self._algorithm._bias_regions = set([0, 2])
+        permitted_regions = [0, 1, 2]
+
+        # Act
+        result = self._algorithm._choose_biased_region(permitted_regions)
+
+        # Assert
+        self.assertIn(result, permitted_regions)
+        self.assertTrue(result in self._algorithm._bias_regions or result in permitted_regions)
+
 
 if __name__ == "__main__":
     unittest.main()
