@@ -1,7 +1,7 @@
 import json
 from typing import Any
 
-from multi_x_serverless.common.constants import WORKFLOW_SUMMARY_TABLE, FORGETTING_TIME
+from multi_x_serverless.common.constants import FORGETTING_TIME, WORKFLOW_SUMMARY_TABLE
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
 from multi_x_serverless.data_collector.components.data_retriever import DataRetriever
 
@@ -31,7 +31,9 @@ class WorkflowRetriever(DataRetriever):
         consolidated: dict[str, Any] = {}
         loaded_data = json.loads(log)
         total_invocations = loaded_data["total_invocations"]
-        for instance_id, instance_data in loaded_data["instance_summary"].items():
+        for instance_id, instance_data in loaded_data[  # pylint: disable=too-many-nested-blocks
+            "instance_summary"
+        ].items():
             if instance_id not in consolidated:
                 consolidated[instance_id] = {
                     "invocation_count": 0,

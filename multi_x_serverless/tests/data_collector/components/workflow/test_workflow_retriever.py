@@ -16,9 +16,8 @@ class TestWorkflowRetriever(unittest.TestCase):
         self.assertEqual(result, {"id1", "id2"})
 
     def test_retrieve_workflow_summary(self):
-        self.mock_client.get_all_values_from_sort_key_table.return_value = [
-            '{"time_since_last_sync": 30, "total_invocations": 10, "instance_summary": {"instance1": {"invocation_count": 1, "execution_summary": {"aws:region1": {"invocation_count": 1, "runtime_samples": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]}}}}}',
-        ]
+        self.mock_client.get_value_from_table.return_value = '{"time_since_last_sync": 30, "total_invocations": 10, "instance_summary": {"instance1": {"invocation_count": 1, "execution_summary": {"aws:region1": {"invocation_count": 1, "runtime_samples": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]}}}}}'
+
         self.workflow_retriever._available_regions = {"aws:region1": {}}
 
         result = self.workflow_retriever.retrieve_workflow_summary("id1")
@@ -113,55 +112,51 @@ class TestWorkflowRetriever(unittest.TestCase):
 
         self.workflow_retriever._available_regions = {"provider_1:region_1": {}, "provider_1:region_2": {}}
 
-        result = self.workflow_retriever._consolidate_log(logs=log)
+        result = self.workflow_retriever._consolidate_log(log=log)
 
         expected_result = {
-            "total_invocations": 500,
+            "total_invocations": 200,
             "instance_1": {
-                "projected_monthly_invocations": 12.5,
+                "projected_monthly_invocations": 100.0,
                 "execution_summary": {
                     "provider_1:region_1": {
-                        "runtime_samples": [0.025, 0.025, 0.025],
-                        "invocation_count": 100,
+                        "runtime_samples": [0.025],
+                        "invocation_count": 80,
                         "unit": "s",
-                        "init_data_transfer_size_samples": [2, 1],
-                        "init_latency_samples": [0.5, 0.2],
+                        "init_data_transfer_size_samples": [2],
+                        "init_latency_samples": [0.5],
                     },
                     "provider_1:region_2": {
-                        "runtime_samples": [0.03, 0.03, 0.03, 0.03, 0.03],
-                        "invocation_count": 100,
+                        "runtime_samples": [0.03, 0.03, 0.03],
+                        "invocation_count": 20,
                         "unit": "s",
-                        "init_data_transfer_size_samples": [6, 4],
-                        "init_latency_samples": [0.3, 0.15],
+                        "init_data_transfer_size_samples": [6],
+                        "init_latency_samples": [0.3],
                     },
                 },
                 "invocation_summary": {
                     "instance_2": {
                         "probability_of_invocation": 0.8,
-                        "data_transfer_samples": [1, 11, 10, 10],
+                        "data_transfer_samples": [1, 11],
                         "transmission_summary": {
                             "provider_1:region_1": {
-                                "provider_1:region_1": {"latency_samples": [0.2, 0.2, 0.2, 0.2], "unit": "s"},
-                                "provider_1:region_2": {"latency_samples": [0.15, 0.15, 0.15, 0.15], "unit": "s"},
+                                "provider_1:region_1": {"latency_samples": [0.2, 0.2], "unit": "s"},
+                                "provider_1:region_2": {"latency_samples": [0.15, 0.15], "unit": "s"},
                             },
                             "provider_1:region_2": {
-                                "provider_1:region_1": {"latency_samples": [0.1, 0.1, 0.1, 0.1], "unit": "s"}
+                                "provider_1:region_1": {"latency_samples": [0.1, 0.1], "unit": "s"}
                             },
                         },
                     }
                 },
             },
             "instance_2": {
-                "projected_monthly_invocations": 11.25,
+                "projected_monthly_invocations": 100.0,
                 "execution_summary": {
-                    "provider_1:region_1": {
-                        "runtime_samples": [0.01, 0.01, 0.01, 0.01, 0.01, 0.01],
-                        "invocation_count": 140,
-                        "unit": "s",
-                    },
+                    "provider_1:region_1": {"runtime_samples": [0.01, 0.01], "invocation_count": 70, "unit": "s"},
                     "provider_1:region_2": {
-                        "runtime_samples": [0.015, 0.015, 0.015, 0.015, 0.015, 0.015, 0.015],
-                        "invocation_count": 20,
+                        "runtime_samples": [0.015, 0.015, 0.015],
+                        "invocation_count": 10,
                         "unit": "s",
                     },
                 },

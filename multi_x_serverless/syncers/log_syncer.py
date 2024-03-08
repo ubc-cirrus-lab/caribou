@@ -7,12 +7,11 @@ from typing import Any, Optional
 
 from multi_x_serverless.common.constants import (
     DEPLOYMENT_MANAGER_RESOURCE_TABLE,
-    GLOBAL_TIME_ZONE,
-    LOG_VERSION,
-    TIME_FORMAT,
-    WORKFLOW_SUMMARY_TABLE,
     FORGETTING_NUMBER,
     FORGETTING_TIME,
+    GLOBAL_TIME_ZONE,
+    LOG_VERSION,
+    WORKFLOW_SUMMARY_TABLE,
 )
 from multi_x_serverless.common.models.endpoints import Endpoints
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
@@ -160,9 +159,11 @@ class LogSyncer:
                 (provider_region["provider"], provider_region["region"])
             ] = RemoteClientFactory.get_remote_client(provider_region["provider"], provider_region["region"])
 
-        logs: list[str] = self._region_clients[
-            (provider_region["provider"], provider_region["region"])
-        ].get_logs_since(function_instance, time_window_start)
+        logs: list[str] = self._region_clients[(provider_region["provider"], provider_region["region"])].get_logs_since(
+            function_instance, time_window_start
+        )
+
+        self._trim_logs(logs)
 
         self._process_logs(
             logs,
@@ -171,6 +172,17 @@ class LogSyncer:
             latency_summary,
             latency_summary_successor_before_caller_store,
         )
+
+    def _trim_logs(self, logs: list[str]) -> None:
+        # The logs from provider are in chronological order, so we can remove the first few logs
+        # to forget the old logs
+        number_of_entry_point_logs = 0
+        for i in reversed(range(len(logs))):
+            if "ENTRY_POINT" in logs[i]:
+                number_of_entry_point_logs += 1
+                if number_of_entry_point_logs > FORGETTING_NUMBER:
+                    del logs[: i + 1]
+                    break
 
     def _initialize_instance_summary(
         self,
