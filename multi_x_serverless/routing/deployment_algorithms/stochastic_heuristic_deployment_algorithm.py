@@ -40,7 +40,9 @@ class StochasticHeuristicDeploymentAlgorithm(DeploymentAlgorithm):
             if self._is_hard_constraint_failed(new_deployment_metrics):
                 continue
 
-            if self._is_improvement(current_deployment_metrics, new_deployment_metrics, new_deployment, current_deployment):
+            if self._is_improvement(
+                current_deployment_metrics, new_deployment_metrics, new_deployment, current_deployment
+            ):
                 current_deployment = new_deployment
                 current_deployment_metrics = new_deployment_metrics
                 deployments.append((current_deployment, current_deployment_metrics))
@@ -56,10 +58,16 @@ class StochasticHeuristicDeploymentAlgorithm(DeploymentAlgorithm):
                 self._bias_regions.add(new_region)
 
     def _is_improvement(
-        self, current_deployment_metrics: dict[str, float], new_deployment_metrics: dict[str, float],
-        new_deployment: list[int], current_deployment: list[int]
+        self,
+        current_deployment_metrics: dict[str, float],
+        new_deployment_metrics: dict[str, float],
+        new_deployment: list[int],
+        current_deployment: list[int],
     ) -> bool:
-        if new_deployment_metrics[self._ranker.number_one_priority] < current_deployment_metrics[self._ranker.number_one_priority]:
+        if (
+            new_deployment_metrics[self._ranker.number_one_priority]
+            < current_deployment_metrics[self._ranker.number_one_priority]
+        ):
             self._store_bias_regions(new_deployment, current_deployment)
             return True
         return random.random() < self._acceptance_probability()
@@ -69,7 +77,14 @@ class StochasticHeuristicDeploymentAlgorithm(DeploymentAlgorithm):
         return (
             1.0
             if self._temperature == 0
-            else min(1.0, 2.0 ** (-abs(self._home_deployment_metrics[self._ranker.number_one_priority] - self._temperature) / self._temperature))
+            else min(
+                1.0,
+                2.0
+                ** (
+                    -abs(self._home_deployment_metrics[self._ranker.number_one_priority] - self._temperature)
+                    / self._temperature
+                ),
+            )
         )
 
     def _generate_new_deployment(self, current_deployment: list[int]) -> list[int]:
