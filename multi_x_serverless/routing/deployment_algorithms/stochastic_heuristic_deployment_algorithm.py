@@ -18,7 +18,7 @@ class StochasticHeuristicDeploymentAlgorithm(DeploymentAlgorithm):
             * 6
         )
         self._temperature = 1.0
-        self._bias_regions = set()
+        self._bias_regions: set[int] = set()
         self._bias_probability = 0.2
 
     def _run_algorithm(self) -> list[tuple[list[int], dict[str, float]]]:
@@ -95,10 +95,13 @@ class StochasticHeuristicDeploymentAlgorithm(DeploymentAlgorithm):
         return new_deployment
 
     def _choose_new_region(self, instance: int) -> int:
-        if random.random() < self._bias_probability and len(self._bias_regions) > 0:
-            return self._choose_biased_region(instance)
         permitted_regions = self._per_instance_permitted_regions[instance]
+        if random.random() < self._bias_probability and len(self._bias_regions) > 0:
+            return self._choose_biased_region(permitted_regions)
         return random.choice(permitted_regions)
 
-    def _choose_biased_region(self, instance: int) -> int:
-        return random.choice(list(self._bias_regions))
+    def _choose_biased_region(self, permitted_regions: list[int]) -> int:
+        possible_bias_regions = self._bias_regions.intersection(permitted_regions)
+        if len(possible_bias_regions) > 0:
+            return random.choice(list(possible_bias_regions))
+        return random.choice(permitted_regions)
