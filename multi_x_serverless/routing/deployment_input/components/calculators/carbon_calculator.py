@@ -1,3 +1,4 @@
+from typing import Optional
 from multi_x_serverless.common.constants import (
     CARBON_TRANSMISSION_CARBON_METHOD,
     KWH_PER_GB_ESTIMATE,
@@ -31,6 +32,12 @@ class CarbonCalculator(InputCalculator):
         self._execution_conversion_ratio_cache: dict[str, tuple[float, float, float]] = {}
         self._transmission_conversion_ratio_cache: dict[str, tuple[float, float]] = {}
 
+        # Carbon setting - hourly or average policy
+        self._hourly_carbon_setting: str = None # None indicates the default setting -> Average everything
+
+    def alter_carbon_setting(self, carbon_setting: Optional[str]) -> None:
+        self._hourly_carbon_setting = carbon_setting
+
     def calculate_execution_carbon(self, instance_name: str, region_name: str, execution_latency: float) -> float:
         compute_factor, memory_factor, power_factor = self._get_execution_conversion_ratio(instance_name, region_name)
 
@@ -60,7 +67,7 @@ class CarbonCalculator(InputCalculator):
         pue: float = self._datacenter_loader.get_pue(region_name)
 
         ## Get the carbon intensity of the grid in the given region (gCO2e/kWh)
-        grid_co2e: float = self._carbon_loader.get_grid_carbon_intensity(region_name)
+        grid_co2e: float = self._carbon_loader.get_grid_carbon_intensity(region_name, self._hourly_carbon_setting)
 
         ## Get the number of vCPUs and Memory of the instance
         provider, _ = region_name.split(":")  # Get the provider from the region name
@@ -102,8 +109,8 @@ class CarbonCalculator(InputCalculator):
             raise ValueError(f"Distance between {from_region_name} and {to_region_name} is not available")
 
         ## Get the carbon intensity of the grid in the given region (gCO2e/kWh)
-        from_region_carbon_intensity: float = self._carbon_loader.get_grid_carbon_intensity(from_region_name)
-        to_region_carbon_intensity: float = self._carbon_loader.get_grid_carbon_intensity(to_region_name)
+        from_region_carbon_intensity: float = self._carbon_loader.get_grid_carbon_intensity(from_region_name, self._hourly_carbon_setting)
+        to_region_carbon_intensity: float = self._carbon_loader.get_grid_carbon_intensity(to_region_name, self._hourly_carbon_setting)
 
         transmission_carbon_intensity = (from_region_carbon_intensity + to_region_carbon_intensity) / 2  # gCo2eq/kWh
 
