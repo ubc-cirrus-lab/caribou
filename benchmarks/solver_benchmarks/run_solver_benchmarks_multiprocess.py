@@ -6,6 +6,7 @@ import time
 from unittest.mock import Mock, MagicMock
 
 import networkx as nx
+import numpy as np
 
 
 from multi_x_serverless.routing.deployment_algorithms.coarse_grained_deployment_algorithm import (
@@ -107,6 +108,12 @@ class SolverBenchmark:
 
             number_of_final_results.append(len(deployments))
 
+        print(f"Finished benchmark for {deployment_algorithm_class.__name__}")
+        print(
+            f"Finished total nodes: {len(self._dag.nodes)}, Sync nodes: {self._sync_nodes}, Regions: {self._num_regions}, Number of runs: {number_of_runs}"
+        )
+        print(f"Best carbon deployment: {min(best_avg_carbons)}")
+
         result_dict = {
             "deployment_algorithm": deployment_algorithm_class.__name__,
             "runtime": sum(runtimes) / len(runtimes),
@@ -122,12 +129,9 @@ class SolverBenchmark:
             "number of sync nodes": self._sync_nodes,
         }
 
-        print(
-            f"Finished total nodes: {len(self._dag.nodes)}, Sync nodes: {self._sync_nodes}, Regions: {self._num_regions}, Number of runs: {number_of_runs}"
-        )
-        print(
-            f"Runtime: {result_dict['runtime']}, Best cost: {result_dict['best cost']}, Best runtime: {result_dict['best runtime']}, Best carbon: {result_dict['best carbon']}"
-        )
+        # print(
+        #     f"Runtime: {result_dict['runtime']}, Best cost: {result_dict['best cost']}, Best runtime: {result_dict['best runtime']}, Best carbon: {result_dict['best carbon']}"
+        # )
 
         return result_dict
 
@@ -193,16 +197,88 @@ class SolverBenchmark:
 
         return G
 
+    @patch("multi_x_serverless.routing.deployment_input.input_manager.Endpoints")
+    @patch("multi_x_serverless.routing.deployment_algorithms.deployment_algorithm.Endpoints")
+    def _fine_tune_hyperparameters_stochastic(
+        self,
+        mock_endpoints,
+        deployment_algorithms_mock_endpoints,
+    ):
+        # Mock the remote client
+        mock_endpoints.return_value.get_data_collector_client.return_value = self._benchmark_remote_client
+        deployment_algorithms_mock_endpoints.return_value.get_data_collector_client.return_value = (
+            self._benchmark_remote_client
+        )
+
+        # Create a WorkflowConfig instance and set its properties using the generated config
+        workflow_config = Mock(spec=WorkflowConfig)
+        workflow_config.start_hops = self._config["start_hops"]
+        workflow_config.regions_and_providers = self._config["regions_and_providers"]
+        workflow_config.instances = self._config["instances"]
+        workflow_config.constraints = self._config["constraints"]
+        workflow_config.workflow_id = self._config["workflow_id"]
+
+        solver = StochasticHeuristicDeploymentAlgorithm(workflow_config)
+
+        problematic_instances = 4
+        problematic_regions = 12
+
+        average_carbon = []
+
+        # try out all combinations of hyperparameters
+        for learning_rate in np.arange(0.1, 0.3, 0.1):
+            for num_iterations in range(4, 7):
+                for temperature in np.arange(0.8, 1.1, 0.1):
+                    for bias_probability in np.arange(0.1, 0.4, 0.1):
+                        solver._learning_rate = int(learning_rate * problematic_instances + 1)
+                        solver._num_iterations = problematic_regions * problematic_instances * num_iterations
+                        solver._temperature = temperature
+                        solver._bias_probability = bias_probability
+                        deployments = solver._run_algorithm()
+                        carbon_deployments = [deployment[1]["average_carbon"] for deployment in deployments]
+                        best_carbon_corresponding_deployment = deployments[
+                            carbon_deployments.index(min(carbon_deployments))
+                        ]
+                        print(
+                            f"Learning rate: {learning_rate}, Num iterations: {num_iterations}, Temperature: {temperature}, Bias probability: {bias_probability}"
+                        )
+                        print(f"Best carbon deployment: {best_carbon_corresponding_deployment}")
+
+                        average_carbon.append(
+                            {
+                                "learning_rate": learning_rate,
+                                "num_iterations": num_iterations,
+                                "temperature": temperature,
+                                "bias_probability": bias_probability,
+                                "average_carbon": min(carbon_deployments),
+                            }
+                        )
+
+        # Calculate the best hyperparameters
+        best_hyperparameters = min(average_carbon, key=lambda x: x["average_carbon"])
+        print(f"Best hyperparameters: {best_hyperparameters}")
+
+        average_carbon_ordered_by_average_carbon = sorted(average_carbon, key=lambda x: x["average_carbon"])
+
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        os.makedirs(os.path.join(dir_path, "results"), exist_ok=True)
+
+        with open(os.path.join(dir_path, "results/fine_tuned_hyperparameters.json"), "w") as f:
+            json.dump(average_carbon_ordered_by_average_carbon, f, indent=4)
+
 
 def run_benchmark_wrapper(benchmark, deployment_algorithm_class):
     return benchmark.run_benchmark(
         deployment_algorithm_class=deployment_algorithm_class,
-        number_of_runs=2,
+        number_of_runs=5,
     )
 
 
 if __name__ == "__main__":
     seed = 10
+
+    # benchmark = SolverBenchmark(total_nodes=4, sync_nodes=1, num_regions=12, seed=seed)
+    # benchmark._fine_tune_hyperparameters_stochastic()
 
     # Validate that the deployment_algorithms return the same results when deterministic is set to True
     # print("Validating deployment_algorithms")
@@ -242,7 +318,7 @@ if __name__ == "__main__":
     results = []
     inputs = []
     deployment_algorithms = []
-    scenarios = {"total_nodes": range(3, 11), "sync_nodes": [1], "num_regions": range(2, 9)}
+    scenarios = {"total_nodes": range(4, 9), "sync_nodes": [1], "num_regions": range(4, 13)}
 
     counter = 0
     for total_nodes in scenarios["total_nodes"]:
@@ -278,7 +354,7 @@ if __name__ == "__main__":
         #     run_benchmark_wrapper,
         #     [(deployment_algorithm, FineGrainedDeploymentAlgorithm) for deployment_algorithm in deployment_algorithms],
         # )
-        results = cg_results + sh_results # + fg_results
+        results = cg_results + sh_results  # + fg_results
 
     per_deployment_algorithm_results = {}
 

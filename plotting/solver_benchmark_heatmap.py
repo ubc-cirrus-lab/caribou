@@ -25,14 +25,10 @@ def plot_single_heatmap(ax, data, key, algorithm_1, algorithm_2):
 
     for i, x_val in enumerate(x):
         for j, y_val in enumerate(y):
-            Z[j, i] = algorithm_1_extracted[x_val][y_val] - algorithm_2_extracted[x_val][y_val]
+            Z[j, i] = (algorithm_1_extracted[x_val][y_val] - algorithm_2_extracted[x_val][y_val]) / algorithm_1_extracted[x_val][y_val]
 
     # Use seaborn to create a heatmap
-    sns.heatmap(Z, annot=True, fmt=".2f", cmap="YlGnBu", ax=ax, cbar=False)
-
-    # We want to show all ticks...
-    ax.set_xticks(np.arange(len(x)))
-    ax.set_yticks(np.arange(len(y)))
+    sns.heatmap(Z, annot=True, fmt=".2f", cmap="YlGnBu", ax=ax, cbar=False, annot_kws={"size": 8})
 
     # ... and label them with the respective list entries
     ax.set_xticklabels(x)
@@ -40,6 +36,8 @@ def plot_single_heatmap(ax, data, key, algorithm_1, algorithm_2):
 
     # Rotate the tick labels and set their alignment.
     plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
+
+    ax.invert_yaxis()
 
     ax.set_title(f"{key}")
 
@@ -54,7 +52,7 @@ def extract_data(data, key, x_axis, y_axis):
 def plot_all(data):
     algorithms = list(data.keys())
     keys = ["best cost", "best runtime", "best carbon"]
-    fig, axs = plt.subplots(1, 3, figsize=(15, 5))  # Adjust the size of the figure
+    fig, axs = plt.subplots(1, 3, figsize=(20, 5))  # Adjust the size of the figure
     for i, key in enumerate(keys):
         plot_single_heatmap(axs[i], data, key, algorithms[0], algorithms[1])
 
