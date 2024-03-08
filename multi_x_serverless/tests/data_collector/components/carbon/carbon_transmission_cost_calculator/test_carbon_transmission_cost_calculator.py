@@ -16,10 +16,6 @@ class TestCarbonTransmissionCostCalculator(TestCase):
         self.get_carbon_intensity_from_coordinates = MagicMock(return_value=0.5)
         self.calculator = CarbonTransmissionCostCalculatorInstance(self.get_carbon_intensity_from_coordinates)
 
-    def test_get_distance_between_coordinates(self):
-        result = self.calculator._get_distance_between_coordinates(0, 0, 0, 1)
-        self.assertAlmostEqual(result, 111.19, places=2)
-
     def test_get_carbon_intensity_segments_from_coordinates(self):
         result = self.calculator._get_carbon_intensity_segments_from_coordinates(0, 0, 0, 1, 100)
         self.assertEqual(result[0][0], 100)
