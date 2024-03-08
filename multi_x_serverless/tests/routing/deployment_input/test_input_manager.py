@@ -152,7 +152,7 @@ class TestInputManager(unittest.TestCase):
         )
         self.input_manager._consider_probabilistic_invocations = MagicMock(return_value=(1.0, 2.0, 3.0))
 
-        result = self.input_manager.get_execution_cost_carbon_runtime(0, 0, True)
+        result = self.input_manager.get_execution_cost_carbon_latency(0, 0, True)
 
         self.input_manager.get_execution_cost_carbon_runtime_distribution.assert_called_once_with(0, 0)
         self.input_manager._consider_probabilistic_invocations.assert_called_once_with(
@@ -166,7 +166,7 @@ class TestInputManager(unittest.TestCase):
         )
         self.input_manager._consider_probabilistic_invocations = MagicMock(return_value=(1.0, 2.0, 3.0))
 
-        result = self.input_manager.get_transmission_cost_carbon_runtime(0, 1, 0, 1, True)
+        result = self.input_manager.get_transmission_cost_carbon_latency(0, 1, 0, 1, True)
 
         self.input_manager.get_transmission_cost_carbon_runtime_distribution.assert_called_once_with(0, 1, 0, 1)
         self.input_manager._consider_probabilistic_invocations.assert_called_once_with(

@@ -32,3 +32,6 @@ class CarbonLoader(InputLoader):
 
     def get_grid_carbon_intensity(self, region_name: str) -> float:
         return self._carbon_data.get(region_name, {}).get("carbon_intensity", SOLVER_INPUT_GRID_CARBON_DEFAULT)
+
+    def alter_setting(self, carbon_setting: str) -> None:
+        return

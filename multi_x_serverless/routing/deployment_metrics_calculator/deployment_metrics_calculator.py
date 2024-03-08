@@ -67,7 +67,7 @@ class DeploymentMetricsCalculator(ABC):
                         transmission_cost,
                         transmission_carbon,
                         transmission_runtime,
-                    ) = self._input_manager.get_transmission_cost_carbon_runtime(
+                    ) = self._input_manager.get_transmission_cost_carbon_latency(
                         -1, instance_index, self._home_region_index, region_index, probabilistic_case
                     )
 
@@ -87,7 +87,7 @@ class DeploymentMetricsCalculator(ABC):
                                 transmission_cost,
                                 transmission_carbon,
                                 transmission_runtime,
-                            ) = self._input_manager.get_transmission_cost_carbon_runtime(
+                            ) = self._input_manager.get_transmission_cost_carbon_latency(
                                 predecessor_instance_index,
                                 instance_index,
                                 deployment[predecessor_instance_index],
@@ -107,7 +107,7 @@ class DeploymentMetricsCalculator(ABC):
                     execution_cost,
                     execution_carbon,
                     execution_runtime,
-                ) = self._input_manager.get_execution_cost_carbon_runtime(
+                ) = self._input_manager.get_execution_cost_carbon_latency(
                     instance_index, region_index, probabilistic_case
                 )
 
