@@ -1,9 +1,5 @@
 import unittest
 from unittest.mock import MagicMock, Mock, patch
-from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
-from multi_x_serverless.data_collector.components.carbon.carbon_transmission_cost_calculator.carbon_transmission_cost_calculator import (
-    CarbonTransmissionCostCalculator,
-)
 from multi_x_serverless.data_collector.components.carbon.carbon_retriever import CarbonRetriever
 
 
@@ -18,41 +14,60 @@ class TestCarbonRetriever(unittest.TestCase):
     def test_init(self):
         self.assertIsInstance(self.carbon_retriever, CarbonRetriever)
 
-    @patch.object(CarbonRetriever, "_get_execution_and_transmission_carbon_intensity")
-    def test_retrieve_carbon_region_data(self, mock_get_carbon_intensity):
+    @patch.object(CarbonRetriever, "_get_distance_between_all_regions")
+    @patch.object(CarbonRetriever, "_get_execution_carbon_intensity")
+    def test_retrieve_carbon_region_data(self, mock_get_carbon_intensity, mock_get_distance):
         self.carbon_retriever._available_regions = {
             "aws:region1": {"latitude": 1.0, "longitude": 1.0},
             "aws:region2": {"latitude": 2.0, "longitude": 2.0},
         }
-        mock_get_carbon_intensity.return_value = {}
+        mock_get_carbon_intensity.return_value = 10.0
+        mock_get_distance.return_value = {}
         result = self.carbon_retriever.retrieve_carbon_region_data()
 
-        hourly_averages_template = {str(hour): {} for hour in range(24)}
+        hourly_averages_template = {str(hour): 10.0 for hour in range(24)}
         expected_result = {
             region_id: {
-                "overall_average": {},
-                "hourly_averages": hourly_averages_template.copy(),
+                "averages": {
+                    "overall": 10.0,
+                    **hourly_averages_template.copy()
+                },
+                'units': 'gCO2eq/kWh',
+                'transmission_distances': {},
+                'transmission_distances_unit': 'km'
             }
             for region_id in self.carbon_retriever._available_regions.keys()
         }
         self.assertEqual(result, expected_result)
+        
+    def test_get_distance_between_all_regions(self):
+        all_regions = {
+            "aws:region1": {"latitude": 1.0, "longitude": 1.0},
+            "aws:region2": {"latitude": 2.0, "longitude": 2.0},
+        }
+        self.carbon_retriever._available_regions = all_regions
+        self.carbon_retriever._get_distance_between_coordinates = MagicMock(return_value=100)
+        result = self.carbon_retriever._get_distance_between_all_regions(all_regions["aws:region1"])
+        self.assertEqual(result, {'aws:region1': 100, 'aws:region2': 100})
 
-    def test_get_execution_and_transmission_carbon_intensity(self):
+    def test_get_distance_between_coordinates(self):
+        result = self.carbon_retriever._get_distance_between_coordinates(1.0, 1.0, 1.0, 1.0)
+        self.assertEqual(result, 0)
+
+        result = self.carbon_retriever._get_distance_between_coordinates(0, 0, 0, 1)
+        self.assertAlmostEqual(result, 111.19, places=2)
+
+    def test_get_execution_carbon_intensity(self):
         # Setup the mock object and its return value
         # Call the method under test
-        result = self.carbon_retriever._get_execution_and_transmission_carbon_intensity(
+        result = self.carbon_retriever._get_execution_carbon_intensity(
             {"latitude": 1.0, "longitude": 1.0}, MagicMock(return_value=0)
         )
 
         self.assertEqual(
             result,
-            {
-                "carbon_intensity": 0,
-                #   "unit": "gCO2eq/kWh",
-                "transmission_carbon": {},
-            },
+            {'carbon_intensity': 0}
         )
-        self.assertIsInstance(result, dict)
 
     def test_get_hour_average_carbon_intensity(self):
         self.carbon_retriever._get_hour_average_carbon_intensity = MagicMock(return_value=1)

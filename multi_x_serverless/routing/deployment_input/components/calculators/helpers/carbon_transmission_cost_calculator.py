@@ -34,27 +34,6 @@ class CarbonTransmissionCostCalculator:
 
         return total_carbon_intensity, total_distance
 
-    def _get_distance_between_coordinates(
-        self, latitude_from: float, longitude_from: float, latitude_to: float, longitude_to: float
-    ) -> float:
-        r = 6371.0
-
-        lat1 = math.radians(latitude_from)
-        lon1 = math.radians(longitude_from)
-        lat2 = math.radians(latitude_to)
-        lon2 = math.radians(longitude_to)
-
-        # Differences in latitude and longitude
-        dlat = lat2 - lat1
-        dlon = lon2 - lon1
-
-        # Haversine formula
-        a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
-        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-        distance = r * c
-
-        return distance
-
     def _get_carbon_intensity_segments_from_coordinates(
         self,
         latitude_from: float,
