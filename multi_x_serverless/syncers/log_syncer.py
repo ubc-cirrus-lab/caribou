@@ -1,6 +1,7 @@
 import json
 from datetime import datetime, timedelta
 from typing import Optional
+import logging
 
 from multi_x_serverless.common.constants import (
     DEPLOYMENT_MANAGER_RESOURCE_TABLE,
@@ -12,6 +13,8 @@ from multi_x_serverless.common.constants import (
 from multi_x_serverless.common.models.endpoints import Endpoints
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
 from multi_x_serverless.syncers.log_sync_workflow import LogSyncWorkflow
+
+logger = logging.getLogger(__name__)
 
 
 class LogSyncer:
@@ -26,6 +29,7 @@ class LogSyncer:
         )
 
         for workflow_id, deployment_manager_config_str in currently_deployed_workflows.items():
+            logger.info(f"Syncing workflow {workflow_id}")
             previous_data_str = self._workflow_summary_client.get_value_from_table(WORKFLOW_SUMMARY_TABLE, workflow_id)
             previous_data = json.loads(previous_data_str) if previous_data_str else {}
 
@@ -35,6 +39,9 @@ class LogSyncer:
             )
 
             time_intervals_to_sync = self._get_time_intervals_to_sync(last_sync_time)
+
+            if len(time_intervals_to_sync) == 0:
+                continue
 
             log_sync_workflow = LogSyncWorkflow(
                 workflow_id,
@@ -57,6 +64,8 @@ class LogSyncer:
         time_intervals_to_sync = []
         while start_time < current_time:
             end_time = start_time + timedelta(days=1)
+            if end_time > current_time:
+                end_time = current_time
             time_intervals_to_sync.append((start_time, end_time))
             start_time = end_time
 

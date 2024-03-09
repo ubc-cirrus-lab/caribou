@@ -631,6 +631,47 @@ The Workflow Collector is responsible for extracting information from the `workf
 Below is an example of the `workflow_summary_table` for a workflow with 2 instances. All the runtime and latency are in units of seconds.
 
 ```json
+{
+  "daily_invocation_counts": { "2024-03-09+0000": 15 },
+  "logs": [
+    {
+      "run_id": "eca39262530c4033a9f29343a39d71ca",
+      "runtime": 8.746771,
+      "start_time": "2024-03-09 18:26:24,469750+0000",
+      "execution_latencies": {
+        "small_sync_example-0_0_1-initial_function:entry_point:0": 7.561505556106567,
+        "small_sync_example-0_0_1-syncFunction:sync:": 1.798128366470337,
+        "small_sync_example-0_0_1-secondSyncFunction:sync:": 1.1149189472198486
+      },
+      "transmission_data": [
+        {
+          "transmission_size": 4.629604518413544e-6,
+          "transmission_latency": 2.962404,
+          "from_instance": "small_sync_example-0_0_1-initial_function:entry_point:0",
+          "to_instance": "small_sync_example-0_0_1-syncFunction:sync:",
+          "from_region": { "provider": "aws", "region": "us-east-1" },
+          "to_region": { "provider": "aws", "region": "us-east-1" }
+        },
+        {
+          "transmission_size": 4.641711711883545e-6,
+          "transmission_latency": 1.536726,
+          "from_instance": "small_sync_example-0_0_1-initial_function:entry_point:0",
+          "to_instance": "small_sync_example-0_0_1-secondSyncFunction:sync:",
+          "from_region": { "provider": "aws", "region": "us-east-1" },
+          "to_region": { "provider": "aws", "region": "us-east-1" }
+        }
+      ],
+      "start_hop_latency": 0.769591,
+      "start_hop_data_transfer_size": 6.146728992462158e-8,
+      "start_hop_destination": { "provider": "aws", "region": "us-east-1" }
+    },
+    ...
+  ],
+  "workflow_runtime_samples": [
+    8.746771, ...
+  ],
+  "last_sync_time": "2024-03-09 18:52:40,671496+0000"
+}
 ```
 
 #### Workflow Collector Output Table
@@ -639,18 +680,25 @@ The `workflow_instance_table` is responsible for summarizing and collecting info
 
 - Key: `<workflow_unique_id>`
 - Value (S):
-  - At Instance `<instance_unique_id>`
-    - Favorite home region `<provider_unique_id>:<region_name>`
-    - Favourite home Region Average/Tail Runtime. (in units of seconds)
-    - Projected or estimated number of monthly invocations (For free tier considerations).
-    - At Region `<provider_unique_id>:<region_name>` (Execution Summary)
-      - Region Average/Tail Runtime.
-    - To Instance `<instance_unique_id>` (Invocation Summary)
-      - Probability of At Instance invoking To Instance (in Fractions)
-      - Average data transfer size between instance stages. (In GB)
-      - At Region `<provider_unique_id>:<region_name>`
-        - To Region `<provider_unique_id>:<region_name>`
-          - Region Average/Tail Latency.
+  - Workflow runtime samples `workflow_runtime_samples`.
+  - Total number of invocations of the workflow:
+    - From date `start_time`
+    - To date `end_time`
+    - Total number of invocations.
+  - Start hop destination:
+    - Corresponding start hop data transfer sizes:
+      - Corresponding Start hop latency measurements.
+  - Instance data:
+    - At Instance `<instance_unique_id>`
+      - Number of invocations of this instance.
+      - At Region `<provider_unique_id>:<region_name>`:
+        - Execution Latency samples.
+      - To Instance `<instance_unique_id>`
+        - Probability of At Instance invoking To Instance
+        - At Region `<provider_unique_id>:<region_name>`
+          - To Region `<provider_unique_id>:<region_name>`
+            - Data Transfer samples.
+              - Corresponding Transmission Latency samples.
 
 ##### Workflow Instance Table Example
 

@@ -90,6 +90,7 @@ TAIL_LATENCY_THRESHOLD = 95
 # datetime
 GLOBAL_TIME_ZONE = pytz.utc
 TIME_FORMAT = "%Y-%m-%d %H:%M:%S,%f%z"
+TIME_FORMAT_DAYS = "%Y-%m-%d%z"
 
 # Forgetting factors
 FORGETTING_TIME_DAYS = 30  # 30 days

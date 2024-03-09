@@ -632,8 +632,8 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         return log_events
 
     def get_logs_between(self, function_instance: str, start: datetime, end: datetime) -> list[str]:
-        time_ms_start = int(time.mktime(start.timetuple())) * 1000
-        time_ms_end = int(time.mktime(end.timetuple())) * 1000
+        time_ms_start = int(start.timestamp() * 1000)
+        time_ms_end = int(end.timestamp() * 1000)
         client = self._client("logs")
 
         next_token = None

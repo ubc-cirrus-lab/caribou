@@ -2,6 +2,7 @@ import json
 import re
 from datetime import datetime, timedelta
 from typing import Any, Optional
+import logging
 
 from multi_x_serverless.common.constants import (
     FORGETTING_NUMBER,
@@ -10,10 +11,13 @@ from multi_x_serverless.common.constants import (
     LOG_VERSION,
     TIME_FORMAT,
     WORKFLOW_SUMMARY_TABLE,
+    TIME_FORMAT_DAYS
 )
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
 from multi_x_serverless.common.models.remote_client.remote_client_factory import RemoteClientFactory
 from multi_x_serverless.syncers.workflow_run_sample import WorkflowRunSample
+
+logger = logging.getLogger(__name__)
 
 
 class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
@@ -46,14 +50,16 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
 
     def _get_remote_client(self, provider_region: dict[str, str]) -> RemoteClient:
         if (provider_region["provider"], provider_region["region"]) not in self._region_clients:
-            self._region_clients[
-                (provider_region["provider"], provider_region["region"])
-            ] = RemoteClientFactory.get_remote_client(provider_region["provider"], provider_region["region"])
+            self._region_clients[(provider_region["provider"], provider_region["region"])] = (
+                RemoteClientFactory.get_remote_client(provider_region["provider"], provider_region["region"])
+            )
         return self._region_clients[(provider_region["provider"], provider_region["region"])]
 
     def sync_workflow(self) -> None:
         self._sync_logs()
+        logger.info(f"Syncing logs for {self.workflow_id} finished")
         data_for_upload: str = self._prepare_data_for_upload(self._previous_data)
+        logger.info(f"Uploading data for {self.workflow_id}")
         self._upload_data(data_for_upload)
 
     def _upload_data(self, data_for_upload: str) -> None:
@@ -65,18 +71,25 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
 
     def _sync_logs(self) -> None:
         for function_physical_instance, instance_information in self._deployed_regions.items():
+            logger.info(f"Syncing logs for {function_physical_instance}")
             provider_region = instance_information["deploy_region"]
 
             for time_from, time_to in self._time_intervals_to_sync:
                 self._process_logs_for_instance_for_one_region(
                     function_physical_instance, provider_region, time_from, time_to
                 )
+        self._check_to_forget()
 
     def _process_logs_for_instance_for_one_region(
         self, functions_instance: str, provider_region: dict[str, str], time_from: datetime, time_to: datetime
     ) -> None:
         remote_client = self._get_remote_client(provider_region)
         logs = remote_client.get_logs_between(functions_instance, time_from, time_to)
+        if len(logs) == 0:
+            return
+        logger.info(
+            f"Processing {len(logs)} logs for {functions_instance} in {provider_region} between {time_from} and {time_to}"
+        )
         for log in logs:
             self._process_log_entry(log, provider_region)
 
@@ -84,12 +97,12 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         # If this log entry contains an init duration, then this run has incurred a cold start.
         # We taint the sample with this information.
         if "REPORT" in log_entry and "Init Duration" in log_entry:
-            request_id = self._extract_from_string(log_entry, r"RequestId: (.*?) ")
+            request_id = self._extract_from_string(log_entry, r"RequestId: (.*?)\t")
             if request_id:
                 self._tainted_cold_start_samples.add(request_id)
 
         # Ensure that the log entry is a valid log entry and has the correct version
-        if f"LOG_VERSION ({LOG_VERSION})" not in log_entry and "[INFO]" not in log_entry:
+        if f"LOG_VERSION ({LOG_VERSION})" not in log_entry or "[INFO]" not in log_entry:
             return
 
         # Extract the run_id and log_time from the log entry
@@ -99,11 +112,11 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         log_time = self._extract_from_string(log_entry, r"TIME \((.*?)\)")
         log_time_dt = None
         if log_time:
-            log_time_dt = datetime.strptime(log_time, "%Y-%m-%d %H:%M:%S,%f").replace(tzinfo=GLOBAL_TIME_ZONE)
+            log_time_dt = datetime.strptime(log_time, TIME_FORMAT)
         if not isinstance(log_time_dt, datetime):
             raise ValueError(f"Invalid log time: {log_time}")
 
-        log_day_str = log_time_dt.strftime("%Y-%m-%d")
+        log_day_str = log_time_dt.strftime(TIME_FORMAT_DAYS)
         if log_day_str not in self._daily_invocation_set:
             self._daily_invocation_set[log_day_str] = set()
         self._daily_invocation_set[log_day_str].add(run_id)
@@ -149,12 +162,17 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
                 provider_region,
                 log_time,
             )
+        if "CONDITIONAL_NON_EXECUTION" in log_entry:
+            self._extract_conditional_non_execution_logs(workflow_run_sample, log_entry)
 
     def _check_to_forget(self) -> None:
         # We need to check if the logs we have contain no tainted cold starts
         # If they do, we delete the logs and need to continue to collect
-        for run_id, workflow_run_sample in self._collected_logs.items():
+        run_ids = set(self._collected_logs.keys())
+        for run_id in run_ids:
+            workflow_run_sample = self._collected_logs[run_id]
             if workflow_run_sample.request_ids & self._tainted_cold_start_samples:
+                logger.info(f"Blacklisting run_id {run_id} as it contains a tainted cold start")
                 del self._collected_logs[run_id]
                 self._blacklisted_run_ids.add(run_id)
 
@@ -183,7 +201,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         start_hop_latency = self._extract_from_string(log_entry, r"INIT_LATENCY \((.*?)\)")
         if start_hop_latency and start_hop_latency != "N/A":
             start_hop_latency_fl = float(start_hop_latency)
-            workflow_run_sample.start_hop_latency = start_hop_latency_fl / 1000  # convert to seconds
+            workflow_run_sample.start_hop_latency = start_hop_latency_fl
         workflow_run_sample.start_hop_destination = provider_region
 
     def _extract_invoked_logs(
@@ -211,7 +229,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         if not isinstance(duration, float):
             raise ValueError(f"Invalid duration: {duration}")
 
-        workflow_run_sample.execution_latencies[function_executed] = duration / 1000 # convert to seconds
+        workflow_run_sample.execution_latencies[function_executed] = duration
 
     def _extract_invoking_successor_logs(
         self,
@@ -245,11 +263,25 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         transmission_data.transmission_start_time = log_time
         transmission_data.transmission_size = transmission_size
 
+    def _extract_conditional_non_execution_logs(self, workflow_run_sample: WorkflowRunSample, log_entry: str) -> None:
+        caller_function = self._extract_from_string(log_entry, r"INSTANCE \((.*?)\)")
+        if not isinstance(caller_function, str):
+            raise ValueError(f"Invalid caller_function: {caller_function}")
+
+        callee_function = self._extract_from_string(log_entry, r"SUCCESSOR \((.*?)\)")
+        if not isinstance(callee_function, str):
+            raise ValueError(f"Invalid callee_function: {callee_function}")
+        
+        if caller_function not in workflow_run_sample._non_executions:
+            workflow_run_sample._non_executions[caller_function] = {}
+        if callee_function not in workflow_run_sample._non_executions[caller_function]:
+            workflow_run_sample._non_executions[caller_function][callee_function] = 0
+        workflow_run_sample._non_executions[caller_function][callee_function] += 1
+
     def _prepare_data_for_upload(self, previous_data: dict) -> str:
         previous_daily_invocation_counts = previous_data.get("daily_invocation_counts", {})
 
-        oldest_allowed_date = datetime.now(GLOBAL_TIME_ZONE) - timedelta(days=FORGETTING_TIME_DAYS)
-        self._filter_daily_invocation_counts(previous_daily_invocation_counts, oldest_allowed_date)
+        self._filter_daily_invocation_counts(previous_daily_invocation_counts)
         self._merge_daily_invocation_counts(previous_daily_invocation_counts)
 
         daily_invocation_counts = previous_daily_invocation_counts
@@ -301,10 +333,12 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         return result_logs
 
     def _filter_daily_invocation_counts(
-        self, previous_daily_invocation_counts: dict, oldest_allowed_date: datetime
+        self, previous_daily_invocation_counts: dict
     ) -> None:
-        for date_str in list(previous_daily_invocation_counts.keys()):
-            date = datetime.strptime(date_str, "%Y-%m-%d")
+        oldest_allowed_date = datetime.now(GLOBAL_TIME_ZONE) - timedelta(days=FORGETTING_TIME_DAYS)
+        previous_daily_invocation_counts_keys = set(previous_daily_invocation_counts.keys())
+        for date_str in previous_daily_invocation_counts_keys:
+            date = datetime.strptime(date_str, TIME_FORMAT_DAYS)
             if date < oldest_allowed_date:
                 del previous_daily_invocation_counts[date_str]
 

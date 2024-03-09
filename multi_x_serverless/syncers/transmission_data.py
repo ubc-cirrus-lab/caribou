@@ -1,5 +1,8 @@
 from datetime import datetime, timedelta
 from typing import Any, Optional
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class TransmissionData:  # pylint: disable=too-many-instance-attributes
@@ -34,15 +37,16 @@ class TransmissionData:  # pylint: disable=too-many-instance-attributes
 
     @property
     def is_completed(self) -> bool:
-        return not (
-            all(
-                [
-                    self.transmission_start_time,
-                    self.transmission_end_time,
-                    self.from_instance,
-                    self.to_instance,
-                    self.from_region,
-                    self.to_region,
-                ]
-            )
+        return all(
+            [
+                self.transmission_start_time,
+                self.transmission_end_time,
+                self.from_instance,
+                self.to_instance,
+                self.from_region,
+                self.to_region,
+            ]
         )
+
+    def __str__(self) -> str:
+        return f"TransmissionData({self.taint}, {self.transmission_start_time}, {self.transmission_end_time}, {self.transmission_size}, {self.from_instance}, {self.to_instance}, {self.from_region}, {self.to_region})"  # pylint: disable=line-too-long

@@ -33,6 +33,8 @@ from multi_x_serverless.routing.deployment_algorithms.stochastic_heuristic_deplo
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+logger.addHandler(logging.StreamHandler())
 
 
 class Client:

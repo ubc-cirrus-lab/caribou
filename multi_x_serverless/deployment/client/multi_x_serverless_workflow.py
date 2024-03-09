@@ -22,6 +22,8 @@ from multi_x_serverless.common.utils import get_function_source
 from multi_x_serverless.deployment.client.multi_x_serverless_function import MultiXServerlessFunction
 
 logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+logger.addHandler(logging.StreamHandler())
 
 
 class MultiXServerlessWorkflow:
@@ -118,6 +120,14 @@ class MultiXServerlessWorkflow:
 
         if not conditional:
             # We don't call the function if it is conditional and the condition is not met.
+            log_message = (
+                f"CONDITIONAL_NON_EXECUTION: INSTANCE ({current_instance_name}) calling "
+                f"SUCCESSOR ({successor_instance_name})"
+            )
+            self.log_for_retrieval(
+                log_message,
+                workflow_placement_decision["run_id"],
+            )
 
             # We still need to increment the successor index, because the next function might not be conditional.
             self._successor_index += 1
@@ -532,22 +542,23 @@ class MultiXServerlessWorkflow:
 
                 transmission_taint = argument.get("transmission_taint", "N/A")
 
-                send_to_home_region = False
-                time_invoked_at_client = None
-                pre_loaded_workflow_placement_decision = None
-                if isinstance(argument, dict) and "workflow_placement_decision" in argument:
-                    time_invoked_at_client = argument.get("time_request_sent", None)
-                    pre_loaded_workflow_placement_decision = argument.get("workflow_placement_decision", None)
-                    send_to_home_region = pre_loaded_workflow_placement_decision.get("send_to_home_region", False)
-                    argument = argument["input_data"]
                 if entry_point:
+                    send_to_home_region = False
+                    time_invoked_at_client = None
+                    pre_loaded_workflow_placement_decision = None
+                    if isinstance(argument, dict) and "workflow_placement_decision" in argument:
+                        time_invoked_at_client = argument.get("time_request_sent", None)
+                        pre_loaded_workflow_placement_decision = argument.get("workflow_placement_decision", None)
+                        send_to_home_region = pre_loaded_workflow_placement_decision.get("send_to_home_region", False)
+                        argument = argument.get("input_data", {})
+
                     init_latency = "N/A"
                     if time_invoked_at_client:
                         datetime_invoked_at_client = datetime.strptime(time_invoked_at_client, TIME_FORMAT)
                         datetime_now = datetime.now(GLOBAL_TIME_ZONE)
                         time_difference_datetime = datetime_now - datetime_invoked_at_client
-                        # Get ms from the time difference
-                        init_latency = str(time_difference_datetime.total_seconds() * 1000)
+                        # Get s from the time difference
+                        init_latency = str(time_difference_datetime.total_seconds())
                     if pre_loaded_workflow_placement_decision:
                         wrapper.workflow_placement_decision = pre_loaded_workflow_placement_decision  # type: ignore
                     else:
@@ -565,7 +576,7 @@ class MultiXServerlessWorkflow:
                         f'({wrapper.workflow_placement_decision["current_instance_name"]}) '  # type: ignore
                         f'of workflow {f"{self.name}-{self.version}"} called with PAYLOAD_SIZE '
                         f'({len(json.dumps(payload).encode("utf-8")) / (1024**3)}) GB and '
-                        f"INIT_LATENCY ({init_latency}) ms"
+                        f"INIT_LATENCY ({init_latency}) s"
                     )
                     self.log_for_retrieval(
                         log_message,
