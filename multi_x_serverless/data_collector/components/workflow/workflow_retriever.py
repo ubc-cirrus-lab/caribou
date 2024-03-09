@@ -13,7 +13,7 @@ class WorkflowRetriever(DataRetriever):
 
     def retrieve_all_workflow_ids(self) -> set[str]:
         # Perhaps there could be a get all keys method in the remote client
-        return set(self._client.get_all_values_from_table(self._workflow_summary_table).keys())
+        return set(self._client.get_keys(self._workflow_summary_table))
 
     def retrieve_workflow_summary(self, workflow_unique_id: str) -> dict[str, Any]:
         # Load the summarized logs from the workflow summary table
