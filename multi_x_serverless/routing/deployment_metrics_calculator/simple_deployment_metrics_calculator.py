@@ -16,7 +16,7 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
         carbons_distribution_list: list[float] = []
 
         for _ in range(times):
-            results = self._calculate_workflow(deployment, True)
+            results = self._calculate_workflow(deployment)
             costs_distribution_list.append(results["cost"])
             runtimes_distribution_list.append(results["runtime"])
             carbons_distribution_list.append(results["carbon"])

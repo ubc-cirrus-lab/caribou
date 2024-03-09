@@ -28,18 +28,15 @@ class TestCarbonRetriever(unittest.TestCase):
         hourly_averages_template = {str(hour): 10.0 for hour in range(24)}
         expected_result = {
             region_id: {
-                "averages": {
-                    "overall": 10.0,
-                    **hourly_averages_template.copy()
-                },
-                'units': 'gCO2eq/kWh',
-                'transmission_distances': {},
-                'transmission_distances_unit': 'km'
+                "averages": {"overall": 10.0, **hourly_averages_template.copy()},
+                "units": "gCO2eq/kWh",
+                "transmission_distances": {},
+                "transmission_distances_unit": "km",
             }
             for region_id in self.carbon_retriever._available_regions.keys()
         }
         self.assertEqual(result, expected_result)
-        
+
     def test_get_distance_between_all_regions(self):
         all_regions = {
             "aws:region1": {"latitude": 1.0, "longitude": 1.0},
@@ -48,7 +45,7 @@ class TestCarbonRetriever(unittest.TestCase):
         self.carbon_retriever._available_regions = all_regions
         self.carbon_retriever._get_distance_between_coordinates = MagicMock(return_value=100)
         result = self.carbon_retriever._get_distance_between_all_regions(all_regions["aws:region1"])
-        self.assertEqual(result, {'aws:region1': 100, 'aws:region2': 100})
+        self.assertEqual(result, {"aws:region1": 100, "aws:region2": 100})
 
     def test_get_distance_between_coordinates(self):
         result = self.carbon_retriever._get_distance_between_coordinates(1.0, 1.0, 1.0, 1.0)
@@ -64,10 +61,7 @@ class TestCarbonRetriever(unittest.TestCase):
             {"latitude": 1.0, "longitude": 1.0}, MagicMock(return_value=0)
         )
 
-        self.assertEqual(
-            result,
-            {'carbon_intensity': 0}
-        )
+        self.assertEqual(result, {"carbon_intensity": 0})
 
     def test_get_hour_average_carbon_intensity(self):
         self.carbon_retriever._get_hour_average_carbon_intensity = MagicMock(return_value=1)

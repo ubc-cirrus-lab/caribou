@@ -11,6 +11,7 @@ from multi_x_serverless.routing.deployment_input.components.loader import InputL
 
 class PerformanceLoader(InputLoader):
     _performance_data: dict[str, Any]
+    _placeholder: float  # To surpress warning, will remove later.
 
     def __init__(self, client: RemoteClient) -> None:
         super().__init__(client, PERFORMANCE_REGION_TABLE)
@@ -23,7 +24,10 @@ class PerformanceLoader(InputLoader):
             "relative_performance", SOLVER_INPUT_RELATIVE_PERFORMANCE_DEFAULT
         )
 
-    def get_transmission_latency_distribution(self, from_region_name: str, to_region_name: str, data_transfer_size: float) -> list[float]:
+    def get_transmission_latency_distribution(
+        self, from_region_name: str, to_region_name: str, data_transfer_size: float
+    ) -> list[float]:
+        self._placeholder = data_transfer_size
         # TODO (#121): Implement data transfer size dependent performance data
         # Currently, performance data is not dependent on data transfer size, this should be implemented later.
         return (

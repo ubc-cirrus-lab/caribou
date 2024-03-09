@@ -12,6 +12,7 @@ from multi_x_serverless.common.models.remote_client.remote_client import RemoteC
 from multi_x_serverless.common.utils import str_to_bool
 from multi_x_serverless.data_collector.components.data_retriever import DataRetriever
 
+
 class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attributes
     def __init__(self, client: RemoteClient) -> None:
         super().__init__(client)
@@ -85,7 +86,7 @@ class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attri
             "carbon_intensity": carbon_intensity,
         }
 
-    def _get_distance_between_all_regions(self, from_region: dict[str, float]) -> dict[str, dict[str, float]]:
+    def _get_distance_between_all_regions(self, from_region: dict[str, float]) -> dict[str, float]:
         distance_dict: dict[str, float] = {}
         for region_key_to, available_region_to in self._available_regions.items():
             distance = self._get_distance_between_coordinates(
@@ -96,9 +97,9 @@ class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attri
             )
 
             distance_dict[region_key_to] = distance
-            
+
         return distance_dict
-    
+
     def _get_distance_between_coordinates(
         self, latitude_from: float, longitude_from: float, latitude_to: float, longitude_to: float
     ) -> float:

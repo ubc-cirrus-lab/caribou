@@ -1,4 +1,5 @@
 from typing import Optional
+
 import numpy as np
 
 from multi_x_serverless.common.constants import TAIL_LATENCY_THRESHOLD
@@ -35,7 +36,7 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         if tail_latency_threshold < 50 or tail_latency_threshold > 100:
             raise ValueError("Tail threshold must be between 50 and 100")
         self._tail_latency_threshold: float = tail_latency_threshold
-        
+
         # Initialize remote client
         self._data_collector_client: RemoteClient = Endpoints().get_data_collector_client()
 
@@ -86,10 +87,7 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         self._transmission_latency_distribution_cache: dict[str, np.ndarray] = {}
         self._execution_latency_distribution_cache: dict[str, np.ndarray] = {}
 
-
-    def get_execution_cost_carbon_latency(
-        self, instance_index: int, region_index: int
-    ) -> tuple[float, float, float]:
+    def get_execution_cost_carbon_latency(self, instance_index: int, region_index: int) -> tuple[float, float, float]:
         # Convert the instance and region indices to their names
         instance_name = self._instance_indexer.index_to_value(instance_index)
         region_name = self._region_indexer.index_to_value(region_index)
@@ -101,7 +99,9 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
             execution_latency_distribution = self._execution_latency_distribution_cache[key]
         else:
             # If not, calculate the value and store it in the cache
-            execution_latency_distribution = self._runtime_calculator.calculate_runtime_distribution(instance_name, region_name)
+            execution_latency_distribution = self._runtime_calculator.calculate_runtime_distribution(
+                instance_name, region_name
+            )
             self._execution_latency_distribution_cache[key] = execution_latency_distribution
 
         # Now we can get a random sample from the distribution
@@ -133,7 +133,10 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
             transmission_size_distribution = self._transmission_size_distribution_cache[key]
         else:
             # If not, calculate the value and store it in the cache
-            transmission_size_distribution = self._workflow_loader.get_data_transfer_size_distribution(from_instance_name, to_instance_name)
+            transmission_size_distribution = np.array(
+                self._workflow_loader.get_data_transfer_size_distribution(from_instance_name, to_instance_name)
+            )
+
             self._transmission_size_distribution_cache[key] = transmission_size_distribution
 
         # Pick a random sample from the distribution
@@ -146,22 +149,32 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
             transmission_latency_distribution = self._transmission_latency_distribution_cache[key]
         else:
             # If not, calculate the value and store it in the cache
-            transmission_latency_distribution = self._runtime_calculator.get_transmission_latency_distribution(from_region_name, to_region_name, transmission_size)
+            transmission_latency_distribution = self._runtime_calculator.get_transmission_latency_distribution(
+                from_region_name, to_region_name, transmission_size
+            )
             self._transmission_latency_distribution_cache[key] = transmission_latency_distribution
 
         # Now we can get a random sample from the distribution
         transmission_latency = np.random.choice(transmission_latency_distribution)
 
         # Now we can calculate the cost and carbon
-        cost = self._cost_calculator.calculate_transmission_cost(from_instance_name, to_instance_name, from_region_name, to_region_name, transmission_size, transmission_latency)
-        carbon = self._carbon_calculator.calculate_transmission_carbon(from_region_name, to_region_name, transmission_size, transmission_latency)
+        cost = self._cost_calculator.calculate_transmission_cost(
+            from_instance_name,
+            to_instance_name,
+            from_region_name,
+            to_region_name,
+            transmission_size,
+        )
+        carbon = self._carbon_calculator.calculate_transmission_carbon(
+            from_region_name, to_region_name, transmission_size, transmission_latency
+        )
 
         return (cost, carbon, transmission_latency)
 
     def alter_carbon_settings(self, carbon_setting: Optional[str]) -> None:
-        '''
+        """
         Input should either be 'None' or a string from '0' to '23' indicating the hour of the day.
-        '''
+        """
         self._carbon_calculator.alter_carbon_setting(carbon_setting)
 
     def get_invocation_probability(self, from_instance_index: int, to_instance_index: int) -> float:
@@ -181,3 +194,6 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         invocation_probability = self._workflow_loader.get_invocation_probability(from_instance_name, to_instance_name)
         self._invocation_probability_cache[key] = invocation_probability
         return invocation_probability
+
+    def get_all_regions(self) -> list[str]:
+        return self._region_viability_loader.get_available_regions()

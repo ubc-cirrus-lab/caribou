@@ -19,10 +19,14 @@ class RuntimeCalculator(InputCalculator):
 
         return data_transfer_size_distribution
 
-    def get_transmission_latency_distribution(self, from_region_name: str, to_region_name: str, data_transfer_size: float) -> np.ndarray:
+    def get_transmission_latency_distribution(
+        self, from_region_name: str, to_region_name: str, data_transfer_size: float
+    ) -> np.ndarray:
         # Get the data transfer size distribution
         transmission_latency_distribution = np.array(
-            self._performance_loader.get_transmission_latency_distribution(from_region_name, to_region_name, data_transfer_size)
+            self._performance_loader.get_transmission_latency_distribution(
+                from_region_name, to_region_name, data_transfer_size
+            )
         )
 
         return transmission_latency_distribution
