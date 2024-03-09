@@ -628,75 +628,9 @@ The Workflow Collector is responsible for extracting information from the `workf
 
 ##### Workflow Summary Table Example
 
-Below is an example of the `workflow_summary_table` for a workflow with 2 instances. The Partition Key is the ID of the workflow, and the Sort Key is the timestamp of when the summary was performed. All the runtime and latency are in units of seconds.
+Below is an example of the `workflow_summary_table` for a workflow with 2 instances. All the runtime and latency are in units of seconds.
 
 ```json
-{
-  "key": "test_workflow_id",
-  "sort_key": "2021-2-10T10:10:10",
-  "value": {
-      "time_since_last_sync": 8,
-      "total_invocations": 180,
-      "instance_summary": {
-          "instance_1:entry_point:0": {
-              "invocation_count": 100,
-              "execution_summary": {
-                  "provider_1:region_1": {
-                      "init_data_transfer_size_samples": [0.0072, 0.0075],
-                      "init_latency_samples": [0.00125, 0.00175],
-                      "invocation_count": 90,
-                      "runtime_samples": [26.0, 31.0],
-                      "unit": "s",
-                  },
-                  "provider_1:region_2": {
-                      "init_data_transfer_size_samples": [0.0072, 0.0075],
-                      "init_latency_samples": [0.00125, 0.00175],
-                      "invocation_count": 10,
-                      "runtime_samples": [26.0, 31.0],
-                      "unit": "s",
-                  },
-              },
-              "invocation_summary": {
-                  "instance_2": {
-                      "invocation_count": 80,
-                      "data_transfer_samples": [0.0072, 0.0075],
-                      "transmission_summary": {
-                          "provider_1:region_1": {
-                              "provider_1:region_1": {
-                                  "transmission_count": 50,
-                                  "latency_samples": [0.00125, 0.00175]
-                              },
-                              "provider_1:region_2": {
-                                  "transmission_count": 22,
-                                  "latency_samples": [0.00125, 0.00175]
-                              },
-                          },
-                          "provider_1:region_2": {
-                              "provider_1:region_1": {
-                                  "transmission_count": 8,
-                                  "latency_samples": [0.00125, 0.00175]
-                              }
-                          },
-                      },
-                  }
-              },
-          },
-          "instance_2": {
-              "invocation_count": 80,
-              "execution_summary": {
-                  "provider_1:region_1": {
-                      "invocation_count": 58,
-                      "runtime_samples": [26.0, 31.0]
-                  },
-                  "provider_1:region_2": {
-                      "invocation_count": 22,
-                      "runtime_samples": [26.0, 31.0]
-                  },
-              },
-          },
-      },
-  },
-}
 ```
 
 #### Workflow Collector Output Table

@@ -1,9 +1,12 @@
 from typing import Any
+import logging
 
 from multi_x_serverless.common.constants import WORKFLOW_INSTANCE_TABLE
 from multi_x_serverless.data_collector.components.data_collector import DataCollector
 from multi_x_serverless.data_collector.components.workflow.workflow_exporter import WorkflowExporter
 from multi_x_serverless.data_collector.components.workflow.workflow_retriever import WorkflowRetriever
+
+logger = logging.getLogger(__name__)
 
 
 class WorkflowCollector(DataCollector):
@@ -21,11 +24,12 @@ class WorkflowCollector(DataCollector):
     ) -> (
         None
     ):  # Run on all workflows -> not recommanded as it will take a lot of time, better to run on a specific workflow
+        logger.error("Running on all workflows is not recommended as it will take a lot of time.")
         all_workflow_ids = self._data_retriever.retrieve_all_workflow_ids()
 
         for workflow_unique_id in all_workflow_ids:
             self.collect_single_workflow(workflow_unique_id)
-    
+
     def run_on_workflow(self, workflow_unique_id: str) -> None:
         self.collect_single_workflow(workflow_unique_id)
 

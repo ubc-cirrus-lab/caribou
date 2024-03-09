@@ -183,7 +183,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         start_hop_latency = self._extract_from_string(log_entry, r"INIT_LATENCY \((.*?)\)")
         if start_hop_latency and start_hop_latency != "N/A":
             start_hop_latency_fl = float(start_hop_latency)
-            workflow_run_sample.start_hop_latency = start_hop_latency_fl
+            workflow_run_sample.start_hop_latency = start_hop_latency_fl / 1000  # convert to seconds
         workflow_run_sample.start_hop_destination = provider_region
 
     def _extract_invoked_logs(
@@ -211,7 +211,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         if not isinstance(duration, float):
             raise ValueError(f"Invalid duration: {duration}")
 
-        workflow_run_sample.execution_latencies[function_executed] = duration
+        workflow_run_sample.execution_latencies[function_executed] = duration / 1000 # convert to seconds
 
     def _extract_invoking_successor_logs(
         self,
