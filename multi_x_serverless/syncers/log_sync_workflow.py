@@ -172,7 +172,6 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         for run_id in run_ids:
             workflow_run_sample = self._collected_logs[run_id]
             if workflow_run_sample.request_ids & self._tainted_cold_start_samples:
-                logger.info(f"Blacklisting run_id {run_id} as it contains a tainted cold start")
                 del self._collected_logs[run_id]
                 self._blacklisted_run_ids.add(run_id)
 
