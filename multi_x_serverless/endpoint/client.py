@@ -69,10 +69,12 @@ class Client:
 
         current_time = datetime.now(GLOBAL_TIME_ZONE).strftime(TIME_FORMAT)
 
+        workflow_placement_decision["send_to_home_region"] = send_to_home_region
+
         wrapped_input_data = {
             "input_data": input_data,
-            "send_to_home_region": send_to_home_region,
             "time_request_sent": current_time,
+            "workflow_placement_decision": workflow_placement_decision,
         }
 
         json_payload = json.dumps(wrapped_input_data)

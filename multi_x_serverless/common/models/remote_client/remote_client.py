@@ -160,6 +160,10 @@ class RemoteClient(ABC):  # pylint: disable=too-many-public-methods
         raise NotImplementedError()
 
     @abstractmethod
+    def get_logs_between(self, function_instance: str, start: datetime, end: datetime) -> list[str]:
+        raise NotImplementedError()
+
+    @abstractmethod
     def remove_key(self, table_name: str, key: str) -> None:
         raise NotImplementedError()
 

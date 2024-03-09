@@ -114,3 +114,6 @@ class MockRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
 
     def update_value_in_table(self, table_name: str, key: str, value: str) -> None:
         pass
+
+    def get_logs_between(self, function_instance: str, start: datetime, end: datetime) -> list[str]:
+        pass

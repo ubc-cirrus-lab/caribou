@@ -631,6 +631,39 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
 
         return log_events
 
+    def get_logs_between(self, function_instance: str, start: datetime, end: datetime) -> list[str]:
+        time_ms_start = int(time.mktime(start.timetuple())) * 1000
+        time_ms_end = int(time.mktime(end.timetuple())) * 1000
+        client = self._client("logs")
+
+        next_token = None
+
+        log_events: list[str] = []
+        while True:
+            if next_token:
+                response = client.filter_log_events(
+                    logGroupName=f"/aws/lambda/{function_instance}",
+                    startTime=time_ms_start,
+                    endTime=time_ms_end,
+                    nextToken=next_token,
+                )
+            else:
+                try:
+                    response = client.filter_log_events(
+                        logGroupName=f"/aws/lambda/{function_instance}", startTime=time_ms_start, endTime=time_ms_end
+                    )
+                except client.exceptions.ResourceNotFoundException:
+                    # No logs found
+                    return []
+
+            log_events.extend(event["message"] for event in response.get("events", []))
+
+            next_token = response.get("nextToken")
+            if not next_token:
+                break
+
+        return log_events
+
     def remove_key(self, table_name: str, key: str) -> None:
         client = self._client("dynamodb")
         client.delete_item(TableName=table_name, Key={"key": {"S": key}})

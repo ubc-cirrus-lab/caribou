@@ -1,7 +1,7 @@
 import json
 from typing import Any
 
-from multi_x_serverless.common.constants import FORGETTING_TIME, WORKFLOW_SUMMARY_TABLE
+from multi_x_serverless.common.constants import FORGETTING_TIME_DAYS, WORKFLOW_SUMMARY_TABLE
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
 from multi_x_serverless.data_collector.components.data_retriever import DataRetriever
 
@@ -195,7 +195,7 @@ class WorkflowRetriever(DataRetriever):
             # Final output
             workflow_summary_data[instance_id] = {
                 "projected_monthly_invocations": instance_data["invocation_count"]
-                / (FORGETTING_TIME / (60 * 60 * 24 * 30)),  # invocations per month, FORGETTING_TIME is in seconds
+                / FORGETTING_TIME_DAYS,  # invocations per month, FORGETTING_TIME is in seconds
                 "execution_summary": execution_summary,
                 "invocation_summary": invocation_summary,
             }
