@@ -6,7 +6,7 @@ from multi_x_serverless.routing.deployment_metrics_calculator.deployment_metrics
 
 
 class DeploymentMetricsCalculatorSubclass(DeploymentMetricsCalculator):
-    def _perform_monte_carlo_simulation(self, deployment: list[int], times: int = 1000) -> dict[str, float]:
+    def _perform_monte_carlo_simulation(self, deployment: list[int]) -> dict[str, float]:
         pass
 
 
@@ -101,7 +101,7 @@ class TestDeploymentMetricsCalculator(unittest.TestCase):
         self.assertEqual(metrics["tail_carbon"], 1.0)
 
         # Verify that the mock methods were called with the correct arguments
-        mock_monte_carlo.assert_called_once_with(deployment, 300)
+        mock_monte_carlo.assert_called_once_with(deployment)
 
     def test_is_invoked(self):
         self.input_manager.get_invocation_probability.return_value = 1.0
