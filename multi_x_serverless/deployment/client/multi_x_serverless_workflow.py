@@ -521,7 +521,7 @@ class MultiXServerlessWorkflow:
         def _register_handler(func: Callable[..., Any]) -> Callable[..., Any]:
             handler_name = name if name is not None else func.__name__
 
-            def wrapper(*args, **kwargs):  # type: ignore # pylint: disable=unused-argument
+            def wrapper(*args, **kwargs):  # type: ignore # pylint: disable=unused-argument, too-many-branches
                 # Modify args and kwargs here as needed
                 argument_raw = args[0]
 
@@ -540,7 +540,10 @@ class MultiXServerlessWorkflow:
                             f"Could not get message from argument {argument_raw}, there should be meta information in the message"  # pylint: disable=line-too-long
                         ) from e
 
-                transmission_taint = argument.get("transmission_taint", "N/A")
+                if isinstance(argument, dict):
+                    transmission_taint = argument.get("transmission_taint", "N/A")
+                else:
+                    transmission_taint = "N/A"
 
                 if entry_point:
                     send_to_home_region = False

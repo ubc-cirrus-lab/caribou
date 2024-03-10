@@ -1,5 +1,5 @@
-from typing import Any
 import logging
+from typing import Any
 
 from multi_x_serverless.common.constants import WORKFLOW_INSTANCE_TABLE
 from multi_x_serverless.data_collector.components.data_collector import DataCollector

@@ -2,7 +2,6 @@ import json
 import re
 from datetime import datetime, timedelta
 from typing import Any, Optional
-import logging
 
 from multi_x_serverless.common.constants import (
     FORGETTING_NUMBER,
@@ -10,14 +9,12 @@ from multi_x_serverless.common.constants import (
     GLOBAL_TIME_ZONE,
     LOG_VERSION,
     TIME_FORMAT,
+    TIME_FORMAT_DAYS,
     WORKFLOW_SUMMARY_TABLE,
-    TIME_FORMAT_DAYS
 )
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
 from multi_x_serverless.common.models.remote_client.remote_client_factory import RemoteClientFactory
 from multi_x_serverless.syncers.workflow_run_sample import WorkflowRunSample
-
-logger = logging.getLogger(__name__)
 
 
 class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
@@ -50,16 +47,14 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
 
     def _get_remote_client(self, provider_region: dict[str, str]) -> RemoteClient:
         if (provider_region["provider"], provider_region["region"]) not in self._region_clients:
-            self._region_clients[(provider_region["provider"], provider_region["region"])] = (
-                RemoteClientFactory.get_remote_client(provider_region["provider"], provider_region["region"])
-            )
+            self._region_clients[
+                (provider_region["provider"], provider_region["region"])
+            ] = RemoteClientFactory.get_remote_client(provider_region["provider"], provider_region["region"])
         return self._region_clients[(provider_region["provider"], provider_region["region"])]
 
     def sync_workflow(self) -> None:
         self._sync_logs()
-        logger.info(f"Syncing logs for {self.workflow_id} finished")
         data_for_upload: str = self._prepare_data_for_upload(self._previous_data)
-        logger.info(f"Uploading data for {self.workflow_id}")
         self._upload_data(data_for_upload)
 
     def _upload_data(self, data_for_upload: str) -> None:
@@ -71,7 +66,6 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
 
     def _sync_logs(self) -> None:
         for function_physical_instance, instance_information in self._deployed_regions.items():
-            logger.info(f"Syncing logs for {function_physical_instance}")
             provider_region = instance_information["deploy_region"]
 
             for time_from, time_to in self._time_intervals_to_sync:
@@ -87,9 +81,6 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         logs = remote_client.get_logs_between(functions_instance, time_from, time_to)
         if len(logs) == 0:
             return
-        logger.info(
-            f"Processing {len(logs)} logs for {functions_instance} in {provider_region} between {time_from} and {time_to}"
-        )
         for log in logs:
             self._process_log_entry(log, provider_region)
 
@@ -270,12 +261,12 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         callee_function = self._extract_from_string(log_entry, r"SUCCESSOR \((.*?)\)")
         if not isinstance(callee_function, str):
             raise ValueError(f"Invalid callee_function: {callee_function}")
-        
-        if caller_function not in workflow_run_sample._non_executions:
-            workflow_run_sample._non_executions[caller_function] = {}
-        if callee_function not in workflow_run_sample._non_executions[caller_function]:
-            workflow_run_sample._non_executions[caller_function][callee_function] = 0
-        workflow_run_sample._non_executions[caller_function][callee_function] += 1
+
+        if caller_function not in workflow_run_sample.non_executions:
+            workflow_run_sample.non_executions[caller_function] = {}
+        if callee_function not in workflow_run_sample.non_executions[caller_function]:
+            workflow_run_sample.non_executions[caller_function][callee_function] = 0
+        workflow_run_sample.non_executions[caller_function][callee_function] += 1
 
     def _prepare_data_for_upload(self, previous_data: dict) -> str:
         previous_daily_invocation_counts = previous_data.get("daily_invocation_counts", {})
@@ -331,9 +322,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         result_logs = [log[1] for log in sorted_by_start_time_oldest_first]
         return result_logs
 
-    def _filter_daily_invocation_counts(
-        self, previous_daily_invocation_counts: dict
-    ) -> None:
+    def _filter_daily_invocation_counts(self, previous_daily_invocation_counts: dict) -> None:
         oldest_allowed_date = datetime.now(GLOBAL_TIME_ZONE) - timedelta(days=FORGETTING_TIME_DAYS)
         previous_daily_invocation_counts_keys = set(previous_daily_invocation_counts.keys())
         for date_str in previous_daily_invocation_counts_keys:

@@ -57,7 +57,7 @@ class TestClient(unittest.TestCase):
         # Verify the remote client was invoked with the correct parameters
         mock_get_remote_client.assert_called_with("aws", "us-east-1")
         mock_remote_client.invoke_function.assert_called_once_with(
-            message='{"input_data": {"key": "value"}, "send_to_home_region": false, "time_request_sent": "2022-01-01 00:00:00,000000"}',
+            message='{"input_data": {"key": "value"}, "time_request_sent": "2022-01-01 00:00:00,000000", "workflow_placement_decision": {"current_instance_name": "instance1", "workflow_placement": {"current_deployment": {"instances": {"instance1": {"provider_region": {"provider": "aws", "region": "us-east-1"}, "identifier": "function1"}}, "expiry_time": "2022-01-01 00:01:00"}, "home_deployment": {"instances": {"instance1": {"provider_region": {"provider": "aws", "region": "us-west-2"}, "identifier": "function1"}}}}, "send_to_home_region": false}}',
             identifier="function1",
             workflow_instance_id="0",
         )

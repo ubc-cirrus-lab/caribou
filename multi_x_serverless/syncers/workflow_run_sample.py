@@ -16,7 +16,7 @@ class WorkflowRunSample:  # pylint: disable=too-many-instance-attributes
         self.start_hop_latency: float = 0.0
         self.start_hop_data_transfer_size: float = 0.0
         self.start_hop_destination: Optional[dict[str, str]] = None
-        self._non_executions: dict[str, dict[str, int]] = {}
+        self.non_executions: dict[str, dict[str, int]] = {}
 
     @property
     def duration(self) -> timedelta:
@@ -59,6 +59,6 @@ class WorkflowRunSample:  # pylint: disable=too-many-instance-attributes
                 "start_hop_latency": self.start_hop_latency,
                 "start_hop_data_transfer_size": self.start_hop_data_transfer_size,
                 "start_hop_destination": self.start_hop_destination,
-                "non_executions": self._non_executions,
+                "non_executions": self.non_executions,
             },
         )

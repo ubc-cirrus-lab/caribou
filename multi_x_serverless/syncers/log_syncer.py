@@ -1,7 +1,7 @@
 import json
+import logging
 from datetime import datetime, timedelta
 from typing import Optional
-import logging
 
 from multi_x_serverless.common.constants import (
     DEPLOYMENT_MANAGER_RESOURCE_TABLE,
@@ -21,15 +21,15 @@ class LogSyncer:
     def __init__(self) -> None:
         self.endpoints = Endpoints()
         self._workflow_summary_client = self.endpoints.get_datastore_client()
+        self._deployment_manager_client = self.endpoints.get_deployment_manager_client()
         self._region_clients: dict[tuple[str, str], RemoteClient] = {}
 
     def sync(self) -> None:
-        currently_deployed_workflows = self.endpoints.get_deployment_manager_client().get_all_values_from_table(
+        currently_deployed_workflows = self._deployment_manager_client.get_all_values_from_table(
             DEPLOYMENT_MANAGER_RESOURCE_TABLE
         )
 
         for workflow_id, deployment_manager_config_str in currently_deployed_workflows.items():
-            logger.info(f"Syncing workflow {workflow_id}")
             previous_data_str = self._workflow_summary_client.get_value_from_table(WORKFLOW_SUMMARY_TABLE, workflow_id)
             previous_data = json.loads(previous_data_str) if previous_data_str else {}
 
@@ -64,9 +64,11 @@ class LogSyncer:
         time_intervals_to_sync = []
         while start_time < current_time:
             end_time = start_time + timedelta(days=1)
-            if end_time > current_time:
+            if end_time > current_time:  # pylint: disable=consider-using-min-builtin
                 end_time = current_time
             time_intervals_to_sync.append((start_time, end_time))
             start_time = end_time
+            if start_time >= current_time:
+                break
 
         return time_intervals_to_sync

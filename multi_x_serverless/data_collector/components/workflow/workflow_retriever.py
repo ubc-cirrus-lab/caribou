@@ -1,8 +1,8 @@
 import json
-from typing import Any
 from datetime import datetime
+from typing import Any
 
-from multi_x_serverless.common.constants import WORKFLOW_SUMMARY_TABLE, TIME_FORMAT_DAYS, TIME_FORMAT
+from multi_x_serverless.common.constants import TIME_FORMAT_DAYS, WORKFLOW_SUMMARY_TABLE
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
 from multi_x_serverless.data_collector.components.data_retriever import DataRetriever
 
@@ -39,7 +39,7 @@ class WorkflowRetriever(DataRetriever):
             "instance_summary": instance_summary,
         }
 
-    def _construct_total_number_of_invocations(self, daily_invocation_counts: dict[str, int]) -> dict[str, int]:
+    def _construct_total_number_of_invocations(self, daily_invocation_counts: dict[str, int]) -> dict[str, Any]:
         dates = [datetime.strptime(date, TIME_FORMAT_DAYS) for date in daily_invocation_counts.keys()]
 
         start_time = min(dates)
@@ -54,8 +54,8 @@ class WorkflowRetriever(DataRetriever):
         }
 
     def _construct_summaries(self, logs: list[dict[str, Any]]) -> tuple[dict[str, Any], dict[str, Any]]:
-        start_hop_summary = {}
-        instance_summary = {}
+        start_hop_summary: dict[str, Any] = {}
+        instance_summary: dict[str, Any] = {}
 
         for log in logs:
             self._extend_start_hop_summary(start_hop_summary, log)
@@ -77,7 +77,9 @@ class WorkflowRetriever(DataRetriever):
                     log.get("start_hop_latency")
                 )
 
-    def _extend_instance_summary(self, instance_summary: dict[str, Any], log: dict[str, Any]) -> None:
+    def _extend_instance_summary(  # pylint: disable=too-many-branches
+        self, instance_summary: dict[str, Any], log: dict[str, Any]
+    ) -> None:
         # Handle execution latencies
         for instance, latency in log["execution_latencies"].items():
             if instance not in instance_summary:
@@ -151,5 +153,3 @@ class WorkflowRetriever(DataRetriever):
                 caller_callee_data["invocation_probability"] = caller_callee_data["invoked"] / (
                     caller_callee_data["invoked"] + caller_callee_data["non_executions"]
                 )
-
-        return instance_summary
