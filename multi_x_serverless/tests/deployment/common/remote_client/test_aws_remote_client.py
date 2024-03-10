@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import patch
 from unittest.mock import MagicMock
+from datetime import datetime, timedelta
 
 from multi_x_serverless.common.models.remote_client.aws_remote_client import AWSRemoteClient
 from multi_x_serverless.deployment.common.deploy.models.resource import Resource
@@ -8,7 +9,6 @@ from multi_x_serverless.deployment.common.deploy.models.resource import Resource
 import json
 import zipfile
 import tempfile
-import datetime
 
 from botocore.exceptions import ClientError
 from unittest.mock import call
@@ -746,10 +746,36 @@ class TestAWSRemoteClient(unittest.TestCase):
         # Mock the return value of filter_log_events
         mock_logs_client.filter_log_events.return_value = {"events": [{"message": "log_message"}]}
 
-        result = client.get_logs_since("function_instance", datetime.datetime.now(GLOBAL_TIME_ZONE))
+        result = client.get_logs_since("function_instance", datetime.now(GLOBAL_TIME_ZONE))
 
         # Check that the return value is correct
         self.assertEqual(result, ["log_message"])
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_get_logs_between(self, mock_client):
+        # Mocking the scenario where the logs are retrieved successfully
+        mock_logs_client = MagicMock()
+        mock_client.return_value = mock_logs_client
+
+        client = AWSRemoteClient("region1")
+
+        # Mock the return value of filter_log_events
+        mock_logs_client.filter_log_events.return_value = {"events": [{"message": "log_message"}]}
+
+        start_time = datetime.now()
+        end_time = start_time + timedelta(hours=1)
+
+        result = client.get_logs_between("function_instance", start_time, end_time)
+
+        # Check that the return value is correct
+        self.assertEqual(result, ["log_message"])
+
+        # Check that filter_log_events was called with the correct arguments
+        mock_logs_client.filter_log_events.assert_called_with(
+            logGroupName="/aws/lambda/function_instance",
+            startTime=int(start_time.timestamp() * 1000),
+            endTime=int(end_time.timestamp() * 1000),
+        )
 
     @patch.object(AWSRemoteClient, "_client")
     def test_remove_key(self, mock_client):
