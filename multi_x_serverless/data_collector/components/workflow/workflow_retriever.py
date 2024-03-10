@@ -2,7 +2,7 @@ import json
 from typing import Any
 from datetime import datetime
 
-from multi_x_serverless.common.constants import WORKFLOW_SUMMARY_TABLE, TIME_FORMAT_DAYS
+from multi_x_serverless.common.constants import WORKFLOW_SUMMARY_TABLE, TIME_FORMAT_DAYS, TIME_FORMAT
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
 from multi_x_serverless.data_collector.components.data_retriever import DataRetriever
 
@@ -21,7 +21,7 @@ class WorkflowRetriever(DataRetriever):
         workflow_summarized: str = self._client.get_value_from_table(self._workflow_summary_table, workflow_unique_id)
 
         # Consolidate all the timestamps together to one summary and return the result
-        return self._consolidate_log(workflow_summarized)
+        return self._transform_workflow_summary(workflow_summarized)
 
     def _transform_workflow_summary(self, workflow_summarized: str) -> dict[str, Any]:
         summarized_workflow = json.loads(workflow_summarized)
@@ -47,7 +47,11 @@ class WorkflowRetriever(DataRetriever):
 
         total_invocations = sum(daily_invocation_counts.values())
 
-        return {"start_time": start_time, "end_time": end_time, "total_invocations": total_invocations}
+        return {
+            "start_time": start_time.strftime(TIME_FORMAT_DAYS),
+            "end_time": end_time.strftime(TIME_FORMAT_DAYS),
+            "total_invocations": total_invocations,
+        }
 
     def _construct_summaries(self, logs: list[dict[str, Any]]) -> tuple[dict[str, Any], dict[str, Any]]:
         start_hop_summary = {}
@@ -57,7 +61,7 @@ class WorkflowRetriever(DataRetriever):
             self._extend_start_hop_summary(start_hop_summary, log)
             self._extend_instance_summary(instance_summary, log)
 
-        return start_hop_summary
+        return start_hop_summary, instance_summary
 
     def _extend_start_hop_summary(self, start_hop_summary: dict[str, Any], log: dict[str, Any]) -> None:
         start_hop_destination = log.get("start_hop_destination", None)
@@ -77,82 +81,73 @@ class WorkflowRetriever(DataRetriever):
         # Handle execution latencies
         for instance, latency in log["execution_latencies"].items():
             if instance not in instance_summary:
-                instance_summary["execution_summary"][instance] = {"invocations": 0, "regions": {}, "to_instance": {}}
-            instance_summary["execution_summary"][instance]["invocations"] += 1
+                instance_summary[instance] = {"invocations": 0, "regions": {}, "to_instance": {}}
+            instance_summary[instance]["invocations"] += 1
             provider_region = log["start_hop_destination"]["provider"] + ":" + log["start_hop_destination"]["region"]
-            if provider_region not in instance_summary["execution_summary"][instance]["regions"]:
-                instance_summary["execution_summary"][instance]["regions"][provider_region] = {
-                    "execution_latency_samples": []
-                }
-            instance_summary["execution_summary"][instance]["regions"][provider_region][
-                "execution_latency_samples"
-            ].append(latency)
+            if provider_region not in instance_summary[instance]["regions"]:
+                instance_summary[instance]["regions"][provider_region] = {"execution_latency_samples": []}
+            instance_summary[instance]["regions"][provider_region]["execution_latency_samples"].append(latency)
 
         # Handle regions to regions transmission
         for data in log["transmission_data"]:
             from_instance = data["from_instance"]
             to_instance = data["to_instance"]
             if from_instance not in instance_summary:
-                instance_summary["transmission_summary"][from_instance] = {}
-            if to_instance not in instance_summary["transmission_summary"][from_instance]:
-                instance_summary["transmission_summary"][from_instance][to_instance] = {
+                instance_summary[from_instance] = {"invocations": 0, "regions": {}, "to_instance": {}}
+            if to_instance not in instance_summary[from_instance]["to_instance"]:
+                instance_summary[from_instance]["to_instance"][to_instance] = {
                     "invoked": 0,
                     "regions_to_regions": {},
+                    "non_executions": 0,
                 }
-            instance_summary["transmission_summary"][from_instance][to_instance]["invoked"] += 1
+            instance_summary[from_instance]["to_instance"][to_instance]["invoked"] += 1
 
             from_region_str = data["from_region"]["provider"] + ":" + data["from_region"]["region"]
             to_region_str = data["to_region"]["provider"] + ":" + data["to_region"]["region"]
-            if (
-                from_region_str
-                not in instance_summary["transmission_summary"][from_instance][to_instance]["regions_to_regions"]
-            ):
-                instance_summary["transmission_summary"][from_instance][to_instance]["regions_to_regions"][
-                    from_region_str
-                ] = {}
+            if from_region_str not in instance_summary[from_instance]["to_instance"][to_instance]["regions_to_regions"]:
+                instance_summary[from_instance]["to_instance"][to_instance]["regions_to_regions"][from_region_str] = {}
             if (
                 to_region_str
-                not in instance_summary["transmission_summary"][from_instance][to_instance]["regions_to_regions"][
+                not in instance_summary[from_instance]["to_instance"][to_instance]["regions_to_regions"][
                     from_region_str
                 ]
             ):
-                instance_summary["transmission_summary"][from_instance][to_instance]["regions_to_regions"][
-                    from_region_str
-                ][to_region_str] = {}
+                instance_summary[from_instance]["to_instance"][to_instance]["regions_to_regions"][from_region_str][
+                    to_region_str
+                ] = {}
 
             transmission_data_transfer_size = data["transmission_size"]
             if (
                 transmission_data_transfer_size
-                not in instance_summary["transmission_summary"][from_instance][to_instance]["regions_to_regions"][
+                not in instance_summary[from_instance]["to_instance"][to_instance]["regions_to_regions"][
                     from_region_str
                 ][to_region_str]
             ):
-                instance_summary["transmission_summary"][from_instance][to_instance]["regions_to_regions"][
-                    from_region_str
-                ][to_region_str][transmission_data_transfer_size] = []
-            instance_summary["transmission_summary"][from_instance][to_instance]["regions_to_regions"][from_region_str][
+                instance_summary[from_instance]["to_instance"][to_instance]["regions_to_regions"][from_region_str][
+                    to_region_str
+                ][transmission_data_transfer_size] = []
+            instance_summary[from_instance]["to_instance"][to_instance]["regions_to_regions"][from_region_str][
                 to_region_str
             ][transmission_data_transfer_size].append(data["transmission_latency"])
 
         # Handle non-executions
         non_executions = log.get("non_executions", {})
         for caller, non_execution in non_executions.items():
-            if caller not in instance_summary["transmission_summary"]:
-                instance_summary["transmission_summary"][caller] = {}
+            if caller not in instance_summary:
+                instance_summary[caller] = {"invocations": 0, "regions": {}, "to_instance": {}}
             for callee, count in non_execution.items():
-                if callee not in instance_summary["transmission_summary"][caller]:
-                    instance_summary["transmission_summary"][caller][callee] = {
+                if callee not in instance_summary[caller]:
+                    instance_summary[caller]["to_instance"][callee] = {
                         "invoked": 0,
                         "regions_to_regions": {},
                         "non_executions": 0,
                     }
 
-                instance_summary["transmission_summary"][caller][callee] += count
+                instance_summary[caller]["to_instance"][callee]["non_executions"] += count
 
         # Calculate the invocation probability
-        transmission_summary = instance_summary.get("transmission_summary", {})
-        for caller, callee in transmission_summary.items():
-            for callee, caller_callee_data in callee.items():
+        for caller, to_instance in instance_summary.items():
+            for callee, caller_callee_data in to_instance["to_instance"].items():
                 caller_callee_data["invocation_probability"] = caller_callee_data["invoked"] / (
                     caller_callee_data["invoked"] + caller_callee_data["non_executions"]
                 )
