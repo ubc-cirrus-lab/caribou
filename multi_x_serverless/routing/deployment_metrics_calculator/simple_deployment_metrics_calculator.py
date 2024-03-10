@@ -37,9 +37,7 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
                 if len(distribution) > 1 and np.std(distribution, ddof=1) > 0:
                     ci_low, ci_up = st.t.interval(0.95, len(distribution) - 1, loc=mean, scale=st.sem(distribution))
                     ci_width = ci_up - ci_low
-                    relative_ci_width = (
-                        ci_width / mean if mean else float("inf")
-                    )
+                    relative_ci_width = ci_width / mean if mean else float("inf")
                 else:
                     if all_within_threshold:
                         break
