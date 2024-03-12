@@ -46,7 +46,6 @@ class TestWorkflowRetriever(unittest.TestCase):
 
     def test_transform_workflow_summary(self):
         # Set up the mocks
-        self.workflow_retriever._construct_total_number_of_invocations = Mock(return_value="total_invocations")
         self.workflow_retriever._construct_summaries = Mock(return_value=("start_hop_summary", "instance_summary"))
 
         # Set up the test data
@@ -70,25 +69,7 @@ class TestWorkflowRetriever(unittest.TestCase):
         }
         self.assertEqual(result, expected_result)
 
-        # Check that _construct_total_number_of_invocations and _construct_summaries were called with the correct arguments
-        self.workflow_retriever._construct_total_number_of_invocations.assert_called_once_with("daily_counts")
         self.workflow_retriever._construct_summaries.assert_called_once_with("logs")
-
-    def test_construct_total_number_of_invocations(self):
-        # Set up the test data
-        now = datetime.now(GLOBAL_TIME_ZONE)
-        daily_invocation_counts = {(now - timedelta(days=i)).strftime(TIME_FORMAT_DAYS): i for i in range(5)}
-
-        # Call the method
-        result = self.workflow_retriever._construct_total_number_of_invocations(daily_invocation_counts)
-
-        # Check that the result is as expected
-        expected_result = {
-            "start_time": (now - timedelta(days=4)).strftime(TIME_FORMAT_DAYS),
-            "end_time": now.strftime(TIME_FORMAT_DAYS),
-            "total_invocations": sum(range(5)),
-        }
-        self.assertEqual(result, expected_result)
 
     def test_construct_summaries(self):
         # Set up the mocks

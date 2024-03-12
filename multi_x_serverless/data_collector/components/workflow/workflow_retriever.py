@@ -26,31 +26,13 @@ class WorkflowRetriever(DataRetriever):
     def _transform_workflow_summary(self, workflow_summarized: str) -> dict[str, Any]:
         summarized_workflow = json.loads(workflow_summarized)
 
-        total_number_of_invocations = self._construct_total_number_of_invocations(
-            summarized_workflow.get("daily_invocation_counts", {})
-        )
-
         start_hop_summary, instance_summary = self._construct_summaries(summarized_workflow.get("logs", {}))
 
         return {
             "workflow_runtime_samples": summarized_workflow["workflow_runtime_samples"],
-            "total_number_of_invocations": total_number_of_invocations,
+            "daily_invocation_counts": summarized_workflow.get("daily_invocation_counts", {}),
             "start_hop_summary": start_hop_summary,
             "instance_summary": instance_summary,
-        }
-
-    def _construct_total_number_of_invocations(self, daily_invocation_counts: dict[str, int]) -> dict[str, Any]:
-        dates = [datetime.strptime(date, TIME_FORMAT_DAYS) for date in daily_invocation_counts.keys()]
-
-        start_time = min(dates)
-        end_time = max(dates)
-
-        total_invocations = sum(daily_invocation_counts.values())
-
-        return {
-            "start_time": start_time.strftime(TIME_FORMAT_DAYS),
-            "end_time": end_time.strftime(TIME_FORMAT_DAYS),
-            "total_invocations": total_invocations,
         }
 
     def _construct_summaries(self, logs: list[dict[str, Any]]) -> tuple[dict[str, Any], dict[str, Any]]:
