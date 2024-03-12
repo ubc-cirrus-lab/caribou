@@ -82,9 +82,6 @@ class MockRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
     ) -> None:
         pass
 
-    def get_all_values_from_sort_key_table(self, table_name: str, key: str) -> list[str]:
-        pass
-
     def get_keys(self, table_name: str) -> list[str]:
         pass
 
@@ -94,13 +91,7 @@ class MockRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
     def create_sync_tables(self) -> None:
         pass
 
-    def get_last_value_from_sort_key_table(self, table_name: str, key: str) -> tuple[str, str]:
-        pass
-
-    def put_value_to_sort_key_table(self, table_name: str, key: str, sort_key: str, value: str) -> None:
-        pass
-
-    def get_logs_since_last_sync(self, function_instance: str, last_synced_time: datetime) -> list[str]:
+    def get_logs_since(self, function_instance: str, since: datetime) -> list[str]:
         pass
 
     def remove_key(self, table_name: str, key: str) -> None:
@@ -124,5 +115,5 @@ class MockRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
     def update_value_in_table(self, table_name: str, key: str, value: str) -> None:
         pass
 
-    def remove_sort_key(self, table_name: str, key: str) -> None:
+    def get_logs_between(self, function_instance: str, start: datetime, end: datetime) -> list[str]:
         pass

@@ -16,21 +16,6 @@ def create_table(dynamodb, table_name):
         return
     except dynamodb.exceptions.ResourceNotFoundException:
         pass
-    if table_name == constants.WORKFLOW_SUMMARY_TABLE:
-        # Create the table with a sort key
-        dynamodb.create_table(
-            TableName=table_name,
-            AttributeDefinitions=[
-                {"AttributeName": "key", "AttributeType": "S"},
-                {"AttributeName": "sort_key", "AttributeType": "S"},
-            ],
-            KeySchema=[
-                {"AttributeName": "key", "KeyType": "HASH"},
-                {"AttributeName": "sort_key", "KeyType": "RANGE"},
-            ],
-            BillingMode="PAY_PER_REQUEST",
-        )
-        return
     if table_name in [constants.SYNC_MESSAGES_TABLE, constants.SYNC_PREDECESSOR_COUNTER_TABLE]:
         client = AWSRemoteClient(constants.GLOBAL_SYSTEM_REGION)
         client.create_sync_tables()

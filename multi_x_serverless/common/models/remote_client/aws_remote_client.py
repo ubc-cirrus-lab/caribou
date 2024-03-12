@@ -590,21 +590,6 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         response = client.get_object(Bucket="multi-x-serverless-resources", Key=key)
         return response["Body"].read()
 
-    def get_all_values_from_sort_key_table(self, table_name: str, key: str) -> list[str]:
-        client = self._client("dynamodb")
-        try:
-            response = client.query(
-                TableName=table_name,
-                KeyConditionExpression="#pk = :pkValue",
-                ExpressionAttributeValues={":pkValue": {"S": key}},
-                ExpressionAttributeNames={"#pk": "key"},
-            )
-        except client.exceptions.DynamoDBError as e:
-            logger.error("Error querying DynamoDB: %s", e)
-            return []
-
-        return [item.get("value", {}).get("S", "") for item in response.get("Items", [])]
-
     def get_keys(self, table_name: str) -> list[str]:
         client = self._client("dynamodb")
         response = client.scan(TableName=table_name)
@@ -615,40 +600,8 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
             return [item["key"]["S"] for item in items]
         return []
 
-    def get_last_value_from_sort_key_table(self, table_name: str, key: str) -> tuple[str, str]:
-        client = self._client("dynamodb")
-        try:
-            response = client.query(
-                TableName=table_name,
-                KeyConditionExpression="#pk = :pkValue",
-                ExpressionAttributeValues={":pkValue": {"S": key}},
-                ExpressionAttributeNames={"#pk": "key"},
-                ScanIndexForward=False,  # Sorts the results in descending order based on the sort key
-                Limit=1,
-            )
-        except client.exceptions.DynamoDBError as e:
-            logger.error("Error querying DynamoDB: %s", e)
-            return "", ""
-
-        # Check if any items were returned
-        if response.get("Items"):
-            item = response["Items"][0]
-            sort_key = item.get("sort_key", {}).get("S", "")
-            value = item.get("value", {}).get("S", "")
-            return sort_key, value
-
-        # Return empty if no items found
-        return "", ""
-
-    def put_value_to_sort_key_table(self, table_name: str, key: str, sort_key: str, value: str) -> None:
-        client = self._client("dynamodb")
-        client.put_item(
-            TableName=table_name,
-            Item={"key": {"S": key}, "sort_key": {"S": sort_key}, "value": {"S": value}},
-        )
-
-    def get_logs_since_last_sync(self, function_instance: str, last_synced_time: datetime) -> list[str]:
-        last_synced_time_ms_since_epoch = int(time.mktime(last_synced_time.timetuple())) * 1000
+    def get_logs_since(self, function_instance: str, since: datetime) -> list[str]:
+        time_ms_since_epoch = int(time.mktime(since.timetuple())) * 1000
         client = self._client("logs")
 
         next_token = None
@@ -658,13 +611,46 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
             if next_token:
                 response = client.filter_log_events(
                     logGroupName=f"/aws/lambda/{function_instance}",
-                    startTime=last_synced_time_ms_since_epoch,
+                    startTime=time_ms_since_epoch,
                     nextToken=next_token,
                 )
             else:
                 try:
                     response = client.filter_log_events(
-                        logGroupName=f"/aws/lambda/{function_instance}", startTime=last_synced_time_ms_since_epoch
+                        logGroupName=f"/aws/lambda/{function_instance}", startTime=time_ms_since_epoch
+                    )
+                except client.exceptions.ResourceNotFoundException:
+                    # No logs found
+                    return []
+
+            log_events.extend(event["message"] for event in response.get("events", []))
+
+            next_token = response.get("nextToken")
+            if not next_token:
+                break
+
+        return log_events
+
+    def get_logs_between(self, function_instance: str, start: datetime, end: datetime) -> list[str]:
+        time_ms_start = int(start.timestamp() * 1000)
+        time_ms_end = int(end.timestamp() * 1000)
+        client = self._client("logs")
+
+        next_token = None
+
+        log_events: list[str] = []
+        while True:
+            if next_token:
+                response = client.filter_log_events(
+                    logGroupName=f"/aws/lambda/{function_instance}",
+                    startTime=time_ms_start,
+                    endTime=time_ms_end,
+                    nextToken=next_token,
+                )
+            else:
+                try:
+                    response = client.filter_log_events(
+                        logGroupName=f"/aws/lambda/{function_instance}", startTime=time_ms_start, endTime=time_ms_end
                     )
                 except client.exceptions.ResourceNotFoundException:
                     # No logs found
@@ -728,15 +714,3 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         repository_name = repository_name.lower()
         client = self._client("ecr")
         client.delete_repository(repositoryName=repository_name, force=True)
-
-    def remove_sort_key(self, table_name: str, key: str) -> None:
-        client = self._client("dynamodb")
-        response = client.query(
-            TableName=table_name,
-            KeyConditionExpression="#pk = :pkValue",
-            ExpressionAttributeValues={":pkValue": {"S": key}},
-            ExpressionAttributeNames={"#pk": "key"},
-        )
-
-        for item in response["Items"]:
-            client.delete_item(TableName=table_name, Key={"key": {"S": key}, "sort_key": item["sort_key"]})

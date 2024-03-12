@@ -51,7 +51,7 @@ def deploy(ctx: click.Context) -> None:
     factory: DeployerFactory = ctx.obj["factory"]
     config: Config = factory.create_config_obj()
     deployer: Deployer = factory.create_deployer(config=config)
-    deployer.deploy(config.home_regions)
+    deployer.deploy([config.home_region])
 
 
 @cli.command("run", help="Run the workflow.")
@@ -69,8 +69,9 @@ def run(_: click.Context, argument: Optional[str], workflow_id: str) -> None:
 
 @cli.command("data_collect", help="Run data collection.")
 @click.argument("collector", required=True, type=click.Choice(["carbon", "provider", "performance", "workflow", "all"]))
+@click.option("--workflow_id", "-w", help="The workflow id to collect data for.")
 @click.pass_context
-def data_collect(_: click.Context, collector: str) -> None:
+def data_collect(_: click.Context, collector: str, workflow_id: Optional[str]) -> None:
     if collector in ("provider", "all"):
         provider_collector = ProviderCollector()
         provider_collector.run()
@@ -80,9 +81,11 @@ def data_collect(_: click.Context, collector: str) -> None:
     if collector in ("performance", "all"):
         performance_collector = PerformanceCollector()
         performance_collector.run()
+    if workflow_id is None:
+        raise click.ClickException("Workflow id must be provided for the workflow and all collectors.")
     if collector in ("workflow", "all"):
         workflow_collector = WorkflowCollector()
-        workflow_collector.run()
+        workflow_collector.run_on_workflow(workflow_id)
 
 
 @cli.command("log_sync", help="Run log synchronization.")

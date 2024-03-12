@@ -25,7 +25,7 @@ In this document we will discuss the design decisions that have been made for th
 7. [Deployment Algorithms](#deployment-algorithms)
     1. [Coarse Grained](#coarse-grained)
     2. [Stochastic Heuristic Descent](#stochastic-heuristic-descent)
-    3. [Brute Force](#brute-force)
+    3. [Fine Grained](#fine-grained)
 8. [References](#references)
 
 ## Dataflow DAG Model
@@ -369,9 +369,98 @@ Different parts of this dictionary are provided by different components of the s
   At re-deployment, if a function was re-deployed to a new region, the new region is added to the dictionary.
   This is theoretically not necessary as the information is also contained in the `workflow_function_descriptions`, however, it is more efficient to have this information in a separate dictionary.
 
+### Solver Manager Resource
+
+The solver manager checks whether to trigger the deployment algorithm to solve the workflow.
+The information required for this component is stored in the `solver_update_checker_resources_table`.
+The structure of the solver manager resource is as follows:
+
+```json
+{
+  "workflow_id": "image_processing_light-0.0.1", 
+  "workflow_config": "{\"workflow_name\": ..."
+}
+```
+
+This information is set by the deployment client and is used by the deployment algorithm update checker to determine whether to trigger the deployment algorithm to solve the workflow.
+
 ### Workflow Config
 
 The workflow config is a dictionary of information with regards to the workflow.
+An example of the structure of the workflow config is as follows:
+
+```json
+{
+  "workflow_name": "image_processing_light",
+  "workflow_version": "0.0.1",
+  "workflow_id": "image_processing_light-0.0.1",
+  "instances": {
+    "image_processing_light-0_0_1-GetInput:entry_point:0": {
+      "instance_name": "image_processing_light-0_0_1-GetInput:entry_point:0",
+      "regions_and_providers": {
+        "allowed_regions": [
+          { "provider": "aws", "region": "us-east-1" },
+          { "provider": "aws", "region": "us-east-2" },
+          { "provider": "aws", "region": "us-west-1" },
+          { "provider": "aws", "region": "us-west-2" }
+        ],
+        "disallowed_regions": null,
+        "providers": { "aws": { "config": { "timeout": 60, "memory": 128 } } }
+      },
+      "succeeding_instances": [
+        "image_processing_light-0_0_1-Flip:image_processing_light-0_0_1-GetInput_0_0:1"
+      ],
+      "preceding_instances": [],
+      "dependent_sync_predecessors": []
+    },
+    "image_processing_light-0_0_1-Flip:image_processing_light-0_0_1-GetInput_0_0:1": {
+      "instance_name": "image_processing_light-0_0_1-Flip:image_processing_light-0_0_1-GetInput_0_0:1",
+      "regions_and_providers": {
+        "allowed_regions": [
+          { "provider": "aws", "region": "us-east-1" },
+          { "provider": "aws", "region": "us-east-2" },
+          { "provider": "aws", "region": "us-west-1" },
+          { "provider": "aws", "region": "us-west-2" }
+        ],
+        "disallowed_regions": null,
+        "providers": { "aws": { "config": { "timeout": 60, "memory": 128 } } }
+      },
+      "succeeding_instances": [],
+      "preceding_instances": [
+        "image_processing_light-0_0_1-GetInput:entry_point:0"
+      ],
+      "dependent_sync_predecessors": []
+    }
+  },
+  "home_region": { "provider": "aws", "region": "us-east-1" },
+  "estimated_invocations_per_month": 1000000,
+  "constraints": {
+    "hard_resource_constraints": {
+      "cost": { "type": "absolute", "value": 1000 },
+      "runtime": { "type": "absolute", "value": 1000 },
+      "carbon": { "type": "absolute", "value": 1000 }
+    },
+    "soft_resource_constraints": {
+      "cost": null,
+      "runtime": null,
+      "carbon": null
+    },
+    "priority_order": ["cost", "runtime", "carbon"]
+  },
+  "regions_and_providers": {
+    "allowed_regions": [
+      { "provider": "aws", "region": "us-east-1" },
+      { "provider": "aws", "region": "us-east-2" },
+      { "provider": "aws", "region": "us-west-1" },
+      { "provider": "aws", "region": "us-west-2" }
+    ],
+    "disallowed_regions": [],
+    "providers": { "aws": { "config": { "timeout": 60, "memory": 128 } } }
+  },
+  "num_calls_in_one_month": 0,
+  "solver": ""
+}
+```
 
 ### Deployment Package
 
@@ -600,98 +689,62 @@ Unlike the other Data Collectors, the Workflow Collector should not and will not
 
 #### Workflow Collector Input Table
 
-The Workflow Collector is responsible for extracting information from the `workflow_summary_table`, which is managed by the Datastore Syncer. The Datastore Syncer should retrieve all the invocations log of the workflow from locally data centers and then remove the local entries only after finishing summarization. Below are the tentative expected formats of this table:
-
-- Key: `<workflow_unique_id>`
-- Sort Key (N): Timestamp of last summary (last summarized by Datastore Syncer)
-- Value (S):
-  - Time between last summary to current summary (Months between summaries)
-  - Total number of invocations of the workflow.
-  - At Instance `<instance_unique_id>`
-    - Number of total invocation of this instance
-    - This instance initial input data size empirical samples.
-    - This instance initial latency empirical samples.
-    - At Region `<provider_unique_id>:<region_name>`
-      - Number of invocation (of this instance in this region)
-      - Region Average/Tail Runtime.
-    - To Instance `<instance_unique_id>`
-      - Number of calls from parent instance to this instance.
-      - Average data transfer size between instance stages.
-      - At Region `<provider_unique_id>:<region_name>`
-        - To Region `<provider_unique_id>:<region_name>`
-          - Number transmission
-          - Region Average/Tail Latency.
+The Workflow Collector is responsible for extracting information from the `workflow_summary_table`, which is managed by the Datastore Syncer. The Datastore Syncer should retrieve all the invocations log of the workflow from locally data centers and then remove the local entries only after finishing summarization.
 
 ##### Workflow Summary Table Example
 
-Below is an example of the `workflow_summary_table` for a workflow with 2 instances. The Partition Key is the ID of the workflow, and the Sort Key is the timestamp of when the summary was performed. All the runtime and latency are in units of seconds.
+Below is an example of the `workflow_summary_table` for a workflow with 2 instances. All the runtime and latency are in units of seconds.
 
 ```json
 {
-  "key": "test_workflow_id",
-  "sort_key": "2021-2-10T10:10:10",
-  "value": {
-      "time_since_last_sync": 8,
-      "total_invocations": 180,
-      "instance_summary": {
-          "instance_1:entry_point:0": {
-              "invocation_count": 100,
-              "execution_summary": {
-                  "provider_1:region_1": {
-                      "init_data_transfer_size_samples": [0.0072, 0.0075],
-                      "init_latency_samples": [0.00125, 0.00175],
-                      "invocation_count": 90,
-                      "runtime_samples": [26.0, 31.0],
-                      "unit": "s",
-                  },
-                  "provider_1:region_2": {
-                      "init_data_transfer_size_samples": [0.0072, 0.0075],
-                      "init_latency_samples": [0.00125, 0.00175],
-                      "invocation_count": 10,
-                      "runtime_samples": [26.0, 31.0],
-                      "unit": "s",
-                  },
-              },
-              "invocation_summary": {
-                  "instance_2": {
-                      "invocation_count": 80,
-                      "data_transfer_samples": [0.0072, 0.0075],
-                      "transmission_summary": {
-                          "provider_1:region_1": {
-                              "provider_1:region_1": {
-                                  "transmission_count": 50,
-                                  "latency_samples": [0.00125, 0.00175]
-                              },
-                              "provider_1:region_2": {
-                                  "transmission_count": 22,
-                                  "latency_samples": [0.00125, 0.00175]
-                              },
-                          },
-                          "provider_1:region_2": {
-                              "provider_1:region_1": {
-                                  "transmission_count": 8,
-                                  "latency_samples": [0.00125, 0.00175]
-                              }
-                          },
-                      },
-                  }
-              },
-          },
-          "instance_2": {
-              "invocation_count": 80,
-              "execution_summary": {
-                  "provider_1:region_1": {
-                      "invocation_count": 58,
-                      "runtime_samples": [26.0, 31.0]
-                  },
-                  "provider_1:region_2": {
-                      "invocation_count": 22,
-                      "runtime_samples": [26.0, 31.0]
-                  },
-              },
-          },
+  "daily_invocation_counts": { "2024-03-09+0000": 15 },
+  "logs": [
+    {
+      "run_id": "eca39262530c4033a9f29343a39d71ca",
+      "runtime": 8.746771,
+      "start_time": "2024-03-09 18:26:24,469750+0000",
+      "execution_latencies": {
+        "small_sync_example-0_0_1-initial_function:entry_point:0": {
+            "latency": 7.561505556106567,
+            "provider_region": "aws:us-east-1",
+        },
+        "small_sync_example-0_0_1-syncFunction:sync:": {
+            "latency": 1.798128366470337,
+            "provider_region": "aws:us-east-1",
+        },
+        "small_sync_example-0_0_1-secondSyncFunction:sync:": {
+            "latency": 1.1149189472198486,
+            "provider_region": "aws:us-east-1",
+        }
       },
-  },
+      "transmission_data": [
+        {
+          "transmission_size": 4.629604518413544e-6,
+          "transmission_latency": 2.962404,
+          "from_instance": "small_sync_example-0_0_1-initial_function:entry_point:0",
+          "to_instance": "small_sync_example-0_0_1-syncFunction:sync:",
+          "from_region": { "provider": "aws", "region": "us-east-1" },
+          "to_region": { "provider": "aws", "region": "us-east-1" }
+        },
+        {
+          "transmission_size": 4.641711711883545e-6,
+          "transmission_latency": 1.536726,
+          "from_instance": "small_sync_example-0_0_1-initial_function:entry_point:0",
+          "to_instance": "small_sync_example-0_0_1-secondSyncFunction:sync:",
+          "from_region": { "provider": "aws", "region": "us-east-1" },
+          "to_region": { "provider": "aws", "region": "us-east-1" }
+        }
+      ],
+      "start_hop_latency": 0.769591,
+      "start_hop_data_transfer_size": 6.146728992462158e-8,
+      "start_hop_destination": { "provider": "aws", "region": "us-east-1" }
+    },
+    ...
+  ],
+  "workflow_runtime_samples": [
+    8.746771, ...
+  ],
+  "last_sync_time": "2024-03-09 18:52:40,671496+0000"
 }
 ```
 
@@ -701,18 +754,25 @@ The `workflow_instance_table` is responsible for summarizing and collecting info
 
 - Key: `<workflow_unique_id>`
 - Value (S):
-  - At Instance `<instance_unique_id>`
-    - Favorite home region `<provider_unique_id>:<region_name>`
-    - Favourite home Region Average/Tail Runtime. (in units of seconds)
-    - Projected or estimated number of monthly invocations (For free tier considerations).
-    - At Region `<provider_unique_id>:<region_name>` (Execution Summary)
-      - Region Average/Tail Runtime.
-    - To Instance `<instance_unique_id>` (Invocation Summary)
-      - Probability of At Instance invoking To Instance (in Fractions)
-      - Average data transfer size between instance stages. (In GB)
-      - At Region `<provider_unique_id>:<region_name>`
-        - To Region `<provider_unique_id>:<region_name>`
-          - Region Average/Tail Latency.
+  - Workflow runtime samples `workflow_runtime_samples`.
+  - Total number of invocations of the workflow:
+    - From date `start_time`
+    - To date `end_time`
+    - Total number of invocations.
+  - Start hop destination:
+    - Corresponding start hop data transfer sizes:
+      - Corresponding Start hop latency measurements.
+  - Instance data:
+    - At Instance `<instance_unique_id>`
+      - Number of invocations of this instance.
+      - At Region `<provider_unique_id>:<region_name>`:
+        - Execution Latency samples.
+      - To Instance `<instance_unique_id>`
+        - Probability of At Instance invoking To Instance
+        - At Region `<provider_unique_id>:<region_name>`
+          - To Region `<provider_unique_id>:<region_name>`
+            - Data Transfer samples.
+              - Corresponding Transmission Latency samples.
 
 ##### Workflow Instance Table Example
 
@@ -720,36 +780,44 @@ Below is an example of the `workflow_instance_table` output for a workflow with 
 
 ```json
 {
-  "instance_1": {
-      "projected_monthly_invocations": 12.5,
-      "execution_summary": {
-          "provider_1:region_1": {"runtime_samples": [26.0, 31.0], "unit": "s"},
-          "provider_1:region_2": {"runtime_samples": [26.0, 31.5], "unit": "s"},
+  "workflow_runtime_samples": [5.857085, 5.740116, 7.248474],
+  "daily_invocation_counts": { "2024-03-12+0000": 3 },
+  "start_hop_summary": {
+    "aws:us-east-1": { "3.3527612686157227e-08": [0.52388, 0.514119, 0.519146] }
+  },
+  "instance_summary": {
+    "image_processing_light-0_0_1-GetInput:entry_point:0": {
+      "invocations": 3,
+      "executions": {
+        "aws:us-east-1": [
+          1.140042781829834, 1.129507303237915, 1.0891644954681396
+        ]
       },
-      "invocation_summary": {
-          "instance_2": {
-              "probability_of_invocation": 0.8,
-              "data_transfer_samples": [0.0072, 0.0075],
-              "transmission_summary": {
-                  "provider_1:region_1": {
-                      "provider_1:region_1": {"latency_samples": [0.00125, 0.00175], "unit": "s"},
-                      "provider_1:region_2": {"latency_samples": [0.00125, 0.00175], "unit": "s"},
-                  },
-                  "provider_1:region_2": {
-                      "provider_1:region_1": {"latency_samples": [0.095, 0.125], "unit": "s"},
-                  },
-              },
+      "to_instance": {
+        "image_processing_light-0_0_1-Flip:image_processing_light-0_0_1-GetInput_0_0:1": {
+          "invoked": 3,
+          "regions_to_regions": {
+            "aws:us-east-1": {
+              "aws:us-east-1": {
+                "2.9960647225379944e-06": [1.217899, 1.18531, 1.174224]
+              }
+            }
           },
+          "non_executions": 0,
+          "invocation_probability": 1.0
+        }
+      }
+    },
+    "image_processing_light-0_0_1-Flip:image_processing_light-0_0_1-GetInput_0_0:1": {
+      "invocations": 3,
+      "executions": {
+        "aws:us-east-1": [
+          4.638583183288574, 4.554178953170776, 6.073627948760986
+        ]
       },
-  },
-  "instance_2": {
-      "projected_monthly_invocations": 11.25,
-      "execution_summary": {
-          "provider_1:region_1": {"runtime_samples": [12.4, 12.6], "unit": "s"},
-          "provider_1:region_2": {"runtime_samples": [12.4, 12.6], "unit": "s"},
-      },
-      "invocation_summary": {},
-  },
+      "to_instance": {}
+    }
+  }
 }
 ```
 

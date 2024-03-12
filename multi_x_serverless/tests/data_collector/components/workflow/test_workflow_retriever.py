@@ -1,7 +1,9 @@
 import json
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
+from datetime import datetime, timedelta
 from multi_x_serverless.data_collector.components.workflow.workflow_retriever import WorkflowRetriever
+from multi_x_serverless.common.constants import TIME_FORMAT_DAYS, GLOBAL_TIME_ZONE
 
 
 class TestWorkflowRetriever(unittest.TestCase):
@@ -11,237 +13,144 @@ class TestWorkflowRetriever(unittest.TestCase):
         self.maxDiff = None
 
     def test_retrieve_all_workflow_ids(self):
-        self.mock_client.get_all_values_from_table.return_value = {"id1": "value1", "id2": "value2"}
+        # Set up the mock
+        self.mock_client.get_keys.return_value = ["workflow1", "workflow2", "workflow3"]
+
+        # Call the method
         result = self.workflow_retriever.retrieve_all_workflow_ids()
-        self.assertEqual(result, {"id1", "id2"})
+
+        # Check that the result is as expected
+        expected_result = {"workflow1", "workflow2", "workflow3"}
+        self.assertEqual(result, expected_result)
+
+        # Check that get_keys was called with the correct argument
+        self.mock_client.get_keys.assert_called_once_with(self.workflow_retriever._workflow_summary_table)
 
     def test_retrieve_workflow_summary(self):
-        self.mock_client.get_all_values_from_sort_key_table.return_value = [
-            '{"time_since_last_sync": 30, "total_invocations": 10, "instance_summary": {"instance1": {"invocation_count": 1, "execution_summary": {"aws:region1": {"invocation_count": 1, "runtime_samples": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]}}}}}',
-        ]
-        self.workflow_retriever._available_regions = {"aws:region1": {}}
+        # Set up the mocks
+        self.mock_client.get_value_from_table.return_value = "workflow_summary"
+        self.workflow_retriever._transform_workflow_summary = Mock(return_value={"transformed": "workflow_summary"})
 
-        result = self.workflow_retriever.retrieve_workflow_summary("id1")
+        # Call the method
+        result = self.workflow_retriever.retrieve_workflow_summary("workflow_id")
+
+        # Check that the result is as expected
+        expected_result = {"transformed": "workflow_summary"}
+        self.assertEqual(result, expected_result)
+
+        # Check that get_value_from_table and _transform_workflow_summary were called with the correct arguments
+        self.mock_client.get_value_from_table.assert_called_once_with(
+            self.workflow_retriever._workflow_summary_table, "workflow_id"
+        )
+        self.workflow_retriever._transform_workflow_summary.assert_called_once_with("workflow_summary")
+
+    def test_transform_workflow_summary(self):
+        # Set up the mocks
+        self.workflow_retriever._construct_summaries = Mock(return_value=("start_hop_summary", "instance_summary"))
+
+        # Set up the test data
+        workflow_summarized = json.dumps(
+            {
+                "workflow_runtime_samples": "runtime_samples",
+                "daily_invocation_counts": "daily_counts",
+                "logs": "logs",
+            }
+        )
+
+        # Call the method
+        result = self.workflow_retriever._transform_workflow_summary(workflow_summarized)
+
+        # Check that the result is as expected
         expected_result = {
-            "total_invocations": 10,
+            "workflow_runtime_samples": "runtime_samples",
+            "daily_invocation_counts": "daily_counts",
+            "start_hop_summary": "start_hop_summary",
+            "instance_summary": "instance_summary",
+        }
+        self.assertEqual(result, expected_result)
+
+        self.workflow_retriever._construct_summaries.assert_called_once_with("logs")
+
+    def test_construct_summaries(self):
+        # Set up the mocks
+        with patch.object(
+            self.workflow_retriever, "_extend_start_hop_summary", autospec=True
+        ) as mock_extend_start_hop_summary, patch.object(
+            self.workflow_retriever, "_extend_instance_summary", autospec=True
+        ) as mock_extend_instance_summary:
+            # Set up the test data
+            logs = [{"log": i} for i in range(5)]
+
+            # Call the method
+            start_hop_summary, instance_summary = self.workflow_retriever._construct_summaries(logs)
+
+            # Check that the result is as expected
+            self.assertEqual(start_hop_summary, {})
+            self.assertEqual(instance_summary, {})
+
+            # Check that _extend_start_hop_summary and _extend_instance_summary were called with the correct arguments
+            for log in logs:
+                mock_extend_start_hop_summary.assert_any_call(start_hop_summary, log)
+                mock_extend_instance_summary.assert_any_call(instance_summary, log)
+
+    def test_extend_start_hop_summary(self):
+        # Set up the test data
+        start_hop_summary = {}
+        log = {
+            "start_hop_destination": {"provider": "provider1", "region": "region1"},
+            "start_hop_data_transfer_size": "1.0",
+            "start_hop_latency": "0.1",
+        }
+
+        # Call the method
+        self.workflow_retriever._extend_start_hop_summary(start_hop_summary, log)
+
+        # Check that the start_hop_summary dictionary was updated as expected
+        expected_result = {
+            "provider1:region1": {
+                1.0: ["0.1"],
+            },
+        }
+        self.assertEqual(start_hop_summary, expected_result)
+
+    def test_extend_instance_summary(self):
+        # Set up the test data
+        instance_summary = {}
+        log = {
+            "execution_latencies": {"instance1": {"provider_region": "provider1:region1", "latency": "0.1"}},
+            "start_hop_destination": {"provider": "provider1", "region": "region1"},
+            "transmission_data": [
+                {
+                    "from_instance": "instance1",
+                    "to_instance": "instance2",
+                    "from_region": {"provider": "provider1", "region": "region1"},
+                    "to_region": {"provider": "provider2", "region": "region2"},
+                    "transmission_size": "1.0",
+                    "transmission_latency": "0.1",
+                }
+            ],
+            "non_executions": {"instance1": {"instance2": 1}},
+        }
+
+        # Call the method
+        self.workflow_retriever._extend_instance_summary(instance_summary, log)
+
+        # Check that the instance_summary dictionary was updated as expected
+        expected_result = {
             "instance1": {
-                "projected_monthly_invocations": 1.0,
-                "execution_summary": {
-                    "aws:region1": {
-                        "runtime_samples": [0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001],
-                        "invocation_count": 1,
-                        "unit": "s",
+                "invocations": 1,
+                "executions": {"provider1:region1": ["0.1"]},
+                "to_instance": {
+                    "instance2": {
+                        "invoked": 0,
+                        "regions_to_regions": {},
+                        "non_executions": 1,
+                        "invocation_probability": 0.0,
                     }
                 },
-                "invocation_summary": {},
-            },
+            }
         }
-        self.assertEqual(result, expected_result)
-
-    def test_consolidate_logs(self):
-        logs = [
-            json.dumps(
-                {
-                    "time_since_last_sync": 240,
-                    "total_invocations": 200,
-                    "instance_summary": {
-                        "instance_1": {
-                            "invocation_count": 100,
-                            "execution_summary": {
-                                "provider_1:region_1": {
-                                    "init_data_transfer_size_samples": [2],  # In GB
-                                    "init_latency_samples": [500],  # In ms
-                                    "invocation_count": 80,
-                                    "runtime_samples": [25],  # In ms
-                                },
-                                "provider_1:region_2": {
-                                    "init_data_transfer_size_samples": [6],  # In GB
-                                    "init_latency_samples": [300],  # In ms
-                                    "invocation_count": 20,
-                                    "runtime_samples": [30, 30, 30],  # In ms
-                                },
-                            },
-                            "invocation_summary": {
-                                "instance_2": {
-                                    "invocation_count": 80,
-                                    "data_transfer_samples": [1, 11],  # In GB
-                                    "transmission_summary": {
-                                        "provider_1:region_1": {
-                                            "provider_1:region_1": {
-                                                "transmission_count": 65,
-                                                "latency_samples": [
-                                                    200,
-                                                    200,
-                                                ],  # In ms
-                                            },
-                                            "provider_1:region_2": {
-                                                "transmission_count": 5,
-                                                "latency_samples": [
-                                                    150,
-                                                    150,
-                                                ],  # In ms
-                                            },
-                                        },
-                                        "provider_1:region_2": {
-                                            "provider_1:region_1": {
-                                                "transmission_count": 10,
-                                                "latency_samples": [
-                                                    100,
-                                                    100,
-                                                ],  # In ms
-                                            }
-                                        },
-                                    },
-                                }
-                            },
-                        },
-                        "instance_2": {
-                            "invocation_count": 100,
-                            "execution_summary": {
-                                "provider_1:region_1": {
-                                    "invocation_count": 70,
-                                    "runtime_samples": [10, 10],  # In ms
-                                },
-                                "provider_1:region_2": {
-                                    "invocation_count": 10,
-                                    "runtime_samples": [15, 15, 15],  # In ms
-                                },
-                            },
-                        },
-                    },
-                }
-            ),
-            json.dumps(
-                {
-                    "time_since_last_sync": 240,
-                    "total_invocations": 300,
-                    "instance_summary": {
-                        "instance_1": {
-                            "invocation_count": 100,
-                            "execution_summary": {
-                                "provider_1:region_1": {
-                                    "init_data_transfer_size_samples": [1],  # In GB
-                                    "init_latency_samples": [200],  # In ms
-                                    "invocation_count": 20,
-                                    "runtime_samples": [25, 25],  # In ms
-                                },
-                                "provider_1:region_2": {
-                                    "init_data_transfer_size_samples": [4],  # In GB
-                                    "init_latency_samples": [150],  # In ms
-                                    "invocation_count": 80,
-                                    "runtime_samples": [30, 30],  # In ms
-                                },
-                            },
-                            "invocation_summary": {
-                                "instance_2": {
-                                    "invocation_count": 80,
-                                    "data_transfer_samples": [10, 10],  # In GB
-                                    "transmission_summary": {
-                                        "provider_1:region_1": {
-                                            "provider_1:region_1": {
-                                                "transmission_count": 65,
-                                                "latency_samples": [
-                                                    200,
-                                                    200,
-                                                ],  # In ms
-                                            },
-                                            "provider_1:region_2": {
-                                                "transmission_count": 5,
-                                                "latency_samples": [
-                                                    150,
-                                                    150,
-                                                ],  # In ms
-                                            },
-                                        },
-                                        "provider_1:region_2": {
-                                            "provider_1:region_1": {
-                                                "transmission_count": 10,
-                                                "latency_samples": [
-                                                    100,
-                                                    100,
-                                                ],  # In ms
-                                            }
-                                        },
-                                    },
-                                }
-                            },
-                        },
-                        "instance_2": {
-                            "invocation_count": 80,
-                            "execution_summary": {
-                                "provider_1:region_1": {
-                                    "invocation_count": 70,
-                                    "runtime_samples": [10, 10, 10, 10],  # In ms
-                                },
-                                "provider_1:region_2": {
-                                    "invocation_count": 10,
-                                    "runtime_samples": [15, 15, 15, 15],  # In ms
-                                },
-                            },
-                        },
-                    },
-                }
-            ),
-        ]
-
-        self.workflow_retriever._available_regions = {"provider_1:region_1": {}, "provider_1:region_2": {}}
-
-        result = self.workflow_retriever._consolidate_logs(logs=logs)
-
-        expected_result = {
-            "total_invocations": 500,
-            "instance_1": {
-                "projected_monthly_invocations": 12.5,
-                "execution_summary": {
-                    "provider_1:region_1": {
-                        "runtime_samples": [0.025, 0.025, 0.025],
-                        "invocation_count": 100,
-                        "unit": "s",
-                        "init_data_transfer_size_samples": [2, 1],
-                        "init_latency_samples": [0.5, 0.2],
-                    },
-                    "provider_1:region_2": {
-                        "runtime_samples": [0.03, 0.03, 0.03, 0.03, 0.03],
-                        "invocation_count": 100,
-                        "unit": "s",
-                        "init_data_transfer_size_samples": [6, 4],
-                        "init_latency_samples": [0.3, 0.15],
-                    },
-                },
-                "invocation_summary": {
-                    "instance_2": {
-                        "probability_of_invocation": 0.8,
-                        "data_transfer_samples": [1, 11, 10, 10],
-                        "transmission_summary": {
-                            "provider_1:region_1": {
-                                "provider_1:region_1": {"latency_samples": [0.2, 0.2, 0.2, 0.2], "unit": "s"},
-                                "provider_1:region_2": {"latency_samples": [0.15, 0.15, 0.15, 0.15], "unit": "s"},
-                            },
-                            "provider_1:region_2": {
-                                "provider_1:region_1": {"latency_samples": [0.1, 0.1, 0.1, 0.1], "unit": "s"}
-                            },
-                        },
-                    }
-                },
-            },
-            "instance_2": {
-                "projected_monthly_invocations": 11.25,
-                "execution_summary": {
-                    "provider_1:region_1": {
-                        "runtime_samples": [0.01, 0.01, 0.01, 0.01, 0.01, 0.01],
-                        "invocation_count": 140,
-                        "unit": "s",
-                    },
-                    "provider_1:region_2": {
-                        "runtime_samples": [0.015, 0.015, 0.015, 0.015, 0.015, 0.015, 0.015],
-                        "invocation_count": 20,
-                        "unit": "s",
-                    },
-                },
-                "invocation_summary": {},
-            },
-        }
-        self.assertEqual(result, expected_result)
+        self.assertEqual(instance_summary, expected_result)
 
 
 if __name__ == "__main__":

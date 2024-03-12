@@ -7,6 +7,7 @@ from multi_x_serverless.deployment.common.deploy.deployment_packager import (
 )
 from multi_x_serverless.deployment.common.config.config import Config
 from multi_x_serverless.deployment.common.deploy.models.workflow import Workflow
+import zipfile
 import os
 import shutil
 

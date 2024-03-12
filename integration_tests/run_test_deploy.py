@@ -12,7 +12,7 @@ def test_deploy(workflow_dir: str):
     config: Config = deployer_factory.create_config_obj()
     deployer: Deployer = deployer_factory.create_deployer(config=config)
 
-    deployer.deploy(config.home_regions)
+    deployer.deploy([config.home_region])
 
     remote_client = IntegrationTestRemoteClient()
 

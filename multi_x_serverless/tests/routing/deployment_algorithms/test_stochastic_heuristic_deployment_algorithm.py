@@ -27,7 +27,7 @@ class TestStochasticHeuristicDeploymentAlgorithm(unittest.TestCase):
 
         # Assert
         self.assertEqual(self._algorithm._learning_rate, 1)
-        self.assertEqual(self._algorithm._num_iterations, 16)
+        self.assertEqual(self._algorithm._num_iterations, 24)
         self.assertEqual(self._algorithm._temperature, 1.0)
 
     def test_run_algorithm(self):
@@ -77,9 +77,13 @@ class TestStochasticHeuristicDeploymentAlgorithm(unittest.TestCase):
         self._algorithm._ranker.number_one_priority = "metric1"
         current_deployment_metrics = {"metric1": 1.0, "metric2": 2.0}
         new_deployment_metrics = {"metric1": 0.5, "metric2": 1.5}
+        new_deployment = [1, 1, 1]
+        current_deployment = [1, 1, 1]
 
         # Act
-        result = self._algorithm._is_improvement(current_deployment_metrics, new_deployment_metrics)
+        result = self._algorithm._is_improvement(
+            current_deployment_metrics, new_deployment_metrics, new_deployment, current_deployment
+        )
 
         # Assert
         self.assertTrue(result)
@@ -111,12 +115,25 @@ class TestStochasticHeuristicDeploymentAlgorithm(unittest.TestCase):
     def test_choose_new_region(self):
         # Arrange
         self._algorithm._per_instance_permitted_regions = [[0, 1, 2], [0, 1, 2], [0, 1, 2]]
+        self._algorithm._bias_probability = 0.0
 
         # Act
         result = self._algorithm._choose_new_region(1)
 
         # Assert
         self.assertIn(result, [0, 1, 2])
+
+    def test_choose_biased_region(self):
+        # Arrange
+        self._algorithm._bias_regions = set([0, 2])
+        permitted_regions = [0, 1, 2]
+
+        # Act
+        result = self._algorithm._choose_biased_region(permitted_regions)
+
+        # Assert
+        self.assertIn(result, permitted_regions)
+        self.assertTrue(result in self._algorithm._bias_regions or result in permitted_regions)
 
 
 if __name__ == "__main__":

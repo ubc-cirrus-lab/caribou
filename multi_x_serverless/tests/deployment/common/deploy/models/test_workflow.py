@@ -16,7 +16,7 @@ class TestWorkflow(unittest.TestCase):
     def setUp(self):
         self.test_dir = tempfile.mkdtemp()
         self.config = Config({}, self.test_dir)
-        self.config.project_config["home_regions"] = [{"provider": "provider1", "region": "region1"}]
+        self.config.project_config["home_region"] = {"provider": "provider1", "region": "region1"}
         self.function = Mock(spec=Function)
         self.function.deploy = Mock(return_value=True)
         self.function_instance = Mock(spec=FunctionInstance)
@@ -52,7 +52,7 @@ class TestWorkflow(unittest.TestCase):
     def test_repr(self):
         self.assertEqual(
             self.workflow.__repr__(),
-            f"Workflow(name=workflow_name, resources=[{self.function}], functions=[{self.function_instance}, {self.function_instance2}], edges=[('function_instance_1::', 'function_instance_2::')], config=Config(project_config={{'home_regions': [{{'provider': 'provider1', 'region': 'region1'}}]}}, project_dir={self.test_dir}))",
+            f"Workflow(name=workflow_name, resources=[{self.function}], functions=[{self.function_instance}, {self.function_instance2}], edges=[('function_instance_1::', 'function_instance_2::')], config=Config(project_config={{'home_region': {{'provider': 'provider1', 'region': 'region1'}}}}, project_dir={self.test_dir}))",
         )
 
     def test_get_function_description(self):
@@ -306,7 +306,7 @@ class TestWorkflow(unittest.TestCase):
 
         # Mock the _config object
         self.workflow._config = MagicMock()
-        self.workflow._config.home_regions = ["region1"]
+        self.workflow._config.home_region = "region1"
 
         # Call the method
         result = self.workflow._get_workflow_placement()
@@ -322,7 +322,6 @@ class TestWorkflow(unittest.TestCase):
             },
             "metrics": {},
         }
-
         # Assert that the result matches the expected result
         self.assertEqual(result, expected_result)
 

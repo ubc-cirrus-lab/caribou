@@ -29,7 +29,7 @@ class WorkflowBuilder:
         if len(regions) == 0:
             raise RuntimeError("At least one region must be defined")
 
-        home_regions_resources: list[Function] = []
+        home_region_resources: list[Function] = []
 
         # Both of these are later used to build the DAG
         function_name_to_function: dict[str, MultiXServerlessFunction] = {}
@@ -54,18 +54,17 @@ class WorkflowBuilder:
                     )
                 else:
                     providers = config.regions_and_providers["providers"]
-                home_region_providers = [provider_region["provider"] for provider_region in config.home_regions]
-                for provider in home_region_providers:
-                    if provider not in providers:
-                        raise RuntimeError(
-                            f"Home region provider {provider} is not defined in providers for function {function.name}"
-                        )
+                home_region_provider = config.home_region["provider"]
+                if home_region_provider not in providers:
+                    raise RuntimeError(
+                        f"Home region provider {home_region_provider} is not defined in providers for function {function.name}"  # pylint: disable=line-too-long
+                    )
                 self._verify_providers(providers)
 
                 merged_env_vars = self.merge_environment_variables(
                     function.environment_variables, config.environment_variables
                 )
-                home_regions_resources.append(
+                home_region_resources.append(
                     Function(
                         name=function_deployment_name,
                         environment_variables=merged_env_vars,
@@ -150,7 +149,7 @@ class WorkflowBuilder:
 
         functions: list[FunctionInstance] = list(function_instances.values())
         return Workflow(
-            resources=home_regions_resources,
+            resources=home_region_resources,
             functions=functions,
             edges=edges,
             name=config.workflow_name,
@@ -209,7 +208,7 @@ class WorkflowBuilder:
                         raise RuntimeError(f"Provider {provider} is not supported")
                     if provider not in defined_providers:
                         raise RuntimeError(f"Provider {provider} is not defined in providers")
-                    if provider_region in config.home_regions:
+                    if provider_region == config.home_region:
                         raise RuntimeError(f"Region {provider_region} cannot be both home and disallowed")
         return result_regions_and_providers
 

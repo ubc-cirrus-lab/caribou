@@ -33,6 +33,8 @@ from multi_x_serverless.routing.deployment_algorithms.stochastic_heuristic_deplo
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+logger.addHandler(logging.StreamHandler())
 
 
 class Client:
@@ -61,18 +63,18 @@ class Client:
 
         send_to_home_region = random.random() < self._home_region_threshold
 
-        logger.info("Sending to home region: %s", send_to_home_region)
-
         provider, region, identifier = self.__get_initial_node_workflow_placement_decision(
             workflow_placement_decision, send_to_home_region
         )
 
         current_time = datetime.now(GLOBAL_TIME_ZONE).strftime(TIME_FORMAT)
 
+        workflow_placement_decision["send_to_home_region"] = send_to_home_region
+
         wrapped_input_data = {
             "input_data": input_data,
-            "send_to_home_region": send_to_home_region,
             "time_request_sent": current_time,
+            "workflow_placement_decision": workflow_placement_decision,
         }
 
         json_payload = json.dumps(wrapped_input_data)
@@ -157,7 +159,7 @@ class Client:
 
         self._endpoints.get_data_collector_client().remove_key(WORKFLOW_INSTANCE_TABLE, self._workflow_id)
 
-        self._endpoints.get_datastore_client().remove_sort_key(WORKFLOW_SUMMARY_TABLE, self._workflow_id)
+        self._endpoints.get_datastore_client().remove_key(WORKFLOW_SUMMARY_TABLE, self._workflow_id)
 
         self._endpoints.get_deployment_manager_client().remove_key(
             MULTI_X_SERVERLESS_WORKFLOW_IMAGES_TABLE, self._workflow_id.replace(".", "_")
