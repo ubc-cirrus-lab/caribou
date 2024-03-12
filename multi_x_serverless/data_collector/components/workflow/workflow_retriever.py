@@ -1,8 +1,7 @@
 import json
-from datetime import datetime
 from typing import Any
 
-from multi_x_serverless.common.constants import TIME_FORMAT_DAYS, WORKFLOW_SUMMARY_TABLE
+from multi_x_serverless.common.constants import WORKFLOW_SUMMARY_TABLE
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
 from multi_x_serverless.data_collector.components.data_retriever import DataRetriever
 

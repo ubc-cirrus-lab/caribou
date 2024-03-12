@@ -63,7 +63,7 @@ class TestWorkflowRetriever(unittest.TestCase):
         # Check that the result is as expected
         expected_result = {
             "workflow_runtime_samples": "runtime_samples",
-            "total_number_of_invocations": "total_invocations",
+            "daily_invocation_counts": "daily_counts",
             "start_hop_summary": "start_hop_summary",
             "instance_summary": "instance_summary",
         }
