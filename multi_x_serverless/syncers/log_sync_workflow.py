@@ -47,9 +47,9 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
 
     def _get_remote_client(self, provider_region: dict[str, str]) -> RemoteClient:
         if (provider_region["provider"], provider_region["region"]) not in self._region_clients:
-            self._region_clients[
-                (provider_region["provider"], provider_region["region"])
-            ] = RemoteClientFactory.get_remote_client(provider_region["provider"], provider_region["region"])
+            self._region_clients[(provider_region["provider"], provider_region["region"])] = (
+                RemoteClientFactory.get_remote_client(provider_region["provider"], provider_region["region"])
+            )
         return self._region_clients[(provider_region["provider"], provider_region["region"])]
 
     def sync_workflow(self) -> None:
@@ -145,7 +145,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         if "INVOKED" in log_entry:
             self._extract_invoked_logs(workflow_run_sample, log_entry, provider_region, log_time)
         if "EXECUTED" in log_entry:
-            self._extract_executed_logs(workflow_run_sample, log_entry)
+            self._extract_executed_logs(workflow_run_sample, log_entry, provider_region)
         if "INVOKING_SUCCESSOR" in log_entry:
             self._extract_invoking_successor_logs(
                 workflow_run_sample,
@@ -209,7 +209,9 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         transmission_data.to_region = provider_region
         transmission_data.transmission_end_time = log_time
 
-    def _extract_executed_logs(self, workflow_run_sample: WorkflowRunSample, log_entry: str) -> None:
+    def _extract_executed_logs(
+        self, workflow_run_sample: WorkflowRunSample, log_entry: str, provider_region: dict[str, str]
+    ) -> None:
         function_executed = self._extract_from_string(log_entry, r"INSTANCE \((.*?)\)")
         if not isinstance(function_executed, str):
             raise ValueError(f"Invalid function_executed: {function_executed}")
@@ -219,7 +221,12 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         if not isinstance(duration, float):
             raise ValueError(f"Invalid duration: {duration}")
 
-        workflow_run_sample.execution_latencies[function_executed] = duration
+        provider_region_str = provider_region["provider"] + ":" + provider_region["region"]
+
+        workflow_run_sample.execution_latencies[function_executed] = {
+            "latency": duration,
+            "provider_region": provider_region_str,
+        }
 
     def _extract_invoking_successor_logs(
         self,

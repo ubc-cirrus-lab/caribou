@@ -62,21 +62,21 @@ class WorkflowRetriever(DataRetriever):
         self, instance_summary: dict[str, Any], log: dict[str, Any]
     ) -> None:
         # Handle execution latencies
-        for instance, latency in log["execution_latencies"].items():
+        for instance, execution_latency_information in log["execution_latencies"].items():
             if instance not in instance_summary:
-                instance_summary[instance] = {"invocations": 0, "regions": {}, "to_instance": {}}
+                instance_summary[instance] = {"invocations": 0, "executions": {}, "to_instance": {}}
             instance_summary[instance]["invocations"] += 1
-            provider_region = log["start_hop_destination"]["provider"] + ":" + log["start_hop_destination"]["region"]
-            if provider_region not in instance_summary[instance]["regions"]:
-                instance_summary[instance]["regions"][provider_region] = {"execution_latency_samples": []}
-            instance_summary[instance]["regions"][provider_region]["execution_latency_samples"].append(latency)
+            provider_region_str = execution_latency_information["provider_region"]
+            if provider_region_str not in instance_summary[instance]["executions"]:
+                instance_summary[instance]["executions"][provider_region_str] = []
+            instance_summary[instance]["executions"][provider_region_str].append(execution_latency_information["latency"])
 
         # Handle regions to regions transmission
         for data in log["transmission_data"]:
             from_instance = data["from_instance"]
             to_instance = data["to_instance"]
             if from_instance not in instance_summary:
-                instance_summary[from_instance] = {"invocations": 0, "regions": {}, "to_instance": {}}
+                instance_summary[from_instance] = {"invocations": 0, "executions": {}, "to_instance": {}}
             if to_instance not in instance_summary[from_instance]["to_instance"]:
                 instance_summary[from_instance]["to_instance"][to_instance] = {
                     "invoked": 0,
@@ -117,7 +117,7 @@ class WorkflowRetriever(DataRetriever):
         non_executions = log.get("non_executions", {})
         for caller, non_execution in non_executions.items():
             if caller not in instance_summary:
-                instance_summary[caller] = {"invocations": 0, "regions": {}, "to_instance": {}}
+                instance_summary[caller] = {"invocations": 0, "executions": {}, "to_instance": {}}
             for callee, count in non_execution.items():
                 if callee not in instance_summary[caller]:
                     instance_summary[caller]["to_instance"][callee] = {
