@@ -38,7 +38,7 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
             self._instance_indexer,
         )
 
-        self._home_region_index = self._region_indexer.value_to_index(self._workflow_config.start_hops)
+        self._home_region_index = self._region_indexer.value_to_index(self._workflow_config.home_region)
 
         self._number_of_instances = len(self._instance_indexer.get_value_indices().values())
 

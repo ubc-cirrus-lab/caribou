@@ -8,7 +8,7 @@ from multi_x_serverless.routing.workflow_config import WorkflowConfig
 class TestWorkflowLoader(unittest.TestCase):
     def setUp(self):
         self.workflow_config = MagicMock(spec=WorkflowConfig)
-        self.workflow_config.start_hops = "start_hops"
+        self.workflow_config.home_region = "home_region"
         self.workflow_config.instances = {
             "instance_1": {"instance_name": "instance_1", "regions_and_providers": {"providers": {}}}
         }

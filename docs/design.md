@@ -25,7 +25,7 @@ In this document we will discuss the design decisions that have been made for th
 7. [Deployment Algorithms](#deployment-algorithms)
     1. [Coarse Grained](#coarse-grained)
     2. [Stochastic Heuristic Descent](#stochastic-heuristic-descent)
-    3. [Brute Force](#brute-force)
+    3. [Fine Grained](#fine-grained)
 8. [References](#references)
 
 ## Dataflow DAG Model
@@ -369,9 +369,98 @@ Different parts of this dictionary are provided by different components of the s
   At re-deployment, if a function was re-deployed to a new region, the new region is added to the dictionary.
   This is theoretically not necessary as the information is also contained in the `workflow_function_descriptions`, however, it is more efficient to have this information in a separate dictionary.
 
+### Solver Manager Resource
+
+The solver manager checks whether to trigger the deployment algorithm to solve the workflow.
+The information required for this component is stored in the `solver_update_checker_resources_table`.
+The structure of the solver manager resource is as follows:
+
+```json
+{
+  "workflow_id": "image_processing_light-0.0.1", 
+  "workflow_config": "{\"workflow_name\": ..."
+}
+```
+
+This information is set by the deployment client and is used by the deployment algorithm update checker to determine whether to trigger the deployment algorithm to solve the workflow.
+
 ### Workflow Config
 
 The workflow config is a dictionary of information with regards to the workflow.
+An example of the structure of the workflow config is as follows:
+
+```json
+{
+  "workflow_name": "image_processing_light",
+  "workflow_version": "0.0.1",
+  "workflow_id": "image_processing_light-0.0.1",
+  "instances": {
+    "image_processing_light-0_0_1-GetInput:entry_point:0": {
+      "instance_name": "image_processing_light-0_0_1-GetInput:entry_point:0",
+      "regions_and_providers": {
+        "allowed_regions": [
+          { "provider": "aws", "region": "us-east-1" },
+          { "provider": "aws", "region": "us-east-2" },
+          { "provider": "aws", "region": "us-west-1" },
+          { "provider": "aws", "region": "us-west-2" }
+        ],
+        "disallowed_regions": null,
+        "providers": { "aws": { "config": { "timeout": 60, "memory": 128 } } }
+      },
+      "succeeding_instances": [
+        "image_processing_light-0_0_1-Flip:image_processing_light-0_0_1-GetInput_0_0:1"
+      ],
+      "preceding_instances": [],
+      "dependent_sync_predecessors": []
+    },
+    "image_processing_light-0_0_1-Flip:image_processing_light-0_0_1-GetInput_0_0:1": {
+      "instance_name": "image_processing_light-0_0_1-Flip:image_processing_light-0_0_1-GetInput_0_0:1",
+      "regions_and_providers": {
+        "allowed_regions": [
+          { "provider": "aws", "region": "us-east-1" },
+          { "provider": "aws", "region": "us-east-2" },
+          { "provider": "aws", "region": "us-west-1" },
+          { "provider": "aws", "region": "us-west-2" }
+        ],
+        "disallowed_regions": null,
+        "providers": { "aws": { "config": { "timeout": 60, "memory": 128 } } }
+      },
+      "succeeding_instances": [],
+      "preceding_instances": [
+        "image_processing_light-0_0_1-GetInput:entry_point:0"
+      ],
+      "dependent_sync_predecessors": []
+    }
+  },
+  "home_region": { "provider": "aws", "region": "us-east-1" },
+  "estimated_invocations_per_month": 1000000,
+  "constraints": {
+    "hard_resource_constraints": {
+      "cost": { "type": "absolute", "value": 1000 },
+      "runtime": { "type": "absolute", "value": 1000 },
+      "carbon": { "type": "absolute", "value": 1000 }
+    },
+    "soft_resource_constraints": {
+      "cost": null,
+      "runtime": null,
+      "carbon": null
+    },
+    "priority_order": ["cost", "runtime", "carbon"]
+  },
+  "regions_and_providers": {
+    "allowed_regions": [
+      { "provider": "aws", "region": "us-east-1" },
+      { "provider": "aws", "region": "us-east-2" },
+      { "provider": "aws", "region": "us-west-1" },
+      { "provider": "aws", "region": "us-west-2" }
+    ],
+    "disallowed_regions": [],
+    "providers": { "aws": { "config": { "timeout": 60, "memory": 128 } } }
+  },
+  "num_calls_in_one_month": 0,
+  "solver": ""
+}
+```
 
 ### Deployment Package
 

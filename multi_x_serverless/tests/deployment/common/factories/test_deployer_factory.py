@@ -26,7 +26,7 @@ class TestDeployerFactory(unittest.TestCase):
         mock_load_config.return_value = {
             "workflow_name": "test",
             "workflow_version": "test",
-            "home_regions": [{"provider": "provider1", "region": "region4"}],
+            "home_region": {"provider": "provider1", "region": "region4"},
             "environment_variables": [{"key": "test", "value": "test"}],
             "iam_policy_file": "test",
             "regions_and_providers": {
@@ -53,7 +53,7 @@ class TestDeployerFactory(unittest.TestCase):
             {
                 "workflow_name": "test",
                 "workflow_version": "test",
-                "home_regions": [{"provider": "provider1", "region": "region4"}],
+                "home_region": {"provider": "provider1", "region": "region4"},
                 "environment_variables": [{"key": "test", "value": "test"}],
                 "iam_policy_file": "test",
                 "regions_and_providers": {
@@ -78,7 +78,7 @@ class TestDeployerFactory(unittest.TestCase):
             {
                 "workflow_name": "test",
                 "workflow_version": "test",
-                "home_regions": [{"provider": "provider1", "region": "region4"}],
+                "home_region": {"provider": "provider1", "region": "region4"},
                 "environment_variables": [{"key": "test", "value": "test"}],
                 "iam_policy_file": "test",
                 "regions_and_providers": {
@@ -125,7 +125,7 @@ class TestDeployerFactory(unittest.TestCase):
                 "allowed_regions": [{"provider": "provider1", "region": "region4"}],
                 "disallowed_regions": [{"provider": "provider1", "region": "region5"}],
             },
-            "home_regions": [{"provider": "provider1", "region": "region4"}],
+            "home_region": {"provider": "provider1", "region": "region4"},
         }
         # This should not raise any exceptions
         factory._DeployerFactory__validate_allowed_and_disallowed_regions_and_providers(project_config)
@@ -338,7 +338,7 @@ class TestDeployerFactory(unittest.TestCase):
                 "disallowed_regions": [{"provider": "provider1", "region": "region4"}],
                 "allowed_regions": [{"provider": "provider1", "region": "region5"}],
             },
-            "home_regions": [{"provider": "provider1", "region": "region4"}],
+            "home_region": {"provider": "provider1", "region": "region4"},
         }
         with self.assertRaises(RuntimeError, msg="Region region4 cannot be both home and disallowed"):
             factory._DeployerFactory__validate_allowed_and_disallowed_regions_and_providers(project_config)
@@ -356,7 +356,7 @@ class TestDeployerFactory(unittest.TestCase):
                 },
                 "disallowed_regions": [{"provider": "provider1", "region": "region4"}],
             },
-            "home_regions": [{"provider": "provider1", "region": "region5"}],
+            "home_region": [{"provider": "provider1", "region": "region5"}],
         }
 
         # This should not raise any exceptions

@@ -24,7 +24,7 @@ class WorkflowLoader(InputLoader):
 
         # Parse the workflow config to get the instances, regions, and providers
         ## Get the starthop or home region for the workflow
-        self._home_region: str = workflow_config.start_hops
+        self._home_region: str = workflow_config.home_region
 
         ## Get the enabled providers for each instance
         self._instances_regions_and_providers = {}

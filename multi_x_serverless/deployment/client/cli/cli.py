@@ -51,7 +51,7 @@ def deploy(ctx: click.Context) -> None:
     factory: DeployerFactory = ctx.obj["factory"]
     config: Config = factory.create_config_obj()
     deployer: Deployer = factory.create_deployer(config=config)
-    deployer.deploy(config.home_regions)
+    deployer.deploy([config.home_region])
 
 
 @cli.command("run", help="Run the workflow.")

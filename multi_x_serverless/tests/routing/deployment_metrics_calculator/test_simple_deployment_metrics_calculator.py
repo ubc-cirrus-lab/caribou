@@ -17,7 +17,7 @@ class TestSimpleDeploymentMetricsCalculator(unittest.TestCase):
     def test_perform_monte_carlo_simulation(self, mock_calculate_workflow):
         # Call the method with a test deployment
         deployment = [0, 1, 2, 3]
-        results = self.calculator._perform_monte_carlo_simulation(deployment, 1000)
+        results = self.calculator._perform_monte_carlo_simulation(deployment)
 
         # Verify the results
         self.assertEqual(results["average_cost"], 1.0)
