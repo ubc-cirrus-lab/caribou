@@ -29,7 +29,7 @@ class TestSimpleDeploymentMetricsCalculator(unittest.TestCase):
 
         # Verify that the mock method was called the correct number of times with the correct arguments
         self.assertEqual(mock_calculate_workflow.call_count, 1000)
-        mock_calculate_workflow.assert_called_with(deployment, True)
+        mock_calculate_workflow.assert_called_with(deployment)
 
 
 if __name__ == "__main__":
