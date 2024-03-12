@@ -69,7 +69,9 @@ class WorkflowRetriever(DataRetriever):
             provider_region_str = execution_latency_information["provider_region"]
             if provider_region_str not in instance_summary[instance]["executions"]:
                 instance_summary[instance]["executions"][provider_region_str] = []
-            instance_summary[instance]["executions"][provider_region_str].append(execution_latency_information["latency"])
+            instance_summary[instance]["executions"][provider_region_str].append(
+                execution_latency_information["latency"]
+            )
 
         # Handle regions to regions transmission
         for data in log["transmission_data"]:

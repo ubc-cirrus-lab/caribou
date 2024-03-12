@@ -47,9 +47,9 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
 
     def _get_remote_client(self, provider_region: dict[str, str]) -> RemoteClient:
         if (provider_region["provider"], provider_region["region"]) not in self._region_clients:
-            self._region_clients[(provider_region["provider"], provider_region["region"])] = (
-                RemoteClientFactory.get_remote_client(provider_region["provider"], provider_region["region"])
-            )
+            self._region_clients[
+                (provider_region["provider"], provider_region["region"])
+            ] = RemoteClientFactory.get_remote_client(provider_region["provider"], provider_region["region"])
         return self._region_clients[(provider_region["provider"], provider_region["region"])]
 
     def sync_workflow(self) -> None:
