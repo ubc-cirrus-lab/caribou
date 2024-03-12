@@ -28,7 +28,7 @@ class TestDeploymentAlgorithm(unittest.TestCase):
         mock_input_manager_instance = MagicMock()
         mock_input_manager.return_value = mock_input_manager_instance
         self.workflow_config_mock = MagicMock(spec=WorkflowConfig)
-        self.workflow_config_mock.start_hops = "r1:p1"
+        self.workflow_config_mock.home_region = "r1:p1"
         self.deployment_algorithm = ConcreteDeploymentAlgorithm(self.workflow_config_mock)
 
     @patch("multi_x_serverless.routing.deployment_algorithms.deployment_algorithm.InputManager")
@@ -50,7 +50,7 @@ class TestDeploymentAlgorithm(unittest.TestCase):
     ):
         # Arrange
         mock_workflow_config = MagicMock()
-        mock_workflow_config.start_hops = "r1"
+        mock_workflow_config.home_region = "r1"
         mock_workflow_config.instances.values.return_value = [{"instance_name": "instance1"}]
 
         # Act

@@ -43,7 +43,7 @@ class TestInputManager(unittest.TestCase):
             "providers": {"provider1": None, "provider2": None, "provider3": None},
         }
         self.workflow_config.workflow_id = "workflow_id"
-        self.workflow_config.start_hops = "provider1:region1"
+        self.workflow_config.home_region = "provider1:region1"
         mock_endpoints.get_data_collector_client = MagicMock(return_value=RemoteClient)
         mock_region_viability_loader.get_available_regions = MagicMock(return_value=["region1", "region2"])
         self.input_manager = InputManager(self.workflow_config)

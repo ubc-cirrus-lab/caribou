@@ -28,7 +28,7 @@ class DeploymentMetricsCalculator(ABC):
         self._successor_dictionary = dag.get_preceeding_dict()
 
         # Get the home region index -> this is the region that the workflow starts from
-        self._home_region_index = region_indexer.get_value_indices()[workflow_config.start_hops]
+        self._home_region_index = region_indexer.get_value_indices()[workflow_config.home_region]
 
     def calculate_deployment_metrics(self, deployment: list[int], monte_carlo_runs: int = -1) -> dict[str, float]:
         monte_carlo_runs = len(deployment) * 100 if monte_carlo_runs == -1 else monte_carlo_runs

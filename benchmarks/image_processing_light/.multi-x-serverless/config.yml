@@ -4,9 +4,9 @@ environment_variables:
   - key: "ENV_VAR_1"
     value: "value_1"
 iam_policy_file: "iam_policy.json"
-home_regions:
-  - provider: "aws"
-    region: "us-east-1"
+home_region:
+  provider: "aws"
+  region: "us-east-1"
 estimated_invocations_per_month: 1000000
 constraints:
   hard_resource_constraints:

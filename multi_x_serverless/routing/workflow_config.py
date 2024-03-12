@@ -102,18 +102,13 @@ class WorkflowConfig:
         return self._lookup("constraints")
 
     @property
-    def start_hops(self) -> str:
-        raw_start_hops = self._lookup("start_hops")
+    def home_region(self) -> str:
+        raw_home_region = self._lookup("home_region")
 
-        if raw_start_hops is None or len(raw_start_hops) == 0:
-            raise ValueError("No start hops found")
-
-        # TODO (#68): Allow for multiple "home region" or start hops
+        if raw_home_region is None:
+            raise ValueError("No home region found")
 
         # Start hop is in format of {"provider": "aws", "region": "us-west-2"}
         # we want it in format of "provider_name:region_name"
-        start_hops = []
-        for start_hop in raw_start_hops:
-            start_hops.append(f"{start_hop['provider']}:{start_hop['region']}")
 
-        return start_hops[0]
+        return f"{raw_home_region['provider']}:{raw_home_region['region']}"

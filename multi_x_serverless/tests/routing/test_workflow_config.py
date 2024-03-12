@@ -38,7 +38,7 @@ class TestWorkflowConfig(unittest.TestCase):
                 "soft_resource_constraints": {},
                 "priority_order": [],
             },
-            "start_hops": [{"provider": "provider1", "region": "region1"}],
+            "home_region": {"provider": "provider1", "region": "region1"},
         }
         self.workflow_config = WorkflowConfig(self.workflow_config_dict)
         self.maxDiff = None
@@ -114,8 +114,8 @@ class TestWorkflowConfig(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.workflow_config.deployment_algorithm
 
-    def test_start_hops(self):
-        self.assertEqual(self.workflow_config.start_hops, "provider1:region1")
+    def test_home_region(self):
+        self.assertEqual(self.workflow_config.home_region, "provider1:region1")
 
 
 if __name__ == "__main__":
