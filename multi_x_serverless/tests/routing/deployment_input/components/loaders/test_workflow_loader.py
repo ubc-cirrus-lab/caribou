@@ -10,38 +10,50 @@ class TestWorkflowLoader(unittest.TestCase):
         self.workflow_config = MagicMock(spec=WorkflowConfig)
         self.workflow_config.home_region = "home_region"
         self.workflow_config.instances = {
-            "instance_1": {"instance_name": "instance_1", "regions_and_providers": {"providers": {}}}
+            "image_processing_light-0_0_1-GetInput:entry_point:0": {"instance_name": "image_processing_light-0_0_1-GetInput:entry_point:0", "regions_and_providers": {"providers": {}}}
         }
         self.workflow_data = {
-            "instance_1": {
-                "projected_monthly_invocations": 12.5,
-                "execution_summary": {
-                    "provider_1:region_1": {"runtime_distribution": [26.0]},
-                    "provider_1:region_2": {"runtime_distribution": [26.5]},
-                },
-                "invocation_summary": {
-                    "instance_2": {
-                        "probability_of_invocation": 0.8,
-                        "data_transfer_size_distribution": [0.0007],
-                        "transmission_summary": {
-                            "provider_1:region_1": {
-                                "provider_1:region_1": {"latency_distribution": [0.00125]},
-                                "provider_1:region_2": {"latency_distribution": [0.125]},
+            "workflow_runtime_samples": [5.857085, 5.740116, 7.248474],
+            "daily_invocation_counts": { "2024-03-12+0000": 3 },
+            "start_hop_summary": {
+                "aws:us-east-1": { "3.3527612686157227e-08": [0.52388, 0.514119, 0.519146] }
+            },
+            "instance_summary": {
+                "image_processing_light-0_0_1-GetInput:entry_point:0": {
+                    "invocations": 3,
+                    "executions": {
+                        "aws:us-east-1": [
+                        1.140042781829834, 1.129507303237915, 1.0891644954681396
+                        ]
+                    },
+                    "to_instance": {
+                        "image_processing_light-0_0_1-Flip:image_processing_light-0_0_1-GetInput_0_0:1": {
+                            "invoked": 3,
+                            "regions_to_regions": {
+                                "aws:us-east-1": {
+                                    "aws:us-east-1": {
+                                        "2.9960647225379944e-06": [1.217899, 1.18531, 1.174224]
+                                    }
+                                }
                             },
-                            "provider_1:region_2": {"provider_1:region_1": {"latency_distribution": [0.095]}},
-                        },
+                            "non_executions": 0,
+                            "invocation_probability": 0.9
+                        }
                     }
                 },
-            },
-            "instance_2": {
-                "projected_monthly_invocations": 11.25,
-                "execution_summary": {
-                    "provider_1:region_1": {"runtime_distribution": [12.5]},
-                    "provider_1:region_2": {"runtime_distribution": [13.5]},
+                "image_processing_light-0_0_1-Flip:image_processing_light-0_0_1-GetInput_0_0:1": {
+                "invocations": 3,
+                "executions": {
+                    "aws:us-east-1": [
+                    4.638583183288574, 4.554178953170776, 6.073627948760986
+                    ]
                 },
-                "invocation_summary": {},
-            },
+                "to_instance": {}
+                }
+            }
+            
         }
+        
         self.client = Mock(spec=RemoteClient)
         self.loader = WorkflowLoader(self.client, self.workflow_config)
 
@@ -57,30 +69,33 @@ class TestWorkflowLoader(unittest.TestCase):
 
     def test_get_runtime_distribution(self):
         self.loader._workflow_data = self.workflow_data
-        runtime = self.loader.get_runtime_distribution("instance_1", "provider_1:region_1")
-        self.assertEqual(runtime, [26.0])
+        runtimes = self.loader.get_runtime_distribution("image_processing_light-0_0_1-GetInput:entry_point:0", "aws:us-east-1")
+        self.assertEqual(runtimes, [1.140042781829834, 1.129507303237915, 1.0891644954681396])
 
-    def test_get_latency_distribution(self):
+    def test_get_start_hop_size_distribution(self):
         self.loader._workflow_data = self.workflow_data
-        latency = self.loader.get_latency_distribution(
-            "instance_1", "instance_2", "provider_1:region_1", "provider_1:region_1"
-        )
-        self.assertEqual(latency, [0.00125])
+        start_hop_size_distribution = self.loader.get_start_hop_size_distribution("aws:us-east-1")
+        self.assertEqual(start_hop_size_distribution, [3.3527612686157227e-08])
+
+    def test_get_start_hop_latency_distribution(self):
+        self.loader._workflow_data = self.workflow_data
+        start_hop_latency = self.loader.get_start_hop_latency_distribution("aws:us-east-1", 3.3527612686157227e-08)
+        self.assertEqual(start_hop_latency, [0.52388, 0.514119, 0.519146])
 
     def test_get_data_transfer_size_distribution(self):
         self.loader._workflow_data = self.workflow_data
-        data_transfer_size = self.loader.get_data_transfer_size_distribution("instance_1", "instance_2")
-        self.assertEqual(data_transfer_size, [0.0007])
+        data_transfer_size = self.loader.get_data_transfer_size_distribution("image_processing_light-0_0_1-GetInput:entry_point:0", "image_processing_light-0_0_1-Flip:image_processing_light-0_0_1-GetInput_0_0:1", "aws:us-east-1", "aws:us-east-1")
+        self.assertEqual(data_transfer_size, [2.9960647225379944e-06])
+
+    def test_get_data_transfer_latency_distribution(self):
+        self.loader._workflow_data = self.workflow_data
+        data_transfer_latency = self.loader.get_latency_distribution("image_processing_light-0_0_1-GetInput:entry_point:0", "image_processing_light-0_0_1-Flip:image_processing_light-0_0_1-GetInput_0_0:1", "aws:us-east-1", "aws:us-east-1", 2.9960647225379944e-06)
+        self.assertEqual(data_transfer_latency, [1.217899, 1.18531, 1.174224])
 
     def test_get_invocation_probability(self):
         self.loader._workflow_data = self.workflow_data
-        invocation_probability = self.loader.get_invocation_probability("instance_1", "instance_2")
-        self.assertEqual(invocation_probability, 0.8)
-
-    def test_get_projected_monthly_invocations(self):
-        self.loader._workflow_data = self.workflow_data
-        projected_monthly_invocations = self.loader.get_projected_monthly_invocations("instance_1")
-        self.assertEqual(projected_monthly_invocations, 12.5)
+        invocation_probability = self.loader.get_invocation_probability("image_processing_light-0_0_1-GetInput:entry_point:0", "image_processing_light-0_0_1-Flip:image_processing_light-0_0_1-GetInput_0_0:1")
+        self.assertEqual(invocation_probability, 0.9)
 
     def test_get_vcpu(self):
         self.loader._instances_regions_and_providers = {"instance_1": {"provider_1": {"config": {"vcpu": 2}}}}
