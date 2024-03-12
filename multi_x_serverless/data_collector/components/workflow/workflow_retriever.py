@@ -13,201 +13,126 @@ class WorkflowRetriever(DataRetriever):
 
     def retrieve_all_workflow_ids(self) -> set[str]:
         # Perhaps there could be a get all keys method in the remote client
-        return set(self._client.get_all_values_from_table(self._workflow_summary_table).keys())
+        return set(self._client.get_keys(self._workflow_summary_table))
 
     def retrieve_workflow_summary(self, workflow_unique_id: str) -> dict[str, Any]:
         # Load the summarized logs from the workflow summary table
-        workflow_summarized_logs: list[str] = self._client.get_all_values_from_sort_key_table(
-            self._workflow_summary_table, workflow_unique_id
-        )
+        workflow_summarized: str = self._client.get_value_from_table(self._workflow_summary_table, workflow_unique_id)
 
         # Consolidate all the timestamps together to one summary and return the result
-        return self._consolidate_logs(workflow_summarized_logs)
+        return self._transform_workflow_summary(workflow_summarized)
 
-    def _consolidate_logs(  # pylint: disable=too-many-branches, too-many-statements
-        self, logs: list[str]
-    ) -> dict[str, Any]:
-        # Here are the list of all keys in the available regions
-        available_regions_set: set[str] = set(self._available_regions.keys())
+    def _transform_workflow_summary(self, workflow_summarized: str) -> dict[str, Any]:
+        summarized_workflow = json.loads(workflow_summarized)
 
-        consolidated: dict[str, Any] = {}
-        total_invocations = 0
-        total_days = 0
-        for data in logs:  # pylint: disable=too-many-nested-blocks
-            loaded_data = json.loads(data)
-            total_days += loaded_data["time_since_last_sync"]
-            total_invocations += loaded_data["total_invocations"]
-            for instance_id, instance_data in loaded_data["instance_summary"].items():
-                if instance_id not in consolidated:
-                    consolidated[instance_id] = {
-                        "invocation_count": 0,
-                        "execution_summary": {},
-                        "invocation_summary": {},
-                    }
-                consolidated[instance_id]["invocation_count"] += instance_data["invocation_count"]
+        start_hop_summary, instance_summary = self._construct_summaries(summarized_workflow.get("logs", {}))
 
-                # Deal with execution summary
-                for region, region_data in instance_data["execution_summary"].items():
-                    if region not in consolidated[instance_id]["execution_summary"]:
-                        consolidated[instance_id]["execution_summary"][region] = {
-                            "invocation_count": 0,
-                            "runtime_samples": [],
-                        }
+        return {
+            "workflow_runtime_samples": summarized_workflow["workflow_runtime_samples"],
+            "daily_invocation_counts": summarized_workflow.get("daily_invocation_counts", {}),
+            "start_hop_summary": start_hop_summary,
+            "instance_summary": instance_summary,
+        }
 
-                    # Check if this node is an entry point and if yes, add the data transfer and latency samples
-                    if "init_data_transfer_size_samples" in region_data:
-                        if (
-                            "init_data_transfer_size_samples"
-                            not in consolidated[instance_id]["execution_summary"][region]
-                        ):
-                            consolidated[instance_id]["execution_summary"][region][
-                                "init_data_transfer_size_samples"
-                            ] = []
-                        consolidated[instance_id]["execution_summary"][region][
-                            "init_data_transfer_size_samples"
-                        ].extend(region_data["init_data_transfer_size_samples"])
+    def _construct_summaries(self, logs: list[dict[str, Any]]) -> tuple[dict[str, Any], dict[str, Any]]:
+        start_hop_summary: dict[str, Any] = {}
+        instance_summary: dict[str, Any] = {}
 
-                    if "init_latency_samples" in region_data:
-                        if "init_latency_samples" not in consolidated[instance_id]["execution_summary"][region]:
-                            consolidated[instance_id]["execution_summary"][region]["init_latency_samples"] = []
-                        consolidated[instance_id]["execution_summary"][region]["init_latency_samples"].extend(
-                            [sample / 1000 for sample in region_data["init_latency_samples"]]  # Convert to seconds
-                        )
+        for log in logs:
+            self._extend_start_hop_summary(start_hop_summary, log)
+            self._extend_instance_summary(instance_summary, log)
 
-                    # Add the runtime samples
-                    consolidated[instance_id]["execution_summary"][region]["invocation_count"] += region_data[
-                        "invocation_count"
-                    ]
-                    consolidated[instance_id]["execution_summary"][region]["runtime_samples"].extend(
-                        [sample / 1000 for sample in region_data["runtime_samples"]]  # Convert to seconds
-                    )
+        return start_hop_summary, instance_summary
 
-                if "invocation_summary" in instance_data:
-                    for child_instance, invocation_data in instance_data["invocation_summary"].items():
-                        if child_instance not in consolidated[instance_id]["invocation_summary"]:
-                            consolidated[instance_id]["invocation_summary"][child_instance] = {
-                                "invocation_count": 0,
-                                "data_transfer_samples": [],
-                                "transmission_summary": {},
-                            }
-                        consolidated[instance_id]["invocation_summary"][child_instance][
-                            "invocation_count"
-                        ] += invocation_data["invocation_count"]
-                        consolidated[instance_id]["invocation_summary"][child_instance]["data_transfer_samples"].extend(
-                            invocation_data["data_transfer_samples"]
-                        )
+    def _extend_start_hop_summary(self, start_hop_summary: dict[str, Any], log: dict[str, Any]) -> None:
+        start_hop_destination = log.get("start_hop_destination", None)
+        if start_hop_destination:
+            start_hop_destination_str = f'{start_hop_destination["provider"]}:{start_hop_destination["region"]}'
+            if start_hop_destination_str not in start_hop_summary:
+                start_hop_summary[start_hop_destination_str] = {}
+            start_hop_data_transfer_size = float(log.get("start_hop_data_transfer_size", 0))
+            if start_hop_data_transfer_size not in start_hop_summary[start_hop_destination_str]:
+                start_hop_summary[start_hop_destination_str][start_hop_data_transfer_size] = []
+            if log.get("start_hop_latency", None) is not None:
+                start_hop_summary[start_hop_destination_str][start_hop_data_transfer_size].append(
+                    log.get("start_hop_latency")
+                )
 
-                        # Deal with transmission summary
-                        if "transmission_summary" in invocation_data:
-                            for from_provider_region, from_provider_transmission_data in invocation_data[
-                                "transmission_summary"
-                            ].items():
-                                if from_provider_region in available_regions_set:
-                                    if (
-                                        from_provider_region
-                                        not in consolidated[instance_id]["invocation_summary"][child_instance][
-                                            "transmission_summary"
-                                        ]
-                                    ):
-                                        consolidated[instance_id]["invocation_summary"][child_instance][
-                                            "transmission_summary"
-                                        ][from_provider_region] = {}
+    def _extend_instance_summary(  # pylint: disable=too-many-branches
+        self, instance_summary: dict[str, Any], log: dict[str, Any]
+    ) -> None:
+        # Handle execution latencies
+        for instance, execution_latency_information in log["execution_latencies"].items():
+            if instance not in instance_summary:
+                instance_summary[instance] = {"invocations": 0, "executions": {}, "to_instance": {}}
+            instance_summary[instance]["invocations"] += 1
+            provider_region_str = execution_latency_information["provider_region"]
+            if provider_region_str not in instance_summary[instance]["executions"]:
+                instance_summary[instance]["executions"][provider_region_str] = []
+            instance_summary[instance]["executions"][provider_region_str].append(
+                execution_latency_information["latency"]
+            )
 
-                                    for (
-                                        to_provider_region,
-                                        to_provider_transmission_data,
-                                    ) in from_provider_transmission_data.items():
-                                        if to_provider_region in available_regions_set:
-                                            if (
-                                                to_provider_region
-                                                not in consolidated[instance_id]["invocation_summary"][child_instance][
-                                                    "transmission_summary"
-                                                ][from_provider_region]
-                                            ):
-                                                consolidated[instance_id]["invocation_summary"][child_instance][
-                                                    "transmission_summary"
-                                                ][from_provider_region][to_provider_region] = {
-                                                    "transmission_count": 0,
-                                                    "latency_samples": [],
-                                                }
-
-                                            consolidated[instance_id]["invocation_summary"][child_instance][
-                                                "transmission_summary"
-                                            ][from_provider_region][to_provider_region][
-                                                "transmission_count"
-                                            ] += to_provider_transmission_data[
-                                                "transmission_count"
-                                            ]
-                                            consolidated[instance_id]["invocation_summary"][child_instance][
-                                                "transmission_summary"
-                                            ][from_provider_region][to_provider_region]["latency_samples"].extend(
-                                                [
-                                                    sample / 1000
-                                                    for sample in to_provider_transmission_data["latency_samples"]
-                                                ]
-                                            )
-
-        # Summarized data in proper output format
-        workflow_summary_data: dict[str, Any] = {}
-        workflow_summary_data["total_invocations"] = total_invocations
-        for instance_id, instance_data in consolidated.items():  # pylint: disable=too-many-nested-blocks
-            # Home region average/tail runtime
-            # Only regions within the available regions list is allowed
-            filtered_execution_summary = {
-                region: data
-                for region, data in instance_data["execution_summary"].items()
-                if region in available_regions_set
-            }
-
-            # Now for execution summary only in the available regions
-            execution_summary: dict[str, Any] = {}
-            for region, region_data in filtered_execution_summary.items():
-                execution_summary[region] = {
-                    "runtime_samples": region_data["runtime_samples"],
-                    "invocation_count": region_data["invocation_count"],
-                    "unit": "s",
+        # Handle regions to regions transmission
+        for data in log["transmission_data"]:
+            from_instance = data["from_instance"]
+            to_instance = data["to_instance"]
+            if from_instance not in instance_summary:
+                instance_summary[from_instance] = {"invocations": 0, "executions": {}, "to_instance": {}}
+            if to_instance not in instance_summary[from_instance]["to_instance"]:
+                instance_summary[from_instance]["to_instance"][to_instance] = {
+                    "invoked": 0,
+                    "regions_to_regions": {},
+                    "non_executions": 0,
                 }
+            instance_summary[from_instance]["to_instance"][to_instance]["invoked"] += 1
 
-                if "init_data_transfer_size_samples" in region_data:
-                    execution_summary[region]["init_data_transfer_size_samples"] = region_data[
-                        "init_data_transfer_size_samples"
-                    ]
-                if "init_latency_samples" in region_data:
-                    execution_summary[region]["init_latency_samples"] = region_data["init_latency_samples"]
+            from_region_str = data["from_region"]["provider"] + ":" + data["from_region"]["region"]
+            to_region_str = data["to_region"]["provider"] + ":" + data["to_region"]["region"]
+            if from_region_str not in instance_summary[from_instance]["to_instance"][to_instance]["regions_to_regions"]:
+                instance_summary[from_instance]["to_instance"][to_instance]["regions_to_regions"][from_region_str] = {}
+            if (
+                to_region_str
+                not in instance_summary[from_instance]["to_instance"][to_instance]["regions_to_regions"][
+                    from_region_str
+                ]
+            ):
+                instance_summary[from_instance]["to_instance"][to_instance]["regions_to_regions"][from_region_str][
+                    to_region_str
+                ] = {}
 
-            # Now for invocation summary
-            # Region restrictions were already applied
-            invocation_summary: dict[str, Any] = {}
-            if "invocation_summary" in instance_data:
-                for child_instance, invocation_data in instance_data["invocation_summary"].items():
-                    # Manage Tranmission summary
-                    transmission_summary: dict[str, Any] = {}
-                    if "transmission_summary" in invocation_data:
-                        for from_provider_region, from_provider_data in invocation_data["transmission_summary"].items():
-                            if from_provider_region in available_regions_set:
-                                transmission_summary[from_provider_region] = {}
-                                for to_provider_region, to_provider_transmission_data in from_provider_data.items():
-                                    if to_provider_region in available_regions_set:
-                                        transmission_summary[from_provider_region][to_provider_region] = {
-                                            "latency_samples": to_provider_transmission_data["latency_samples"],
-                                            "unit": "s",
-                                        }
+            transmission_data_transfer_size = data["transmission_size"]
+            if (
+                transmission_data_transfer_size
+                not in instance_summary[from_instance]["to_instance"][to_instance]["regions_to_regions"][
+                    from_region_str
+                ][to_region_str]
+            ):
+                instance_summary[from_instance]["to_instance"][to_instance]["regions_to_regions"][from_region_str][
+                    to_region_str
+                ][transmission_data_transfer_size] = []
+            instance_summary[from_instance]["to_instance"][to_instance]["regions_to_regions"][from_region_str][
+                to_region_str
+            ][transmission_data_transfer_size].append(data["transmission_latency"])
 
-                    # Manage invocation summary
-                    invocation_summary[child_instance] = {
-                        "probability_of_invocation": invocation_data["invocation_count"]
-                        / instance_data["invocation_count"],
-                        "data_transfer_samples": invocation_data["data_transfer_samples"],
-                        "transmission_summary": transmission_summary,
+        # Handle non-executions
+        non_executions = log.get("non_executions", {})
+        for caller, non_execution in non_executions.items():
+            if caller not in instance_summary:
+                instance_summary[caller] = {"invocations": 0, "executions": {}, "to_instance": {}}
+            for callee, count in non_execution.items():
+                if callee not in instance_summary[caller]:
+                    instance_summary[caller]["to_instance"][callee] = {
+                        "invoked": 0,
+                        "regions_to_regions": {},
+                        "non_executions": 0,
                     }
 
-            # Final output
-            total_months = total_days / 30
-            workflow_summary_data[instance_id] = {
-                "projected_monthly_invocations": instance_data["invocation_count"]
-                / total_months,  # Simple Estimation, may not be accurate
-                "execution_summary": execution_summary,
-                "invocation_summary": invocation_summary,
-            }
+                instance_summary[caller]["to_instance"][callee]["non_executions"] += count
 
-        return workflow_summary_data
+        # Calculate the invocation probability
+        for caller, to_instance in instance_summary.items():
+            for callee, caller_callee_data in to_instance["to_instance"].items():
+                caller_callee_data["invocation_probability"] = caller_callee_data["invoked"] / (
+                    caller_callee_data["invoked"] + caller_callee_data["non_executions"]
+                )

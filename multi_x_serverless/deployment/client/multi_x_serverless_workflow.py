@@ -23,14 +23,7 @@ from multi_x_serverless.deployment.client.multi_x_serverless_function import Mul
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
-
-formatter = logging.Formatter(
-    f"TIME (%(asctime)s) LEVEL (%(levelname)s) MESSAGE (%(message)s) LOG_VERSION ({LOG_VERSION})"
-)
-handler = logging.StreamHandler()
-handler.setFormatter(formatter)
-
-logger.addHandler(handler)
+logger.addHandler(logging.StreamHandler())
 
 
 class MultiXServerlessWorkflow:
@@ -127,6 +120,14 @@ class MultiXServerlessWorkflow:
 
         if not conditional:
             # We don't call the function if it is conditional and the condition is not met.
+            log_message = (
+                f"CONDITIONAL_NON_EXECUTION: INSTANCE ({current_instance_name}) calling "
+                f"SUCCESSOR ({successor_instance_name})"
+            )
+            self.log_for_retrieval(
+                log_message,
+                workflow_placement_decision["run_id"],
+            )
 
             # We still need to increment the successor index, because the next function might not be conditional.
             self._successor_index += 1
@@ -142,7 +143,10 @@ class MultiXServerlessWorkflow:
         if payload:
             payload_wrapper["payload"] = payload
 
+        transmission_taint = uuid.uuid4().hex
+
         payload_wrapper["workflow_placement_decision"] = successor_workflow_placement_decision_dictionary
+        payload_wrapper["transmission_taint"] = transmission_taint
         json_payload = json.dumps(payload_wrapper)
 
         provider, region, identifier = self.get_successor_workflow_placement_decision(
@@ -157,12 +161,14 @@ class MultiXServerlessWorkflow:
                 set(workflow_placement_decision["instances"][successor_instance_name]["preceding_instances"])
             )
 
-        logger.info(
-            "INVOKING_SUCCESSOR: RUN_ID (%s): INSTANCE (%s) calling SUCCESSOR (%s) with PAYLOAD_SIZE (%s) GB",
+        log_message = (
+            f"INVOKING_SUCCESSOR: INSTANCE ({current_instance_name}) calling "
+            f"SUCCESSOR ({successor_instance_name}) with PAYLOAD_SIZE "
+            f"({len(json_payload.encode('utf-8')) / (1024**3)}) GB and TAINT ({transmission_taint})"
+        )
+        self.log_for_retrieval(
+            log_message,
             workflow_placement_decision["run_id"],
-            current_instance_name,
-            successor_instance_name,
-            len(json_payload.encode("utf-8")) / (1024**3),
         )
 
         RemoteClientFactory.get_remote_client(provider, region).invoke_function(
@@ -217,11 +223,13 @@ class MultiXServerlessWorkflow:
             direct_call=False,
         )
 
-        logger.info(
-            "INFORMING_SYNC_NODE: RUN_ID (%s): INSTANCE (%s) informing SYNC_NODE (%s) of non-execution",
+        log_message = (
+            f"INFORMING_SYNC_NODE: INSTANCE ({predecessor_instance_name}) informing "
+            f"SYNC_NODE ({successor_instance_name}) of non-execution"
+        )
+        self.log_for_retrieval(
+            log_message,
             workflow_placement_decision["run_id"],
-            predecessor_instance_name,
-            successor_instance_name,
         )
 
         # If all the predecessors have been reached and any of them have directly reached the sync node
@@ -513,7 +521,7 @@ class MultiXServerlessWorkflow:
         def _register_handler(func: Callable[..., Any]) -> Callable[..., Any]:
             handler_name = name if name is not None else func.__name__
 
-            def wrapper(*args, **kwargs):  # type: ignore # pylint: disable=unused-argument
+            def wrapper(*args, **kwargs):  # type: ignore # pylint: disable=unused-argument, too-many-branches
                 # Modify args and kwargs here as needed
                 argument_raw = args[0]
 
@@ -532,21 +540,32 @@ class MultiXServerlessWorkflow:
                             f"Could not get message from argument {argument_raw}, there should be meta information in the message"  # pylint: disable=line-too-long
                         ) from e
 
-                send_to_home_region = False
-                time_invoked_at_client = None
-                if isinstance(argument, dict) and "send_to_home_region" in argument:
-                    send_to_home_region = argument["send_to_home_region"]
-                    time_invoked_at_client = argument.get("time_request_sent", None)
-                    argument = argument["input_data"]
+                if isinstance(argument, dict):
+                    transmission_taint = argument.get("transmission_taint", "N/A")
+                else:
+                    transmission_taint = "N/A"
+
                 if entry_point:
+                    send_to_home_region = False
+                    time_invoked_at_client = None
+                    pre_loaded_workflow_placement_decision = None
+                    if isinstance(argument, dict) and "workflow_placement_decision" in argument:
+                        time_invoked_at_client = argument.get("time_request_sent", None)
+                        pre_loaded_workflow_placement_decision = argument.get("workflow_placement_decision", None)
+                        send_to_home_region = pre_loaded_workflow_placement_decision.get("send_to_home_region", False)
+                        argument = argument.get("input_data", {})
+
                     init_latency = "N/A"
                     if time_invoked_at_client:
                         datetime_invoked_at_client = datetime.strptime(time_invoked_at_client, TIME_FORMAT)
                         datetime_now = datetime.now(GLOBAL_TIME_ZONE)
                         time_difference_datetime = datetime_now - datetime_invoked_at_client
-                        # Get ms from the time difference
-                        init_latency = str(time_difference_datetime.total_seconds() * 1000)
-                    wrapper.workflow_placement_decision = self.get_workflow_placement_decision_from_platform()  # type: ignore  # pylint: disable=line-too-long
+                        # Get s from the time difference
+                        init_latency = str(time_difference_datetime.total_seconds())
+                    if pre_loaded_workflow_placement_decision:
+                        wrapper.workflow_placement_decision = pre_loaded_workflow_placement_decision  # type: ignore
+                    else:
+                        wrapper.workflow_placement_decision = self.get_workflow_placement_decision_from_platform()  # type: ignore  # pylint: disable=line-too-long
                     # This is the first function to be called, so we need to generate a run id
                     # This run id will be used to identify the workflow instance
                     wrapper.workflow_placement_decision["run_id"] = uuid.uuid4().hex  # type: ignore
@@ -555,13 +574,16 @@ class MultiXServerlessWorkflow:
                         return func()
                     payload = argument
 
-                    logger.info(
-                        "ENTRY_POINT: RUN_ID (%s): Entry Point INSTANCE (%s) of workflow %s called with PAYLOAD_SIZE (%s) GB and INIT_LATENCY (%s) ms",  # pylint: disable=line-too-long
+                    log_message = (
+                        f"ENTRY_POINT: : Entry Point INSTANCE "
+                        f'({wrapper.workflow_placement_decision["current_instance_name"]}) '  # type: ignore
+                        f'of workflow {f"{self.name}-{self.version}"} called with PAYLOAD_SIZE '
+                        f'({len(json.dumps(payload).encode("utf-8")) / (1024**3)}) GB and '
+                        f"INIT_LATENCY ({init_latency}) s"
+                    )
+                    self.log_for_retrieval(
+                        log_message,
                         wrapper.workflow_placement_decision["run_id"],  # type: ignore
-                        wrapper.workflow_placement_decision["current_instance_name"],  # type: ignore
-                        f"{self.name}-{self.version}",
-                        len(json.dumps(payload).encode("utf-8")) / (1024**3),
-                        init_latency,
                     )
                 else:
                     # Get the workflow_placement decision from the message received from the predecessor function
@@ -572,10 +594,13 @@ class MultiXServerlessWorkflow:
                         return func({})
                     payload = argument.get("payload", {})
 
-                logger.info(
-                    "INVOKED: RUN_ID (%s): INSTANCE (%s) called",
+                log_message = (
+                    f'INVOKED: INSTANCE ({wrapper.workflow_placement_decision["current_instance_name"]}) '  # type: ignore  # pylint: disable=line-too-long
+                    f"called with TAINT ({transmission_taint})"
+                )
+                self.log_for_retrieval(
+                    log_message,
                     wrapper.workflow_placement_decision["run_id"],  # type: ignore
-                    wrapper.workflow_placement_decision["current_instance_name"],  # type: ignore
                 )
 
                 # Call the original function with the modified arguments
@@ -583,11 +608,13 @@ class MultiXServerlessWorkflow:
                 result = func(payload)
                 end_time = time.time()
 
-                logger.info(
-                    "EXECUTED: RUN_ID (%s): INSTANCE (%s) executed EXECUTION_TIME (%s) seconds",
+                log_message = (
+                    f'EXECUTED: INSTANCE ({wrapper.workflow_placement_decision["current_instance_name"]}) '  # type: ignore  # pylint: disable=line-too-long
+                    f"executed EXECUTION_TIME ({end_time - start_time})"
+                )
+                self.log_for_retrieval(
+                    log_message,
                     wrapper.workflow_placement_decision["run_id"],  # type: ignore
-                    wrapper.workflow_placement_decision["current_instance_name"],  # type: ignore
-                    end_time - start_time,
                 )
 
                 return result
@@ -599,3 +626,15 @@ class MultiXServerlessWorkflow:
             return wrapper
 
         return _register_handler
+
+    def log_for_retrieval(self, message: str, run_id: str) -> None:
+        """
+        Log a message for retrieval by the platform.
+        """
+        logger.info(
+            "TIME (%s) RUN_ID (%s) MESSAGE (%s) LOG_VERSION (%s)",
+            datetime.now(GLOBAL_TIME_ZONE).strftime(TIME_FORMAT),
+            run_id,
+            message,
+            LOG_VERSION,
+        )

@@ -43,9 +43,7 @@ class SolverUpdateChecker(UpdateChecker):
 
             workflow_config_dict = json.loads(workflow_json["workflow_config"])
             # determines whether we should run deployment_algorithm
-            workflow_summary = data_collector_client.get_last_value_from_sort_key_table(
-                WORKFLOW_SUMMARY_TABLE, workflow_id
-            )
+            workflow_summary = data_collector_client.get_value_from_table(WORKFLOW_SUMMARY_TABLE, workflow_id)
 
             if len(workflow_summary) == 0:
                 raise ValueError("Invalid workflow summary")
