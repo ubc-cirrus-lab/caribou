@@ -159,7 +159,7 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
 
         return (cost, carbon, transmission_latency)
 
-    def alter_carbon_settings(self, carbon_setting: Optional[str]) -> None:
+    def alter_carbon_setting(self, carbon_setting: Optional[str]) -> None:
         """
         Input should either be 'None' or a string from '0' to '23' indicating the hour of the day.
         """
