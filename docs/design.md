@@ -709,15 +709,15 @@ Below is an example of the `workflow_summary_table` for a workflow with 2 instan
       "start_time": "2024-03-09 18:26:24,469750+0000",
       "execution_latencies": {
         "small_sync_example-0_0_1-initial_function:entry_point:0": {
-            "duration": 7.561505556106567,
+            "latency": 7.561505556106567,
             "provider_region": "aws:us-east-1",
         },
         "small_sync_example-0_0_1-syncFunction:sync:": {
-            "duration": 1.798128366470337,
+            "latency": 1.798128366470337,
             "provider_region": "aws:us-east-1",
         },
         "small_sync_example-0_0_1-secondSyncFunction:sync:": {
-            "duration": 1.1149189472198486,
+            "latency": 1.1149189472198486,
             "provider_region": "aws:us-east-1",
         }
       },

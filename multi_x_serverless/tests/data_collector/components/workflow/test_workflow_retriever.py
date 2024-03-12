@@ -117,7 +117,7 @@ class TestWorkflowRetriever(unittest.TestCase):
         # Set up the test data
         instance_summary = {}
         log = {
-            "execution_latencies": {"instance1": "0.1"},
+            "execution_latencies": {"instance1": {"provider_region": "provider1:region1", "latency": "0.1"}},
             "start_hop_destination": {"provider": "provider1", "region": "region1"},
             "transmission_data": [
                 {
@@ -139,16 +139,16 @@ class TestWorkflowRetriever(unittest.TestCase):
         expected_result = {
             "instance1": {
                 "invocations": 1,
-                "regions": {"provider1:region1": {"execution_latency_samples": ["0.1"]}},
+                "executions": {"provider1:region1": ["0.1"]},
                 "to_instance": {
                     "instance2": {
                         "invoked": 0,
                         "regions_to_regions": {},
                         "non_executions": 1,
                         "invocation_probability": 0.0,
-                    },
+                    }
                 },
-            },
+            }
         }
         self.assertEqual(instance_summary, expected_result)
 

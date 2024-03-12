@@ -11,7 +11,6 @@ from multi_x_serverless.common.constants import (
     WORKFLOW_SUMMARY_TABLE,
     TIME_FORMAT,
     LOG_VERSION,
-    FORGETTING_NUMBER,
     TIME_FORMAT_DAYS,
     FORGETTING_TIME_DAYS,
     GLOBAL_TIME_ZONE,
@@ -194,7 +193,9 @@ class TestLogSyncWorkflow(unittest.TestCase):
         # Check that the mocks were called with the correct arguments
         extract_entry_point_log_mock.assert_called_once_with(workflow_run_sample, log_entry, provider_region, log_time)
         extract_invoked_logs_mock.assert_called_once_with(workflow_run_sample, log_entry, provider_region, log_time)
-        extract_executed_logs_mock.assert_called_once_with(workflow_run_sample, log_entry)
+        extract_executed_logs_mock.assert_called_once_with(
+            workflow_run_sample, log_entry, {"provider": "test_provider", "region": "test_region"}
+        )
         extract_invoking_successor_logs_mock.assert_called_once_with(
             workflow_run_sample, log_entry, provider_region, log_time
         )
@@ -298,10 +299,15 @@ class TestLogSyncWorkflow(unittest.TestCase):
         extract_from_string_mock.side_effect = ["test_instance", "1234"]
 
         # Call the method
-        self.log_sync_workflow._extract_executed_logs(workflow_run_sample, log_entry)
+        self.log_sync_workflow._extract_executed_logs(
+            workflow_run_sample, log_entry, {"provider": "test_provider", "region": "test_region"}
+        )
 
         # Check that the WorkflowRunSample object was updated as expected
-        self.assertEqual(workflow_run_sample.execution_latencies["test_instance"], 1234.0)
+        self.assertEqual(
+            workflow_run_sample.execution_latencies["test_instance"],
+            {"latency": 1234.0, "provider_region": "test_provider:test_region"},
+        )
 
         # Check that _extract_from_string was called with the correct arguments
         calls = [call(log_entry, r"INSTANCE \((.*?)\)"), call(log_entry, r"EXECUTION_TIME \((.*?)\)")]
@@ -417,8 +423,6 @@ class TestLogSyncWorkflow(unittest.TestCase):
 
         # Call the method
         self.log_sync_workflow._fill_up_collected_logs(collected_logs, previous_data)
-
-        print(collected_logs)
 
         # Check that the collected_logs list was updated as expected
         expected_result = [
