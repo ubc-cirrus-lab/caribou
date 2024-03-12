@@ -72,7 +72,7 @@ class TestWorkflowConfigSchema(unittest.TestCase):
                 "soft_resource_constraints": {},
                 "priority_order": ["cost", "runtime", "carbon"],
             },
-            "start_hops": [{"provider": "provider1", "region": "region1"}],
+            "home_region": {"provider": "provider1", "region": "region1"},
         }
         WorkflowConfigSchema(**workflow_data)
 

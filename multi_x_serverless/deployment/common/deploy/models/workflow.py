@@ -122,8 +122,7 @@ class Workflow(Resource):
             "workflow_version": self.version,
             "workflow_id": f"{self.name}-{self.version}",
             "instances": self._get_instances(),
-            "start_hops": self._config.home_regions,
-            # TODO (#27): Implement and incorporate Free Tier considerations into data_sources
+            "home_region": self._config.home_region,
             "estimated_invocations_per_month": self._config.estimated_invocations_per_month,
             "constraints": self._config.constraints,
             "regions_and_providers": self._config.regions_and_providers,
@@ -205,7 +204,7 @@ class Workflow(Resource):
         for instance in self._functions:
             workflow_placement_instances[instance.name] = {
                 "identifier": self._deployed_regions[instance.function_resource_name]["message_topic"],
-                "provider_region": self._config.home_regions[0],  # TODO (#68): Make multi-home region workflows work
+                "provider_region": self._config.home_region,
                 "function_identifier": self._deployed_regions[instance.function_resource_name]["function_identifier"],
             }
         return {

@@ -118,7 +118,7 @@ class DeployerFactory:
                         raise RuntimeError(f"Provider {provider} is not supported")
                     if provider not in defined_providers:
                         raise RuntimeError(f"Provider {provider} is not defined in providers")
-                    if provider_region in project_config["home_regions"]:
+                    if provider_region == project_config["home_region"]:
                         raise RuntimeError(f"Region {provider_region} cannot be both home and disallowed")
 
     def load_workflow_app(self) -> MultiXServerlessWorkflow:

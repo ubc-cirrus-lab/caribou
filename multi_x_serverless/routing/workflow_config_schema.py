@@ -19,6 +19,6 @@ class WorkflowConfigSchema(BaseModel):
     regions_and_providers: RegionAndProviders = Field(..., title="List of regions and providers")
     instances: Dict[str, Instance] = Field(..., title="List of instances")
     constraints: Constraints = Field(..., title="Constraints")
-    start_hops: List[ProviderRegion] = Field(..., title="List of home regions")
+    home_region: ProviderRegion = Field(..., title="Home region of the workflow")
     num_calls_in_one_month: Optional[int] = Field(None, title="Number of function calls in 1 hour")
     solver: Optional[str] = Field(None, title="The name of the solver")
