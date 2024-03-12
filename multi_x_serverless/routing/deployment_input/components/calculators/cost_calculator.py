@@ -22,26 +22,20 @@ class CostCalculator(InputCalculator):
 
     def calculate_transmission_cost(
         self,
-        from_instance_name: str,
-        to_instance_name: str,
         from_region_name: str,
         to_region_name: str,
         data_transfer_size: float,
     ) -> float:
-        transmission_cost_gb = self._get_transmission_conversion_ratio(
-            from_instance_name, to_instance_name, from_region_name, to_region_name
-        )
+        transmission_cost_gb = self._get_transmission_conversion_ratio(from_region_name, to_region_name)
         return transmission_cost_gb * data_transfer_size
 
     def calculate_execution_cost(self, instance_name: str, region_name: str, execution_latency: float) -> float:
         cost_from_compute_s, invocation_cost = self._get_execution_conversion_ratio(instance_name, region_name)
         return cost_from_compute_s * execution_latency + invocation_cost
 
-    def _get_transmission_conversion_ratio(
-        self, from_instance_name: str, to_instance_name: str, from_region_name: str, to_region_name: str
-    ) -> float:
+    def _get_transmission_conversion_ratio(self, from_region_name: str, to_region_name: str) -> float:
         # Check if the conversion ratio is in the cache
-        key = from_instance_name + "_" + to_instance_name + "_" + from_region_name + "_" + to_region_name
+        key = from_region_name + "_" + to_region_name
         if key in self._transmission_conversion_ratio_cache:
             return self._transmission_conversion_ratio_cache[key]
 

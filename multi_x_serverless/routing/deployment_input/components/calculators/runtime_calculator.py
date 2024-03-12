@@ -1,3 +1,5 @@
+from typing import Optional
+
 import numpy as np
 
 from multi_x_serverless.routing.deployment_input.components.calculator import InputCalculator
@@ -11,23 +13,55 @@ class RuntimeCalculator(InputCalculator):
         self._performance_loader: PerformanceLoader = performance_loader
         self._workflow_loader: WorkflowLoader = workflow_loader
 
-    def get_transmission_size_distribution(self, from_instance_name: str, to_instance_name: str) -> np.ndarray:
-        # Get the data transfer size distribution
-        data_transfer_size_distribution = np.array(
-            self._workflow_loader.get_data_transfer_size_distribution(from_instance_name, to_instance_name)
-        )
-
-        return data_transfer_size_distribution
-
-    def get_transmission_latency_distribution(
-        self, from_region_name: str, to_region_name: str, data_transfer_size: float
+    def get_transmission_size_distribution(
+        self,
+        from_instance_name: Optional[str],
+        to_instance_name: str,
+        from_region_name: str,
+        to_region_name: str,
     ) -> np.ndarray:
         # Get the data transfer size distribution
-        transmission_latency_distribution = np.array(
-            self._performance_loader.get_transmission_latency_distribution(
-                from_region_name, to_region_name, data_transfer_size
+        if from_instance_name:
+            transmission_size_distribution = np.array(
+                self._workflow_loader.get_data_transfer_size_distribution(
+                    from_instance_name, to_instance_name, from_region_name, to_region_name
+                )
             )
-        )
+        else:
+            transmission_size_distribution = np.array(
+                self._workflow_loader.get_start_hop_size_distribution(from_region_name)
+            )
+
+        return transmission_size_distribution
+
+    def get_transmission_latency_distribution(
+        self,
+        from_instance_name: Optional[str],
+        to_instance_name: str,
+        from_region_name: str,
+        to_region_name: str,
+        data_transfer_size: Optional[float],
+    ) -> np.ndarray:
+        if data_transfer_size is not None:
+            if from_instance_name:
+                # Not for start hop
+                # Get the data transfer size distribution
+                transmission_latency_distribution = np.array(
+                    self._workflow_loader.get_latency_distribution(
+                        from_instance_name, to_instance_name, from_region_name, to_region_name, data_transfer_size
+                    )
+                )
+            else:
+                # No size information, we default to performance loader
+                transmission_latency_distribution = np.array(
+                    self._workflow_loader.get_start_hop_latency_distribution(from_region_name, data_transfer_size)
+                )
+        else:
+            # No size information, we default to performance loader
+            # Get the data transfer size distribution
+            transmission_latency_distribution = np.array(
+                self._performance_loader.get_transmission_latency_distribution(from_region_name, to_region_name)
+            )
 
         return transmission_latency_distribution
 

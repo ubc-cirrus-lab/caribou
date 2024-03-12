@@ -1,5 +1,7 @@
 import unittest
 from unittest.mock import Mock, patch, MagicMock
+
+import numpy as np
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
 from multi_x_serverless.routing.deployment_input.components.loaders.workflow_loader import WorkflowLoader
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
@@ -10,50 +12,40 @@ class TestWorkflowLoader(unittest.TestCase):
         self.workflow_config = MagicMock(spec=WorkflowConfig)
         self.workflow_config.home_region = "home_region"
         self.workflow_config.instances = {
-            "image_processing_light-0_0_1-GetInput:entry_point:0": {"instance_name": "image_processing_light-0_0_1-GetInput:entry_point:0", "regions_and_providers": {"providers": {}}}
+            "image_processing_light-0_0_1-GetInput:entry_point:0": {
+                "instance_name": "image_processing_light-0_0_1-GetInput:entry_point:0",
+                "regions_and_providers": {"providers": {}},
+            }
         }
         self.workflow_data = {
             "workflow_runtime_samples": [5.857085, 5.740116, 7.248474],
-            "daily_invocation_counts": { "2024-03-12+0000": 3 },
-            "start_hop_summary": {
-                "aws:us-east-1": { "3.3527612686157227e-08": [0.52388, 0.514119, 0.519146] }
-            },
+            "daily_invocation_counts": {"2024-03-12+0000": 3},
+            "start_hop_summary": {"aws:us-east-1": {"3.3527612686157227e-08": [0.52388, 0.514119, 0.519146]}},
             "instance_summary": {
                 "image_processing_light-0_0_1-GetInput:entry_point:0": {
                     "invocations": 3,
-                    "executions": {
-                        "aws:us-east-1": [
-                        1.140042781829834, 1.129507303237915, 1.0891644954681396
-                        ]
-                    },
+                    "executions": {"aws:us-east-1": [1.140042781829834, 1.129507303237915, 1.0891644954681396]},
                     "to_instance": {
                         "image_processing_light-0_0_1-Flip:image_processing_light-0_0_1-GetInput_0_0:1": {
                             "invoked": 3,
                             "regions_to_regions": {
                                 "aws:us-east-1": {
-                                    "aws:us-east-1": {
-                                        "2.9960647225379944e-06": [1.217899, 1.18531, 1.174224]
-                                    }
+                                    "aws:us-east-1": {"2.9960647225379944e-06": [1.217899, 1.18531, 1.174224]}
                                 }
                             },
                             "non_executions": 0,
-                            "invocation_probability": 0.9
+                            "invocation_probability": 0.9,
                         }
-                    }
+                    },
                 },
                 "image_processing_light-0_0_1-Flip:image_processing_light-0_0_1-GetInput_0_0:1": {
-                "invocations": 3,
-                "executions": {
-                    "aws:us-east-1": [
-                    4.638583183288574, 4.554178953170776, 6.073627948760986
-                    ]
+                    "invocations": 3,
+                    "executions": {"aws:us-east-1": [4.638583183288574, 4.554178953170776, 6.073627948760986]},
+                    "to_instance": {},
                 },
-                "to_instance": {}
-                }
-            }
-            
+            },
         }
-        
+
         self.client = Mock(spec=RemoteClient)
         self.loader = WorkflowLoader(self.client, self.workflow_config)
 
@@ -69,7 +61,9 @@ class TestWorkflowLoader(unittest.TestCase):
 
     def test_get_runtime_distribution(self):
         self.loader._workflow_data = self.workflow_data
-        runtimes = self.loader.get_runtime_distribution("image_processing_light-0_0_1-GetInput:entry_point:0", "aws:us-east-1")
+        runtimes = self.loader.get_runtime_distribution(
+            "image_processing_light-0_0_1-GetInput:entry_point:0", "aws:us-east-1"
+        )
         self.assertEqual(runtimes, [1.140042781829834, 1.129507303237915, 1.0891644954681396])
 
     def test_get_start_hop_size_distribution(self):
@@ -84,17 +78,31 @@ class TestWorkflowLoader(unittest.TestCase):
 
     def test_get_data_transfer_size_distribution(self):
         self.loader._workflow_data = self.workflow_data
-        data_transfer_size = self.loader.get_data_transfer_size_distribution("image_processing_light-0_0_1-GetInput:entry_point:0", "image_processing_light-0_0_1-Flip:image_processing_light-0_0_1-GetInput_0_0:1", "aws:us-east-1", "aws:us-east-1")
+        data_transfer_size = self.loader.get_data_transfer_size_distribution(
+            "image_processing_light-0_0_1-GetInput:entry_point:0",
+            "image_processing_light-0_0_1-Flip:image_processing_light-0_0_1-GetInput_0_0:1",
+            "aws:us-east-1",
+            "aws:us-east-1",
+        )
         self.assertEqual(data_transfer_size, [2.9960647225379944e-06])
 
     def test_get_data_transfer_latency_distribution(self):
         self.loader._workflow_data = self.workflow_data
-        data_transfer_latency = self.loader.get_latency_distribution("image_processing_light-0_0_1-GetInput:entry_point:0", "image_processing_light-0_0_1-Flip:image_processing_light-0_0_1-GetInput_0_0:1", "aws:us-east-1", "aws:us-east-1", 2.9960647225379944e-06)
+        data_transfer_latency = self.loader.get_latency_distribution(
+            "image_processing_light-0_0_1-GetInput:entry_point:0",
+            "image_processing_light-0_0_1-Flip:image_processing_light-0_0_1-GetInput_0_0:1",
+            "aws:us-east-1",
+            "aws:us-east-1",
+            2.9960647225379944e-06,
+        )
         self.assertEqual(data_transfer_latency, [1.217899, 1.18531, 1.174224])
 
     def test_get_invocation_probability(self):
         self.loader._workflow_data = self.workflow_data
-        invocation_probability = self.loader.get_invocation_probability("image_processing_light-0_0_1-GetInput:entry_point:0", "image_processing_light-0_0_1-Flip:image_processing_light-0_0_1-GetInput_0_0:1")
+        invocation_probability = self.loader.get_invocation_probability(
+            "image_processing_light-0_0_1-GetInput:entry_point:0",
+            "image_processing_light-0_0_1-Flip:image_processing_light-0_0_1-GetInput_0_0:1",
+        )
         self.assertEqual(invocation_probability, 0.9)
 
     def test_get_vcpu(self):

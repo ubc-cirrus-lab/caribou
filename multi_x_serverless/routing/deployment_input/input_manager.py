@@ -21,8 +21,6 @@ from multi_x_serverless.routing.workflow_config import WorkflowConfig
 class InputManager:  # pylint: disable=too-many-instance-attributes
     _region_indexer: RegionIndexer
     _instance_indexer: InstanceIndexer
-    _transmission_size_distribution_cache: dict[str, np.ndarray]
-    _transmission_latency_distribution_cache: dict[str, np.ndarray]
     _execution_latency_distribution_cache: dict[str, np.ndarray]
     _invocation_probability_cache: dict[str, float]
 
@@ -82,9 +80,6 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
 
         # Clear cache
         self._invocation_probability_cache: dict[str, float] = {}
-
-        self._transmission_size_distribution_cache: dict[str, np.ndarray] = {}
-        self._transmission_latency_distribution_cache: dict[str, np.ndarray] = {}
         self._execution_latency_distribution_cache: dict[str, np.ndarray] = {}
 
     def get_execution_cost_carbon_latency(self, instance_index: int, region_index: int) -> tuple[float, float, float]:
@@ -121,50 +116,43 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         to_region_index: int,
     ) -> tuple[float, float, float]:
         # Convert the instance and region indices to their names
-        from_instance_name = self._instance_indexer.index_to_value(from_instance_index)
+        from_instance_name: Optional[str] = None
+        if from_instance_index != -1:
+            from_instance_name = self._instance_indexer.index_to_value(from_instance_index)
         to_instance_name = self._instance_indexer.index_to_value(to_instance_index)
         from_region_name = self._region_indexer.index_to_value(from_region_index)
         to_region_name = self._region_indexer.index_to_value(to_region_index)
 
-        # For this we first need a sample size, then the transmission latency of the sample size
-        ## First check if the value is already in the cache
-        key = f"{from_instance_index}_{to_instance_index}"
-        if key in self._transmission_size_distribution_cache:
-            transmission_size_distribution = self._transmission_size_distribution_cache[key]
-        else:
-            # If not, calculate the value and store it in the cache
-            transmission_size_distribution = np.array(
-                self._workflow_loader.get_data_transfer_size_distribution(from_instance_name, to_instance_name)
-            )
+        # Get the transmission size distribution
+        transmission_size_distribution: np.ndarray = self._runtime_calculator.get_transmission_size_distribution(
+            from_instance_name, to_instance_name, from_region_name, to_region_name
+        )
 
-            self._transmission_size_distribution_cache[key] = transmission_size_distribution
+        # Pick a transmission size or default to None
+        transmission_size: Optional[float] = None
+        if len(transmission_size_distribution) > 0:
+            transmission_size = np.random.choice(transmission_size_distribution)
 
-        # Pick a random sample from the distribution
-        transmission_size = np.random.choice(transmission_size_distribution)
-
-        # Now for get the transmission latency for this transmission size
-        ## First check if the value is already in the cache
-        key = f"{from_region_index}_{to_region_index}_{transmission_size}"
-        if key in self._transmission_latency_distribution_cache:
-            transmission_latency_distribution = self._transmission_latency_distribution_cache[key]
-        else:
-            # If not, calculate the value and store it in the cache
-            transmission_latency_distribution = self._runtime_calculator.get_transmission_latency_distribution(
-                from_region_name, to_region_name, transmission_size
-            )
-            self._transmission_latency_distribution_cache[key] = transmission_latency_distribution
+        # Get the transmission latency distribution
+        transmission_latency_distribution: np.ndarray = self._runtime_calculator.get_transmission_latency_distribution(
+            from_instance_name, to_instance_name, from_region_name, to_region_name, transmission_size
+        )
 
         # Now we can get a random sample from the distribution
-        transmission_latency = np.random.choice(transmission_latency_distribution)
+        transmission_latency: float = np.random.choice(transmission_latency_distribution)
+
+        if (
+            transmission_size is None
+        ):  # At this point we can assume that the transmission size is 0 for any missing data
+            transmission_size = 0.0
 
         # Now we can calculate the cost and carbon
         cost = self._cost_calculator.calculate_transmission_cost(
-            from_instance_name,
-            to_instance_name,
             from_region_name,
             to_region_name,
             transmission_size,
         )
+
         carbon = self._carbon_calculator.calculate_transmission_carbon(
             from_region_name, to_region_name, transmission_size, transmission_latency
         )

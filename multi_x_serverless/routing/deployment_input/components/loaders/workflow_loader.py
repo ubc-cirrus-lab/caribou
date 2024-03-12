@@ -2,12 +2,10 @@ from typing import Any
 
 from multi_x_serverless.common.constants import (
     SOLVER_INPUT_ARCHITECTURE_DEFAULT,
-    SOLVER_INPUT_DATA_TRANSFER_SIZE_DEFAULT,
     SOLVER_INPUT_INVOCATION_PROBABILITY_DEFAULT,
-    SOLVER_INPUT_PROJECTED_MONTHLY_INVOCATIONS_DEFAULT,
+    SOLVER_INPUT_TRANSMISSION_LATENCY_DEFAULT,
     SOLVER_INPUT_VCPU_DEFAULT,
     WORKFLOW_INSTANCE_TABLE,
-    SOLVER_INPUT_TRANSMISSION_LATENCY_DEFAULT,
 )
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
 from multi_x_serverless.common.provider import Provider
@@ -42,76 +40,77 @@ class WorkflowLoader(InputLoader):
 
     def get_runtime_distribution(self, instance_name: str, region_name: str) -> list[float]:
         return (
-            self._workflow_data
-            .get("instance_summary", {})
+            self._workflow_data.get("instance_summary", {})
             .get(instance_name, {})
             .get("executions", {})
             .get(region_name, [])
         )
 
-    def get_start_hop_size_distribution(self,
-        from_region_name: str
-        ) -> list[float]:
-        resulting_size = [float(size) for size in self._workflow_data.get("start_hop_summary", {}).get(from_region_name, {}).keys()]
+    def get_start_hop_size_distribution(self, from_region_name: str) -> list[float]:
+        resulting_size = [
+            float(size) for size in self._workflow_data.get("start_hop_summary", {}).get(from_region_name, {}).keys()
+        ]
 
         # # Return the list if more than 0 size is available, else return SOLVER_INPUT_DATA_TRANSFER_SIZE_DEFAULT
-        # return resulting_size if len(resulting_size) > 0 else [SOLVER_INPUT_DATA_TRANSFER_SIZE_DEFAULT] 
+        # return resulting_size if len(resulting_size) > 0 else [SOLVER_INPUT_DATA_TRANSFER_SIZE_DEFAULT]
 
         return resulting_size
 
-    def get_start_hop_latency_distribution(self,
-        from_region_name: str,
-        data_transfer_size: float
-        ) -> list[float]:
+    def get_start_hop_latency_distribution(self, from_region_name: str, data_transfer_size: float) -> list[float]:
         return (
-            self._workflow_data.get("start_hop_summary", {}).get(from_region_name, {}).get(str(data_transfer_size), [SOLVER_INPUT_TRANSMISSION_LATENCY_DEFAULT])
+            self._workflow_data.get("start_hop_summary", {})
+            .get(from_region_name, {})
+            .get(str(data_transfer_size), [SOLVER_INPUT_TRANSMISSION_LATENCY_DEFAULT])
         )
 
-    def get_data_transfer_size_distribution(self, 
-        from_instance_name: str, 
-        to_instance_name: str,
-        from_region_name: str,
-        to_region_name: str,
-        ) -> list[float]:
-
-        resulting_size = [float(size) for size in self._workflow_data
-            .get("instance_summary", {})
-            .get(from_instance_name, {})
-            .get("to_instance", {})
-            .get(to_instance_name, {})
-            .get("regions_to_regions", {})
-            .get(from_region_name, {})
-            .get(to_region_name, {}).keys()]
-        
-        # # Return the list if more than 0 size is available, else return SOLVER_INPUT_DATA_TRANSFER_SIZE_DEFAULT
-        # return resulting_size if len(resulting_size) > 0 else [SOLVER_INPUT_DATA_TRANSFER_SIZE_DEFAULT] 
-        return resulting_size
-    
-    def get_latency_distribution(
+    def get_data_transfer_size_distribution(
         self,
         from_instance_name: str,
         to_instance_name: str,
         from_region_name: str,
         to_region_name: str,
-        data_transfer_size: float
     ) -> list[float]:
-        return (self._workflow_data
-            .get("instance_summary", {})
+        resulting_size = [
+            float(size)
+            for size in self._workflow_data.get("instance_summary", {})
             .get(from_instance_name, {})
             .get("to_instance", {})
             .get(to_instance_name, {})
             .get("regions_to_regions", {})
             .get(from_region_name, {})
             .get(to_region_name, {})
-            .get(str(data_transfer_size), [SOLVER_INPUT_TRANSMISSION_LATENCY_DEFAULT]))
+            .keys()
+        ]
+
+        # # Return the list if more than 0 size is available, else return SOLVER_INPUT_DATA_TRANSFER_SIZE_DEFAULT
+        # return resulting_size if len(resulting_size) > 0 else [SOLVER_INPUT_DATA_TRANSFER_SIZE_DEFAULT]
+        return resulting_size
+
+    def get_latency_distribution(
+        self,
+        from_instance_name: str,
+        to_instance_name: str,
+        from_region_name: str,
+        to_region_name: str,
+        data_transfer_size: float,
+    ) -> list[float]:
+        return (
+            self._workflow_data.get("instance_summary", {})
+            .get(from_instance_name, {})
+            .get("to_instance", {})
+            .get(to_instance_name, {})
+            .get("regions_to_regions", {})
+            .get(from_region_name, {})
+            .get(to_region_name, {})
+            .get(str(data_transfer_size), [SOLVER_INPUT_TRANSMISSION_LATENCY_DEFAULT])
+        )
 
     def get_invocation_probability(self, from_instance_name: str, to_instance_name: str) -> float:
         if from_instance_name == to_instance_name:  # Special case for start node
             return 1
 
         return (
-            self._workflow_data
-            .get("instance_summary", {})
+            self._workflow_data.get("instance_summary", {})
             .get(from_instance_name, {})
             .get("to_instance", {})
             .get(to_instance_name, {})
