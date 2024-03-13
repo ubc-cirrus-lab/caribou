@@ -95,3 +95,4 @@ TIME_FORMAT_DAYS = "%Y-%m-%d%z"
 # Forgetting factors
 FORGETTING_TIME_DAYS = 30  # 30 days
 FORGETTING_NUMBER = 5000  # 5000 invocations
+KEEP_ALIVE_DATA_COUNT = 10  # Keep sample it is part of any of the 10 samples for any execution or transmission

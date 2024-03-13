@@ -449,39 +449,73 @@ class TestLogSyncWorkflow(unittest.TestCase):
         expected_result = [{"start_time": (now - timedelta(days=i)).strftime(TIME_FORMAT)} for i in range(3, -1, -1)]
         self.assertEqual(collected_logs, expected_result)
 
-    def test_format_collected_logs(self):
+    from unittest.mock import patch
+
+    @patch.object(LogSyncWorkflow, "_extend_existing_execution_instance_region")
+    @patch.object(LogSyncWorkflow, "_extend_existing_transmission_from_instance_to_instance_region")
+    @patch("multi_x_serverless.syncers.log_sync_workflow.WorkflowRunSample")
+    def test_format_collected_logs(
+        self,
+        WorkflowRunSampleMock,
+        extend_existing_transmission_from_instance_to_instance_region_mock,
+        extend_existing_execution_instance_region_mock,
+    ):
+        # Set up the mock
+        WorkflowRunSampleMock.return_value.is_complete.return_value = True
+        WorkflowRunSampleMock.return_value.to_dict.return_value = (
+            1,
+            {
+                "start_time": "2022-01-01T00:00:00,000+00:00",
+                "end_time": "2022-01-01T00:00:00,000+00:00",
+                "execution_latencies": {"function1": {"provider_region": "provider1:region1", "latency": "0.1"}},
+                "start_hop_destination": {"provider": "provider1", "region": "region1"},
+                "transmission_data": [
+                    {
+                        "from_instance": "instance1",
+                        "to_instance": "instance2",
+                        "from_region": {"provider": "provider1", "region": "region1"},
+                        "to_region": {"provider": "provider2", "region": "region2"},
+                        "transmission_size": 1.0,
+                        "transmission_latency": 0.1,
+                    }
+                ],
+                "non_executions": {"instance1": {"instance2": 1}},
+            },
+        )
+
+        self.log_sync_workflow._collected_logs = {"workflow1": WorkflowRunSampleMock()}
+
         # Set up the test data
-        now = datetime.now(GLOBAL_TIME_ZONE)
-        workflow_run_sample1 = WorkflowRunSample("test_run_id1")
-        workflow_run_sample1.log_start_time = now - timedelta(days=2)
-        workflow_run_sample1.is_complete = lambda: True
-        workflow_run_sample1.to_dict = lambda: (now - timedelta(days=2), {"id": "test_run_id1"})
-
-        workflow_run_sample2 = WorkflowRunSample("test_run_id2")
-        workflow_run_sample2.log_start_time = now - timedelta(days=1)
-        workflow_run_sample2.is_complete = lambda: True
-        workflow_run_sample2.to_dict = lambda: (now - timedelta(days=1), {"id": "test_run_id2"})
-
-        workflow_run_sample3 = WorkflowRunSample("test_run_id3")
-        workflow_run_sample3.log_start_time = now
-        workflow_run_sample3.is_complete = lambda: False
-        workflow_run_sample3.to_dict = lambda: (now, {"id": "test_run_id3"})
-
-        self.log_sync_workflow._collected_logs = {
-            "test_run_id1": workflow_run_sample1,
-            "test_run_id2": workflow_run_sample2,
-            "test_run_id3": workflow_run_sample3,
-        }
+        now = datetime.strptime("2022-01-01 00:00:00,000+00:00", TIME_FORMAT)
 
         # Call the method
         result = self.log_sync_workflow._format_collected_logs()
 
         # Check that the result is as expected
         expected_result = [
-            {"id": "test_run_id1"},
-            {"id": "test_run_id2"},
+            {
+                "start_time": "2022-01-01T00:00:00,000+00:00",
+                "end_time": "2022-01-01T00:00:00,000+00:00",
+                "execution_latencies": {"function1": {"provider_region": "provider1:region1", "latency": "0.1"}},
+                "start_hop_destination": {"provider": "provider1", "region": "region1"},
+                "transmission_data": [
+                    {
+                        "from_instance": "instance1",
+                        "to_instance": "instance2",
+                        "from_region": {"provider": "provider1", "region": "region1"},
+                        "to_region": {"provider": "provider2", "region": "region2"},
+                        "transmission_size": 1.0,
+                        "transmission_latency": 0.1,
+                    }
+                ],
+                "non_executions": {"instance1": {"instance2": 1}},
+            }
         ]
         self.assertEqual(result, expected_result)
+
+        # Check that the mocks were called with the correct arguments
+        extend_existing_execution_instance_region_mock.assert_called_once_with(expected_result[0])
+        extend_existing_transmission_from_instance_to_instance_region_mock.assert_called_once_with(expected_result[0])
 
     def test_filter_daily_invocation_counts(self):
         # Set up the test data
@@ -511,6 +545,209 @@ class TestLogSyncWorkflow(unittest.TestCase):
         # Check that the previous_daily_invocation_counts dictionary was updated as expected
         expected_result = {(now - timedelta(days=i)).strftime(TIME_FORMAT_DAYS): i + 5 for i in range(5)}
         self.assertEqual(previous_daily_invocation_counts, expected_result)
+
+    def test_check_for_missing_execution_instance_region(self):
+        # Set up the test data
+        previous_log = {
+            "execution_latencies": {
+                "function1": {"provider_region": "provider1:region1"},
+                "function2": {"provider_region": "provider1:region2"},
+            }
+        }
+        self.log_sync_workflow._existing_data = {
+            "execution_instance_region": {
+                "function1": {"provider1:region1": 5},
+            }
+        }
+
+        # Call the method
+        result = self.log_sync_workflow._check_for_missing_execution_instance_region(previous_log)
+
+        # Check that the _existing_data dictionary was updated as expected
+        expected_data = {
+            "execution_instance_region": {
+                "function1": {"provider1:region1": 6},
+                "function2": {"provider1:region2": 1},
+            }
+        }
+        self.assertEqual(self.log_sync_workflow._existing_data, expected_data)
+
+        # Check that the method returned the correct value
+        self.assertTrue(result)
+
+    def test_extend_existing_execution_instance_region(self):
+        # Set up the test data
+        log = {
+            "execution_latencies": {
+                "function1": {"provider_region": "provider1:region1"},
+                "function2": {"provider_region": "provider1:region2"},
+            }
+        }
+        self.log_sync_workflow._existing_data = {
+            "execution_instance_region": {
+                "function1": {"provider1:region1": 5},
+            }
+        }
+
+        # Call the method
+        self.log_sync_workflow._extend_existing_execution_instance_region(log)
+
+        # Check that the _existing_data dictionary was updated as expected
+        expected_data = {
+            "execution_instance_region": {
+                "function1": {"provider1:region1": 6},
+                "function2": {"provider1:region2": 1},
+            }
+        }
+        self.assertEqual(self.log_sync_workflow._existing_data, expected_data)
+
+    def test_extend_existing_transmission_from_instance_to_instance_region(self):
+        # Set up the test data
+        log = {
+            "transmission_data": [
+                {
+                    "from_instance": "instance1",
+                    "to_instance": "instance2",
+                    "from_region": {"provider": "provider1", "region": "region1"},
+                    "to_region": {"provider": "provider2", "region": "region2"},
+                    "transmission_size": 1.0,
+                    "transmission_latency": 0.1,
+                },
+                {
+                    "from_instance": "instance1",
+                    "to_instance": "instance2",
+                    "from_region": {"provider": "provider1", "region": "region1"},
+                    "to_region": {"provider": "provider2", "region": "region3"},
+                    "transmission_size": 1.0,
+                    "transmission_latency": 0.1,
+                },
+            ]
+        }
+        self.log_sync_workflow._existing_data = {
+            "transmission_from_instance_to_instance_region": {
+                "instance1": {
+                    "instance2": {
+                        "provider1:region1": {"provider2:region2": 5},
+                    }
+                }
+            }
+        }
+
+        # Call the method
+        self.log_sync_workflow._extend_existing_transmission_from_instance_to_instance_region(log)
+
+        # Check that the _existing_data dictionary was updated as expected
+        expected_data = {
+            "transmission_from_instance_to_instance_region": {
+                "instance1": {
+                    "instance2": {
+                        "provider1:region1": {"provider2:region2": 6, "provider2:region3": 1},
+                    }
+                }
+            }
+        }
+        self.assertEqual(self.log_sync_workflow._existing_data, expected_data)
+
+    def test_check_for_missing_transmission_from_instance_to_instance_region(self):
+        # Set up the test data
+        previous_log = {
+            "transmission_data": [
+                {
+                    "from_instance": "instance1",
+                    "to_instance": "instance2",
+                    "from_region": {"provider": "provider1", "region": "region1"},
+                    "to_region": {"provider": "provider2", "region": "region2"},
+                },
+                {
+                    "from_instance": "instance1",
+                    "to_instance": "instance2",
+                    "from_region": {"provider": "provider1", "region": "region1"},
+                    "to_region": {"provider": "provider2", "region": "region3"},
+                },
+            ]
+        }
+        self.log_sync_workflow._existing_data = {
+            "transmission_from_instance_to_instance_region": {
+                "instance1": {
+                    "instance2": {
+                        "provider1:region1": {"provider2:region2": 5},
+                    }
+                }
+            }
+        }
+
+        # Call the method
+        result = self.log_sync_workflow._check_for_missing_transmission_from_instance_to_instance_region(previous_log)
+
+        # Check that the _existing_data dictionary was updated as expected
+        expected_data = {
+            "transmission_from_instance_to_instance_region": {
+                "instance1": {
+                    "instance2": {
+                        "provider1:region1": {"provider2:region2": 6, "provider2:region3": 1},
+                    }
+                }
+            }
+        }
+        self.assertEqual(self.log_sync_workflow._existing_data, expected_data)
+
+        # Check that the method returned the correct value
+        self.assertTrue(result)
+
+    def test_check_for_missing_execution_instance_region_detailed(self):
+        # Set up the test data
+        previous_log = {
+            "execution_latencies": {
+                "function1": {"provider_region": "provider1:region1"},
+                "function2": {"provider_region": "provider1:region2"},
+            }
+        }
+        self.log_sync_workflow._existing_data = {
+            "execution_instance_region": {
+                "function1": {"provider1:region1": 5},
+            }
+        }
+
+        # Call the method
+        result = self.log_sync_workflow._check_for_missing_execution_instance_region(previous_log)
+
+        # Check that the _existing_data dictionary was updated as expected
+        expected_data = {
+            "execution_instance_region": {
+                "function1": {"provider1:region1": 6},
+                "function2": {"provider1:region2": 1},
+            }
+        }
+        self.assertEqual(self.log_sync_workflow._existing_data, expected_data)
+
+        # Check that the method returned the correct value
+        self.assertTrue(result)
+
+    @patch.object(LogSyncWorkflow, "_check_for_missing_execution_instance_region")
+    @patch.object(LogSyncWorkflow, "_check_for_missing_transmission_from_instance_to_instance_region")
+    def test_selectively_add_previous_logs(
+        self,
+        check_for_missing_transmission_from_instance_to_instance_region_mock,
+        check_for_missing_execution_instance_region_mock,
+    ):
+        # Set up the test data
+        collected_logs = [{"log1": "data1"}]
+        previous_log = {"log2": "data2"}
+
+        # Set up the return values for the mocks
+        check_for_missing_execution_instance_region_mock.return_value = True
+        check_for_missing_transmission_from_instance_to_instance_region_mock.return_value = False
+
+        # Call the method
+        self.log_sync_workflow._selectively_add_previous_logs(collected_logs, previous_log)
+
+        # Check that the collected_logs list was updated as expected
+        expected_logs = [previous_log, {"log1": "data1"}]
+        self.assertEqual(collected_logs, expected_logs)
+
+        # Check that the mocks were called with the correct arguments
+        check_for_missing_execution_instance_region_mock.assert_called_once_with(previous_log)
+        check_for_missing_transmission_from_instance_to_instance_region_mock.assert_called_once_with(previous_log)
 
 
 if __name__ == "__main__":

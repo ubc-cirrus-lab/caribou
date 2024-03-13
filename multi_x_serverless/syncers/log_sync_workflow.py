@@ -7,6 +7,7 @@ from multi_x_serverless.common.constants import (
     FORGETTING_NUMBER,
     FORGETTING_TIME_DAYS,
     GLOBAL_TIME_ZONE,
+    KEEP_ALIVE_DATA_COUNT,
     LOG_VERSION,
     TIME_FORMAT,
     TIME_FORMAT_DAYS,
@@ -39,6 +40,11 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         self._previous_data = previous_data
         self._deployed_regions: dict[str, dict[str, Any]] = {}
         self._load_information(deployment_manager_config_str)
+
+        self._existing_data: dict[str, Any] = {
+            "execution_instance_region": {},
+            "transmission_from_instance_to_instance_region": {},
+        }
 
     def _load_information(self, deployment_manager_config_str: str) -> None:
         deployment_manager_config = json.loads(deployment_manager_config_str)
@@ -284,8 +290,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         daily_invocation_counts = previous_daily_invocation_counts
 
         collected_logs: list[dict[str, Any]] = self._format_collected_logs()
-        if len(collected_logs) < FORGETTING_NUMBER:
-            self._fill_up_collected_logs(collected_logs, previous_data)
+        self._fill_up_collected_logs(collected_logs, previous_data)
 
         workflow_runtime_samples: list[float] = [collected_logs["runtime"] for collected_logs in collected_logs]
 
@@ -305,7 +310,8 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         for previous_log in reversed(previous_logs):
             # Do this until we either exceed the forgetting number or run out of previous logs
             if len(collected_logs) >= FORGETTING_NUMBER:
-                break
+                self._selectively_add_previous_logs(collected_logs, previous_log)
+                continue
             log_start_time = datetime.strptime(previous_log["start_time"], TIME_FORMAT)
             # check if the log start time is younger
             # than the oldest allowed date and add it to the collected logs if it is
@@ -317,17 +323,141 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
             else:
                 break
 
+    def _selectively_add_previous_logs(
+        self, collected_logs: list[dict[str, Any]], previous_log: dict[str, Any]
+    ) -> None:
+        has_missing_execution_instance_region = self._check_for_missing_execution_instance_region(previous_log)
+        has_missing_transmission_from_instance_to_instance_region = (
+            self._check_for_missing_transmission_from_instance_to_instance_region(previous_log)
+        )
+        # If the log contains information that is not already in the collected logs, we add it
+        if has_missing_execution_instance_region or has_missing_transmission_from_instance_to_instance_region:
+            collected_logs.insert(0, previous_log)
+
+    def _check_for_missing_execution_instance_region(self, previous_log: dict[str, Any]) -> bool:
+        has_missing_information = False
+        for function, execution_data in previous_log["execution_latencies"].items():
+            if function not in self._existing_data["execution_instance_region"]:
+                has_missing_information = True
+                self._existing_data["execution_instance_region"][function] = {}
+            provider_region = execution_data["provider_region"]
+            if provider_region not in self._existing_data["execution_instance_region"][function]:
+                has_missing_information = True
+                self._existing_data["execution_instance_region"][function][provider_region] = 0
+            self._existing_data["execution_instance_region"][function][provider_region] += 1
+
+            if self._existing_data["execution_instance_region"][function][provider_region] < KEEP_ALIVE_DATA_COUNT:
+                has_missing_information = True
+
+        return has_missing_information
+
+    def _check_for_missing_transmission_from_instance_to_instance_region(self, previous_log: dict[str, Any]) -> bool:
+        has_missing_information = False
+        for transmission_data in previous_log["transmission_data"]:
+            from_instance = transmission_data["from_instance"]
+            to_instance = transmission_data["to_instance"]
+            from_region_str = (
+                transmission_data["from_region"]["provider"] + ":" + transmission_data["from_region"]["region"]
+            )
+            to_region_str = transmission_data["to_region"]["provider"] + ":" + transmission_data["to_region"]["region"]
+            if from_instance not in self._existing_data["transmission_from_instance_to_instance_region"]:
+                has_missing_information = True
+                self._existing_data["transmission_from_instance_to_instance_region"][from_instance] = {}
+            if to_instance not in self._existing_data["transmission_from_instance_to_instance_region"][from_instance]:
+                has_missing_information = True
+                self._existing_data["transmission_from_instance_to_instance_region"][from_instance][to_instance] = {}
+            if (
+                from_region_str
+                not in self._existing_data["transmission_from_instance_to_instance_region"][from_instance][to_instance]
+            ):
+                has_missing_information = True
+                self._existing_data["transmission_from_instance_to_instance_region"][from_instance][to_instance][
+                    from_region_str
+                ] = {}
+            if (
+                to_region_str
+                not in self._existing_data["transmission_from_instance_to_instance_region"][from_instance][to_instance][
+                    from_region_str
+                ]
+            ):
+                has_missing_information = True
+                self._existing_data["transmission_from_instance_to_instance_region"][from_instance][to_instance][
+                    from_region_str
+                ][to_region_str] = 0
+
+            self._existing_data["transmission_from_instance_to_instance_region"][from_instance][to_instance][
+                from_region_str
+            ][to_region_str] += 1
+
+            if (
+                self._existing_data["transmission_from_instance_to_instance_region"][from_instance][to_instance][
+                    from_region_str
+                ][to_region_str]
+                < KEEP_ALIVE_DATA_COUNT
+            ):
+                has_missing_information = True
+
+        return has_missing_information
+
     def _format_collected_logs(self) -> list[dict[str, Any]]:
         logs: list[tuple[datetime, dict]] = []
         for workflow_run_sample in self._collected_logs.values():
             if not workflow_run_sample.is_complete():
                 continue
+
+            log = workflow_run_sample.to_dict()
+
+            self._extend_existing_execution_instance_region(log[1])
+            self._extend_existing_transmission_from_instance_to_instance_region(log[1])
+
             logs.append(
-                workflow_run_sample.to_dict(),
+                log,
             )
         sorted_by_start_time_oldest_first = sorted(logs, key=lambda x: x[0])
         result_logs = [log[1] for log in sorted_by_start_time_oldest_first]
         return result_logs
+
+    def _extend_existing_execution_instance_region(self, log: dict[str, Any]) -> None:
+        for function, execution_data in log["execution_latencies"].items():
+            if function not in self._existing_data["execution_instance_region"]:
+                self._existing_data["execution_instance_region"][function] = {}
+            provider_region = execution_data["provider_region"]
+            if provider_region not in self._existing_data["execution_instance_region"][function]:
+                self._existing_data["execution_instance_region"][function][provider_region] = 0
+            self._existing_data["execution_instance_region"][function][provider_region] += 1
+
+    def _extend_existing_transmission_from_instance_to_instance_region(self, log: dict[str, Any]) -> None:
+        for transmission_data in log["transmission_data"]:
+            from_instance = transmission_data["from_instance"]
+            to_instance = transmission_data["to_instance"]
+            from_region_str = (
+                transmission_data["from_region"]["provider"] + ":" + transmission_data["from_region"]["region"]
+            )
+            to_region_str = transmission_data["to_region"]["provider"] + ":" + transmission_data["to_region"]["region"]
+            if from_instance not in self._existing_data["transmission_from_instance_to_instance_region"]:
+                self._existing_data["transmission_from_instance_to_instance_region"][from_instance] = {}
+            if to_instance not in self._existing_data["transmission_from_instance_to_instance_region"][from_instance]:
+                self._existing_data["transmission_from_instance_to_instance_region"][from_instance][to_instance] = {}
+            if (
+                from_region_str
+                not in self._existing_data["transmission_from_instance_to_instance_region"][from_instance][to_instance]
+            ):
+                self._existing_data["transmission_from_instance_to_instance_region"][from_instance][to_instance][
+                    from_region_str
+                ] = {}
+            if (
+                to_region_str
+                not in self._existing_data["transmission_from_instance_to_instance_region"][from_instance][to_instance][
+                    from_region_str
+                ]
+            ):
+                self._existing_data["transmission_from_instance_to_instance_region"][from_instance][to_instance][
+                    from_region_str
+                ][to_region_str] = 0
+
+            self._existing_data["transmission_from_instance_to_instance_region"][from_instance][to_instance][
+                from_region_str
+            ][to_region_str] += 1
 
     def _filter_daily_invocation_counts(self, previous_daily_invocation_counts: dict) -> None:
         oldest_allowed_date = datetime.now(GLOBAL_TIME_ZONE) - timedelta(days=FORGETTING_TIME_DAYS)
