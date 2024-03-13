@@ -79,7 +79,7 @@ class WorkflowLoader(InputLoader):
             .get("regions_to_regions", {})
             .get(from_region_name, {})
             .get(to_region_name, {})
-            .keys()
+            .get("transfer_sizes", [])
         ]
 
         # # Return the list if more than 0 size is available, else return SOLVER_INPUT_DATA_TRANSFER_SIZE_DEFAULT

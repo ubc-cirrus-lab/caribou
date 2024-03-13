@@ -61,7 +61,15 @@ class WorkflowRetriever(DataRetriever):
     def _extend_instance_summary(  # pylint: disable=too-many-branches
         self, instance_summary: dict[str, Any], log: dict[str, Any]
     ) -> None:
-        # Handle execution latencies
+        self._handle_execution_latencies(log, instance_summary)
+
+        self._handle_region_to_region_transmission(log, instance_summary)
+
+        self._handle_non_executions(log, instance_summary)
+
+        self._calculate_invocation_probability(instance_summary)
+
+    def _handle_execution_latencies(self, log: dict[str, Any], instance_summary: dict[str, Any]) -> None:
         for instance, execution_latency_information in log["execution_latencies"].items():
             if instance not in instance_summary:
                 instance_summary[instance] = {"invocations": 0, "executions": {}, "to_instance": {}}
@@ -73,7 +81,7 @@ class WorkflowRetriever(DataRetriever):
                 execution_latency_information["latency"]
             )
 
-        # Handle regions to regions transmission
+    def _handle_region_to_region_transmission(self, log: dict[str, Any], instance_summary: dict[str, Any]) -> None:
         for data in log["transmission_data"]:
             from_instance = data["from_instance"]
             to_instance = data["to_instance"]
@@ -99,23 +107,34 @@ class WorkflowRetriever(DataRetriever):
             ):
                 instance_summary[from_instance]["to_instance"][to_instance]["regions_to_regions"][from_region_str][
                     to_region_str
-                ] = {}
+                ] = {
+                    "transfer_size_to_transfer_latencies": {},
+                    "transfer_sizes": [],
+                }
 
             transmission_data_transfer_size = data["transmission_size"]
+            instance_summary[from_instance]["to_instance"][to_instance]["regions_to_regions"][from_region_str][
+                to_region_str
+            ]["transfer_sizes"].append(transmission_data_transfer_size)
+
+            transmission_data_transfer_size_str = str(transmission_data_transfer_size)
+
             if (
-                transmission_data_transfer_size
+                transmission_data_transfer_size_str
                 not in instance_summary[from_instance]["to_instance"][to_instance]["regions_to_regions"][
                     from_region_str
-                ][to_region_str]
+                ][to_region_str]["transfer_size_to_transfer_latencies"]
             ):
                 instance_summary[from_instance]["to_instance"][to_instance]["regions_to_regions"][from_region_str][
                     to_region_str
-                ][transmission_data_transfer_size] = []
+                ]["transfer_size_to_transfer_latencies"][transmission_data_transfer_size_str] = []
             instance_summary[from_instance]["to_instance"][to_instance]["regions_to_regions"][from_region_str][
                 to_region_str
-            ][transmission_data_transfer_size].append(data["transmission_latency"])
+            ]["transfer_size_to_transfer_latencies"][transmission_data_transfer_size_str].append(
+                data["transmission_latency"]
+            )
 
-        # Handle non-executions
+    def _handle_non_executions(self, log: dict[str, Any], instance_summary: dict[str, Any]) -> None:
         non_executions = log.get("non_executions", {})
         for caller, non_execution in non_executions.items():
             if caller not in instance_summary:
@@ -130,9 +149,9 @@ class WorkflowRetriever(DataRetriever):
 
                 instance_summary[caller]["to_instance"][callee]["non_executions"] += count
 
-        # Calculate the invocation probability
-        for caller, to_instance in instance_summary.items():
-            for callee, caller_callee_data in to_instance["to_instance"].items():
+    def _calculate_invocation_probability(self, instance_summary: dict[str, Any]) -> None:
+        for to_instance in instance_summary.values():
+            for caller_callee_data in to_instance["to_instance"].values():
                 caller_callee_data["invocation_probability"] = caller_callee_data["invoked"] / (
                     caller_callee_data["invoked"] + caller_callee_data["non_executions"]
                 )
