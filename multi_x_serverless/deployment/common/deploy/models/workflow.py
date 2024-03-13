@@ -88,9 +88,9 @@ class Workflow(Resource):
             }
         return deployed_regions
 
-    def get_deployed_regions_extend_deployment(
-        self, resource_values: dict[str, list[Any]], previous_deployed_regions: dict[str, dict[str, Any]]
-    ) -> dict[str, dict[str, Any]]:
+    def update_deployed_regions(
+        self, resource_values: dict[str, list[Any]], deployed_regions: dict[str, dict[str, Any]]
+    ) -> None:
         if self._config is None:
             raise RuntimeError("Error in workflow config creation, given config is None, this should not happen")
 
@@ -102,17 +102,14 @@ class Workflow(Resource):
                 resource_values["function"], "function_identifier"
             )
 
-        new_deployed_regions = previous_deployed_regions.copy()
-
         for function in self._resources:
-            if function.name not in new_deployed_regions:
-                new_deployed_regions[function.name] = {
+            if function.name not in deployed_regions:
+                deployed_regions[function.name] = {
                     "deploy_region": function.deploy_region,
                     "message_topic": function_resource_to_messaging_identifier[function.name],
                     "function_identifier": function_resource_to_function_identifier[function.name],
                 }
-        self._deployed_regions = new_deployed_regions
-        return new_deployed_regions
+        self._deployed_regions = deployed_regions
 
     def get_workflow_config(self) -> WorkflowConfig:
         if self._config is None:
@@ -207,42 +204,31 @@ class Workflow(Resource):
                 "provider_region": self._config.home_region,
                 "function_identifier": self._deployed_regions[instance.function_resource_name]["function_identifier"],
             }
-        return {
-            "instances": workflow_placement_instances,
-            "metrics": {},
-        }
+        return workflow_placement_instances
 
-    def _extend_stage_area_workflow_placement(
-        self, staging_area_placement: dict[str, Any]
-    ) -> dict[str, dict[str, Any]]:
+    def get_deployment_instances(self, staging_area_placement: dict[str, Any]) -> dict[str, dict[str, Any]]:
+        deployment_instances = {}
         function_instance_to_resource_name = self._get_function_instance_to_resource_name(staging_area_placement)
 
-        for instance_name, instance in staging_area_placement["workflow_placement"]["current_deployment"][
-            "instances"
-        ].items():
+        for instance_name, instance in staging_area_placement.items():
             instance["identifier"] = self._deployed_regions[function_instance_to_resource_name[instance_name]][
                 "message_topic"
             ]
             instance["function_identifier"] = self._deployed_regions[function_instance_to_resource_name[instance_name]][
                 "function_identifier"
             ]
+            deployment_instances[instance_name] = instance
 
-        return staging_area_placement
+        return deployment_instances
 
     def _get_function_instance_to_resource_name(self, staging_area_placement: dict[str, Any]) -> dict[str, str]:
         function_instance_to_resource_name = {}
-        for function_instance in staging_area_placement["instances"].values():
-            instance_name = function_instance["instance_name"]
-
+        for instance_name, placement in staging_area_placement.items():
             function_name = instance_name.split(":")[0]
 
-            actual_placement = staging_area_placement["workflow_placement"]["current_deployment"]["instances"][
-                instance_name
-            ]["provider_region"]
+            provider_region = placement["provider_region"]
 
-            function_resource_name = (
-                function_name + "_" + actual_placement["provider"] + "-" + actual_placement["region"]
-            )
+            function_resource_name = function_name + "_" + provider_region["provider"] + "-" + provider_region["region"]
 
             function_instance_to_resource_name[instance_name] = function_resource_name
 
@@ -256,7 +242,7 @@ class Workflow(Resource):
 
         return function_resource_to_identifiers
 
-    def get_workflow_placement_decision(self) -> dict[str, Any]:
+    def get_workflow_placement_decision_initial_deployment(self) -> dict[str, Any]:
         """
         The desired output format is explained in the `docs/design.md` file under `Workflow Placement Decision`.
         """
@@ -266,29 +252,9 @@ class Workflow(Resource):
         result["current_instance_name"] = self._get_entry_point_instance_name()
 
         result["workflow_placement"] = {}
-        result["workflow_placement"]["current_deployment"] = self._get_workflow_placement()
         result["workflow_placement"]["home_deployment"] = self._get_workflow_placement()
 
         return result
-
-    def get_workflow_placement_decision_extend_staging(
-        self,
-        staging_area_placement: dict[str, Any],
-        previous_workflow_placement_decision_json: dict[str, dict[str, Any]],
-    ) -> dict[str, Any]:
-        """
-        The desired output format is explained in the `docs/design.md` file under `Workflow Placement Decision`.
-        """
-        previous_instances = previous_workflow_placement_decision_json["instances"]
-        staging_area_placement["instances"] = previous_instances
-        staging_area_placement["current_instance_name"] = self._get_entry_point_from_previous_instances(
-            previous_instances
-        )
-        self._extend_stage_area_workflow_placement(staging_area_placement)
-        staging_area_placement["workflow_placement"]["home_deployment"] = previous_workflow_placement_decision_json[
-            "workflow_placement"
-        ]["home_deployment"]
-        return staging_area_placement
 
     def _get_entry_point_from_previous_instances(self, previous_instances: dict[str, Any]) -> str:
         for instance in previous_instances.values():

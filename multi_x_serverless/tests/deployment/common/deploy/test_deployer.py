@@ -149,9 +149,7 @@ class TestDeployer(unittest.TestCase):
         deployer._get_workflow_already_deployed = Mock(return_value=True)
         deployer._get_function_to_deployment_regions = Mock(return_value=deployed_regions)
         deployer._filter_function_to_deployment_regions = Mock(return_value=deployed_regions)
-        deployer._merge_deployed_regions = Mock(return_value=deployed_regions)
-        deployer._update_workflow_to_deployer_server = Mock()
-        deployer._update_workflow_placement_decision = Mock()
+        deployer._update_deployed_regions = Mock()
         deployer._endpoints.get_deployment_algorithm_update_checker_client().get_value_from_table = Mock(
             side_effect=['{"key": "value"}', '{"instances": []}']
         )
@@ -165,7 +163,7 @@ class TestDeployer(unittest.TestCase):
             mock_workflow, deployer._endpoints.get_deployment_manager_client()
         )
         executor.execute.assert_called_once()
-        deployer._update_workflow_to_deployer_server.assert_called_once_with(deployed_regions)
+        deployer._update_deployed_regions.assert_called_once_with(deployed_regions)
 
     def test_upload_workflow_to_solver_update_checker(self):
         config = Config({}, self.test_dir)
@@ -309,7 +307,7 @@ class TestDeployer(unittest.TestCase):
         deployer._workflow = mock_workflow
 
         deployer._endpoints.get_deployment_manager_client().set_value_in_table = Mock()
-        deployer._update_workflow_to_deployer_server(deployed_regions)
+        deployer._update_deployed_regions(deployed_regions)
 
         deployer._endpoints.get_deployment_manager_client().set_value_in_table.assert_called_once_with(
             "deployment_manager_resources_table",

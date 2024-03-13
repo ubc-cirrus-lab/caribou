@@ -29,5 +29,6 @@ class CarbonLoader(InputLoader):
         return (
             self._carbon_data.get(region_name, {})
             .get("averages", {})
-            .get(carbon_policy, SOLVER_INPUT_GRID_CARBON_DEFAULT)
+            .get(carbon_policy, {})
+            .get("carbon_intensity", SOLVER_INPUT_GRID_CARBON_DEFAULT)
         )

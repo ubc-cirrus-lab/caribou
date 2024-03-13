@@ -209,7 +209,7 @@ class TestWorkflow(unittest.TestCase):
         }
 
         # Call the method
-        result = self.workflow.get_deployed_regions_extend_deployment(resource_values, previous_deployed_regions)
+        result = self.workflow.update_deployed_regions(resource_values, previous_deployed_regions)
 
         # Define the expected result
         expected_result = {
@@ -325,61 +325,6 @@ class TestWorkflow(unittest.TestCase):
         # Assert that the result matches the expected result
         self.assertEqual(result, expected_result)
 
-    def test_extend_stage_area_workflow_placement(self):
-        # Mock the _get_function_instance_to_resource_name method to return a specific value
-        self.workflow._get_function_instance_to_resource_name = MagicMock()
-        self.workflow._get_function_instance_to_resource_name.return_value = {
-            "instance1": "resource1",
-        }
-
-        # Mock the _deployed_regions attribute
-        self.workflow._deployed_regions = {
-            "resource1": {
-                "message_topic": "topic1",
-                "function_identifier": "identifier1",
-            },
-        }
-
-        # Define the input
-        staging_area_placement = {
-            "workflow_placement": {
-                "current_deployment": {
-                    "instances": {
-                        "instance1": {
-                            "provider_region": {
-                                "provider": "provider1",
-                                "region": "region1",
-                            },
-                        },
-                    }
-                }
-            },
-        }
-
-        # Call the method
-        result = self.workflow._extend_stage_area_workflow_placement(staging_area_placement)
-
-        # Define the expected result
-        expected_result = {
-            "workflow_placement": {
-                "current_deployment": {
-                    "instances": {
-                        "instance1": {
-                            "function_identifier": "identifier1",
-                            "identifier": "topic1",
-                            "provider_region": {
-                                "provider": "provider1",
-                                "region": "region1",
-                            },
-                        },
-                    }
-                },
-            }
-        }
-
-        # Assert that the result matches the expected result
-        self.assertEqual(result, expected_result)
-
     def test_get_function_instance_to_resource_name(self):
         # Define the input
         staging_area_placement = {
@@ -440,49 +385,13 @@ class TestWorkflow(unittest.TestCase):
         self.workflow._get_workflow_placement = MagicMock(return_value="workflow_placement")
 
         # Call the method
-        result = self.workflow.get_workflow_placement_decision()
+        result = self.workflow.get_workflow_placement_decision_initial_deployment()
 
         # Define the expected result
         expected_result = {
             "instances": "instances",
             "current_instance_name": "entry_point_instance_name",
             "workflow_placement": {"current_deployment": "workflow_placement", "home_deployment": "workflow_placement"},
-        }
-
-        # Assert that the result matches the expected result
-        self.assertEqual(result, expected_result)
-
-    def test_get_workflow_placement_decision_extend_staging(self):
-        # Mock the _get_entry_point_from_previous_instances, _extend_stage_area_workflow_placement, and _update_instances methods
-        self.workflow._get_entry_point_from_previous_instances = MagicMock(return_value="entry_point_instance_name")
-        self.workflow._extend_stage_area_workflow_placement = MagicMock()
-        self.workflow._update_instances = MagicMock()
-
-        # Define the input
-        staging_area_placement = {
-            "workflow_placement": {
-                "home_deployment": {"instances": {"instance1": {}, "instance2": {}}},
-            },
-        }
-        previous_workflow_placement_decision_json = {
-            "instances": {"instance1": {}, "instance2": {}},
-            "workflow_placement": {
-                "home_deployment": {"instances": {"instance1": {}, "instance2": {}}},
-            },
-        }
-
-        # Call the method
-        result = self.workflow.get_workflow_placement_decision_extend_staging(
-            staging_area_placement, previous_workflow_placement_decision_json
-        )
-
-        # Define the expected result
-        expected_result = {
-            "instances": {"instance1": {}, "instance2": {}},
-            "current_instance_name": "entry_point_instance_name",
-            "workflow_placement": {
-                "home_deployment": {"instances": {"instance1": {}, "instance2": {}}},
-            },
         }
 
         # Assert that the result matches the expected result

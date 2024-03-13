@@ -253,16 +253,23 @@ class MultiXServerlessWorkflow:
     def get_successor_workflow_placement_decision(
         self, successor_instance_name: str, workflow_placement_decision: dict[str, Any]
     ) -> tuple[str, str, str]:
-        if "send_to_home_region" in workflow_placement_decision and workflow_placement_decision["send_to_home_region"]:
-            key = "home_deployment"
+        if (
+            "send_to_home_region" in workflow_placement_decision and workflow_placement_decision["send_to_home_region"]
+        ) or ("current_deployment" not in workflow_placement_decision["workflow_placement"]):
+            provider_region = workflow_placement_decision["workflow_placement"]["home_deployment"][
+                successor_instance_name
+            ]["provider_region"]
+            identifier = workflow_placement_decision["workflow_placement"]["home_deployment"][successor_instance_name][
+                "identifier"
+            ]
         else:
-            key = "current_deployment"
-        provider_region = workflow_placement_decision["workflow_placement"][key]["instances"][successor_instance_name][
-            "provider_region"
-        ]
-        identifier = workflow_placement_decision["workflow_placement"][key]["instances"][successor_instance_name][
-            "identifier"
-        ]
+            provider_region = workflow_placement_decision["workflow_placement"]["current_deployment"]["instances"][
+                workflow_placement_decision["time_key"]
+            ][successor_instance_name]["provider_region"]
+            identifier = workflow_placement_decision["workflow_placement"]["current_deployment"]["instances"][
+                workflow_placement_decision["time_key"]
+            ][successor_instance_name]["identifier"]
+
         return provider_region["provider"], provider_region["region"], identifier
 
     # This method is used to get the name of the next successor instance and its workflow_placement decision.
@@ -402,20 +409,26 @@ class MultiXServerlessWorkflow:
 
         key = self._get_deployment_key(workflow_placement_decision)
 
-        provider_region = workflow_placement_decision["workflow_placement"][key]["instances"][current_instance_name][
-            "provider_region"
-        ]
+        if key == "home_deployment":
+            provider_region = workflow_placement_decision["workflow_placement"][key][current_instance_name][
+                "provider_region"
+            ]
+        else:
+            time_key = workflow_placement_decision["time_key"]
+            provider_region = workflow_placement_decision["workflow_placement"][key]["instances"][time_key][
+                current_instance_name
+            ]["provider_region"]
         return provider_region["provider"], provider_region["region"], current_instance_name, workflow_instance_id
 
     def _get_deployment_key(self, workflow_placement_decision: dict[str, Any]) -> str:
         key = "home_deployment"
-        if workflow_placement_decision.get("send_to_home_region", False):
+        if workflow_placement_decision.get("send_to_home_region", False) or (
+            "current_deployment" not in workflow_placement_decision["workflow_placement"]
+        ):
             return key
 
         # Check if the deployment is not expired
-        deployment_expiry_time = workflow_placement_decision["workflow_placement"]["current_deployment"].get(
-            "expiry_time", None
-        )
+        deployment_expiry_time = workflow_placement_decision["workflow_placement"]["current_deployment"]["expiry_time"]
         if deployment_expiry_time is not None:
             # If the deployment is expired, return the home deployment
             if datetime.now(GLOBAL_TIME_ZONE) <= datetime.strptime(deployment_expiry_time, TIME_FORMAT):
@@ -566,10 +579,14 @@ class MultiXServerlessWorkflow:
                         wrapper.workflow_placement_decision = pre_loaded_workflow_placement_decision  # type: ignore
                     else:
                         wrapper.workflow_placement_decision = self.get_workflow_placement_decision_from_platform()  # type: ignore  # pylint: disable=line-too-long
+
                     # This is the first function to be called, so we need to generate a run id
                     # This run id will be used to identify the workflow instance
                     wrapper.workflow_placement_decision["run_id"] = uuid.uuid4().hex  # type: ignore
                     wrapper.workflow_placement_decision["send_to_home_region"] = send_to_home_region  # type: ignore
+                    wrapper.workflow_placement_decision["time_key"] = self._get_time_key(  # type: ignore
+                        wrapper.workflow_placement_decision  # type: ignore
+                    )
                     if len(args) == 0:
                         return func()
                     payload = argument
@@ -638,3 +655,20 @@ class MultiXServerlessWorkflow:
             message,
             LOG_VERSION,
         )
+
+    def _get_time_key(self, workflow_placement_decision: dict[str, Any]) -> str:
+        if "time_key" in workflow_placement_decision:
+            return workflow_placement_decision["time_key"]
+        if "current_deployment" not in workflow_placement_decision["workflow_placement"]:
+            return "N/A"
+
+        all_time_keys = workflow_placement_decision["workflow_placement"]["current_deployment"]["time_keys"]
+
+        current_hour_of_day = datetime.now(GLOBAL_TIME_ZONE).hour
+
+        previous_time_key = all_time_keys[0]
+        for time_key in all_time_keys:
+            if int(time_key) > current_hour_of_day:
+                break
+            previous_time_key = time_key
+        return previous_time_key

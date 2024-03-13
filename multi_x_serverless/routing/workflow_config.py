@@ -10,7 +10,7 @@ class WorkflowConfig:
     def __init__(self, workflow_config: dict) -> None:
         self._verify(workflow_config)
         self._workflow_config = workflow_config
-        self._modified_regions_and_providers = self._create_altered_regions_and_providers(
+        self._modified_regions_and_providers = self.create_altered_regions_and_providers(
             self._workflow_config["regions_and_providers"]
         )
 
@@ -20,7 +20,7 @@ class WorkflowConfig:
         except ValidationError as exc:
             raise RuntimeError(f"Invalid workflow config: {exc}") from exc
 
-    def _create_altered_regions_and_providers(self, regions_and_providers: dict) -> dict:
+    def create_altered_regions_and_providers(self, regions_and_providers: dict) -> dict:
         altered_regions_and_providers = {"providers": regions_and_providers.get("providers", {})}
         allowed_regions = []
         disallowed_regions = []
