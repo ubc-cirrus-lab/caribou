@@ -10,31 +10,31 @@ class TestCarbonLoader(unittest.TestCase):
         self.loader._carbon_data = {
             "aws:eu-south-1": {
                 "averages": {
-                    "overall": 482.0,
-                    "0": 10.0,
-                    "1": 10.0,
-                    "2": 10.0,
-                    "3": 10.0,
-                    "4": 10.0,
-                    "5": 15.0,
-                    "6": 10.0,
-                    "7": 10.0,
-                    "8": 10.0,
-                    "9": 10.0,
-                    "10": 10.0,
-                    "11": 10.0,
-                    "12": 10.0,
-                    "13": 10.0,
-                    "14": 10.0,
-                    "15": 10.0,
-                    "16": 10.0,
-                    "17": 10.0,
-                    "18": 10.0,
-                    "19": 10.0,
-                    "20": 10.0,
-                    "21": 10.0,
-                    "22": 10.0,
-                    "23": 10.0,
+                    "overall": {"carbon_intensity": 482.0},
+                    "0": {"carbon_intensity": 482.0},  # 0 is the default hour
+                    "1": {"carbon_intensity": 482.0},
+                    "2": {"carbon_intensity": 482.0},
+                    "3": {"carbon_intensity": 482.0},
+                    "4": {"carbon_intensity": 482.0},
+                    "5": {"carbon_intensity": 498.0},
+                    "6": {"carbon_intensity": 482.0},
+                    "7": {"carbon_intensity": 482.0},
+                    "8": {"carbon_intensity": 482.0},
+                    "9": {"carbon_intensity": 482.0},
+                    "10": {"carbon_intensity": 482.0},
+                    "11": {"carbon_intensity": 482.0},
+                    "12": {"carbon_intensity": 482.0},
+                    "13": {"carbon_intensity": 482.0},
+                    "14": {"carbon_intensity": 482.0},
+                    "15": {"carbon_intensity": 482.0},
+                    "16": {"carbon_intensity": 482.0},
+                    "17": {"carbon_intensity": 482.0},
+                    "18": {"carbon_intensity": 482.0},
+                    "19": {"carbon_intensity": 482.0},
+                    "20": {"carbon_intensity": 482.0},
+                    "21": {"carbon_intensity": 482.0},
+                    "22": {"carbon_intensity": 482.0},
+                    "23": {"carbon_intensity": 482.0},
                 },
                 "units": "gCO2eq/kWh",
                 "transmission_distances": {"aws:eu-south-1": 0, "aws:eu-south-2": 111.19},
@@ -60,7 +60,7 @@ class TestCarbonLoader(unittest.TestCase):
         self.assertEqual(result, 482.0)
 
         result = self.loader.get_grid_carbon_intensity("aws:eu-south-1", str(5))
-        self.assertEqual(result, 15.0)
+        self.assertEqual(result, 498.0)
 
 
 if __name__ == "__main__":
