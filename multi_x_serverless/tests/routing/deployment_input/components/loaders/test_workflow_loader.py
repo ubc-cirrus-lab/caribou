@@ -30,7 +30,12 @@ class TestWorkflowLoader(unittest.TestCase):
                             "invoked": 3,
                             "regions_to_regions": {
                                 "aws:us-east-1": {
-                                    "aws:us-east-1": {"2.9960647225379944e-06": [1.217899, 1.18531, 1.174224]}
+                                    "aws:us-east-1": {
+                                        "transfer_sizes": [2.9960647225379944e-06, 2.9960647225379944e-06],
+                                        "transfer_size_to_transfer_latencies": {
+                                            "2.9960647225379944e-06": [1.217899, 1.18531]
+                                        },
+                                    },
                                 }
                             },
                             "non_executions": 0,
@@ -84,7 +89,7 @@ class TestWorkflowLoader(unittest.TestCase):
             "aws:us-east-1",
             "aws:us-east-1",
         )
-        self.assertEqual(data_transfer_size, [2.9960647225379944e-06])
+        self.assertEqual(data_transfer_size, [2.9960647225379944e-06, 2.9960647225379944e-06])
 
     def test_get_data_transfer_latency_distribution(self):
         self.loader._workflow_data = self.workflow_data
@@ -95,7 +100,7 @@ class TestWorkflowLoader(unittest.TestCase):
             "aws:us-east-1",
             2.9960647225379944e-06,
         )
-        self.assertEqual(data_transfer_latency, [1.217899, 1.18531, 1.174224])
+        self.assertEqual(data_transfer_latency, [1.217899, 1.18531])
 
     def test_get_invocation_probability(self):
         self.loader._workflow_data = self.workflow_data
