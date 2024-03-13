@@ -65,6 +65,8 @@ class WorkflowRetriever(DataRetriever):
 
         self._handle_region_to_region_transmission(log, instance_summary)
 
+        self._handle_missing_region_to_region_transmission_data(instance_summary)
+
         self._handle_non_executions(log, instance_summary)
 
         self._calculate_invocation_probability(instance_summary)
@@ -133,6 +135,43 @@ class WorkflowRetriever(DataRetriever):
             ]["transfer_size_to_transfer_latencies"][transmission_data_transfer_size_str].append(
                 data["transmission_latency"]
             )
+
+    def _handle_missing_region_to_region_transmission_data(self, instance_summary: dict[str, Any]) -> None:
+        for instance_val in instance_summary.values():
+            to_instances = instance_val.get("to_instance", {})
+            for to_instance_val in to_instances.values():
+                regions_to_regions = to_instance_val.get("regions_to_regions", {})
+                
+                for to_regions in regions_to_regions.values():
+                    all_transfer_sizes = set()
+                    # Aggregate all sizes and latencies
+                    for transfer_information in to_regions.values():
+                        all_transfer_sizes.update(transfer_information["transfer_size_to_transfer_latencies"].keys())
+
+                    # Calculate global averages for each size
+                    global_avg_latency_per_size = {}
+                    for size in all_transfer_sizes:
+                        total_latencies = []
+                        for transfer_information in to_regions.values():
+                            latencies = transfer_information["transfer_size_to_transfer_latencies"].get(size)
+                            if latencies:
+                                total_latencies.extend(latencies)
+                        if total_latencies:
+                            global_avg_latency_per_size[size] = sum(total_latencies) / len(total_latencies)
+
+                    # Scale missing latencies based on the common transfer size (if available)
+                    for transfer_information in to_regions.values():
+                        existing_sizes = transfer_information["transfer_size_to_transfer_latencies"].keys()
+                        missing_sizes = all_transfer_sizes - existing_sizes
+
+                        for missing_size in missing_sizes:
+                            # Find the nearest size for which we have data
+                            nearest_size = min(transfer_information["transfer_size_to_transfer_latencies"].keys(), key=lambda x: abs(x-missing_size))
+                            scaling_factor = global_avg_latency_per_size[missing_size] / global_avg_latency_per_size[nearest_size] if nearest_size in global_avg_latency_per_size else 1
+                            
+                            scaled_latencies = [latency * scaling_factor for latency in transfer_information["transfer_size_to_transfer_latencies"][nearest_size]]
+                            transfer_information["transfer_size_to_transfer_latencies"][missing_size] = scaled_latencies
+                            transfer_information["transfer_sizes"].extend([missing_size] * len(scaled_latencies))
 
     def _handle_non_executions(self, log: dict[str, Any], instance_summary: dict[str, Any]) -> None:
         non_executions = log.get("non_executions", {})

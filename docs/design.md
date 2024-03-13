@@ -799,7 +799,10 @@ Below is an example of the `workflow_instance_table` output for a workflow with 
           "regions_to_regions": {
             "aws:us-east-1": {
               "aws:us-east-1": {
-                "2.9960647225379944e-06": [1.217899, 1.18531, 1.174224]
+                "transfer_sizes": [2.9960647225379944e-06, 2.9960647225379944e-06],
+                "transfer_size_to_transfer_latencies": {
+                  "2.9960647225379944e-06": [1.217899, 1.18531]
+                }
               }
             }
           },

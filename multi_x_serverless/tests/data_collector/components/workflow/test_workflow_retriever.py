@@ -125,8 +125,8 @@ class TestWorkflowRetriever(unittest.TestCase):
                     "to_instance": "instance2",
                     "from_region": {"provider": "provider1", "region": "region1"},
                     "to_region": {"provider": "provider2", "region": "region2"},
-                    "transmission_size": "1.0",
-                    "transmission_latency": "0.1",
+                    "transmission_size": 1.0,
+                    "transmission_latency": 0.1,
                 }
             ],
             "non_executions": {"instance1": {"instance2": 1}},
@@ -148,6 +148,124 @@ class TestWorkflowRetriever(unittest.TestCase):
                         "invocation_probability": 0.0,
                     }
                 },
+            }
+        }
+        self.assertEqual(instance_summary, expected_result)
+
+    def test_handle_missing_region_to_region_transmission_data_common_sample(self):
+        # Set up the test data
+        instance_summary = {
+            "instance1": {
+                "to_instance": {
+                    "instance2": {
+                        "regions_to_regions": {
+                            "provider1:region1": {
+                                "provider2:region2": {
+                                    "transfer_size_to_transfer_latencies": {
+                                        1.0: [0.1, 0.2, 0.3],
+                                        2.0: [0.2, 0.3, 0.4],
+                                    },
+                                    "transfer_sizes": [1.0, 1.0, 1.0, 2.0, 2.0, 2.0],
+                                },
+                                "provider2:region3": {
+                                    "transfer_size_to_transfer_latencies": {
+                                        1.0: [0.1, 0.2, 0.3],
+                                    },
+                                    "transfer_sizes": [1.0, 1.0, 1.0],
+                                },
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        # Call the method
+        self.workflow_retriever._handle_missing_region_to_region_transmission_data(instance_summary)
+
+        # Check that the instance_summary dictionary was updated as expected
+        # The expected_result will depend on the specific behavior of your method
+        expected_result = {
+            "instance1": {
+                "to_instance": {
+                    "instance2": {
+                        "regions_to_regions": {
+                            "provider1:region1": {
+                                "provider2:region2": {
+                                    "transfer_size_to_transfer_latencies": {1.0: [0.1, 0.2, 0.3], 2.0: [0.2, 0.3, 0.4]},
+                                    "transfer_sizes": [1.0, 1.0, 1.0, 2.0, 2.0, 2.0],
+                                },
+                                "provider2:region3": {
+                                    "transfer_size_to_transfer_latencies": {
+                                        1.0: [0.1, 0.2, 0.3],
+                                        2.0: [0.14999999999999997, 0.29999999999999993, 0.44999999999999984],
+                                    },
+                                    "transfer_sizes": [1.0, 1.0, 1.0, 2.0, 2.0, 2.0],
+                                },
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        self.assertEqual(instance_summary, expected_result)
+
+    def test_handle_missing_region_to_region_transmission_data_no_common_sample(self):
+        # Set up the test data
+        instance_summary = {
+            "instance1": {
+                "to_instance": {
+                    "instance2": {
+                        "regions_to_regions": {
+                            "provider1:region1": {
+                                "provider2:region2": {
+                                    "transfer_size_to_transfer_latencies": {
+                                        2.0: [0.2, 0.3, 0.4],
+                                    },
+                                    "transfer_sizes": [2.0, 2.0, 2.0],
+                                },
+                                "provider2:region3": {
+                                    "transfer_size_to_transfer_latencies": {
+                                        1.0: [0.1, 0.2, 0.3],
+                                    },
+                                    "transfer_sizes": [1.0, 1.0, 1.0],
+                                },
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        # Call the method
+        self.workflow_retriever._handle_missing_region_to_region_transmission_data(instance_summary)
+
+        # Check that the instance_summary dictionary was updated as expected
+        # The expected_result will depend on the specific behavior of your method
+        expected_result = {
+            "instance1": {
+                "to_instance": {
+                    "instance2": {
+                        "regions_to_regions": {
+                            "provider1:region1": {
+                                "provider2:region2": {
+                                    "transfer_size_to_transfer_latencies": {
+                                        2.0: [0.2, 0.3, 0.4],
+                                        1.0: [0.1333333333333334, 0.20000000000000004, 0.2666666666666668],
+                                    },
+                                    "transfer_sizes": [2.0, 2.0, 2.0, 1.0, 1.0, 1.0],
+                                },
+                                "provider2:region3": {
+                                    "transfer_size_to_transfer_latencies": {
+                                        1.0: [0.1, 0.2, 0.3],
+                                        2.0: [0.14999999999999997, 0.29999999999999993, 0.44999999999999984],
+                                    },
+                                    "transfer_sizes": [1.0, 1.0, 1.0, 2.0, 2.0, 2.0],
+                                },
+                            }
+                        }
+                    }
+                }
             }
         }
         self.assertEqual(instance_summary, expected_result)

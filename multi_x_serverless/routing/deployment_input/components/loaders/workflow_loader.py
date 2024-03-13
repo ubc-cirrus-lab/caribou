@@ -102,6 +102,7 @@ class WorkflowLoader(InputLoader):
             .get("regions_to_regions", {})
             .get(from_region_name, {})
             .get(to_region_name, {})
+            .get("transfer_size_to_transfer_latencies", {})
             .get(str(data_transfer_size), [SOLVER_INPUT_TRANSMISSION_LATENCY_DEFAULT])
         )
 
