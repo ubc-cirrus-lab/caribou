@@ -5,12 +5,13 @@ from multi_x_serverless.deployment.common.deploy.models.resource import Resource
 from multi_x_serverless.deployment.common.deploy.models.workflow import Workflow
 from multi_x_serverless.common.models.remote_client.aws_remote_client import AWSRemoteClient
 from multi_x_serverless.deployment.common.deploy.deployer import Deployer, DeploymentError
+from multi_x_serverless.deployment.common.deploy.models.deployment_plan import DeploymentPlan
 import unittest
 import tempfile
 import shutil
+import json
 from multi_x_serverless.common.constants import (
     WORKFLOW_PLACEMENT_DECISION_TABLE,
-    WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE,
 )
 
 
@@ -176,6 +177,177 @@ class TestDeployer(unittest.TestCase):
         )
         result = deployer._get_workflow_already_deployed()
         self.assertTrue(result)
+
+    @patch.object(Deployer, "_re_deploy")
+    def test_re_deploy(self, mock_re_deploy):
+        # Set up the Deployer object
+        config = Mock()
+        config.workflow_id = "workflow_id"
+        workflow_builder = Mock()
+        deployment_packager = Mock()
+        executor = Mock()
+        deployer = Deployer(config, workflow_builder, deployment_packager, executor)
+
+        # Set up the mock
+        mock_re_deploy.return_value = "mocked_result"
+
+        # Call the method
+        workflow_function_descriptions = [{}]
+        deployed_regions = {"region_name": {"key": "value"}}
+        specific_staging_area_data = {"key": "value"}
+        result = deployer.re_deploy(workflow_function_descriptions, deployed_regions, specific_staging_area_data)
+
+        # Check that the result is correct
+        self.assertEqual(result, "mocked_result")
+
+        # Check that the mock was called with the correct arguments
+        mock_re_deploy.assert_called_once_with(
+            workflow_function_descriptions, deployed_regions, specific_staging_area_data
+        )
+
+    @patch.object(Deployer, "_get_function_to_deployment_regions")
+    @patch.object(Deployer, "_filter_function_to_deployment_regions")
+    @patch.object(Deployer, "_update_deployed_regions")
+    @patch.object(Deployer, "_get_new_deployment_instances")
+    def test_re_deploy(
+        self,
+        mock_get_new_deployment_instances,
+        mock_update_deployed_regions,
+        mock_filter_function_to_deployment_regions,
+        mock_get_function_to_deployment_regions,
+    ):
+        # Set up the Deployer object
+        config = Mock()
+        config.workflow_id = "workflow_id"
+        workflow_builder = Mock()
+        deployment_packager = Mock()
+        executor = Mock()
+        deployer = Deployer(config, workflow_builder, deployment_packager, executor)
+
+        # Create a mock for the workflow
+        mock_workflow = Mock()
+        mock_workflow.get_deployment_instructions.return_value = "deployment_instructions"
+
+        # Set up the mocks
+        mock_get_function_to_deployment_regions.return_value = "function_to_deployment_regions"
+        mock_filter_function_to_deployment_regions.return_value = "filtered_function_to_deployment_regions"
+        workflow_builder.re_build_workflow.return_value = mock_workflow
+        deployment_packager.re_build.return_value = "deployment_packager"
+        executor.execute.return_value = "executor"
+        mock_get_new_deployment_instances.return_value = "new_deployment_instances"
+
+        # Call the method
+        workflow_function_descriptions = [{}]
+        deployed_regions = {"region_name": {"key": "value"}}
+        specific_staging_area_data = {"key": "value"}
+        result = deployer._re_deploy(workflow_function_descriptions, deployed_regions, specific_staging_area_data)
+
+        # Check that the result is correct
+        self.assertEqual(result, "new_deployment_instances")
+
+        # Check that the mocks were called with the correct arguments
+        mock_get_function_to_deployment_regions.assert_called_once_with(specific_staging_area_data)
+        mock_filter_function_to_deployment_regions.assert_called_once_with(
+            "function_to_deployment_regions", deployed_regions
+        )
+        workflow_builder.re_build_workflow.assert_called_once_with(
+            config, "filtered_function_to_deployment_regions", workflow_function_descriptions, deployed_regions
+        )
+        deployment_packager.re_build.assert_called_once_with(
+            mock_workflow, deployer._endpoints.get_deployment_manager_client()
+        )
+        executor.execute.assert_called_once_with(DeploymentPlan(mock_workflow.get_deployment_instructions()))
+        mock_update_deployed_regions.assert_called_once_with(deployed_regions)
+        mock_get_new_deployment_instances.assert_called_once_with(specific_staging_area_data)
+
+    def test_get_function_to_deployment_regions(self):
+        # Set up the Deployer object
+        config = Mock()
+        config.workflow_id = "workflow_id"
+        workflow_builder = Mock()
+        deployment_packager = Mock()
+        executor = Mock()
+        deployer = Deployer(config, workflow_builder, deployment_packager, executor)
+
+        # Call the method
+        staging_area_data = {
+            "instance_name:detail": {
+                "provider_region": {
+                    "provider": "provider",
+                    "region": "region",
+                }
+            }
+        }
+        result = deployer._get_function_to_deployment_regions(staging_area_data)
+
+        # Check that the result is correct
+        expected_result = {
+            "instance_name_provider-region": {
+                "provider": "provider",
+                "region": "region",
+            }
+        }
+        self.assertEqual(result, expected_result)
+
+    def test_get_new_deployment_instances(self):
+        # Set up the Deployer object
+        config = Mock()
+        config.workflow_id = "workflow_id"
+        workflow_builder = Mock()
+        deployment_packager = Mock()
+        executor = Mock()
+        deployer = Deployer(config, workflow_builder, deployment_packager, executor)
+
+        # Create a mock for the _workflow attribute
+        mock_workflow = Mock()
+        deployer._workflow = mock_workflow
+
+        # Set up the mock
+        mock_workflow.get_deployment_instances.return_value = "deployment_instances"
+
+        # Call the method
+        staging_area_data = {"key": "value"}
+        result = deployer._get_new_deployment_instances(staging_area_data)
+
+        # Check that the result is correct
+        self.assertEqual(result, "deployment_instances")
+
+        # Check that the mock was called with the correct arguments
+        mock_workflow.get_deployment_instances.assert_called_once_with(staging_area_data)
+
+    def test_upload_workflow_placement_decision(self):
+        # Set up the Deployer object
+        config = Mock()
+        config.workflow_id = "workflow_id"
+        workflow_builder = Mock()
+        deployment_packager = Mock()
+        executor = Mock()
+        deployer = Deployer(config, workflow_builder, deployment_packager, executor)
+
+        # Create a mock for the _workflow attribute
+        mock_workflow = Mock()
+        deployer._workflow = mock_workflow
+
+        # Create a mock for the _endpoints attribute
+        mock_endpoints = Mock()
+        deployer._endpoints = mock_endpoints
+
+        # Create a mock for the get_deployment_algorithm_update_checker_client method
+        mock_client = Mock()
+        mock_endpoints.get_deployment_algorithm_update_checker_client.return_value = mock_client
+
+        # Set up the mocks
+        mock_workflow.get_workflow_placement_decision_initial_deployment.return_value = "workflow_placement_decision"
+        mock_client.set_value_in_table.return_value = "set_value_in_table"
+
+        # Call the method
+        deployer._upload_workflow_placement_decision()
+
+        # Check that the mocks were called with the correct arguments
+        mock_workflow.get_workflow_placement_decision_initial_deployment.assert_called_once()
+        mock_client.set_value_in_table.assert_called_once_with(
+            WORKFLOW_PLACEMENT_DECISION_TABLE, config.workflow_id, json.dumps("workflow_placement_decision")
+        )
 
     def test_filter_function_to_deployment_regions(self):
         config = Config({}, self.test_dir)

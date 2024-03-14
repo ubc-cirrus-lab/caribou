@@ -257,9 +257,5 @@ def create_default_deployer(config: Config) -> Deployer:
     )
 
 
-def create_deletion_deployer(config: Config) -> Deployer:
-    return Deployer(config, WorkflowBuilder(), DeploymentPackager(config), None)
-
-
 class DeploymentError(Exception):
     pass
