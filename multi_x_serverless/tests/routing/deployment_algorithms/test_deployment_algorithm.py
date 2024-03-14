@@ -80,9 +80,10 @@ class TestDeploymentAlgorithm(unittest.TestCase):
         self.deployment_algorithm._select_deployment.return_value = (["r1"], {"cost": 100})
         self.deployment_algorithm._upload_result = MagicMock()
         self.deployment_algorithm._upload_result.return_value = "formatted_deployment"
+        self.deployment_algorithm._expiry_time_delta_seconds = 10
 
         # Act
-        self.deployment_algorithm.run()
+        self.deployment_algorithm.run(["1"])
 
         # Assert
         self.deployment_algorithm._ranker.rank.assert_called_once()
