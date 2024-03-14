@@ -22,6 +22,9 @@ class MockRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
     def resource_exists(self, resource):
         pass
 
+    def get_current_provider_region(self) -> str:
+        pass
+
     def create_role(self, role_name, policy, trust_policy):
         pass
 
@@ -66,7 +69,9 @@ class MockRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
     def get_key_present_in_table(self, table_name: str, key: str) -> bool:
         pass
 
-    def set_predecessor_reached(self, predecessor_name: str, sync_node_name: str, workflow_instance_id: str) -> int:
+    def set_predecessor_reached(
+        self, predecessor_name: str, sync_node_name: str, workflow_instance_id: str, direct_call: bool
+    ) -> list[bool]:
         pass
 
     def get_all_values_from_table(self, table_name: str) -> dict:
@@ -75,9 +80,6 @@ class MockRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
     def set_value_in_table_column(
         self, table_name: str, key: str, column_type_value: list[tuple[str, str, str]]
     ) -> None:
-        pass
-
-    def get_all_values_from_sort_key_table(self, table_name: str, key: str) -> list[str]:
         pass
 
     def get_keys(self, table_name: str) -> list[str]:
@@ -89,13 +91,7 @@ class MockRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
     def create_sync_tables(self) -> None:
         pass
 
-    def get_last_value_from_sort_key_table(self, table_name: str, key: str) -> tuple[str, str]:
-        pass
-
-    def put_value_to_sort_key_table(self, table_name: str, key: str, sort_key: str, value: str) -> None:
-        pass
-
-    def get_logs_since_last_sync(self, function_instance: str, last_synced_time: datetime) -> list[str]:
+    def get_logs_since(self, function_instance: str, since: datetime) -> list[str]:
         pass
 
     def remove_key(self, table_name: str, key: str) -> None:
@@ -117,4 +113,7 @@ class MockRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         pass
 
     def update_value_in_table(self, table_name: str, key: str, value: str) -> None:
+        pass
+
+    def get_logs_between(self, function_instance: str, start: datetime, end: datetime) -> list[str]:
         pass

@@ -26,7 +26,7 @@ class TestDeployerFactory(unittest.TestCase):
         mock_load_config.return_value = {
             "workflow_name": "test",
             "workflow_version": "test",
-            "home_regions": [{"provider": "provider1", "region": "region4"}],
+            "home_region": {"provider": "provider1", "region": "region4"},
             "environment_variables": [{"key": "test", "value": "test"}],
             "iam_policy_file": "test",
             "regions_and_providers": {
@@ -53,7 +53,7 @@ class TestDeployerFactory(unittest.TestCase):
             {
                 "workflow_name": "test",
                 "workflow_version": "test",
-                "home_regions": [{"provider": "provider1", "region": "region4"}],
+                "home_region": {"provider": "provider1", "region": "region4"},
                 "environment_variables": [{"key": "test", "value": "test"}],
                 "iam_policy_file": "test",
                 "regions_and_providers": {
@@ -78,7 +78,7 @@ class TestDeployerFactory(unittest.TestCase):
             {
                 "workflow_name": "test",
                 "workflow_version": "test",
-                "home_regions": [{"provider": "provider1", "region": "region4"}],
+                "home_region": {"provider": "provider1", "region": "region4"},
                 "environment_variables": [{"key": "test", "value": "test"}],
                 "iam_policy_file": "test",
                 "regions_and_providers": {
@@ -91,25 +91,6 @@ class TestDeployerFactory(unittest.TestCase):
         factory = DeployerFactory("project_dir")
 
         deployer = factory.create_deployer(config)
-        self.assertIsInstance(deployer, Deployer)
-
-    @mock.patch("multi_x_serverless.deployment.common.factories.deployer_factory.create_deletion_deployer")
-    def test_create_deletion_deployer(self, mock_create_deployer):
-        config = Config(
-            {
-                "workflow_name": "test",
-                "workflow_version": "test",
-                "environment_variables": {"test": "test"},
-                "iam_policy_file": "test",
-                "regions_and_providers": {
-                    "providers": {"provider1": {"region": "region4", "account_id": "123456789012", "role_name": "test"}}
-                },
-            },
-            "project_dir",
-        )
-        mock_create_deployer.return_value = Deployer(config, None, None, None)
-        factory = DeployerFactory("project_dir")
-        deployer = factory.create_deletion_deployer(config)
         self.assertIsInstance(deployer, Deployer)
 
     def test_validate_allowed_and_disallowed_regions_and_providers(self):
@@ -125,7 +106,7 @@ class TestDeployerFactory(unittest.TestCase):
                 "allowed_regions": [{"provider": "provider1", "region": "region4"}],
                 "disallowed_regions": [{"provider": "provider1", "region": "region5"}],
             },
-            "home_regions": [{"provider": "provider1", "region": "region4"}],
+            "home_region": {"provider": "provider1", "region": "region4"},
         }
         # This should not raise any exceptions
         factory._DeployerFactory__validate_allowed_and_disallowed_regions_and_providers(project_config)
@@ -338,7 +319,7 @@ class TestDeployerFactory(unittest.TestCase):
                 "disallowed_regions": [{"provider": "provider1", "region": "region4"}],
                 "allowed_regions": [{"provider": "provider1", "region": "region5"}],
             },
-            "home_regions": [{"provider": "provider1", "region": "region4"}],
+            "home_region": {"provider": "provider1", "region": "region4"},
         }
         with self.assertRaises(RuntimeError, msg="Region region4 cannot be both home and disallowed"):
             factory._DeployerFactory__validate_allowed_and_disallowed_regions_and_providers(project_config)
@@ -356,7 +337,7 @@ class TestDeployerFactory(unittest.TestCase):
                 },
                 "disallowed_regions": [{"provider": "provider1", "region": "region4"}],
             },
-            "home_regions": [{"provider": "provider1", "region": "region5"}],
+            "home_region": [{"provider": "provider1", "region": "region5"}],
         }
 
         # This should not raise any exceptions

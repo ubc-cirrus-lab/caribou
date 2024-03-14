@@ -26,10 +26,10 @@ class SolverUpdateChecker(UpdateChecker):
         workflow_ids = solver_update_checker_client.get_keys(SOLVER_UPDATE_CHECKER_RESOURCE_TABLE)
         data_collector_client = self._endpoints.get_data_collector_client()
 
-        solver_mapping = {
-            "coarse_grained_solver": CoarseGrainedSolver,
-            "fine_grained_solver": BFSFineGrainedSolver,
-            "stochastic_heuristic_solver": StochasticHeuristicDescentSolver,
+        deployment_algorithm_mapping = {
+            "coarse_grained_deployment_algorithm": CoarseGrainedDeploymentAlgorithm,
+            "fine_grained_deployment_algorithm": FineGrainedDeploymentAlgorithm,
+            "stochastic_heuristic_deployment_algorithm": StochasticHeuristicDeploymentAlgorithm,
         }
 
         for workflow_id in workflow_ids:

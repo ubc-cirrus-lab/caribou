@@ -1,3 +1,5 @@
+import pytz
+
 # Workflow Placement Tables
 WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE = "workflow_placement_solver_staging_area_table"
 WORKFLOW_PLACEMENT_DECISION_TABLE = "workflow_placement_decision_table"
@@ -14,6 +16,9 @@ DEPLOYMENT_MANAGER_RESOURCE_TABLE = "deployment_manager_resources_table"
 # Syncronization Node Tables
 SYNC_MESSAGES_TABLE = "sync_messages_table"
 SYNC_PREDECESSOR_COUNTER_TABLE = "sync_predecessor_counter_table"
+
+# Image names
+MULTI_X_SERVERLESS_WORKFLOW_IMAGES_TABLE = "multi_x_serverless_workflow_images_table"
 
 # Code Resources Bucket
 MULTI_X_SERVERLESS_CODE_RESOURCES_BUCKET = "multi-x-serverless-code-resource-bucket"
@@ -46,7 +51,7 @@ WORKFLOW_SUMMARY_TABLE = "workflow_summary_table"
 
 # Solver Input (Loader) Default Values
 ## Carboon Loader
-SOLVER_INPUT_TRANSMISSION_CARBON_DEFAULT = 1000.0
+# SOLVER_INPUT_TRANSMISSION_CARBON_DEFAULT = 1000.0
 SOLVER_INPUT_GRID_CARBON_DEFAULT = 1000.0
 
 ## Datacenter Loader
@@ -60,7 +65,7 @@ SOLVER_INPUT_TRANSMISSION_COST_DEFAULT = 100.0
 
 ## Performance Loader
 SOLVER_INPUT_RELATIVE_PERFORMANCE_DEFAULT = 1.0
-SOLVER_INPUT_TRANSMISSION_LATENCY_DEFAULT = 100.0
+SOLVER_INPUT_TRANSMISSION_LATENCY_DEFAULT = 1000.0
 
 ## Workflow Loader
 SOLVER_INPUT_RUNTIME_DEFAULT = -1.0  # Denotes that the runtime is not available
@@ -74,10 +79,22 @@ SOLVER_INPUT_VCPU_DEFAULT = -1.0  # Denotes that the vCPU is not available
 SOLVER_INPUT_ARCHITECTURE_DEFAULT = "x86_64"
 
 # Carbon Transmission Cost Calculator Constants
-KWH_PER_GB_ESTIMATE = 0.1
+# KWH_PER_GB_ESTIMATE = 0.1
 KWH_PER_KM_GB_ESTIMATE = 0.005
 CARBON_TRANSMISSION_CARBON_METHOD = "distance"  # Or latency
 KWH_PER_S_GB_ESTIMATE = 0.005
 
 # Logging
-LOG_VERSION = "0.0.1"
+LOG_VERSION = "0.0.3"
+
+# Tail latency threshold
+TAIL_LATENCY_THRESHOLD = 95
+
+# datetime
+GLOBAL_TIME_ZONE = pytz.utc
+TIME_FORMAT = "%Y-%m-%d %H:%M:%S,%f%z"
+TIME_FORMAT_DAYS = "%Y-%m-%d%z"
+
+# Forgetting factors
+FORGETTING_TIME_DAYS = 30  # 30 days
+FORGETTING_NUMBER = 5000  # 5000 invocations

@@ -16,6 +16,19 @@ CMD ["multi_x_serverless/deployment/client/cli/cli.py", "{handler}"]
 """
 
 
+def generate_deployment_dockerfile(handler: str, runtime: str) -> str:
+    return f"""FROM public.ecr.aws/lambda/{runtime}
+RUN pip3 install poetry
+COPY pyproject.toml ./
+COPY poetry.lock ./
+COPY multi_x_serverless ./multi_x_serverless
+RUN yum install -y go && go install github.com/google/go-containerregistry/cmd/crane@latest
+
+RUN poetry install --no-dev
+CMD ["multi_x_serverless/deployment/client/cli/cli.py", "{handler}"]
+"""
+
+
 def build_docker_image(image_name: str) -> None:
     print(f"Building docker image {image_name}")
     try:
@@ -82,8 +95,13 @@ def create_lambda_function(handler: str, image_uri: str, role: str, timeout: int
         pass
 
 
-def deploy_to_aws(handler: str, runtime: str, role_arn: str, timeout: int, memory_size: int):
-    dockerfile_content = generate_dockerfile(handler, runtime)
+def deploy_to_aws(
+    handler: str, runtime: str, role_arn: str, timeout: int, memory_size: int, deployer_env: bool = False
+):
+    if not deployer_env:
+        dockerfile_content = generate_dockerfile(handler, runtime)
+    else:
+        dockerfile_content = generate_deployment_dockerfile(handler, runtime)
 
     dockerfile_path = Path(f"{Path(__file__).parent.parent}/Dockerfile")
     dockerfile_path.write_text(dockerfile_content)
@@ -122,4 +140,4 @@ if __name__ == "__main__":
         print("Runtime must be a Python runtime of the form python:x.x")
         sys.exit(1)
 
-    deploy_to_aws(handler, runtime, role_arn, timeout, memory_size)
+    deploy_to_aws(handler, runtime, role_arn, timeout, memory_size, deployer_env=handler == "update_check_deployment")

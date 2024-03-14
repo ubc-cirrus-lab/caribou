@@ -1,7 +1,9 @@
 import json
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
+from datetime import datetime, timedelta
 from multi_x_serverless.data_collector.components.workflow.workflow_retriever import WorkflowRetriever
+from multi_x_serverless.common.constants import TIME_FORMAT_DAYS, GLOBAL_TIME_ZONE
 
 
 class TestWorkflowRetriever(unittest.TestCase):
@@ -11,217 +13,262 @@ class TestWorkflowRetriever(unittest.TestCase):
         self.maxDiff = None
 
     def test_retrieve_all_workflow_ids(self):
-        self.mock_client.get_all_values_from_table.return_value = {"id1": "value1", "id2": "value2"}
-        result = self.workflow_retriever.retrieve_all_workflow_ids()
-        self.assertEqual(result, {"id1", "id2"})
+        # Set up the mock
+        self.mock_client.get_keys.return_value = ["workflow1", "workflow2", "workflow3"]
 
-    def test_get_favourite_home_region(self):
-        filtered_execution_summary = {
-            "aws:region1": {"invocation_count": 1, "total_runtime": 1, "total_tail_runtime": 1},
-            "aws:region2": {"invocation_count": 2, "total_runtime": 2, "total_tail_runtime": 2},
-        }
-        result = self.workflow_retriever.get_favourite_home_region(filtered_execution_summary)
-        self.assertEqual(result, "aws:region2")
+        # Call the method
+        result = self.workflow_retriever.retrieve_all_workflow_ids()
+
+        # Check that the result is as expected
+        expected_result = {"workflow1", "workflow2", "workflow3"}
+        self.assertEqual(result, expected_result)
+
+        # Check that get_keys was called with the correct argument
+        self.mock_client.get_keys.assert_called_once_with(self.workflow_retriever._workflow_summary_table)
 
     def test_retrieve_workflow_summary(self):
-        self.mock_client.get_all_values_from_sort_key_table.return_value = [
-            '{"time_since_last_sync": 30, "instance_summary": {"instance1": {"invocation_count": 1, "execution_summary": {"aws:region1": {"invocation_count": 1, "average_runtime": 1, "tail_runtime": 1}}}}}',
-        ]
-        self.workflow_retriever._available_regions = {"aws:region1": {}}
+        # Set up the mocks
+        self.mock_client.get_value_from_table.return_value = "workflow_summary"
+        self.workflow_retriever._transform_workflow_summary = Mock(return_value={"transformed": "workflow_summary"})
 
-        result = self.workflow_retriever.retrieve_workflow_summary("id1")
+        # Call the method
+        result = self.workflow_retriever.retrieve_workflow_summary("workflow_id")
+
+        # Check that the result is as expected
+        expected_result = {"transformed": "workflow_summary"}
+        self.assertEqual(result, expected_result)
+
+        # Check that get_value_from_table and _transform_workflow_summary were called with the correct arguments
+        self.mock_client.get_value_from_table.assert_called_once_with(
+            self.workflow_retriever._workflow_summary_table, "workflow_id"
+        )
+        self.workflow_retriever._transform_workflow_summary.assert_called_once_with("workflow_summary")
+
+    def test_transform_workflow_summary(self):
+        # Set up the mocks
+        self.workflow_retriever._construct_summaries = Mock(return_value=("start_hop_summary", "instance_summary"))
+
+        # Set up the test data
+        workflow_summarized = json.dumps(
+            {
+                "workflow_runtime_samples": "runtime_samples",
+                "daily_invocation_counts": "daily_counts",
+                "logs": "logs",
+            }
+        )
+
+        # Call the method
+        result = self.workflow_retriever._transform_workflow_summary(workflow_summarized)
+
+        # Check that the result is as expected
+        expected_result = {
+            "workflow_runtime_samples": "runtime_samples",
+            "daily_invocation_counts": "daily_counts",
+            "start_hop_summary": "start_hop_summary",
+            "instance_summary": "instance_summary",
+        }
+        self.assertEqual(result, expected_result)
+
+        self.workflow_retriever._construct_summaries.assert_called_once_with("logs")
+
+    def test_construct_summaries(self):
+        # Set up the mocks
+        with patch.object(
+            self.workflow_retriever, "_extend_start_hop_summary", autospec=True
+        ) as mock_extend_start_hop_summary, patch.object(
+            self.workflow_retriever, "_extend_instance_summary", autospec=True
+        ) as mock_extend_instance_summary:
+            # Set up the test data
+            logs = [{"log": i} for i in range(5)]
+
+            # Call the method
+            start_hop_summary, instance_summary = self.workflow_retriever._construct_summaries(logs)
+
+            # Check that the result is as expected
+            self.assertEqual(start_hop_summary, {})
+            self.assertEqual(instance_summary, {})
+
+            # Check that _extend_start_hop_summary and _extend_instance_summary were called with the correct arguments
+            for log in logs:
+                mock_extend_start_hop_summary.assert_any_call(start_hop_summary, log)
+                mock_extend_instance_summary.assert_any_call(instance_summary, log)
+
+    def test_extend_start_hop_summary(self):
+        # Set up the test data
+        start_hop_summary = {}
+        log = {
+            "start_hop_destination": {"provider": "provider1", "region": "region1"},
+            "start_hop_data_transfer_size": "1.0",
+            "start_hop_latency": "0.1",
+        }
+
+        # Call the method
+        self.workflow_retriever._extend_start_hop_summary(start_hop_summary, log)
+
+        # Check that the start_hop_summary dictionary was updated as expected
+        expected_result = {
+            "provider1:region1": {
+                1.0: ["0.1"],
+            },
+        }
+        self.assertEqual(start_hop_summary, expected_result)
+
+    def test_extend_instance_summary(self):
+        # Set up the test data
+        instance_summary = {}
+        log = {
+            "execution_latencies": {"instance1": {"provider_region": "provider1:region1", "latency": "0.1"}},
+            "start_hop_destination": {"provider": "provider1", "region": "region1"},
+            "transmission_data": [
+                {
+                    "from_instance": "instance1",
+                    "to_instance": "instance2",
+                    "from_region": {"provider": "provider1", "region": "region1"},
+                    "to_region": {"provider": "provider2", "region": "region2"},
+                    "transmission_size": 1.0,
+                    "transmission_latency": 0.1,
+                }
+            ],
+            "non_executions": {"instance1": {"instance2": 1}},
+        }
+
+        # Call the method
+        self.workflow_retriever._extend_instance_summary(instance_summary, log)
+
+        # Check that the instance_summary dictionary was updated as expected
         expected_result = {
             "instance1": {
-                "favourite_home_region": "aws:region1",
-                "favourite_home_region_average_runtime": 1.0,
-                "favourite_home_region_tail_runtime": 1.0,
-                "projected_monthly_invocations": 1.0,
-                "execution_summary": {"aws:region1": {"average_runtime": 1.0, "tail_runtime": 1.0, "unit": "s"}},
-                "invocation_summary": {},
+                "invocations": 1,
+                "executions": {"provider1:region1": ["0.1"]},
+                "to_instance": {
+                    "instance2": {
+                        "invoked": 0,
+                        "regions_to_regions": {},
+                        "non_executions": 1,
+                        "invocation_probability": 0.0,
+                    }
+                },
             }
         }
-        self.assertEqual(result, expected_result)
+        self.assertEqual(instance_summary, expected_result)
 
-    def test_consolidate_logs(self):
-        logs = [
-            json.dumps(
-                {
-                    "time_since_last_sync": 240,
-                    "instance_summary": {
-                        "instance_1": {
-                            "invocation_count": 100,
-                            "execution_summary": {
-                                "provider_1:region_1": {
-                                    "invocation_count": 80,
-                                    "average_runtime": 25,  # In s
-                                    "tail_runtime": 30,  # In s
-                                },
-                                "provider_1:region_2": {
-                                    "invocation_count": 20,
-                                    "average_runtime": 30,  # In s
-                                    "tail_runtime": 35,  # In s
-                                },
-                            },
-                            "invocation_summary": {
-                                "instance_2": {
-                                    "invocation_count": 80,
-                                    "average_data_transfer_size": 0.0007,  # In GB
-                                    "transmission_summary": {
-                                        "provider_1:region_1": {
-                                            "provider_1:region_1": {
-                                                "transmission_count": 65,
-                                                "average_latency": 0.001,  # In s
-                                                "tail_latency": 0.002,  # In s
-                                            },
-                                            "provider_1:region_2": {
-                                                "transmission_count": 5,
-                                                "average_latency": 0.12,  # In s
-                                                "tail_latency": 0.15,  # In s
-                                            },
-                                        },
-                                        "provider_1:region_2": {
-                                            "provider_1:region_1": {
-                                                "transmission_count": 10,
-                                                "average_latency": 0.1,  # In s
-                                                "tail_latency": 0.12,  # In s
-                                            }
-                                        },
+    def test_handle_missing_region_to_region_transmission_data_common_sample(self):
+        # Set up the test data
+        instance_summary = {
+            "instance1": {
+                "to_instance": {
+                    "instance2": {
+                        "regions_to_regions": {
+                            "provider1:region1": {
+                                "provider2:region2": {
+                                    "transfer_size_to_transfer_latencies": {
+                                        1.0: [0.1, 0.2, 0.3],
+                                        2.0: [0.2, 0.3, 0.4],
                                     },
-                                }
-                            },
-                        },
-                        "instance_2": {
-                            "invocation_count": 100,
-                            "execution_summary": {
-                                "provider_1:region_1": {
-                                    "invocation_count": 70,
-                                    "average_runtime": 10,  # In s
-                                    "tail_runtime": 15,  # In s
+                                    "transfer_sizes": [1.0, 1.0, 1.0, 2.0, 2.0, 2.0],
                                 },
-                                "provider_1:region_2": {
-                                    "invocation_count": 10,
-                                    "average_runtime": 15,  # In s
-                                    "tail_runtime": 10,  # In s
-                                },
-                            },
-                        },
-                    },
-                }
-            ),
-            json.dumps(
-                {
-                    "time_since_last_sync": 240,
-                    "instance_summary": {
-                        "instance_1": {
-                            "invocation_count": 100,
-                            "execution_summary": {
-                                "provider_1:region_1": {
-                                    "invocation_count": 20,
-                                    "average_runtime": 30,  # In s
-                                    "tail_runtime": 35,  # In s
-                                },
-                                "provider_1:region_2": {
-                                    "invocation_count": 80,
-                                    "average_runtime": 25,  # In s
-                                    "tail_runtime": 30,  # In s
-                                },
-                            },
-                            "invocation_summary": {
-                                "instance_2": {
-                                    "invocation_count": 80,
-                                    "average_data_transfer_size": 0.0007,  # In GB
-                                    "transmission_summary": {
-                                        "provider_1:region_1": {
-                                            "provider_1:region_1": {
-                                                "transmission_count": 65,
-                                                "average_latency": 0.0015,  # In s
-                                                "tail_latency": 0.0015,  # In s
-                                            },
-                                            "provider_1:region_2": {
-                                                "transmission_count": 5,
-                                                "average_latency": 0.13,  # In s
-                                                "tail_latency": 0.16,  # In s
-                                            },
-                                        },
-                                        "provider_1:region_2": {
-                                            "provider_1:region_1": {
-                                                "transmission_count": 10,
-                                                "average_latency": 0.09,  # In s
-                                                "tail_latency": 0.13,  # In s
-                                            }
-                                        },
+                                "provider2:region3": {
+                                    "transfer_size_to_transfer_latencies": {
+                                        1.0: [0.1, 0.2, 0.3],
                                     },
-                                }
-                            },
-                        },
-                        "instance_2": {
-                            "invocation_count": 80,
-                            "execution_summary": {
-                                "provider_1:region_1": {
-                                    "invocation_count": 70,
-                                    "average_runtime": 15,  # In s
-                                    "tail_runtime": 10,  # In s
+                                    "transfer_sizes": [1.0, 1.0, 1.0],
                                 },
-                                "provider_1:region_2": {
-                                    "invocation_count": 10,
-                                    "average_runtime": 10,  # In s
-                                    "tail_runtime": 15,  # In s
-                                },
-                            },
-                        },
-                    },
+                            }
+                        }
+                    }
                 }
-            ),
-        ]
-
-        self.workflow_retriever._available_regions = {"provider_1:region_1": {}, "provider_1:region_2": {}}
-
-        result = self.workflow_retriever._consolidate_logs(logs=logs)
-
-        expected_result = {
-            "instance_1": {
-                "favourite_home_region": "provider_1:region_1",
-                "favourite_home_region_average_runtime": 26.0,
-                "favourite_home_region_tail_runtime": 31.0,
-                "projected_monthly_invocations": 12.5,
-                "execution_summary": {
-                    "provider_1:region_1": {"average_runtime": 26.0, "tail_runtime": 31.0, "unit": "s"},
-                    "provider_1:region_2": {"average_runtime": 26.0, "tail_runtime": 31.0, "unit": "s"},
-                },
-                "invocation_summary": {
-                    "instance_2": {
-                        "probability_of_invocation": 0.8,
-                        "average_data_transfer_size": 0.0007,
-                        "transmission_summary": {
-                            "provider_1:region_1": {
-                                "provider_1:region_1": {
-                                    "average_latency": 0.00125,
-                                    "tail_latency": 0.00175,
-                                    "unit": "s",
-                                },
-                                "provider_1:region_2": {"average_latency": 0.125, "tail_latency": 0.155, "unit": "s"},
-                            },
-                            "provider_1:region_2": {
-                                "provider_1:region_1": {"average_latency": 0.095, "tail_latency": 0.125, "unit": "s"},
-                            },
-                        },
-                    },
-                },
-            },
-            "instance_2": {
-                "favourite_home_region": "provider_1:region_1",
-                "favourite_home_region_average_runtime": 12.5,
-                "favourite_home_region_tail_runtime": 12.5,
-                "projected_monthly_invocations": 11.25,
-                "execution_summary": {
-                    "provider_1:region_1": {"average_runtime": 12.5, "tail_runtime": 12.5, "unit": "s"},
-                    "provider_1:region_2": {"average_runtime": 12.5, "tail_runtime": 12.5, "unit": "s"},
-                },
-                "invocation_summary": {},
-            },
+            }
         }
 
-        self.assertEqual(result, expected_result)
+        # Call the method
+        self.workflow_retriever._handle_missing_region_to_region_transmission_data(instance_summary)
+
+        # Check that the instance_summary dictionary was updated as expected
+        # The expected_result will depend on the specific behavior of your method
+        expected_result = {
+            "instance1": {
+                "to_instance": {
+                    "instance2": {
+                        "regions_to_regions": {
+                            "provider1:region1": {
+                                "provider2:region2": {
+                                    "transfer_size_to_transfer_latencies": {1.0: [0.1, 0.2, 0.3], 2.0: [0.2, 0.3, 0.4]},
+                                    "transfer_sizes": [1.0, 1.0, 1.0, 2.0, 2.0, 2.0],
+                                },
+                                "provider2:region3": {
+                                    "transfer_size_to_transfer_latencies": {
+                                        1.0: [0.1, 0.2, 0.3],
+                                        2.0: [0.14999999999999997, 0.29999999999999993, 0.44999999999999984],
+                                    },
+                                    "transfer_sizes": [1.0, 1.0, 1.0, 2.0, 2.0, 2.0],
+                                },
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        self.assertEqual(instance_summary, expected_result)
+
+    def test_handle_missing_region_to_region_transmission_data_no_common_sample(self):
+        # Set up the test data
+        instance_summary = {
+            "instance1": {
+                "to_instance": {
+                    "instance2": {
+                        "regions_to_regions": {
+                            "provider1:region1": {
+                                "provider2:region2": {
+                                    "transfer_size_to_transfer_latencies": {
+                                        2.0: [0.2, 0.3, 0.4],
+                                    },
+                                    "transfer_sizes": [2.0, 2.0, 2.0],
+                                },
+                                "provider2:region3": {
+                                    "transfer_size_to_transfer_latencies": {
+                                        1.0: [0.1, 0.2, 0.3],
+                                    },
+                                    "transfer_sizes": [1.0, 1.0, 1.0],
+                                },
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        # Call the method
+        self.workflow_retriever._handle_missing_region_to_region_transmission_data(instance_summary)
+
+        # Check that the instance_summary dictionary was updated as expected
+        # The expected_result will depend on the specific behavior of your method
+        expected_result = {
+            "instance1": {
+                "to_instance": {
+                    "instance2": {
+                        "regions_to_regions": {
+                            "provider1:region1": {
+                                "provider2:region2": {
+                                    "transfer_size_to_transfer_latencies": {
+                                        2.0: [0.2, 0.3, 0.4],
+                                        1.0: [0.1333333333333334, 0.20000000000000004, 0.2666666666666668],
+                                    },
+                                    "transfer_sizes": [2.0, 2.0, 2.0, 1.0, 1.0, 1.0],
+                                },
+                                "provider2:region3": {
+                                    "transfer_size_to_transfer_latencies": {
+                                        1.0: [0.1, 0.2, 0.3],
+                                        2.0: [0.14999999999999997, 0.29999999999999993, 0.44999999999999984],
+                                    },
+                                    "transfer_sizes": [1.0, 1.0, 1.0, 2.0, 2.0, 2.0],
+                                },
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        self.assertEqual(instance_summary, expected_result)
 
 
 if __name__ == "__main__":

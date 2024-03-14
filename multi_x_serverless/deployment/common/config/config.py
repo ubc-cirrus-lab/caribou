@@ -79,8 +79,8 @@ class Config:
         return env_variables
 
     @property
-    def home_regions(self) -> list[dict[str, str]]:
-        return self._lookup("home_regions")
+    def home_region(self) -> dict[str, str]:
+        return self._lookup("home_region")
 
     @property
     def estimated_invocations_per_month(self) -> int:

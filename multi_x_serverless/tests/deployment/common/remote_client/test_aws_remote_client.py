@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import patch
 from unittest.mock import MagicMock
+from datetime import datetime, timedelta
 
 from multi_x_serverless.common.models.remote_client.aws_remote_client import AWSRemoteClient
 from multi_x_serverless.deployment.common.deploy.models.resource import Resource
@@ -8,12 +9,15 @@ from multi_x_serverless.deployment.common.deploy.models.resource import Resource
 import json
 import zipfile
 import tempfile
-import datetime
 
 from botocore.exceptions import ClientError
 from unittest.mock import call
 
-from multi_x_serverless.common.constants import SYNC_MESSAGES_TABLE
+from multi_x_serverless.common.constants import (
+    SYNC_MESSAGES_TABLE,
+    MULTI_X_SERVERLESS_WORKFLOW_IMAGES_TABLE,
+    GLOBAL_TIME_ZONE,
+)
 
 
 class TestAWSRemoteClient(unittest.TestCase):
@@ -486,21 +490,6 @@ class TestAWSRemoteClient(unittest.TestCase):
         self.assertEqual(result, b"test_resource")
 
     @patch.object(AWSRemoteClient, "_client")
-    def test_get_all_values_from_sort_key_table(self, mock_client):
-        table_name = "test_table"
-        key = "test_key"
-        mock_client.return_value.query.return_value = {
-            "Items": [
-                {"key": {"S": "key1"}, "value": {"S": "value1"}},
-                {"key": {"S": "key2"}, "value": {"S": "value2"}},
-            ]
-        }
-        result = self.aws_client.get_all_values_from_sort_key_table(table_name, key)
-        self.assertEqual(len(result), 2)
-        self.assertEqual(result[0], "value1")
-        self.assertEqual(result[1], "value2")
-
-    @patch.object(AWSRemoteClient, "_client")
     def test_get_keys(self, mock_client):
         table_name = "test_table"
         mock_client.return_value.scan.return_value = {"Items": [{"key": {"S": "key1"}}, {"key": {"S": "key2"}}]}
@@ -519,13 +508,13 @@ class TestAWSRemoteClient(unittest.TestCase):
 
         # Mock the return value of update_item
         mock_dynamodb_client.update_item.return_value = {
-            "Attributes": {"sync_node_name": {"L": [{"S": "predecessor_name"}]}}
+            "Attributes": {"sync_node_name": {"M": {"workflow_instance_id": {"BOOL": True}}}}
         }
 
-        result = client.set_predecessor_reached("predecessor_name", "sync_node_name", "workflow_instance_id")
+        result = client.set_predecessor_reached("predecessor_name", "sync_node_name", "workflow_instance_id", True)
 
         # Check that the return value is correct
-        self.assertEqual(result, 1)
+        self.assertEqual(result, [True])
 
     @patch.object(AWSRemoteClient, "_client")
     def test_create_sync_tables(self, mock_client):
@@ -559,6 +548,8 @@ class TestAWSRemoteClient(unittest.TestCase):
         # Mock the return value of _create_lambda_function and _wait_for_function_to_become_active
         client._create_lambda_function = MagicMock(return_value=("arn", "Active"))
         client._wait_for_function_to_become_active = MagicMock()
+        client._store_deployed_image_uri = MagicMock()
+        client._get_deployed_image_uri = MagicMock(return_value="")
 
         # Mock the input to create_function
         function_name = "function_name"
@@ -639,6 +630,31 @@ class TestAWSRemoteClient(unittest.TestCase):
         # Check that the subprocess.run method was called
         mock_subprocess_run.assert_called()
 
+    def test_store_deployed_image_uri(self):
+        # Mocking the scenario where the image URI is stored successfully
+        mock_dynamodb_client = MagicMock()
+        mock_session = MagicMock()
+        mock_session.client.return_value = mock_dynamodb_client
+
+        client = AWSRemoteClient("region1")
+
+        client._session = mock_session
+
+        # Define the input
+        function_name = "image_processing-0_0_1-getinput_aws-us-east-1"
+        image_name = "image_processing_light-0_0_1-getinput_aws-us-east-1:latest"
+
+        client._store_deployed_image_uri(function_name, image_name)
+
+        # Check that the client.update_item method was called
+        mock_dynamodb_client.update_item.assert_any_call(
+            TableName=MULTI_X_SERVERLESS_WORKFLOW_IMAGES_TABLE,
+            Key={"key": {"S": "image_processing-0_0_1"}},
+            UpdateExpression="SET #v = if_not_exists(#v, :empty_map)",
+            ExpressionAttributeNames={"#v": "value"},
+            ExpressionAttributeValues={":empty_map": {"M": {}}},
+        )
+
     @patch.object(AWSRemoteClient, "_client")
     @patch("subprocess.run")
     @patch("subprocess.check_output")
@@ -674,6 +690,8 @@ class TestAWSRemoteClient(unittest.TestCase):
 
         # Mock the return value of _wait_for_function_to_become_active
         client._wait_for_function_to_become_active = MagicMock()
+        client._get_deployed_image_uri = MagicMock(return_value="")
+        client._store_deployed_image_uri = MagicMock()
 
         # Mock the input to update_function
         function_name = "function_name"
@@ -718,36 +736,6 @@ class TestAWSRemoteClient(unittest.TestCase):
         self.assertEqual(result, "arn")
 
     @patch.object(AWSRemoteClient, "_client")
-    def test_get_last_value_from_sort_key_table(self, mock_client):
-        # Mocking the scenario where the last value is retrieved successfully
-        mock_dynamodb_client = MagicMock()
-        mock_client.return_value = mock_dynamodb_client
-
-        client = AWSRemoteClient("region1")
-
-        # Mock the return value of query
-        mock_dynamodb_client.query.return_value = {"Items": [{"sort_key": {"S": "sort_key"}, "value": {"S": "value"}}]}
-
-        result = client.get_last_value_from_sort_key_table("table_name", "key")
-
-        # Check that the return value is correct
-        self.assertEqual(result, ("sort_key", "value"))
-
-    @patch.object(AWSRemoteClient, "_client")
-    def test_put_value_to_sort_key_table(self, mock_client):
-        # Mocking the scenario where the value is put successfully
-        mock_dynamodb_client = MagicMock()
-        mock_client.return_value = mock_dynamodb_client
-
-        client = AWSRemoteClient("region1")
-
-        # Call the method with test values
-        client.put_value_to_sort_key_table("table_name", "key", "sort_key", "value")
-
-        # Check that the put_item method was called
-        mock_dynamodb_client.put_item.assert_called()
-
-    @patch.object(AWSRemoteClient, "_client")
     def test_get_logs_since_last_sync(self, mock_client):
         # Mocking the scenario where the logs are retrieved successfully
         mock_logs_client = MagicMock()
@@ -758,10 +746,36 @@ class TestAWSRemoteClient(unittest.TestCase):
         # Mock the return value of filter_log_events
         mock_logs_client.filter_log_events.return_value = {"events": [{"message": "log_message"}]}
 
-        result = client.get_logs_since_last_sync("function_instance", datetime.datetime.now())
+        result = client.get_logs_since("function_instance", datetime.now(GLOBAL_TIME_ZONE))
 
         # Check that the return value is correct
         self.assertEqual(result, ["log_message"])
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_get_logs_between(self, mock_client):
+        # Mocking the scenario where the logs are retrieved successfully
+        mock_logs_client = MagicMock()
+        mock_client.return_value = mock_logs_client
+
+        client = AWSRemoteClient("region1")
+
+        # Mock the return value of filter_log_events
+        mock_logs_client.filter_log_events.return_value = {"events": [{"message": "log_message"}]}
+
+        start_time = datetime.now()
+        end_time = start_time + timedelta(hours=1)
+
+        result = client.get_logs_between("function_instance", start_time, end_time)
+
+        # Check that the return value is correct
+        self.assertEqual(result, ["log_message"])
+
+        # Check that filter_log_events was called with the correct arguments
+        mock_logs_client.filter_log_events.assert_called_with(
+            logGroupName="/aws/lambda/function_instance",
+            startTime=int(start_time.timestamp() * 1000),
+            endTime=int(end_time.timestamp() * 1000),
+        )
 
     @patch.object(AWSRemoteClient, "_client")
     def test_remove_key(self, mock_client):
@@ -868,6 +882,61 @@ class TestAWSRemoteClient(unittest.TestCase):
 
         # Check that the delete_repository method was called
         mock_ecr_client.delete_repository.assert_called()
+
+    @patch("botocore.session.Session")
+    def test_get_deployed_image_uri(self, mock_session):
+        # Mocking the scenario where the image URI is retrieved successfully
+        mock_dynamodb_client = MagicMock()
+        mock_session.return_value.create_client.return_value = mock_dynamodb_client
+
+        client = AWSRemoteClient("region1")
+
+        # Define the input
+        function_name = "image_processing-0_0_1-getinput_aws-us-east-1"
+
+        # Mock the return value of get_item
+        mock_dynamodb_client.get_item.return_value = {
+            "Item": {
+                "key": {"S": "image_processing-0_0_1"},
+                "value": {"M": {"getinput": {"S": "image_uri"}}},
+            }
+        }
+
+        result = client._get_deployed_image_uri(function_name)
+
+        # Check that the return value is correct
+        self.assertEqual(result, "image_uri")
+
+    @patch.object(AWSRemoteClient, "_client")
+    @patch("subprocess.check_output")
+    @patch("subprocess.run")
+    def test_copy_image_to_region(self, mock_run, mock_check_output, mock_client):
+        # Mocking the scenario where the image is copied successfully
+        mock_ecr_client = MagicMock()
+        mock_sts_client = MagicMock()
+        mock_client.side_effect = [mock_ecr_client, mock_sts_client]
+
+        mock_ecr_client.meta.region_name = "region1"
+
+        client = AWSRemoteClient("region1")
+
+        # Define the input
+        deployed_image_uri = "123456789012.dkr.ecr.us-west-2.amazonaws.com/my-web-app:latest"
+
+        # Mock the return value of get_caller_identity
+        mock_sts_client.get_caller_identity.return_value = {"Account": "123456789012"}
+
+        # Mock the return value of check_output
+        mock_check_output.return_value = b"my_password"
+
+        result = client._copy_image_to_region(deployed_image_uri)
+
+        # Check that the return value is correct
+        expected_result = "123456789012.dkr.ecr.region1.amazonaws.com/my-web-app:latest"
+        self.assertEqual(result, expected_result)
+
+        # Check that the subprocess.run method was called
+        mock_run.assert_called()
 
 
 if __name__ == "__main__":

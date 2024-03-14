@@ -14,7 +14,7 @@ from multi_x_serverless.deployment.common.config.config import Config
 from multi_x_serverless.deployment.common.deploy.deployer import Deployer
 from multi_x_serverless.deployment.common.factories.deployer_factory import DeployerFactory
 from multi_x_serverless.endpoint.client import Client
-from multi_x_serverless.syncers.datastore_syncer import DatastoreSyncer
+from multi_x_serverless.syncers.log_syncer import LogSyncer
 from multi_x_serverless.update_checkers.deployment_update_checker import DeploymentUpdateChecker
 from multi_x_serverless.update_checkers.solver_update_checker import SolverUpdateChecker
 
@@ -51,7 +51,7 @@ def deploy(ctx: click.Context) -> None:
     factory: DeployerFactory = ctx.obj["factory"]
     config: Config = factory.create_config_obj()
     deployer: Deployer = factory.create_deployer(config=config)
-    deployer.deploy(config.home_regions)
+    deployer.deploy([config.home_region])
 
 
 @cli.command("run", help="Run the workflow.")
@@ -69,8 +69,9 @@ def run(_: click.Context, argument: Optional[str], workflow_id: str) -> None:
 
 @cli.command("data_collect", help="Run data collection.")
 @click.argument("collector", required=True, type=click.Choice(["carbon", "provider", "performance", "workflow", "all"]))
+@click.option("--workflow_id", "-w", help="The workflow id to collect data for.")
 @click.pass_context
-def data_collect(_: click.Context, collector: str) -> None:
+def data_collect(_: click.Context, collector: str, workflow_id: Optional[str]) -> None:
     if collector in ("provider", "all"):
         provider_collector = ProviderCollector()
         provider_collector.run()
@@ -81,28 +82,16 @@ def data_collect(_: click.Context, collector: str) -> None:
         performance_collector = PerformanceCollector()
         performance_collector.run()
     if collector in ("workflow", "all"):
+        if workflow_id is None:
+            raise click.ClickException("Workflow id must be provided for the workflow and all collectors.")
         workflow_collector = WorkflowCollector()
-        workflow_collector.run()
+        workflow_collector.run_on_workflow(workflow_id)
 
 
-@cli.command("data_sync", help="Run data synchronization.")
-def data_sync() -> None:
-    datastore_syncer = DatastoreSyncer()
-    datastore_syncer.sync()
-
-
-@cli.command("solve", help="Solve the workflow.")
-@click.argument("workflow_id", required=True)
-@click.option(
-    "--solver",
-    "-s",
-    help="The solver to use.",
-    required=False,
-    type=click.Choice(["fine-grained", "coarse-grained", "heuristic"]),
-)
-def solve(workflow_id: str, solver: Optional[str]) -> None:
-    client = Client(workflow_id)
-    client.solve(solver)
+@cli.command("log_sync", help="Run log synchronization.")
+def log_sync() -> None:
+    log_syncer = LogSyncer()
+    log_syncer.sync()
 
 
 @cli.command("update_check_solver", help="Check if the solver should be run.")

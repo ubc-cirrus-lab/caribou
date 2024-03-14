@@ -52,9 +52,9 @@ class TestConfig(unittest.TestCase):
         with self.assertRaises(RuntimeError, msg="Environment variable key need to be a str"):
             _ = self.config.environment_variables
 
-    def test_home_regions(self):
-        self.config.project_config["home_regions"] = [{"provider": "provider1", "region": "region1"}]
-        self.assertEqual(self.config.home_regions, [{"provider": "provider1", "region": "region1"}])
+    def test_home_region(self):
+        self.config.project_config["home_region"] = [{"provider": "provider1", "region": "region1"}]
+        self.assertEqual(self.config.home_region, [{"provider": "provider1", "region": "region1"}])
 
     def test_estimated_invocations_per_month(self):
         self.config.project_config["estimated_invocations_per_month"] = 1000

@@ -37,16 +37,6 @@ class IntegrationTestRemoteClient(RemoteClient):  # pylint: disable=too-many-pub
                         )
                     """
                 )
-            elif getattr(constants, table) == constants.WORKFLOW_SUMMARY_TABLE:
-                cursor.execute(
-                    f"""
-                    CREATE TABLE IF NOT EXISTS {getattr(constants, table)} (
-                        key TEXT PRIMARY KEY,
-                        value TEXT,
-                        sort_key INTEGER
-                    )
-                    """
-                )
             elif table.endswith("_TABLE"):
                 cursor.execute(
                     f"CREATE TABLE IF NOT EXISTS {getattr(constants, table)} (key TEXT PRIMARY KEY, value TEXT)"
@@ -93,6 +83,7 @@ class IntegrationTestRemoteClient(RemoteClient):  # pylint: disable=too-many-pub
                     predecessor_name TEXT,
                     sync_node_name TEXT,
                     workflow_instance_id TEXT,
+                    direct_call INTEGER,
                     PRIMARY KEY (predecessor_name, sync_node_name, workflow_instance_id)
                 )
             """
@@ -249,21 +240,23 @@ class IntegrationTestRemoteClient(RemoteClient):  # pylint: disable=too-many-pub
         conn.close()
         return result is not None
 
-    def set_predecessor_reached(self, predecessor_name: str, sync_node_name: str, workflow_instance_id: str) -> int:
+    def set_predecessor_reached(
+        self, predecessor_name: str, sync_node_name: str, workflow_instance_id: str, direct_call: bool
+    ) -> list[bool]:
         conn = self._db_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO predecessor_reached (predecessor_name, sync_node_name, workflow_instance_id) VALUES (?, ?, ?)",
-            (predecessor_name, sync_node_name, workflow_instance_id),
+            "INSERT INTO predecessor_reached (predecessor_name, sync_node_name, workflow_instance_id, direct_call) VALUES (?, ?, ?, ?)",  # pylint: disable=line-too-long
+            (predecessor_name, sync_node_name, workflow_instance_id, int(direct_call)),
         )
         cursor.execute(
-            "SELECT COUNT(*) FROM predecessor_reached WHERE sync_node_name=? AND workflow_instance_id=?",
+            "SELECT direct_call FROM predecessor_reached WHERE sync_node_name=? AND workflow_instance_id=?",
             (sync_node_name, workflow_instance_id),
         )
         result = cursor.fetchone()
         conn.commit()
         conn.close()
-        return result[0]
+        return [bool(res) for res in result]
 
     def get_all_values_from_table(self, table_name: str) -> dict:
         conn = self._db_connection()
@@ -299,14 +292,6 @@ class IntegrationTestRemoteClient(RemoteClient):  # pylint: disable=too-many-pub
             cursor.execute(insert_query, [key] + [value for _, _, value in column_type_value])
         conn.commit()
         conn.close()
-
-    def get_all_values_from_sort_key_table(self, table_name: str, key: str) -> list[str]:
-        conn = self._db_connection()
-        cursor = conn.cursor()
-        cursor.execute(f"SELECT value, sort_key FROM {table_name} WHERE key=?", (key,))
-        result = cursor.fetchall()
-        conn.close()
-        return [data[0] for data in result]
 
     def get_keys(self, table_name: str) -> list[str]:
         conn = self._db_connection()
@@ -419,22 +404,7 @@ class IntegrationTestRemoteClient(RemoteClient):  # pylint: disable=too-many-pub
     def create_sync_tables(self) -> None:
         pass
 
-    def get_last_value_from_sort_key_table(self, table_name: str, key: str) -> tuple[str, str]:
-        conn = self._db_connection()
-        cursor = conn.cursor()
-        cursor.execute(f"SELECT value, sort_key FROM {table_name} WHERE key=? ORDER BY sort_key DESC LIMIT 1", (key,))
-        result = cursor.fetchone()
-        conn.close()
-        return (result[1], result[0])
-
-    def put_value_to_sort_key_table(self, table_name: str, key: str, sort_key: str, value: str) -> None:
-        conn = self._db_connection()
-        cursor = conn.cursor()
-        cursor.execute(f"INSERT INTO {table_name} (key, value, sort_key) VALUES (?, ?, ?)", (key, value, sort_key))
-        conn.commit()
-        conn.close()
-
-    def get_logs_since_last_sync(self, function_instance: str, last_synced_time: datetime) -> list[str]:
+    def get_logs_since(self, function_instance: str, since: datetime) -> list[str]:
         return []
 
     def remove_key(self, table_name: str, key: str) -> None:
@@ -486,3 +456,9 @@ class IntegrationTestRemoteClient(RemoteClient):  # pylint: disable=too-many-pub
         cursor.execute(f"UPDATE {table_name} SET value=? WHERE key=?", (value, key))
         conn.commit()
         conn.close()
+
+    def get_current_provider_region(self) -> str:
+        return "test_provider-rivendell"
+
+    def get_logs_between(self, function_instance: str, start: datetime, end: datetime) -> list[str]:
+        return []

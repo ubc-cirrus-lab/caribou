@@ -11,11 +11,7 @@ from multi_x_serverless.deployment.client import __version__ as MULTI_X_SERVERLE
 from multi_x_serverless.deployment.client.multi_x_serverless_workflow import MultiXServerlessWorkflow
 from multi_x_serverless.deployment.common.config.config import Config
 from multi_x_serverless.deployment.common.config.config_schema import ConfigSchema
-from multi_x_serverless.deployment.common.deploy.deployer import (
-    Deployer,
-    create_default_deployer,
-    create_deletion_deployer,
-)
+from multi_x_serverless.deployment.common.deploy.deployer import Deployer, create_default_deployer
 
 
 class DeployerFactory:
@@ -39,9 +35,6 @@ class DeployerFactory:
 
     def create_deployer(self, config: Config) -> Deployer:
         return create_default_deployer(config)
-
-    def create_deletion_deployer(self, config: Config) -> Deployer:
-        return create_deletion_deployer(config)
 
     def load_project_config(self) -> dict:
         if self.project_dir is None:
@@ -118,7 +111,7 @@ class DeployerFactory:
                         raise RuntimeError(f"Provider {provider} is not supported")
                     if provider not in defined_providers:
                         raise RuntimeError(f"Provider {provider} is not defined in providers")
-                    if provider_region in project_config["home_regions"]:
+                    if provider_region == project_config["home_region"]:
                         raise RuntimeError(f"Region {provider_region} cannot be both home and disallowed")
 
     def load_workflow_app(self) -> MultiXServerlessWorkflow:

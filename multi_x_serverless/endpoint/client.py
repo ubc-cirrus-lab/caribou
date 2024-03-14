@@ -1,37 +1,42 @@
 import json
 import logging
+import random
+from datetime import datetime
 from typing import Any, Optional
 
 import botocore.exceptions
 
 from multi_x_serverless.common.constants import (
     DEPLOYMENT_MANAGER_RESOURCE_TABLE,
+    GLOBAL_TIME_ZONE,
+    MULTI_X_SERVERLESS_WORKFLOW_IMAGES_TABLE,
     SOLVER_UPDATE_CHECKER_RESOURCE_TABLE,
+    TIME_FORMAT,
+    WORKFLOW_INSTANCE_TABLE,
     WORKFLOW_PLACEMENT_DECISION_TABLE,
     WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE,
+    WORKFLOW_SUMMARY_TABLE,
 )
 from multi_x_serverless.common.models.endpoints import Endpoints
 from multi_x_serverless.common.models.remote_client.aws_remote_client import AWSRemoteClient
 from multi_x_serverless.common.models.remote_client.remote_client_factory import RemoteClientFactory
-from multi_x_serverless.routing.solver.bfs_fine_grained_solver import BFSFineGrainedSolver
-from multi_x_serverless.routing.solver.coarse_grained_solver import CoarseGrainedSolver
-from multi_x_serverless.routing.solver.solver import Solver
-from multi_x_serverless.routing.solver.stochastic_heuristic_descent_solver import StochasticHeuristicDescentSolver
-from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+logger.addHandler(logging.StreamHandler())
 
 
 class Client:
     def __init__(self, workflow_id: Optional[str] = None) -> None:
         self._workflow_id = workflow_id
         self._endpoints = Endpoints()
+        self._home_region_threshold = 0.1  # 10% of the time run in home region
 
     def run(self, input_data: Optional[str] = None) -> None:
         if self._workflow_id is None:
             raise RuntimeError("No workflow id provided")
 
-        result = self._endpoints.get_solver_workflow_placement_decision_client().get_value_from_table(
+        result = self._endpoints.get_deployment_algorithm_workflow_placement_decision_client().get_value_from_table(
             WORKFLOW_PLACEMENT_DECISION_TABLE, self._workflow_id
         )
 
@@ -45,9 +50,27 @@ class Client:
 
         workflow_placement_decision = json.loads(result)
 
-        provider, region, identifier = self.__get_initial_node_workflow_placement_decision(workflow_placement_decision)
+        send_to_home_region = random.random() < self._home_region_threshold
 
-        json_payload = json.dumps(input_data)
+        workflow_placement_decision["time_key"] = self._get_time_key(workflow_placement_decision)
+
+        print(f"Sending to home region: {send_to_home_region}, time_key: {workflow_placement_decision['time_key']}")
+
+        provider, region, identifier = self.__get_initial_node_workflow_placement_decision(
+            workflow_placement_decision, send_to_home_region
+        )
+
+        current_time = datetime.now(GLOBAL_TIME_ZONE).strftime(TIME_FORMAT)
+
+        workflow_placement_decision["send_to_home_region"] = send_to_home_region
+
+        wrapped_input_data = {
+            "input_data": input_data,
+            "time_request_sent": current_time,
+            "workflow_placement_decision": workflow_placement_decision,
+        }
+
+        json_payload = json.dumps(wrapped_input_data)
 
         RemoteClientFactory.get_remote_client(provider, region).invoke_function(
             message=json_payload,
@@ -55,16 +78,63 @@ class Client:
             workflow_instance_id="0",
         )
 
+    def _get_time_key(self, workflow_placement_decision: dict[str, Any]) -> str:
+        if "current_deployment" not in workflow_placement_decision["workflow_placement"]:
+            return "N/A"
+
+        all_time_keys = workflow_placement_decision["workflow_placement"]["current_deployment"]["time_keys"]
+
+        current_hour_of_day = datetime.now(GLOBAL_TIME_ZONE).hour
+
+        previous_time_key = all_time_keys[0]
+        for time_key in all_time_keys:
+            if int(time_key) > current_hour_of_day:
+                break
+            previous_time_key = time_key
+        return previous_time_key
+
     def __get_initial_node_workflow_placement_decision(
-        self, workflow_placement_decision: dict[str, Any]
+        self, workflow_placement_decision: dict[str, Any], send_to_home_region: bool
     ) -> tuple[str, str, str]:
         initial_instance_name = workflow_placement_decision["current_instance_name"]
-        provider_region = workflow_placement_decision["workflow_placement"][initial_instance_name]["provider_region"]
-        identifier = workflow_placement_decision["workflow_placement"][initial_instance_name]["identifier"]
+        key = self._get_deployment_key(workflow_placement_decision, send_to_home_region)
+        if key == "current_deployment":
+            provider_region = workflow_placement_decision["workflow_placement"]["current_deployment"]["instances"][
+                workflow_placement_decision["time_key"]
+            ][initial_instance_name]["provider_region"]
+            identifier = workflow_placement_decision["workflow_placement"]["current_deployment"]["instances"][
+                workflow_placement_decision["time_key"]
+            ][initial_instance_name]["identifier"]
+        else:
+            provider_region = workflow_placement_decision["workflow_placement"]["home_deployment"][
+                initial_instance_name
+            ]["provider_region"]
+            identifier = workflow_placement_decision["workflow_placement"]["home_deployment"][initial_instance_name][
+                "identifier"
+            ]
         return provider_region["provider"], provider_region["region"], identifier
 
+    def _get_deployment_key(self, workflow_placement_decision: dict[str, Any], send_to_home_region: bool) -> str:
+        key = "home_deployment"
+        if send_to_home_region:
+            return key
+
+        if "current_deployment" not in workflow_placement_decision["workflow_placement"]:
+            return key
+
+        # Check if the deployment is not expired
+        deployment_expiry_time = workflow_placement_decision["workflow_placement"]["current_deployment"].get(
+            "expiry_time", None
+        )
+        if deployment_expiry_time is not None:
+            # If the deployment is expired, return the home deployment
+            if datetime.now(GLOBAL_TIME_ZONE) <= datetime.strptime(deployment_expiry_time, TIME_FORMAT):
+                key = "current_deployment"
+
+        return key
+
     def list_workflows(self) -> None:
-        deployed_workflows = self._endpoints.get_solver_update_checker_client().get_keys(
+        deployed_workflows = self._endpoints.get_deployment_algorithm_update_checker_client().get_keys(
             SOLVER_UPDATE_CHECKER_RESOURCE_TABLE
         )
 
@@ -79,13 +149,13 @@ class Client:
         if self._workflow_id is None:
             raise RuntimeError("No workflow id provided")
 
-        self._endpoints.get_solver_workflow_placement_decision_client().remove_key(
+        self._endpoints.get_deployment_algorithm_workflow_placement_decision_client().remove_key(
             WORKFLOW_PLACEMENT_DECISION_TABLE, self._workflow_id
         )
-        self._endpoints.get_solver_update_checker_client().remove_key(
+        self._endpoints.get_deployment_algorithm_update_checker_client().remove_key(
             WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE, self._workflow_id
         )
-        self._endpoints.get_solver_update_checker_client().remove_key(
+        self._endpoints.get_deployment_algorithm_update_checker_client().remove_key(
             SOLVER_UPDATE_CHECKER_RESOURCE_TABLE, self._workflow_id
         )
 
@@ -105,15 +175,24 @@ class Client:
         self._endpoints.get_deployment_manager_client().remove_resource(f"deployment_package_{self._workflow_id}")
 
         self._endpoints.get_deployment_manager_client().remove_key(DEPLOYMENT_MANAGER_RESOURCE_TABLE, self._workflow_id)
+
+        self._endpoints.get_data_collector_client().remove_key(WORKFLOW_INSTANCE_TABLE, self._workflow_id)
+
+        self._endpoints.get_datastore_client().remove_key(WORKFLOW_SUMMARY_TABLE, self._workflow_id)
+
+        self._endpoints.get_deployment_manager_client().remove_key(
+            MULTI_X_SERVERLESS_WORKFLOW_IMAGES_TABLE, self._workflow_id.replace(".", "_")
+        )
+
         print(f"Removed workflow {self._workflow_id}")
 
     def _remove_workflow(self, deployment_manager_config_json: str) -> None:
         deployment_manager_config = json.loads(deployment_manager_config_json)
         deployed_region_json = deployment_manager_config.get("deployed_regions")
-        deployed_region: dict[str, dict[str, str]] = json.loads(deployed_region_json)
+        deployed_region: dict[str, dict[str, Any]] = json.loads(deployed_region_json)
 
         for function_physical_instance, provider_region in deployed_region.items():
-            self._remove_function_instance(function_physical_instance, provider_region)
+            self._remove_function_instance(function_physical_instance, provider_region["deploy_region"])
 
     def _remove_function_instance(self, function_instance: str, provider_region: dict[str, str]) -> None:
         provider = provider_region["provider"]
@@ -127,6 +206,8 @@ class Client:
             if isinstance(client, AWSRemoteClient):
                 client.remove_ecr_repository(identifier)
         except RuntimeError as e:
+            print(f"Could not remove ecr repository {identifier}: {str(e)}")
+        except botocore.exceptions.ClientError as e:
             print(f"Could not remove ecr repository {identifier}: {str(e)}")
 
         try:
@@ -143,41 +224,3 @@ class Client:
             print(f"Could not remove role {role_name}: {str(e)}")
 
         print(f"Removed function {function_instance} from provider {provider} in region {region}")
-
-    def solve(self, solver: Optional[str] = None) -> None:
-        if self._workflow_id is None:
-            raise RuntimeError("No workflow id provided")
-
-        workflow_information = self._endpoints.get_solver_update_checker_client().get_value_from_table(
-            SOLVER_UPDATE_CHECKER_RESOURCE_TABLE, self._workflow_id
-        )
-
-        if workflow_information is None:
-            raise RuntimeError(f"No workflow with id {self._workflow_id} found")
-
-        workflow_information_dict = json.loads(workflow_information)
-
-        if "workflow_config" not in workflow_information_dict:
-            raise RuntimeError(f"Workflow with id {self._workflow_id} has no workflow_config")
-
-        workflow_config_json = workflow_information_dict["workflow_config"]
-
-        workflow_config = json.loads(workflow_config_json)
-
-        workflow_config_instance = WorkflowConfig(workflow_config)
-
-        solver_instance: Optional[Solver] = None
-
-        if solver is None or solver == "coarse-grained":
-            solver_instance = CoarseGrainedSolver(workflow_config_instance)
-        elif solver == "fine-grained":
-            solver_instance = BFSFineGrainedSolver(workflow_config_instance)
-        elif solver == "heuristic":
-            solver_instance = StochasticHeuristicDescentSolver(workflow_config_instance)
-        else:
-            raise ValueError(f"Solver {solver} not supported")
-
-        if solver_instance is None:
-            raise RuntimeError("Solver instance is None")
-
-        solver_instance.solve()

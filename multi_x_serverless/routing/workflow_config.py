@@ -10,10 +10,9 @@ class WorkflowConfig:
     def __init__(self, workflow_config: dict) -> None:
         self._verify(workflow_config)
         self._workflow_config = workflow_config
-        self._modified_regions_and_providers = self._create_altered_regions_and_providers(
+        self._modified_regions_and_providers = self.create_altered_regions_and_providers(
             self._workflow_config["regions_and_providers"]
         )
-        self._modified_instances = self._create_altered_instances(self._workflow_config["instances"])
 
     def _verify(self, workflow_config: dict) -> None:
         try:
@@ -21,23 +20,7 @@ class WorkflowConfig:
         except ValidationError as exc:
             raise RuntimeError(f"Invalid workflow config: {exc}") from exc
 
-    def _create_altered_instances(self, instances: list[dict]) -> list[dict]:
-        altered_instances = []
-
-        for instance in instances:
-            altered_instance = {
-                "instance_name": instance["instance_name"],
-                "function_name": instance["function_name"],
-                "regions_and_providers": self._create_altered_regions_and_providers(instance["regions_and_providers"]),
-                "succeeding_instances": instance.get("succeeding_instances", []),
-                "preceding_instances": instance.get("preceding_instances", []),
-            }
-
-            altered_instances.append(altered_instance)
-
-        return altered_instances
-
-    def _create_altered_regions_and_providers(self, regions_and_providers: dict) -> dict:
+    def create_altered_regions_and_providers(self, regions_and_providers: dict) -> dict:
         altered_regions_and_providers = {"providers": regions_and_providers.get("providers", {})}
         allowed_regions = []
         disallowed_regions = []
@@ -84,13 +67,17 @@ class WorkflowConfig:
         return self._lookup("num_calls_in_one_month", 100)
 
     @property
-    def solver(self) -> str:
-        allowed_solvers = {"coarse_grained_solver", "fine_grained_solver", "stochastic_heuristic_solver"}
-        result = self._lookup("solver", "coarse_grained_solver")
+    def deployment_algorithm(self) -> str:
+        allowed_deployment_algorithms = {
+            "coarse_grained_deployment_algorithm",
+            "fine_grained_deployment_algorithm",
+            "stochastic_heuristic_deployment_algorithm",
+        }
+        result = self._lookup("deployment_algorithm", "coarse_grained_deployment_algorithm")
         if len(result) == 0:
-            result = "coarse_grained_solver"
-        if result not in allowed_solvers:
-            raise ValueError(f"Invalid solver: {result}")
+            result = "coarse_grained_deployment_algorithm"
+        if result not in allowed_deployment_algorithms:
+            raise ValueError(f"Invalid deployment algorithm: {result}")
         return result
 
     def write_back(self, key: str, value: Any) -> None:
@@ -107,26 +94,21 @@ class WorkflowConfig:
         return self._modified_regions_and_providers
 
     @property
-    def instances(self) -> list[dict]:
-        return self._modified_instances
+    def instances(self) -> dict[str, dict[str, Any]]:
+        return self._lookup("instances")
 
     @property
     def constraints(self) -> dict:
         return self._lookup("constraints")
 
     @property
-    def start_hops(self) -> str:
-        raw_start_hops = self._lookup("start_hops")
+    def home_region(self) -> str:
+        raw_home_region = self._lookup("home_region")
 
-        if raw_start_hops is None or len(raw_start_hops) == 0:
-            raise ValueError("No start hops found")
-
-        # TODO (#68): Allow for multiple "home region" or start hops
+        if raw_home_region is None:
+            raise ValueError("No home region found")
 
         # Start hop is in format of {"provider": "aws", "region": "us-west-2"}
         # we want it in format of "provider_name:region_name"
-        start_hops = []
-        for start_hop in raw_start_hops:
-            start_hops.append(f"{start_hop['provider']}:{start_hop['region']}")
 
-        return start_hops[0]
+        return f"{raw_home_region['provider']}:{raw_home_region['region']}"

@@ -22,9 +22,9 @@ class TestWorkflowBuilder(unittest.TestCase):
         self.config.workflow_app.version = "0.0.1"
         self.config.environment_variables = {}
         self.config.python_version = "3.8"
-        self.config.home_regions = []
+        self.config.home_region = {"provider": "provider1", "region": "region1"}
         self.config.project_dir = self.project_dir
-        self.config.regions_and_providers = {"providers": {}}
+        self.config.regions_and_providers = {"providers": {"provider1": {"config": {}}}}
 
         self.policy_file = os.path.join(self.project_dir, "policy.json")
 
@@ -57,13 +57,13 @@ class TestWorkflowBuilder(unittest.TestCase):
         function1.entry_point = True
         function1.name = "function1"
         function1.handler = "function1"
-        function1.regions_and_providers = {}
+        function1.regions_and_providers = {"providers": {"provider1": {"config": {}}}}
         function1.environment_variables = {}
         function2 = Mock(spec=MultiXServerlessFunction)
         function2.entry_point = True
         function2.name = "function2"
         function2.handler = "function1"
-        function2.regions_and_providers = {"providers": {}}
+        function2.regions_and_providers = {"providers": {"provider1": {"config": {}}}}
         function2.environment_variables = {}
         self.config.workflow_app.functions = {"function1": function1, "function2": function2}
 
@@ -76,7 +76,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         function1.entry_point = True
         function1.name = "function1"
         function1.handler = "function1"
-        function1.regions_and_providers = {}
+        function1.regions_and_providers = {"providers": {"provider1": {"config": {}}}}
         function1.environment_variables = []
         function1.is_waiting_for_predecessors = Mock(return_value=False)
 
@@ -84,7 +84,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         function2.entry_point = False
         function2.name = "function2"
         function2.handler = "function2"
-        function2.regions_and_providers = {"providers": {}}
+        function2.regions_and_providers = {"providers": {"provider1": {"config": {}}}}
         function2.environment_variables = []
         function2.is_waiting_for_predecessors = Mock(return_value=True)
 
@@ -115,7 +115,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         function2.entry_point = False
         function2.name = "function2"
         function2.handler = "function2"
-        function2.regions_and_providers = {"providers": {}}
+        function2.regions_and_providers = {"providers": {"provider1": {"config": {}}}}
         function2.environment_variables = []
         function2.is_waiting_for_predecessors = Mock(return_value=True)
 
@@ -175,7 +175,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         function1.entry_point = True
         function1.name = "function1"
         function1.handler = "function1"
-        function1.regions_and_providers = {}
+        function1.regions_and_providers = {"providers": {"provider1": {"config": {}}}}
         function1.environment_variables = []
         function1.is_waiting_for_predecessors = Mock(return_value=False)
 
@@ -198,7 +198,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         function1.entry_point = True
         function1.name = "function1"
         function1.handler = "function1"
-        function1.regions_and_providers = {}
+        function1.regions_and_providers = {"providers": {"provider1": {"config": {}}}}
         function1.environment_variables = []
         function1.is_waiting_for_predecessors = Mock(return_value=False)
 
@@ -206,7 +206,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         function2.entry_point = False
         function2.name = "function2"
         function2.handler = "function2"
-        function2.regions_and_providers = {"providers": {}}
+        function2.regions_and_providers = {"providers": {"provider1": {"config": {}}}}
         function2.environment_variables = []
         function2.is_waiting_for_predecessors = Mock(return_value=True)
 
@@ -227,7 +227,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         function1.entry_point = True
         function1.name = "function1"
         function1.handler = "function1"
-        function1.regions_and_providers = {}
+        function1.regions_and_providers = {"providers": {"provider1": {"config": {}}}}
         function1.environment_variables = []
         function1.is_waiting_for_predecessors = Mock(return_value=False)
 
@@ -235,7 +235,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         function2.entry_point = False
         function2.name = "function2"
         function2.handler = "function2"
-        function2.regions_and_providers = {"providers": {}}
+        function2.regions_and_providers = {"providers": {"provider1": {"config": {}}}}
         function2.environment_variables = []
         function2.is_waiting_for_predecessors = Mock(return_value=False)
 
@@ -268,7 +268,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         function2.entry_point = False
         function2.name = "function2"
         function2.handler = "function2"
-        function2.regions_and_providers = {"providers": {}}
+        function2.regions_and_providers = {"providers": {"provider1": {"config": {}}}}
         function2.environment_variables = []
         function2.is_waiting_for_predecessors = Mock(return_value=True)
 
@@ -317,7 +317,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         function2.entry_point = False
         function2.name = "function2"
         function2.handler = "function1"
-        function2.regions_and_providers = {"providers": {}}
+        function2.regions_and_providers = {"providers": {"provider1": {"config": {}}}}
         function2.environment_variables = [{"key": "ENV_3", "value": "function2_env_3"}]
 
         # function 3 (overlap with global environment variables)
@@ -325,7 +325,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         function3.entry_point = False
         function3.name = "function2"
         function3.handler = "function1"
-        function3.regions_and_providers = {"providers": {}}
+        function3.regions_and_providers = {"providers": {"provider1": {"config": {}}}}
         function3.environment_variables = [{"key": "ENV_1", "value": "function3_env_1"}]
 
         self.builder = WorkflowBuilder()
@@ -338,9 +338,9 @@ class TestWorkflowBuilder(unittest.TestCase):
             "ENV_2": "global_env_2",
         }
         config.python_version = "3.8"
-        config.home_regions = []
+        config.home_region = {"provider": "provider1", "region": "region1"}
         config.project_dir = self.project_dir
-        config.regions_and_providers = {"providers": {}}
+        config.regions_and_providers = {"providers": {"provider1": {"config": {}}}}
         config.workflow_app.get_successors.return_value = []
         config.workflow_app.name = "test_workflow"
         config.workflow_app.version = "0.0.1"
@@ -377,48 +377,51 @@ class TestWorkflowBuilder(unittest.TestCase):
 
     def test_no_regions_and_providers(self):
         config = Mock(spec=Config)
-        config.regions_and_providers = {"providers": {"provider1": "value"}}
-        config.home_regions = [{"provider": "provider1", "region": "region1"}]
+        config.regions_and_providers = {"providers": {"provider1": {}}}
+        config.home_region = {"provider": "provider1", "region": "region1"}
         result = self.builder._merge_and_verify_regions_and_providers({}, config)
-        self.assertEqual(result, {"providers": {"provider1": "value"}})
+        self.assertEqual(result, {"providers": {"provider1": {}}})
 
     def test_providers_only(self):
         config = Mock(spec=Config)
-        config.regions_and_providers = {"providers": {"provider1": "value"}}
-        config.home_regions = [{"provider": "provider1", "region": "region1"}]
-        regions_and_providers = {"providers": {"provider2": "value2"}}
+        config.regions_and_providers = {"providers": {"provider1": {}}}
+        config.home_region = {"provider": "provider1", "region": "region1"}
+        regions_and_providers = {"providers": {"provider2": {}}}
         result = self.builder._merge_and_verify_regions_and_providers(regions_and_providers, config)
-        self.assertEqual(result, {"providers": {"provider2": "value2"}})
+        self.assertEqual(result, {"providers": {"provider2": {}}})
 
     def test_allowed_regions_only(self):
         config = Mock(spec=Config)
-        config.regions_and_providers = {"providers": {"provider1": "value"}}
-        config.home_regions = [{"provider": "provider1", "region": "region1"}]
+        config.regions_and_providers = {"providers": {"provider1": {"config": {}}}}
+        config.home_region = {"provider": "provider1", "region": "region1"}
         regions_and_providers = {"allowed_regions": [{"provider": "provider1", "region": "value"}]}
         result = self.builder._merge_and_verify_regions_and_providers(regions_and_providers, config)
         self.assertEqual(
             result,
-            {"providers": {"provider1": "value"}, "allowed_regions": [{"provider": "provider1", "region": "value"}]},
+            {
+                "providers": {"provider1": {"config": {}}},
+                "allowed_regions": [{"provider": "provider1", "region": "value"}],
+            },
         )
 
     def test_disallowed_regions_only(self):
         config = Mock(spec=Config)
-        config.regions_and_providers = {"providers": {"provider1": "value"}}
-        config.home_regions = [{"provider": "provider1", "region": "region1"}]
+        config.regions_and_providers = {"providers": {"provider1": {"config": {}}}}
+        config.home_region = {"provider": "provider1", "region": "region1"}
         regions_and_providers = {"disallowed_regions": [{"provider": "provider1", "region": "value"}]}
         result = self.builder._merge_and_verify_regions_and_providers(regions_and_providers, config)
         self.assertEqual(
             result,
             {
-                "providers": {"provider1": "value"},
+                "providers": {"provider1": {"config": {}}},
                 "disallowed_regions": [{"provider": "provider1", "region": "value"}],
             },
         )
 
     def test_both_allowed_and_disallowed_regions(self):
         config = Mock(spec=Config)
-        config.regions_and_providers = {"providers": {"provider1": "value"}}
-        config.home_regions = [{"provider": "provider1", "region": "region1"}]
+        config.regions_and_providers = {"providers": {"provider1": {"config": {}}}}
+        config.home_region = {"provider": "provider1", "region": "region1"}
         regions_and_providers = {
             "allowed_regions": [{"provider": "provider1", "region": "value"}],
             "disallowed_regions": [{"provider": "provider1", "region": "value1"}],
@@ -427,7 +430,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         self.assertEqual(
             result,
             {
-                "providers": {"provider1": "value"},
+                "providers": {"provider1": {"config": {}}},
                 "allowed_regions": [{"provider": "provider1", "region": "value"}],
                 "disallowed_regions": [{"provider": "provider1", "region": "value1"}],
             },
@@ -435,14 +438,14 @@ class TestWorkflowBuilder(unittest.TestCase):
 
     def test_allowed_regions_not_list(self):
         config = Mock(spec=Config)
-        config.regions_and_providers = {"providers": {"provider1": "value"}}
+        config.regions_and_providers = {"providers": {"provider1": {"config": {}}}}
         regions_and_providers = {"allowed_regions": "not a list"}
         with self.assertRaises(RuntimeError, msg="allowed_regions must be a list"):
             self.builder._merge_and_verify_regions_and_providers(regions_and_providers, config)
 
     def test_allowed_regions_missing_provider_or_region(self):
         config = Mock(spec=Config)
-        config.regions_and_providers = {"providers": {"provider1": "value"}}
+        config.regions_and_providers = {"providers": {"provider1": {"config": {}}}}
         regions_and_providers = {"allowed_regions": [{"provider": "provider1"}]}
         with self.assertRaises(
             RuntimeError, msg="Region {'provider': 'provider1'} must have both provider and region defined"
@@ -451,14 +454,14 @@ class TestWorkflowBuilder(unittest.TestCase):
 
     def test_disallowed_regions_not_list(self):
         config = Mock(spec=Config)
-        config.regions_and_providers = {"providers": {"provider1": "value"}}
+        config.regions_and_providers = {"providers": {"provider1": {"config": {}}}}
         regions_and_providers = {"disallowed_regions": "not a list"}
         with self.assertRaises(RuntimeError, msg="disallowed_regions must be a list"):
             self.builder._merge_and_verify_regions_and_providers(regions_and_providers, config)
 
     def test_disallowed_regions_missing_provider_or_region(self):
         config = Mock(spec=Config)
-        config.regions_and_providers = {"providers": {"provider1": "value"}}
+        config.regions_and_providers = {"providers": {"provider1": {"config": {}}}}
         regions_and_providers = {"disallowed_regions": [{"provider": "provider1"}]}
         with self.assertRaises(
             RuntimeError, msg="Region {'provider': 'provider1'} must have both provider and region defined"
@@ -467,7 +470,7 @@ class TestWorkflowBuilder(unittest.TestCase):
 
     def test_region_both_allowed_and_disallowed(self):
         config = Mock(spec=Config)
-        config.regions_and_providers = {"providers": {"provider1": "value"}}
+        config.regions_and_providers = {"providers": {"provider1": {"config": {}}}}
         regions_and_providers = {
             "allowed_regions": [{"provider": "provider1", "region": "value"}],
             "disallowed_regions": [{"provider": "provider1", "region": "value"}],
@@ -480,8 +483,8 @@ class TestWorkflowBuilder(unittest.TestCase):
 
     def test_region_both_home_and_disallowed(self):
         config = Mock(spec=Config)
-        config.regions_and_providers = {"providers": {"provider1": "value"}}
-        config.home_regions = [{"provider": "provider1", "region": "value"}]
+        config.regions_and_providers = {"providers": {"provider1": {"config": {}}}}
+        config.home_region = {"provider": "provider1", "region": "value"}
         regions_and_providers = {"disallowed_regions": [{"provider": "provider1", "region": "value"}]}
         with self.assertRaises(
             RuntimeError, msg="Region {'provider': 'provider1', 'region': 'value'} cannot be both home and disallowed"
@@ -506,7 +509,9 @@ class TestWorkflowBuilder(unittest.TestCase):
                 "providers": ["provider1"],
             }
         ]
-        deployed_regions = {"function_name_provider1-region1": {"provider": "provider1", "region": "region1"}}
+        deployed_regions = {
+            "function_name_provider1-region1": {"deploy_region": {"provider": "provider1", "region": "region1"}}
+        }
 
         workflow_builder = WorkflowBuilder()
         workflow = workflow_builder.re_build_workflow(
@@ -557,7 +562,7 @@ class TestWorkflowBuilder(unittest.TestCase):
 
         self.assertEqual(workflow.name, "workflow_name")
         self.assertEqual(workflow.version, "workflow_version")
-        self.assertEqual(len(workflow._resources), 2)
+        self.assertEqual(len(workflow._resources), 1)
 
         self.assertEqual(workflow._resources[0].name, "function_name_provider2-region2")
         self.assertEqual(workflow._resources[0].deploy_region, {"provider": "provider2", "region": "region2"})
@@ -568,16 +573,6 @@ class TestWorkflowBuilder(unittest.TestCase):
         self.assertEqual(workflow._resources[0].role._policy, {})
         self.assertEqual(workflow._resources[0].role.name, "function_name_provider2-region2-role")
         self.assertEqual(workflow._resources[0].runtime, "python3.8")
-
-        self.assertEqual(workflow._resources[1].name, "function_name_provider1-region1")
-        self.assertEqual(workflow._resources[1].deploy_region, {"provider": "provider1", "region": "region1"})
-        self.assertEqual(workflow._resources[1].entry_point, "entry_point")
-        self.assertEqual(workflow._resources[1].environment_variables, {"var": "value"})
-        self.assertEqual(workflow._resources[1].handler, "handler")
-        self.assertEqual(workflow._resources[1].providers, ["provider1"])
-        self.assertEqual(workflow._resources[1].role._policy, {})
-        self.assertEqual(workflow._resources[1].role.name, "role_name")
-        self.assertEqual(workflow._resources[1].runtime, "python3.8")
 
 
 if __name__ == "__main__":

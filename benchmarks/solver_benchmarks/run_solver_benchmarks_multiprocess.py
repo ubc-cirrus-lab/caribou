@@ -1,34 +1,36 @@
 import json
-import math
 import multiprocessing
 import os
 import random
 import time
-from unittest.mock import Mock
+from unittest.mock import Mock, MagicMock
 
-import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 
-from multi_x_serverless.routing.solver.bfs_fine_grained_solver import BFSFineGrainedSolver
-from multi_x_serverless.routing.solver.coarse_grained_solver import CoarseGrainedSolver
-from multi_x_serverless.routing.solver.input.input_manager import InputManager
-from multi_x_serverless.routing.solver.stochastic_heuristic_descent_solver import StochasticHeuristicDescentSolver
+
+from multi_x_serverless.routing.deployment_algorithms.coarse_grained_deployment_algorithm import (
+    CoarseGrainedDeploymentAlgorithm,
+)
+from multi_x_serverless.routing.deployment_algorithms.stochastic_heuristic_deployment_algorithm import (
+    StochasticHeuristicDeploymentAlgorithm,
+)
+from multi_x_serverless.routing.deployment_algorithms.fine_grained_deployment_algorithm import (
+    FineGrainedDeploymentAlgorithm,
+)
+from benchmarks.solver_benchmarks.benchmark_remote_client import BenchmarkRemoteClient
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
+from multi_x_serverless.routing.deployment_input.input_manager import InputManager
+from multi_x_serverless.routing.deployment_algorithms.deployment_algorithm import DeploymentAlgorithm
+from unittest.mock import patch
 
 
 class SolverBenchmark:
     def __init__(self, total_nodes=10, sync_nodes=2, num_regions=2, seed=None):
-        self.default_solver_class = BFSFineGrainedSolver
+        self.default_deployment_algorithm_class = FineGrainedDeploymentAlgorithm
 
         self._seed = seed
         self._dag = self._generate_dag(total_nodes, sync_nodes)
-
-        # Generate random execution matrix
-        self._execution_matrix = self._generate_random_execution_matrix(total_nodes, num_regions)
-
-        # Generate random tranmission matrix
-        self._transmission_matrix = self._generate_random_transmission_matrix(num_regions)
 
         self._num_regions = num_regions
         self._sync_nodes = sync_nodes
@@ -36,71 +38,30 @@ class SolverBenchmark:
         self._config, self._regions = self._generate_config()
         self._deterministic = False
 
-    def set_deterministic(self, deterministic):
-        self._deterministic = deterministic
+        self._benchmark_remote_client = BenchmarkRemoteClient(self._regions, seed, self._config)
 
-    def mock_get_execution_cost_carbon_runtime(
-        self, current_instance_index, to_region_index, consider_probabilistic_invocations=False
+    @patch("multi_x_serverless.routing.deployment_input.input_manager.Endpoints")
+    @patch("multi_x_serverless.routing.deployment_algorithms.deployment_algorithm.Endpoints")
+    def run_benchmark(
+        self,
+        mock_endpoints,
+        deployment_algorithms_mock_endpoints,
+        deployment_algorithm_class=None,
+        number_of_runs=10,
     ):
-        cost_value = 1
-        runtime_value = 2
-        carbon_value = 1
-        if not self._deterministic:
-            cost_value = math.sin(current_instance_index + to_region_index) + 1
-            runtime_value = math.cos(current_instance_index + to_region_index) + 2
-            carbon_value = math.sin(current_instance_index - to_region_index) + 1
-            if not consider_probabilistic_invocations:
-                cost_value *= 2
-                runtime_value *= 2
-                carbon_value *= 2
+        if not deployment_algorithm_class:
+            deployment_algorithm_class = self.default_deployment_algorithm_class
 
-        return (
-            self._execution_matrix[current_instance_index][to_region_index] * cost_value,
-            self._execution_matrix[current_instance_index][to_region_index] * runtime_value,
-            self._execution_matrix[current_instance_index][to_region_index] * carbon_value,
+        print(f"Running benchmark for {deployment_algorithm_class.__name__}")
+        print(
+            f"Total nodes: {len(self._dag.nodes)}, Sync nodes: {self._sync_nodes}, Regions: {self._num_regions}, Number of runs: {number_of_runs}"
         )
 
-    def mock_get_transmission_cost_carbon_runtime(
-        self,
-        previous_instance_index,
-        current_instance_index,
-        from_region_index,
-        to_region_index,
-        consider_probabilistic_invocations=False,
-    ):
-        if from_region_index is not None and previous_instance_index is not None:
-            cost_value = 1
-            runtime_value = 2
-            carbon_value = 1
-            if not self._deterministic:
-                cost_value = (
-                    math.sin(previous_instance_index + current_instance_index + from_region_index + to_region_index) + 1
-                )
-                runtime_value = (
-                    math.cos(previous_instance_index + current_instance_index + from_region_index + to_region_index) + 2
-                )
-                carbon_value = (
-                    math.sin(previous_instance_index - current_instance_index + from_region_index - to_region_index) + 1
-                )
-                if not consider_probabilistic_invocations:
-                    cost_value *= 2
-                    runtime_value *= 2
-                    carbon_value *= 2
-            # Exception for start hop (if starting from home region, no need to add transmission cost ONLY in regards to start hop)
-            if previous_instance_index == current_instance_index and from_region_index == to_region_index:
-                return (cost_value, runtime_value, carbon_value)
-
-            return (
-                self._transmission_matrix[from_region_index][to_region_index] * cost_value,
-                self._transmission_matrix[from_region_index][to_region_index] * runtime_value,
-                self._transmission_matrix[from_region_index][to_region_index] * carbon_value,
-            )
-        else:
-            return (0, 0, 0)  # Do not consider start hop
-
-    def run_benchmark(self, solver_class=None, number_of_runs=10) -> dict:
-        if not solver_class:
-            solver_class = self.default_solver_class
+        # Mock the remote client
+        mock_endpoints.return_value.get_data_collector_client.return_value = self._benchmark_remote_client
+        deployment_algorithms_mock_endpoints.return_value.get_data_collector_client.return_value = (
+            self._benchmark_remote_client
+        )
 
         # Create a WorkflowConfig instance and set its properties using the generated config
         workflow_config = Mock(spec=WorkflowConfig)
@@ -108,49 +69,70 @@ class SolverBenchmark:
         workflow_config.regions_and_providers = self._config["regions_and_providers"]
         workflow_config.instances = self._config["instances"]
         workflow_config.constraints = self._config["constraints"]
+        workflow_config.workflow_id = self._config["workflow_id"]
 
-        # Mock input manager
-        mock_input_manager = Mock(spec=InputManager)
-        mock_input_manager.get_execution_cost_carbon_runtime.side_effect = self.mock_get_execution_cost_carbon_runtime
-        mock_input_manager.get_transmission_cost_carbon_runtime.side_effect = (
-            self.mock_get_transmission_cost_carbon_runtime
-        )
-
-        # Create a solver instance and run the benchmark
-        solver = solver_class(workflow_config, self._regions, mock_input_manager)
+        # Create a deployment_algorithm instance and run the benchmark
+        deployment_algorithm = deployment_algorithm_class(workflow_config)
 
         # Time solving function
         runtimes = []
-        best_costs = []
-        best_runtimes = []
-        best_carbons = []
+        best_avg_costs = []
+        best_avg_runtimes = []
+        best_avg_carbons = []
+        worst_tail_costs = []
+        worst_tail_runtimes = []
+        worst_tail_carbons = []
         number_of_final_results = []
         for _ in range(number_of_runs):
             start_time = time.time()
-            deployments = solver._solve(self._regions)
+            deployments = deployment_algorithm._run_algorithm()
             end_time = time.time()
 
-            best_cost = min([deployment[1] for deployment in deployments])
-            best_runtime = min([deployment[2] for deployment in deployments])
-            best_carbon = min([deployment[3] for deployment in deployments])
+            best_avg_cost = min([deployment[1]["average_cost"] for deployment in deployments])
+            best_avg_runtime = min([deployment[1]["average_runtime"] for deployment in deployments])
+            best_avg_carbon = min([deployment[1]["average_carbon"] for deployment in deployments])
+
+            worst_tail_cost = max([deployment[1]["tail_cost"] for deployment in deployments])
+            worst_tail_runtime = max([deployment[1]["tail_runtime"] for deployment in deployments])
+            worst_tail_carbon = max([deployment[1]["tail_carbon"] for deployment in deployments])
 
             runtimes.append(end_time - start_time)
-            best_costs.append(best_cost)
-            best_runtimes.append(best_runtime)
-            best_carbons.append(best_carbon)
+
+            best_avg_costs.append(best_avg_cost)
+            best_avg_runtimes.append(best_avg_runtime)
+            best_avg_carbons.append(best_avg_carbon)
+
+            worst_tail_costs.append(worst_tail_cost)
+            worst_tail_runtimes.append(worst_tail_runtime)
+            worst_tail_carbons.append(worst_tail_carbon)
+
             number_of_final_results.append(len(deployments))
 
+        print(f"Finished benchmark for {deployment_algorithm_class.__name__}")
+        print(
+            f"Finished total nodes: {len(self._dag.nodes)}, Sync nodes: {self._sync_nodes}, Regions: {self._num_regions}, Number of runs: {number_of_runs}"
+        )
+        print(f"Best carbon deployment: {min(best_avg_carbons)}")
+
         result_dict = {
-            "solver": solver_class.__name__,
+            "deployment_algorithm": deployment_algorithm_class.__name__,
             "runtime": sum(runtimes) / len(runtimes),
             "number of final results": sum(number_of_final_results) / len(number_of_final_results),
-            "best cost": sum(best_costs) / len(best_costs),
-            "best runtime": sum(best_runtimes) / len(best_runtimes),
-            "best carbon": sum(best_carbons) / len(best_carbons),
+            "best cost": sum(best_avg_costs) / len(best_avg_costs),
+            "best runtime": sum(best_avg_runtimes) / len(best_avg_runtimes),
+            "best carbon": sum(best_avg_carbons) / len(best_avg_carbons),
+            "worst tail cost": sum(worst_tail_costs) / len(worst_tail_costs),
+            "worst tail runtime": sum(worst_tail_runtimes) / len(worst_tail_runtimes),
+            "worst tail carbon": sum(worst_tail_carbons) / len(worst_tail_carbons),
             "number of regions": self._num_regions,
             "number of instances": len(self._dag.nodes),
             "number of sync nodes": self._sync_nodes,
         }
+
+        # print(
+        #     f"Runtime: {result_dict['runtime']}, Best cost: {result_dict['best cost']}, Best runtime: {result_dict['best runtime']}, Best carbon: {result_dict['best carbon']}"
+        # )
+
         return result_dict
 
     def get_dag_representation(self):
@@ -162,42 +144,6 @@ class SolverBenchmark:
     def get_regions(self):
         return self._regions
 
-    def _generate_random_execution_matrix(self, num_instances, num_regions):
-        if self._seed is not None:
-            random.seed(self._seed)
-            np.random.seed(self._seed)
-        # Generate random base values for each instance
-        base_values = np.random.uniform(5.0, 500.0, size=(num_instances, 1))
-
-        # Generate random perturbation for each instance (between 0% to 10%)
-        perturbation = np.random.uniform(0, 0.1, size=(num_instances, num_regions))
-
-        # Calculate the final values for each region and instance
-        random_array = base_values * (1 + perturbation)
-
-        return random_array
-
-    def _generate_random_transmission_matrix(self, num_regions):
-        if self._seed is not None:
-            random.seed(self._seed)
-            np.random.seed(self._seed)
-        # Generate a random matrix with values around 1 to 100
-        transmission_matrix = np.random.uniform(1, 25, size=(num_regions, num_regions))
-
-        # Set diagonal values to be close to 0 to 1
-        np.fill_diagonal(transmission_matrix, np.random.uniform(0, 1, size=num_regions))
-
-        # Mirror the values with a maximum difference of 10%
-        max_difference = 0.1 * transmission_matrix.max()
-        for i in range(num_regions):
-            for j in range(i + 1, num_regions):
-                difference = np.random.uniform(-max_difference, max_difference)
-                average_value = (transmission_matrix[i, j] + transmission_matrix[j, i]) / 2
-                transmission_matrix[i, j] = average_value + difference
-                transmission_matrix[j, i] = average_value - difference
-
-        return transmission_matrix
-
     def _generate_config(self):
         config = {}
 
@@ -205,9 +151,10 @@ class SolverBenchmark:
         regions = [f"p1:r{i+1}" for i in range(self._num_regions)]
         config["start_hops"] = regions[0]
         config["regions_and_providers"] = {"providers": {f"p1": None}}
+        config["workflow_id"] = "benchmark_workflow"
 
         # Generate instances
-        instances = []
+        instances = {}
         for node in self._dag.nodes:
             instance = {
                 "instance_name": f"i{node+1}",
@@ -217,10 +164,10 @@ class SolverBenchmark:
                 "regions_and_providers": {
                     "allowed_regions": None,
                     "disallowed_regions": None,
-                    "providers": {f"p1": None},
+                    "providers": {f"p1": {"config": {"memory": 128, "vcpu": 1}}},
                 },
             }
-            instances.append(instance)
+            instances[f"i{node+1}"] = instance
 
         config["instances"] = instances
 
@@ -250,93 +197,179 @@ class SolverBenchmark:
 
         return G
 
-    def visualize_dag(self):
-        pos = nx.spring_layout(self._dag)
-        nx.draw(self._dag, pos, with_labels=True)
+    @patch("multi_x_serverless.routing.deployment_input.input_manager.Endpoints")
+    @patch("multi_x_serverless.routing.deployment_algorithms.deployment_algorithm.Endpoints")
+    def _fine_tune_hyperparameters_stochastic(
+        self,
+        mock_endpoints,
+        deployment_algorithms_mock_endpoints,
+    ):
+        # Mock the remote client
+        mock_endpoints.return_value.get_data_collector_client.return_value = self._benchmark_remote_client
+        deployment_algorithms_mock_endpoints.return_value.get_data_collector_client.return_value = (
+            self._benchmark_remote_client
+        )
 
-        # Get the directory of the current script
+        # Create a WorkflowConfig instance and set its properties using the generated config
+        workflow_config = Mock(spec=WorkflowConfig)
+        workflow_config.start_hops = self._config["start_hops"]
+        workflow_config.regions_and_providers = self._config["regions_and_providers"]
+        workflow_config.instances = self._config["instances"]
+        workflow_config.constraints = self._config["constraints"]
+        workflow_config.workflow_id = self._config["workflow_id"]
+
+        solver = StochasticHeuristicDeploymentAlgorithm(workflow_config)
+
+        problematic_instances = 4
+        problematic_regions = 12
+
+        average_carbon = []
+
+        # try out all combinations of hyperparameters
+        for learning_rate in np.arange(0.1, 0.3, 0.1):
+            for num_iterations in range(4, 7):
+                for temperature in np.arange(0.8, 1.1, 0.1):
+                    for bias_probability in np.arange(0.1, 0.4, 0.1):
+                        solver._learning_rate = int(learning_rate * problematic_instances + 1)
+                        solver._num_iterations = problematic_regions * problematic_instances * num_iterations
+                        solver._temperature = temperature
+                        solver._bias_probability = bias_probability
+                        deployments = solver._run_algorithm()
+                        carbon_deployments = [deployment[1]["average_carbon"] for deployment in deployments]
+                        best_carbon_corresponding_deployment = deployments[
+                            carbon_deployments.index(min(carbon_deployments))
+                        ]
+                        print(
+                            f"Learning rate: {learning_rate}, Num iterations: {num_iterations}, Temperature: {temperature}, Bias probability: {bias_probability}"
+                        )
+                        print(f"Best carbon deployment: {best_carbon_corresponding_deployment}")
+
+                        average_carbon.append(
+                            {
+                                "learning_rate": learning_rate,
+                                "num_iterations": num_iterations,
+                                "temperature": temperature,
+                                "bias_probability": bias_probability,
+                                "average_carbon": min(carbon_deployments),
+                            }
+                        )
+
+        # Calculate the best hyperparameters
+        best_hyperparameters = min(average_carbon, key=lambda x: x["average_carbon"])
+        print(f"Best hyperparameters: {best_hyperparameters}")
+
+        average_carbon_ordered_by_average_carbon = sorted(average_carbon, key=lambda x: x["average_carbon"])
+
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        # Create a new directory for the image
-        os.makedirs(os.path.join(dir_path, "images"), exist_ok=True)
-        # Save the image in the new directory
-        plt.savefig(os.path.join(dir_path, "images", "dag.png"))
+        os.makedirs(os.path.join(dir_path, "results"), exist_ok=True)
+
+        with open(os.path.join(dir_path, "results/fine_tuned_hyperparameters.json"), "w") as f:
+            json.dump(average_carbon_ordered_by_average_carbon, f, indent=4)
 
 
-seed = 10
-
-# Validate that the solvers return the same results when deterministic is set to True
-print("Validating solvers")
-total_nodes = 3  # CODE FOR DEBUGGING
-sync_nodes = 1
-num_regions = 3
-solverBenchmark = SolverBenchmark(total_nodes=total_nodes, sync_nodes=sync_nodes, num_regions=num_regions, seed=seed)
-
-solverBenchmark.set_deterministic(True)
-
-result_1 = solverBenchmark.run_benchmark(BFSFineGrainedSolver, number_of_runs=1)
-result_2 = solverBenchmark.run_benchmark(StochasticHeuristicDescentSolver, number_of_runs=1)
-result_3 = solverBenchmark.run_benchmark(CoarseGrainedSolver, number_of_runs=1)
-
-rounding_decimals = 4
-# round results
-for dimension in ["best cost", "best runtime", "best carbon"]:
-    result_1[dimension] = round(result_1[dimension], rounding_decimals)
-    result_2[dimension] = round(result_2[dimension], rounding_decimals)
-    result_3[dimension] = round(result_3[dimension], rounding_decimals)
-    print(f"{dimension}: {result_1[dimension]} == {result_2[dimension]} == {result_3[dimension]}")
-
-assert result_1["best cost"] == result_2["best cost"] == result_3["best cost"]
-assert result_1["best runtime"] == result_2["best runtime"] == result_3["best runtime"]
-assert result_1["best carbon"] == result_2["best carbon"] == result_3["best carbon"]
-
-solverBenchmark.set_deterministic(False)
-
-print("Validation successful")
-
-# Benchmark all solvers
-print("Running benchmarks")
-results = []
-inputs = []
-solvers = []
-scenarios = {"total_nodes": range(3, 9), "sync_nodes": range(1, 5), "num_regions": range(3, 10, 2)}
-
-counter = 0
-for total_nodes in scenarios["total_nodes"]:
-    for sync_nodes in scenarios["sync_nodes"]:
-        if sync_nodes > total_nodes - 1:
-            continue
-        for num_regions in scenarios["num_regions"]:
-            inputs.append((total_nodes, sync_nodes, num_regions, seed))
-            solvers.append(
-                SolverBenchmark(total_nodes=total_nodes, sync_nodes=sync_nodes, num_regions=num_regions, seed=seed)
-            )
-            counter += 1
-
-with multiprocessing.Pool(processes=len(inputs)) as pool:
-    print("Starting CoarseGrainedSolver benchmarks at ", time.ctime())
-    cg_results = pool.starmap(SolverBenchmark.run_benchmark, [(solver, CoarseGrainedSolver) for solver in solvers])
-    print("Starting StochasticHeuristicDescentSolver benchmarks at ", time.ctime())
-    shd_results = pool.starmap(
-        SolverBenchmark.run_benchmark, [(solver, StochasticHeuristicDescentSolver) for solver in solvers]
+def run_benchmark_wrapper(benchmark, deployment_algorithm_class):
+    return benchmark.run_benchmark(
+        deployment_algorithm_class=deployment_algorithm_class,
+        number_of_runs=3,
     )
-    print("Starting BFSFineGrainedSolver benchmarks at ", time.ctime())
-    bfs_results = pool.starmap(SolverBenchmark.run_benchmark, [(solver, BFSFineGrainedSolver) for solver in solvers])
-    results = cg_results + shd_results + bfs_results
 
-per_solver_results = {}
 
-for result in results:
-    solver = result["solver"]
-    if solver not in per_solver_results:
-        per_solver_results[solver] = []
-    per_solver_results[solver].append(result)
+if __name__ == "__main__":
+    seed = 42
 
-# Get the directory of the current script
-dir_path = os.path.dirname(os.path.realpath(__file__))
+    # benchmark = SolverBenchmark(total_nodes=4, sync_nodes=1, num_regions=12, seed=seed)
+    # benchmark._fine_tune_hyperparameters_stochastic()
 
-# Check if results directory exists and create it if not
-os.makedirs(os.path.join(dir_path, "results"), exist_ok=True)
+    # Validate that the deployment_algorithms return the same results when deterministic is set to True
+    # print("Validating deployment_algorithms")
+    # total_nodes = 3  # CODE FOR DEBUGGING
+    # sync_nodes = 1
+    # num_regions = 3
+    # deployment_algorithmBenchmark = SolverBenchmark(
+    #     total_nodes=total_nodes, sync_nodes=sync_nodes, num_regions=num_regions, seed=seed
+    # )
 
-# Store the results in a file
-with open(os.path.join(dir_path, "results/results.json"), "w") as f:
-    json.dump(per_solver_results, f, indent=4)
+    # fg_results = deployment_algorithmBenchmark.run_benchmark(
+    #     deployment_algorithm_class=FineGrainedDeploymentAlgorithm, number_of_runs=2
+    # )
+    # sh_results = deployment_algorithmBenchmark.run_benchmark(
+    #     deployment_algorithm_class=StochasticHeuristicDeploymentAlgorithm, number_of_runs=2
+    # )
+    # cg_results = deployment_algorithmBenchmark.run_benchmark(
+    #     deployment_algorithm_class=CoarseGrainedDeploymentAlgorithm, number_of_runs=2
+    # )
+
+    # rounding_decimals = 1
+    # # round results
+    # for dimension in ["best cost", "best runtime", "best carbon"]:
+    #     fg_results[dimension] = round(fg_results[dimension], rounding_decimals)
+    #     sh_results[dimension] = round(sh_results[dimension], rounding_decimals)
+    #     cg_results[dimension] = round(cg_results[dimension], rounding_decimals)
+    #     print(f"{dimension}: {fg_results[dimension]} == {sh_results[dimension]} == {cg_results[dimension]}")
+
+    # assert fg_results["best cost"] == sh_results["best cost"] == cg_results["best cost"]
+    # assert fg_results["best runtime"] == sh_results["best runtime"] == cg_results["best runtime"]
+    # assert fg_results["best carbon"] == sh_results["best carbon"] == cg_results["best carbon"]
+
+    # print("Validation successful")
+
+    # Benchmark all deployment_algorithms
+    print("Running benchmarks")
+    results = []
+    inputs = []
+    deployment_algorithms = []
+    scenarios = {"total_nodes": range(4, 9), "sync_nodes": [1], "num_regions": range(4, 13)}
+
+    counter = 0
+    for total_nodes in scenarios["total_nodes"]:
+        for sync_nodes in scenarios["sync_nodes"]:
+            if sync_nodes > total_nodes - 1:
+                continue
+            for num_regions in scenarios["num_regions"]:
+                inputs.append((total_nodes, sync_nodes, num_regions, seed))
+                deployment_algorithms.append(
+                    SolverBenchmark(total_nodes=total_nodes, sync_nodes=sync_nodes, num_regions=num_regions, seed=seed)
+                )
+                counter += 1
+
+    with multiprocessing.Pool() as pool:
+        print("Starting CoarseGrainedDeploymentAlgorithm benchmarks at ", time.ctime())
+        cg_results = pool.starmap(
+            run_benchmark_wrapper,
+            [
+                (deployment_algorithm, CoarseGrainedDeploymentAlgorithm)
+                for deployment_algorithm in deployment_algorithms
+            ],
+        )
+        print("Starting StochasticHeuristicDeploymentAlgorithm benchmarks at ", time.ctime())
+        sh_results = pool.starmap(
+            run_benchmark_wrapper,
+            [
+                (deployment_algorithm, StochasticHeuristicDeploymentAlgorithm)
+                for deployment_algorithm in deployment_algorithms
+            ],
+        )
+        # print("Starting FineGrainedDeploymentAlgorithm benchmarks at ", time.ctime())
+        # fg_results = pool.starmap(
+        #     run_benchmark_wrapper,
+        #     [(deployment_algorithm, FineGrainedDeploymentAlgorithm) for deployment_algorithm in deployment_algorithms],
+        # )
+        results = cg_results + sh_results  # + fg_results
+
+    per_deployment_algorithm_results = {}
+
+    for result in results:
+        deployment_algorithm = result["deployment_algorithm"]
+        if deployment_algorithm not in per_deployment_algorithm_results:
+            per_deployment_algorithm_results[deployment_algorithm] = []
+        per_deployment_algorithm_results[deployment_algorithm].append(result)
+
+    # Get the directory of the current script
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+
+    # Check if results directory exists and create it if not
+    os.makedirs(os.path.join(dir_path, "results"), exist_ok=True)
+
+    # Store the results in a file
+    with open(os.path.join(dir_path, "results/results.json"), "w") as f:
+        json.dump(per_deployment_algorithm_results, f, indent=4)

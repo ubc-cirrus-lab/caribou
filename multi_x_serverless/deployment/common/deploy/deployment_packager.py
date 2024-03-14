@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tempfile
 import zipfile
+from typing import Optional
 
 import boto3
 import pip
@@ -23,6 +24,7 @@ from multi_x_serverless.deployment.common.deploy.models.workflow import Workflow
 class DeploymentPackager:
     def __init__(self, config: Config) -> None:
         self._config = config
+        self._pytz_version_cache: Optional[str] = None
 
     def build(self, config: Config, workflow: Workflow) -> None:
         if config.project_dir is None:
@@ -58,6 +60,7 @@ class DeploymentPackager:
         requirements_filename = self._get_requirements_filename(project_dir)
         if not os.path.exists(requirements_filename):
             raise RuntimeError(f"Could not find requirements file: {requirements_filename}")
+        self._ensure_requirements_filename_complete(requirements_filename)
         # self._build_dependencies(requirements_filename, temp_dir) # TODO: Re-add when we add more providers
         with zipfile.ZipFile(package_filename, "w", zipfile.ZIP_DEFLATED) as z:
             # self._add_py_dependencies(z, temp_dir) # TODO: Re-add when we add more providers
@@ -65,6 +68,34 @@ class DeploymentPackager:
             self._add_multi_x_serverless_dependency(z)
             self._add_requirements_file(z, requirements_filename)
         return package_filename
+
+    def _ensure_requirements_filename_complete(self, requirements_filename: str) -> None:
+        with open(requirements_filename, "r", encoding="utf-8") as file:
+            requirements = file.read().splitlines()
+
+        requirements = [requirement.split("==")[0] for requirement in requirements]
+
+        with open(requirements_filename, "a", encoding="utf-8") as file:
+            if "boto3" not in requirements:
+                file.write(f"\nboto3=={boto3.__version__}\n")
+            if "pyyaml" not in requirements:
+                file.write(f"\npyyaml=={yaml.__version__}\n")
+            if "pytz" not in requirements:
+                file.write(f"\npytz=={self._pytz_version}\n")
+
+    @property
+    def _pytz_version(self) -> str:
+        # pytz sadly does not have a __version__ attribute
+        if self._pytz_version_cache is not None:
+            return self._pytz_version_cache
+        pytz_version = subprocess.check_output([sys.executable, "-m", "pip", "show", "pytz"]).decode("utf-8")
+        pytz_version = next(
+            line.split(":")[1].strip() for line in pytz_version.splitlines() if line.startswith("Version:")
+        )
+        if pytz_version is None:
+            raise RuntimeError("Could not find pytz version")
+        self._pytz_version_cache = pytz_version
+        return pytz_version
 
     def _add_requirements_file(self, zip_file: zipfile.ZipFile, requirements_filename: str) -> None:
         zip_file.write(requirements_filename, "requirements.txt")
@@ -199,6 +230,9 @@ class DeploymentPackager:
         # Add version of pyyaml if not present in requirements
         if "pyyaml" not in requirements:
             requirements.append(f"pyyaml=={yaml.__version__}")
+
+        if "pytz" not in requirements:
+            requirements.append(f"pytz=={self._pytz_version}")
 
         temp_install_dir = tempfile.mkdtemp(dir=temp_dir, prefix="temp_install_")
 

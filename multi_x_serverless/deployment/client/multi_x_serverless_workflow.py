@@ -6,10 +6,16 @@ import logging
 import re
 import time
 import uuid
+from datetime import datetime
 from types import FrameType
 from typing import Any, Callable, Optional
 
-from multi_x_serverless.common.constants import LOG_VERSION, WORKFLOW_PLACEMENT_DECISION_TABLE
+from multi_x_serverless.common.constants import (
+    GLOBAL_TIME_ZONE,
+    LOG_VERSION,
+    TIME_FORMAT,
+    WORKFLOW_PLACEMENT_DECISION_TABLE,
+)
 from multi_x_serverless.common.models.endpoints import Endpoints
 from multi_x_serverless.common.models.remote_client.remote_client_factory import RemoteClientFactory
 from multi_x_serverless.common.utils import get_function_source
@@ -17,14 +23,7 @@ from multi_x_serverless.deployment.client.multi_x_serverless_function import Mul
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
-
-formatter = logging.Formatter(
-    f"TIME (%(asctime)s) LEVEL (%(levelname)s) MESSAGE (%(message)s) LOG_VERSION ({LOG_VERSION})"
-)
-handler = logging.StreamHandler()
-handler.setFormatter(formatter)
-
-logger.addHandler(handler)
+logger.addHandler(logging.StreamHandler())
 
 
 class MultiXServerlessWorkflow:
@@ -121,12 +120,22 @@ class MultiXServerlessWorkflow:
 
         if not conditional:
             # We don't call the function if it is conditional and the condition is not met.
+            log_message = (
+                f"CONDITIONAL_NON_EXECUTION: INSTANCE ({current_instance_name}) calling "
+                f"SUCCESSOR ({successor_instance_name})"
+            )
+            self.log_for_retrieval(
+                log_message,
+                workflow_placement_decision["run_id"],
+            )
 
             # We still need to increment the successor index, because the next function might not be conditional.
             self._successor_index += 1
 
             # However, for the sync nodes we still need to inform the platform that the function has finished.
-            self._inform_sync_node_of_conditional_non_execution(workflow_placement_decision, successor_instance_name)
+            self._inform_sync_node_of_conditional_non_execution(
+                workflow_placement_decision, successor_instance_name, current_instance_name
+            )
             return
 
         # Wrap the payload and add the workflow_placement decision
@@ -134,7 +143,10 @@ class MultiXServerlessWorkflow:
         if payload:
             payload_wrapper["payload"] = payload
 
+        transmission_taint = uuid.uuid4().hex
+
         payload_wrapper["workflow_placement_decision"] = successor_workflow_placement_decision_dictionary
+        payload_wrapper["transmission_taint"] = transmission_taint
         json_payload = json.dumps(payload_wrapper)
 
         provider, region, identifier = self.get_successor_workflow_placement_decision(
@@ -145,17 +157,18 @@ class MultiXServerlessWorkflow:
 
         expected_counter = -1
         if is_successor_sync_node:
-            for instance in workflow_placement_decision["instances"]:
-                if instance["instance_name"] == successor_instance_name:
-                    expected_counter = len(instance["preceding_instances"])
-                    break
+            expected_counter = len(
+                set(workflow_placement_decision["instances"][successor_instance_name]["preceding_instances"])
+            )
 
-        logger.info(
-            "INVOKING_SUCCESSOR: RUN_ID (%s): INSTANCE (%s) calling SUCCESSOR (%s) with PAYLOAD_SIZE (%s) GB",
+        log_message = (
+            f"INVOKING_SUCCESSOR: INSTANCE ({current_instance_name}) calling "
+            f"SUCCESSOR ({successor_instance_name}) with PAYLOAD_SIZE "
+            f"({len(json_payload.encode('utf-8')) / (1024**3)}) GB and TAINT ({transmission_taint})"
+        )
+        self.log_for_retrieval(
+            log_message,
             workflow_placement_decision["run_id"],
-            current_instance_name,
-            successor_instance_name,
-            len(json_payload.encode("utf-8")) / (1024**3),
         )
 
         RemoteClientFactory.get_remote_client(provider, region).invoke_function(
@@ -169,53 +182,94 @@ class MultiXServerlessWorkflow:
         )
 
     def _inform_sync_node_of_conditional_non_execution(
-        self, workflow_placement_decision: dict[str, Any], successor_instance_name: str
+        self, workflow_placement_decision: dict[str, Any], successor_instance_name: str, current_instance_name: str
     ) -> None:
-        for instance in workflow_placement_decision["instances"]:
+        # If the successor is a sync node, we need to inform the platform that the function has finished.
+        if successor_instance_name.split(":", maxsplit=2)[1] == "sync":
+            self._inform_and_invoke_sync_node(
+                workflow_placement_decision, successor_instance_name, current_instance_name
+            )
+
+        # If the successor has dependent sync predecessors,
+        # we need to inform the platform that the function has finished.
+        for instance in workflow_placement_decision["instances"].values():
             if instance["instance_name"] == successor_instance_name and "dependent_sync_predecessors" in instance:
-                for predecessor_and_sync in instance["dependent_sync_predecessors"]:
+                for predecessor_and_sync in instance.get("dependent_sync_predecessors", []):
                     predecessor = predecessor_and_sync[0]
                     sync_node = predecessor_and_sync[1]
 
-                    provider, region, identifier = self.get_successor_workflow_placement_decision(
-                        sync_node, workflow_placement_decision
-                    )
-
-                    expected_counter = -1
-                    for instance in workflow_placement_decision["instances"]:
-                        if instance["instance_name"] == sync_node:
-                            expected_counter = len(instance["preceding_instances"])
-                            break
-
-                    counter = RemoteClientFactory.get_remote_client(provider, region).set_predecessor_reached(
-                        predecessor_name=predecessor,
-                        sync_node_name=sync_node,
-                        workflow_instance_id=workflow_placement_decision["run_id"],
-                    )
-
-                    if counter == expected_counter:
-                        successor_workflow_placement_decision = (
-                            self.get_successor_workflow_placement_decision_dictionary(
-                                workflow_placement_decision, sync_node
-                            )
-                        )
-                        payload_wrapper = {}
-                        payload_wrapper["workflow_placement_decision"] = successor_workflow_placement_decision
-                        json_payload = json.dumps(payload_wrapper)
-
-                        RemoteClientFactory.get_remote_client(provider, region).invoke_function(
-                            message=json_payload,
-                            identifier=identifier,
-                            workflow_instance_id=workflow_placement_decision["run_id"],
-                            sync=False,
-                        )
+                    self._inform_and_invoke_sync_node(workflow_placement_decision, sync_node, predecessor)
                 break
+
+    def _inform_and_invoke_sync_node(
+        self, workflow_placement_decision: dict[str, Any], successor_instance_name: str, predecessor_instance_name: str
+    ) -> None:
+        provider, region, identifier = self.get_successor_workflow_placement_decision(
+            successor_instance_name, workflow_placement_decision
+        )
+
+        expected_counter = len(
+            set(
+                workflow_placement_decision.get("instances", {})
+                .get(successor_instance_name, {})
+                .get("preceding_instances", [])
+            )
+        )
+
+        reached_states = RemoteClientFactory.get_remote_client(provider, region).set_predecessor_reached(
+            predecessor_name=predecessor_instance_name,
+            sync_node_name=successor_instance_name,
+            workflow_instance_id=workflow_placement_decision["run_id"],
+            direct_call=False,
+        )
+
+        log_message = (
+            f"INFORMING_SYNC_NODE: INSTANCE ({predecessor_instance_name}) informing "
+            f"SYNC_NODE ({successor_instance_name}) of non-execution"
+        )
+        self.log_for_retrieval(
+            log_message,
+            workflow_placement_decision["run_id"],
+        )
+
+        # If all the predecessors have been reached and any of them have directly reached the sync node
+        # then we can call the sync node
+
+        if len(reached_states) == expected_counter and any(reached_states):
+            successor_workflow_placement_decision = self.get_successor_workflow_placement_decision_dictionary(
+                workflow_placement_decision, successor_instance_name
+            )
+            payload_wrapper = {}
+            payload_wrapper["workflow_placement_decision"] = successor_workflow_placement_decision
+            json_payload = json.dumps(payload_wrapper)
+
+            RemoteClientFactory.get_remote_client(provider, region).invoke_function(
+                message=json_payload,
+                identifier=identifier,
+                workflow_instance_id=workflow_placement_decision["run_id"],
+                sync=False,
+            )
 
     def get_successor_workflow_placement_decision(
         self, successor_instance_name: str, workflow_placement_decision: dict[str, Any]
     ) -> tuple[str, str, str]:
-        provider_region = workflow_placement_decision["workflow_placement"][successor_instance_name]["provider_region"]
-        identifier = workflow_placement_decision["workflow_placement"][successor_instance_name]["identifier"]
+        if (
+            "send_to_home_region" in workflow_placement_decision and workflow_placement_decision["send_to_home_region"]
+        ) or ("current_deployment" not in workflow_placement_decision["workflow_placement"]):
+            provider_region = workflow_placement_decision["workflow_placement"]["home_deployment"][
+                successor_instance_name
+            ]["provider_region"]
+            identifier = workflow_placement_decision["workflow_placement"]["home_deployment"][successor_instance_name][
+                "identifier"
+            ]
+        else:
+            provider_region = workflow_placement_decision["workflow_placement"]["current_deployment"]["instances"][
+                workflow_placement_decision["time_key"]
+            ][successor_instance_name]["provider_region"]
+            identifier = workflow_placement_decision["workflow_placement"]["current_deployment"]["instances"][
+                workflow_placement_decision["time_key"]
+            ][successor_instance_name]["identifier"]
+
         return provider_region["provider"], provider_region["region"], identifier
 
     # This method is used to get the name of the next successor instance and its workflow_placement decision.
@@ -260,31 +314,31 @@ class MultiXServerlessWorkflow:
         self, current_instance_name: str, workflow_placement_decision: dict[str, Any], successor_function_name: str
     ) -> str:
         # Get the workflow_placement decision for the current instance
-        for instance in workflow_placement_decision["instances"]:
-            if instance["instance_name"] == current_instance_name:
-                successor_instances = instance["succeeding_instances"]
-                # If there is only one successor instance, return it
-                if len(successor_instances) == 1:
-                    if (
-                        successor_instances[0].split(":", maxsplit=1)[0]
-                        == f"{self.name}-{self.version.replace('.', '_')}-{successor_function_name}"
-                    ):
-                        return successor_instances[0]
-                    raise RuntimeError(f"Could not find successor instance for successor function name {successor_function_name} in {successor_instances}")  # type: ignore  # pylint: disable=line-too-long
-                # If there are multiple successor instances, return the first one that matches the successor function
-                # name and has the correct index
-                for successor_instance in successor_instances:
-                    if (
-                        successor_instance.split(":", maxsplit=1)[0]
-                        == f"{self.name}-{self.version.replace('.', '_')}-{successor_function_name}"
-                    ):
-                        if successor_instance.split(":", maxsplit=2)[1] == "sync":
-                            return successor_instance
-                        if successor_instance.split(":", maxsplit=2)[1].split("_")[-1] == str(self._successor_index):
-                            self._successor_index += 1
-                            return successor_instance
-                raise RuntimeError(f"Could not find successor instance for successor function name {successor_function_name} in {successor_instances}")  # type: ignore  # pylint: disable=line-too-long
-        raise RuntimeError(f"Could not find current instance {current_instance_name} in workflow_placement decision")
+        if current_instance_name not in workflow_placement_decision["instances"]:
+            raise RuntimeError(f"Could not find current instance name {current_instance_name} in {workflow_placement_decision['instances']}")  # type: ignore  # pylint: disable=line-too-long
+        instance = workflow_placement_decision["instances"][current_instance_name]
+        successor_instances = instance["succeeding_instances"]
+        # If there is only one successor instance, return it
+        if len(successor_instances) == 1:
+            if (
+                successor_instances[0].split(":", maxsplit=1)[0]
+                == f"{self.name}-{self.version.replace('.', '_')}-{successor_function_name}"
+            ):
+                return successor_instances[0]
+            raise RuntimeError(f"Could not find successor instance for successor function name {successor_function_name} in {successor_instances}")  # type: ignore  # pylint: disable=line-too-long
+        # If there are multiple successor instances, return the first one that matches the successor function
+        # name and has the correct index
+        for successor_instance in successor_instances:
+            if (
+                successor_instance.split(":", maxsplit=1)[0]
+                == f"{self.name}-{self.version.replace('.', '_')}-{successor_function_name}"
+            ):
+                if successor_instance.split(":", maxsplit=2)[1] == "sync":
+                    return successor_instance
+                if successor_instance.split(":", maxsplit=2)[1].split("_")[-1] == str(self._successor_index):
+                    self._successor_index += 1
+                    return successor_instance
+        raise RuntimeError(f"Could not find successor instance for successor function name {successor_function_name} in {successor_instances}")  # type: ignore  # pylint: disable=line-too-long
 
     def get_workflow_placement_decision(self, frame: FrameType) -> dict[str, Any]:
         """
@@ -353,14 +407,40 @@ class MultiXServerlessWorkflow:
         current_instance_name = workflow_placement_decision["current_instance_name"]
         workflow_instance_id = workflow_placement_decision["run_id"]
 
-        provider_region = workflow_placement_decision["workflow_placement"][current_instance_name]["provider_region"]
+        key = self._get_deployment_key(workflow_placement_decision)
+
+        if key == "home_deployment":
+            provider_region = workflow_placement_decision["workflow_placement"][key][current_instance_name][
+                "provider_region"
+            ]
+        else:
+            time_key = workflow_placement_decision["time_key"]
+            provider_region = workflow_placement_decision["workflow_placement"][key]["instances"][time_key][
+                current_instance_name
+            ]["provider_region"]
         return provider_region["provider"], provider_region["region"], current_instance_name, workflow_instance_id
+
+    def _get_deployment_key(self, workflow_placement_decision: dict[str, Any]) -> str:
+        key = "home_deployment"
+        if workflow_placement_decision.get("send_to_home_region", False) or (
+            "current_deployment" not in workflow_placement_decision["workflow_placement"]
+        ):
+            return key
+
+        # Check if the deployment is not expired
+        deployment_expiry_time = workflow_placement_decision["workflow_placement"]["current_deployment"]["expiry_time"]
+        if deployment_expiry_time is not None:
+            # If the deployment is expired, return the home deployment
+            if datetime.now(GLOBAL_TIME_ZONE) <= datetime.strptime(deployment_expiry_time, TIME_FORMAT):
+                key = "current_deployment"
+
+        return key
 
     def get_workflow_placement_decision_from_platform(self) -> dict[str, Any]:
         """
         Get the workflow_placement decision from the platform.
         """
-        result = self._endpoint.get_solver_workflow_placement_decision_client().get_value_from_table(
+        result = self._endpoint.get_deployment_algorithm_workflow_placement_decision_client().get_value_from_table(
             WORKFLOW_PLACEMENT_DECISION_TABLE, f"{self.name}-{self.version}"
         )
         if result is not None:
@@ -368,7 +448,7 @@ class MultiXServerlessWorkflow:
 
         raise RuntimeError("Could not get workflow_placement decision from platform")
 
-    def register_function(
+    def register_function(  # pylint: disable=too-many-statements
         self,
         function: Callable[..., Any],
         name: str,
@@ -379,7 +459,8 @@ class MultiXServerlessWorkflow:
         """
         Register a function as a serverless function.
 
-        Where the function is deployed depends on the workflow_placement decision which will be made by the solver.
+        Where the function is deployed depends on the workflow_placement decision which will be made by the
+        deployment algorithm.
 
         At this point we only need to register the function with the wrapper, the actual deployment will be done
         later by the deployment manager.
@@ -392,7 +473,7 @@ class MultiXServerlessWorkflow:
         self._function_names.add(name)
         self.functions[function.__name__] = wrapper
 
-    def serverless_function(
+    def serverless_function(  # pylint: disable=too-many-statements
         self,
         name: Optional[str] = None,
         entry_point: bool = False,
@@ -453,7 +534,7 @@ class MultiXServerlessWorkflow:
         def _register_handler(func: Callable[..., Any]) -> Callable[..., Any]:
             handler_name = name if name is not None else func.__name__
 
-            def wrapper(*args, **kwargs):  # type: ignore # pylint: disable=unused-argument
+            def wrapper(*args, **kwargs):  # type: ignore # pylint: disable=unused-argument, too-many-branches
                 # Modify args and kwargs here as needed
                 argument_raw = args[0]
 
@@ -471,20 +552,55 @@ class MultiXServerlessWorkflow:
                         raise RuntimeError(
                             f"Could not get message from argument {argument_raw}, there should be meta information in the message"  # pylint: disable=line-too-long
                         ) from e
+
+                if isinstance(argument, dict):
+                    transmission_taint = argument.get("transmission_taint", "N/A")
+                else:
+                    transmission_taint = "N/A"
+
                 if entry_point:
-                    wrapper.workflow_placement_decision = self.get_workflow_placement_decision_from_platform()  # type: ignore  # pylint: disable=line-too-long
+                    send_to_home_region = False
+                    time_invoked_at_client = None
+                    pre_loaded_workflow_placement_decision = None
+                    if isinstance(argument, dict) and "workflow_placement_decision" in argument:
+                        time_invoked_at_client = argument.get("time_request_sent", None)
+                        pre_loaded_workflow_placement_decision = argument.get("workflow_placement_decision", None)
+                        send_to_home_region = pre_loaded_workflow_placement_decision.get("send_to_home_region", False)
+                        argument = argument.get("input_data", {})
+
+                    init_latency = "N/A"
+                    if time_invoked_at_client:
+                        datetime_invoked_at_client = datetime.strptime(time_invoked_at_client, TIME_FORMAT)
+                        datetime_now = datetime.now(GLOBAL_TIME_ZONE)
+                        time_difference_datetime = datetime_now - datetime_invoked_at_client
+                        # Get s from the time difference
+                        init_latency = str(time_difference_datetime.total_seconds())
+                    if pre_loaded_workflow_placement_decision:
+                        wrapper.workflow_placement_decision = pre_loaded_workflow_placement_decision  # type: ignore
+                    else:
+                        wrapper.workflow_placement_decision = self.get_workflow_placement_decision_from_platform()  # type: ignore  # pylint: disable=line-too-long
+
                     # This is the first function to be called, so we need to generate a run id
                     # This run id will be used to identify the workflow instance
                     wrapper.workflow_placement_decision["run_id"] = uuid.uuid4().hex  # type: ignore
+                    wrapper.workflow_placement_decision["send_to_home_region"] = send_to_home_region  # type: ignore
+                    wrapper.workflow_placement_decision["time_key"] = self._get_time_key(  # type: ignore
+                        wrapper.workflow_placement_decision  # type: ignore
+                    )
                     if len(args) == 0:
                         return func()
                     payload = argument
 
-                    logger.info(
-                        "ENTRY_POINT: RUN_ID (%s): Entry Point of workflow %s called with payload size %s GB",
+                    log_message = (
+                        f"ENTRY_POINT: : Entry Point INSTANCE "
+                        f'({wrapper.workflow_placement_decision["current_instance_name"]}) '  # type: ignore
+                        f'of workflow {f"{self.name}-{self.version}"} called with PAYLOAD_SIZE '
+                        f'({len(json.dumps(payload).encode("utf-8")) / (1024**3)}) GB and '
+                        f"INIT_LATENCY ({init_latency}) s"
+                    )
+                    self.log_for_retrieval(
+                        log_message,
                         wrapper.workflow_placement_decision["run_id"],  # type: ignore
-                        f"{self.name}-{self.version}",
-                        len(json.dumps(payload).encode("utf-8")) / (1024**3),
                     )
                 else:
                     # Get the workflow_placement decision from the message received from the predecessor function
@@ -492,13 +608,16 @@ class MultiXServerlessWorkflow:
                         raise RuntimeError("Could not get workflow_placement decision from message")
                     wrapper.workflow_placement_decision = argument["workflow_placement_decision"]  # type: ignore
                     if "payload" not in argument:
-                        return func()
+                        return func({})
                     payload = argument.get("payload", {})
 
-                logger.info(
-                    "INVOKED: RUN_ID (%s): INSTANCE (%s) called",
+                log_message = (
+                    f'INVOKED: INSTANCE ({wrapper.workflow_placement_decision["current_instance_name"]}) '  # type: ignore  # pylint: disable=line-too-long
+                    f"called with TAINT ({transmission_taint})"
+                )
+                self.log_for_retrieval(
+                    log_message,
                     wrapper.workflow_placement_decision["run_id"],  # type: ignore
-                    wrapper.workflow_placement_decision["current_instance_name"],  # type: ignore
                 )
 
                 # Call the original function with the modified arguments
@@ -506,11 +625,13 @@ class MultiXServerlessWorkflow:
                 result = func(payload)
                 end_time = time.time()
 
-                logger.info(
-                    "EXECUTED: RUN_ID (%s): INSTANCE (%s) executed EXECUTION_TIME (%s) seconds",
+                log_message = (
+                    f'EXECUTED: INSTANCE ({wrapper.workflow_placement_decision["current_instance_name"]}) '  # type: ignore  # pylint: disable=line-too-long
+                    f"executed EXECUTION_TIME ({end_time - start_time})"
+                )
+                self.log_for_retrieval(
+                    log_message,
                     wrapper.workflow_placement_decision["run_id"],  # type: ignore
-                    wrapper.workflow_placement_decision["current_instance_name"],  # type: ignore
-                    end_time - start_time,
                 )
 
                 return result
@@ -522,3 +643,32 @@ class MultiXServerlessWorkflow:
             return wrapper
 
         return _register_handler
+
+    def log_for_retrieval(self, message: str, run_id: str) -> None:
+        """
+        Log a message for retrieval by the platform.
+        """
+        logger.info(
+            "TIME (%s) RUN_ID (%s) MESSAGE (%s) LOG_VERSION (%s)",
+            datetime.now(GLOBAL_TIME_ZONE).strftime(TIME_FORMAT),
+            run_id,
+            message,
+            LOG_VERSION,
+        )
+
+    def _get_time_key(self, workflow_placement_decision: dict[str, Any]) -> str:
+        if "time_key" in workflow_placement_decision:
+            return workflow_placement_decision["time_key"]
+        if "current_deployment" not in workflow_placement_decision["workflow_placement"]:
+            return "N/A"
+
+        all_time_keys = workflow_placement_decision["workflow_placement"]["current_deployment"]["time_keys"]
+
+        current_hour_of_day = datetime.now(GLOBAL_TIME_ZONE).hour
+
+        previous_time_key = all_time_keys[0]
+        for time_key in all_time_keys:
+            if int(time_key) > current_hour_of_day:
+                break
+            previous_time_key = time_key
+        return previous_time_key
