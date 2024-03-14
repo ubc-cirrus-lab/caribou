@@ -618,9 +618,9 @@ The `carbon_region_table` is responsible for managing carbon region-specific inf
 
 - Key: `<provider_unique_id>:<region_name>`
 - Value (S):
-  - Execution Carbon per kWh (gCO2e/kWh)
+  - Average Execution Carbon per kWh (gCO2e/kWh)
   - To Region `<provider_unique_id>:<region_name>`
-    - Region-to-region Data Transfer Carbon Impact (gCO2e/GB)
+    - Region-to-region Data Transfer Distance (km)
 
 Note: Perhaps this may be expanded in the future if we are incorporating more execution or transmission carbon estimation techniques.
 
@@ -628,20 +628,16 @@ Note: Perhaps this may be expanded in the future if we are incorporating more ex
 
 ```json
 {
-  "carbon_intensity": 482,
-  "unit": "gCO2eq/kWh",
-  "transmission_carbon": {
-    "aws:eu-south-1": {"carbon_intensity": 48.2, "unit": "gCO2eq/GB"},
-    "aws:eu-central-1": {
-      "carbon_intensity": 1337.9261964617801,
-      "unit": "gCO2eq/GB"
-    },
-    "aws:us-west-2": {
-      "carbon_intensity": 21269.19652594863,
-      "unit": "gCO2eq/GB"
-    },
-    ...
-  }
+  "averages": {
+      "overall": 10,
+      "0": 10.0, "1": 10.0, "2": 10.0, "3": 10.0, "4": 10.0, "5": 10.0, "6": 10.0,
+      "7": 10.0, "8": 10.0, "9": 10.0, "10": 10.0, "11": 10.0, "12": 10.0, "13": 10.0,
+      "14": 10.0, "15": 10.0, "16": 10.0, "17": 10.0, "18": 10.0, "19": 10.0, "20": 10.0,
+      "21": 10.0, "22": 10.0, "23": 10.0
+  },
+  "units": "gCO2eq/kWh",
+  "transmission_distances": {"aws:region1": 0, "aws:region2": 111.19},
+  "transmission_distances_unit": "km",
 }
 ```
 
@@ -803,7 +799,10 @@ Below is an example of the `workflow_instance_table` output for a workflow with 
           "regions_to_regions": {
             "aws:us-east-1": {
               "aws:us-east-1": {
-                "2.9960647225379944e-06": [1.217899, 1.18531, 1.174224]
+                "transfer_sizes": [2.9960647225379944e-06, 2.9960647225379944e-06],
+                "transfer_size_to_transfer_latencies": {
+                  "2.9960647225379944e-06": [1.217899, 1.18531]
+                }
               }
             }
           },

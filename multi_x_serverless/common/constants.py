@@ -48,7 +48,7 @@ WORKFLOW_SUMMARY_TABLE = "workflow_summary_table"
 
 # Solver Input (Loader) Default Values
 ## Carboon Loader
-SOLVER_INPUT_TRANSMISSION_CARBON_DEFAULT = 1000.0
+# SOLVER_INPUT_TRANSMISSION_CARBON_DEFAULT = 1000.0
 SOLVER_INPUT_GRID_CARBON_DEFAULT = 1000.0
 
 ## Datacenter Loader
@@ -76,7 +76,7 @@ SOLVER_INPUT_VCPU_DEFAULT = -1.0  # Denotes that the vCPU is not available
 SOLVER_INPUT_ARCHITECTURE_DEFAULT = "x86_64"
 
 # Carbon Transmission Cost Calculator Constants
-KWH_PER_GB_ESTIMATE = 0.1
+# KWH_PER_GB_ESTIMATE = 0.1
 KWH_PER_KM_GB_ESTIMATE = 0.005
 CARBON_TRANSMISSION_CARBON_METHOD = "distance"  # Or latency
 KWH_PER_S_GB_ESTIMATE = 0.005

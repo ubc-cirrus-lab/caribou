@@ -81,9 +81,9 @@ def data_collect(_: click.Context, collector: str, workflow_id: Optional[str]) -
     if collector in ("performance", "all"):
         performance_collector = PerformanceCollector()
         performance_collector.run()
-    if workflow_id is None:
-        raise click.ClickException("Workflow id must be provided for the workflow and all collectors.")
     if collector in ("workflow", "all"):
+        if workflow_id is None:
+            raise click.ClickException("Workflow id must be provided for the workflow and all collectors.")
         workflow_collector = WorkflowCollector()
         workflow_collector.run_on_workflow(workflow_id)
 
@@ -92,20 +92,6 @@ def data_collect(_: click.Context, collector: str, workflow_id: Optional[str]) -
 def log_sync() -> None:
     log_syncer = LogSyncer()
     log_syncer.sync()
-
-
-@cli.command("solve", help="Solve the workflow.")
-@click.argument("workflow_id", required=True)
-@click.option(
-    "--solver",
-    "-s",
-    help="The solver to use.",
-    required=False,
-    type=click.Choice(["fine-grained", "coarse-grained", "heuristic"]),
-)
-def solve(workflow_id: str, solver: Optional[str]) -> None:
-    client = Client(workflow_id)
-    client.solve(solver)
 
 
 @cli.command("update_check_solver", help="Check if the solver should be run.")

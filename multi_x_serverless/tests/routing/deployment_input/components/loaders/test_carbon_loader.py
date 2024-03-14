@@ -9,13 +9,36 @@ class TestCarbonLoader(unittest.TestCase):
         self.loader = CarbonLoader(self.client)
         self.loader._carbon_data = {
             "aws:eu-south-1": {
-                "carbon_intensity": 482,
-                "unit": "gCO2eq/kWh",
-                "transmission_carbon": {
-                    "aws:eu-south-1": {"carbon_intensity": 48.2, "unit": "gCO2eq/GB"},
-                    "aws:eu-central-1": {"carbon_intensity": 1337.9261964617801, "unit": "gCO2eq/GB"},
-                    "aws:us-west-2": {"carbon_intensity": 21269.19652594863, "unit": "gCO2eq/GB"},
+                "averages": {
+                    "overall": {"carbon_intensity": 482.0},
+                    "0": {"carbon_intensity": 482.0},  # 0 is the default hour
+                    "1": {"carbon_intensity": 482.0},
+                    "2": {"carbon_intensity": 482.0},
+                    "3": {"carbon_intensity": 482.0},
+                    "4": {"carbon_intensity": 482.0},
+                    "5": {"carbon_intensity": 498.0},
+                    "6": {"carbon_intensity": 482.0},
+                    "7": {"carbon_intensity": 482.0},
+                    "8": {"carbon_intensity": 482.0},
+                    "9": {"carbon_intensity": 482.0},
+                    "10": {"carbon_intensity": 482.0},
+                    "11": {"carbon_intensity": 482.0},
+                    "12": {"carbon_intensity": 482.0},
+                    "13": {"carbon_intensity": 482.0},
+                    "14": {"carbon_intensity": 482.0},
+                    "15": {"carbon_intensity": 482.0},
+                    "16": {"carbon_intensity": 482.0},
+                    "17": {"carbon_intensity": 482.0},
+                    "18": {"carbon_intensity": 482.0},
+                    "19": {"carbon_intensity": 482.0},
+                    "20": {"carbon_intensity": 482.0},
+                    "21": {"carbon_intensity": 482.0},
+                    "22": {"carbon_intensity": 482.0},
+                    "23": {"carbon_intensity": 482.0},
                 },
+                "units": "gCO2eq/kWh",
+                "transmission_distances": {"aws:eu-south-1": 0, "aws:eu-south-2": 111.19},
+                "transmission_distances_unit": "km",
             }
         }
 
@@ -28,13 +51,16 @@ class TestCarbonLoader(unittest.TestCase):
         self.loader.setup({"aws:eu-south-1"})
         self.assertEqual(self.loader._carbon_data, self.loader._carbon_data)
 
-    def test_get_transmission_carbon_intensity(self):
-        result = self.loader.get_transmission_carbon_intensity("aws:eu-south-1", "aws:eu-central-1")
-        self.assertEqual(result, (1337.9261964617801, 1000.0))
+    def test_get_transmission_distance(self):
+        result = self.loader.get_transmission_distance("aws:eu-south-1", "aws:eu-south-2")
+        self.assertEqual(result, 111.19)
 
     def test_get_grid_carbon_intensity(self):
         result = self.loader.get_grid_carbon_intensity("aws:eu-south-1")
-        self.assertEqual(result, 482)
+        self.assertEqual(result, 482.0)
+
+        result = self.loader.get_grid_carbon_intensity("aws:eu-south-1", str(5))
+        self.assertEqual(result, 498.0)
 
 
 if __name__ == "__main__":

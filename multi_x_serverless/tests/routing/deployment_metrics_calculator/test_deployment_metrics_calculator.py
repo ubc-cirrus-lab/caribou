@@ -40,16 +40,16 @@ class TestDeploymentMetricsCalculator(unittest.TestCase):
         ]
 
         # Mock input manager
-        self.input_manager.get_execution_cost_carbon_runtime.side_effect = (
-            lambda current_instance_index, to_region_index, probabilistic_case=False: (
+        self.input_manager.get_execution_cost_carbon_latency.side_effect = (
+            lambda current_instance_index, to_region_index: (
                 (self.execution_matrix[current_instance_index][to_region_index]),
                 (self.execution_matrix[current_instance_index][to_region_index]),
                 (self.execution_matrix[current_instance_index][to_region_index]),
             )
         )
 
-        self.input_manager.get_transmission_cost_carbon_runtime.side_effect = (
-            lambda previous_instance_index, current_instance_index, from_region_index, to_region_index, probabilistic_case=False: (
+        self.input_manager.get_transmission_cost_carbon_latency.side_effect = (
+            lambda previous_instance_index, current_instance_index, from_region_index, to_region_index: (
                 (self.transmission_matrix[from_region_index][to_region_index]),
                 (self.transmission_matrix[from_region_index][to_region_index]),
                 (self.transmission_matrix[from_region_index][to_region_index]),
@@ -62,12 +62,8 @@ class TestDeploymentMetricsCalculator(unittest.TestCase):
             [True, True],
             [True, True],
         ]
-        self.is_invoked_replacement = (
-            lambda current_instance_index, to_region_index, probabilistic_case=False: (
-                self.is_invoked_matrix[current_instance_index][to_region_index]
-            )
-            if probabilistic_case
-            else (True)
+        self.is_invoked_replacement = lambda current_instance_index, to_region_index: (
+            self.is_invoked_matrix[current_instance_index][to_region_index]
         )
 
         self.calculator = DeploymentMetricsCalculatorSubclass(
@@ -105,12 +101,10 @@ class TestDeploymentMetricsCalculator(unittest.TestCase):
 
     def test_is_invoked(self):
         self.input_manager.get_invocation_probability.return_value = 1.0
-        self.assertTrue(self.calculator._is_invoked(0, 1, True))
+        self.assertTrue(self.calculator._is_invoked(0, 1))
 
         self.input_manager.get_invocation_probability.return_value = 0.0
-        self.assertFalse(self.calculator._is_invoked(0, 1, True))
-
-        self.assertTrue(self.calculator._is_invoked(0, 1, False))
+        self.assertFalse(self.calculator._is_invoked(0, 1))
 
     @patch.object(DeploymentMetricsCalculator, "_is_invoked")
     def test_calculate_workflow_2_nodes(self, mock_is_invoked):
@@ -131,9 +125,7 @@ class TestDeploymentMetricsCalculator(unittest.TestCase):
         }
         mock_is_invoked.side_effect = self.is_invoked_replacement
 
-        wc_metrics = self.calculator._calculate_workflow(deployment, False)
-        self.assertEqual(wc_metrics, {"cost": 14.0, "runtime": 14.0, "carbon": 14.0})
-        pc_metrics = self.calculator._calculate_workflow(deployment, True)
+        pc_metrics = self.calculator._calculate_workflow(deployment)
         self.assertEqual(pc_metrics, {"cost": 5.0, "runtime": 5.0, "carbon": 5.0})
 
     @patch.object(DeploymentMetricsCalculator, "_is_invoked")
@@ -156,11 +148,10 @@ class TestDeploymentMetricsCalculator(unittest.TestCase):
                 2: False,
             },
         }
+
         mock_is_invoked.side_effect = self.is_invoked_replacement
 
-        wc_metrics = self.calculator._calculate_workflow(deployment, False)
-        self.assertEqual(wc_metrics, {"cost": 25.0, "runtime": 16.0, "carbon": 25.0})
-        pc_metrics = self.calculator._calculate_workflow(deployment, True)
+        pc_metrics = self.calculator._calculate_workflow(deployment)
         self.assertEqual(pc_metrics, {"cost": 14.0, "runtime": 14.0, "carbon": 14.0})
 
     @patch.object(DeploymentMetricsCalculator, "_is_invoked")
@@ -190,9 +181,7 @@ class TestDeploymentMetricsCalculator(unittest.TestCase):
         }
         mock_is_invoked.side_effect = self.is_invoked_replacement
 
-        wc_metrics = self.calculator._calculate_workflow(deployment, False)
-        pc_metrics = self.calculator._calculate_workflow(deployment, True)
-        self.assertEqual(wc_metrics, pc_metrics)
+        pc_metrics = self.calculator._calculate_workflow(deployment)
         self.assertEqual(pc_metrics, {"cost": 45.0, "runtime": 27.0, "carbon": 45.0})
 
     @patch.object(DeploymentMetricsCalculator, "_is_invoked")
@@ -223,7 +212,7 @@ class TestDeploymentMetricsCalculator(unittest.TestCase):
                 4: True,
             },
         }
-        pc_metrics = self.calculator._calculate_workflow(deployment, True)
+        pc_metrics = self.calculator._calculate_workflow(deployment)
         self.assertEqual(pc_metrics, {"cost": 50.0, "runtime": 29.0, "carbon": 50.0})
 
         # Case 2
@@ -240,7 +229,7 @@ class TestDeploymentMetricsCalculator(unittest.TestCase):
                 4: True,
             },
         }
-        pc_metrics = self.calculator._calculate_workflow(deployment, True)
+        pc_metrics = self.calculator._calculate_workflow(deployment)
         self.assertEqual(pc_metrics, {"cost": 49.0, "runtime": 29.0, "carbon": 49.0})
 
         # Case 3
@@ -257,7 +246,7 @@ class TestDeploymentMetricsCalculator(unittest.TestCase):
                 4: False,
             },
         }
-        pc_metrics = self.calculator._calculate_workflow(deployment, True)
+        pc_metrics = self.calculator._calculate_workflow(deployment)
         self.assertEqual(pc_metrics, {"cost": 35.0, "runtime": 17.0, "carbon": 35.0})
 
         # Case 4
@@ -274,7 +263,7 @@ class TestDeploymentMetricsCalculator(unittest.TestCase):
                 4: False,
             },
         }
-        pc_metrics = self.calculator._calculate_workflow(deployment, True)
+        pc_metrics = self.calculator._calculate_workflow(deployment)
         self.assertEqual(pc_metrics, {"cost": 23.0, "runtime": 15.0, "carbon": 23.0})
 
         # Case 5
@@ -291,7 +280,7 @@ class TestDeploymentMetricsCalculator(unittest.TestCase):
                 4: False,
             },
         }
-        pc_metrics = self.calculator._calculate_workflow(deployment, True)
+        pc_metrics = self.calculator._calculate_workflow(deployment)
         self.assertEqual(pc_metrics, {"cost": 39.0, "runtime": 27.0, "carbon": 39.0})
 
         # Case 6
@@ -302,7 +291,7 @@ class TestDeploymentMetricsCalculator(unittest.TestCase):
                 3: False,
             },
         }
-        pc_metrics = self.calculator._calculate_workflow(deployment, True)
+        pc_metrics = self.calculator._calculate_workflow(deployment)
         self.assertEqual(pc_metrics, {"cost": 5.0, "runtime": 5.0, "carbon": 5.0})
 
 

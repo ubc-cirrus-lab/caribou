@@ -1,4 +1,5 @@
 import json
+import logging
 
 from multi_x_serverless.common.constants import SOLVER_UPDATE_CHECKER_RESOURCE_TABLE, WORKFLOW_SUMMARY_TABLE
 from multi_x_serverless.routing.deployment_algorithms.coarse_grained_deployment_algorithm import (
@@ -13,6 +14,8 @@ from multi_x_serverless.routing.deployment_algorithms.stochastic_heuristic_deplo
 )
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
 from multi_x_serverless.update_checkers.update_checker import UpdateChecker
+
+logger = logging.getLogger(__name__)
 
 
 class SolverUpdateChecker(UpdateChecker):
@@ -51,24 +54,6 @@ class SolverUpdateChecker(UpdateChecker):
             # pass to deployment_algorithm
             workflow_config = WorkflowConfig(workflow_config_dict)
 
-            # TODO (#128): Implement adaptive and stateful update checker
-            # update workflow_config, then write back to SOLVER_UPDATE_CHECKER_RESOURCE_TABLE as string (to_json)
-
-            # check if deployment_algorithm should be run
-            # very simple check for now, just check if the average invocations per month is greater than the threshold
-            workflow_summary_json = json.loads(workflow_summary[1])
-
-            time_since_last_sync = workflow_summary_json["time_since_last_sync"]
-            total_invocations = workflow_summary_json["total_invocations"]
-
-            # Extrapoloate the number of invocations per month
-            months_between_summary = time_since_last_sync / (60 * 60 * 24 * 30)
-
-            if total_invocations / months_between_summary > workflow_config.num_calls_in_one_month:
-                deployment_algorithm_class = deployment_algorithm_mapping.get(workflow_config.deployment_algorithm)
-                if deployment_algorithm_class:
-                    deployment_algorithm: DeploymentAlgorithm = deployment_algorithm_class(workflow_config)  # type: ignore
-                    deployment_algorithm.run()
-                else:
-                    # we should never reach here
-                    raise ValueError("Invalid deployment algorithm name")
+            logger.info(f"Running deployment algorithm for workflow: {workflow_id}")
+            deployment_algorithm: StochasticHeuristicDeploymentAlgorithm = StochasticHeuristicDeploymentAlgorithm(workflow_config)  # type: ignore
+            deployment_algorithm.run(["0", "12", "23"])

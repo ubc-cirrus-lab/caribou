@@ -175,13 +175,14 @@ class TestWorkflow(unittest.TestCase):
         # Assert that the result matches the expected result
         self.assertEqual(result, expected_result)
 
-    def test_get_deployed_regions_extend_deployment(self):
+    def test_update_deployed_regions(self):
         # Mock the _get_function_resource_to_identifier method to return a specific value
-        self.workflow._get_function_resource_to_identifier = MagicMock()
-        self.workflow._get_function_resource_to_identifier.return_value = {
-            "function_resource_1": "identifier1",
-            "function_resource_2": "identifier2",
-        }
+        self.workflow._get_function_resource_to_identifier = MagicMock(
+            side_effect=lambda x, y: {
+                "function_resource_1": "identifier1",
+                "function_resource_2": "identifier2",
+            }
+        )
 
         # Mock the _resources attribute
         mock_function = MagicMock()
@@ -200,7 +201,7 @@ class TestWorkflow(unittest.TestCase):
             "function": [],
         }
 
-        previous_deployed_regions = {
+        deployed_regions = {
             "function_resource_1": {
                 "deploy_region": "region1",
                 "message_topic": "identifier1",
@@ -209,7 +210,7 @@ class TestWorkflow(unittest.TestCase):
         }
 
         # Call the method
-        result = self.workflow.get_deployed_regions_extend_deployment(resource_values, previous_deployed_regions)
+        self.workflow.update_deployed_regions(resource_values, deployed_regions)
 
         # Define the expected result
         expected_result = {
@@ -225,8 +226,8 @@ class TestWorkflow(unittest.TestCase):
             },
         }
 
-        # Assert that the result matches the expected result
-        self.assertEqual(result, expected_result)
+        # Assert that the _deployed_regions attribute matches the expected result
+        self.assertEqual(self.workflow._deployed_regions, expected_result)
 
     def test_find_all_paths_to_any_sync_node(self):
         self.workflow._edges = [
@@ -313,92 +314,19 @@ class TestWorkflow(unittest.TestCase):
 
         # Define the expected result
         expected_result = {
-            "instances": {
-                "function1": {
-                    "identifier": "topic1",
-                    "provider_region": "region1",
-                    "function_identifier": "identifier1",
-                }
-            },
-            "metrics": {},
+            "function1": {"identifier": "topic1", "provider_region": "region1", "function_identifier": "identifier1"}
         }
-        # Assert that the result matches the expected result
-        self.assertEqual(result, expected_result)
-
-    def test_extend_stage_area_workflow_placement(self):
-        # Mock the _get_function_instance_to_resource_name method to return a specific value
-        self.workflow._get_function_instance_to_resource_name = MagicMock()
-        self.workflow._get_function_instance_to_resource_name.return_value = {
-            "instance1": "resource1",
-        }
-
-        # Mock the _deployed_regions attribute
-        self.workflow._deployed_regions = {
-            "resource1": {
-                "message_topic": "topic1",
-                "function_identifier": "identifier1",
-            },
-        }
-
-        # Define the input
-        staging_area_placement = {
-            "workflow_placement": {
-                "current_deployment": {
-                    "instances": {
-                        "instance1": {
-                            "provider_region": {
-                                "provider": "provider1",
-                                "region": "region1",
-                            },
-                        },
-                    }
-                }
-            },
-        }
-
-        # Call the method
-        result = self.workflow._extend_stage_area_workflow_placement(staging_area_placement)
-
-        # Define the expected result
-        expected_result = {
-            "workflow_placement": {
-                "current_deployment": {
-                    "instances": {
-                        "instance1": {
-                            "function_identifier": "identifier1",
-                            "identifier": "topic1",
-                            "provider_region": {
-                                "provider": "provider1",
-                                "region": "region1",
-                            },
-                        },
-                    }
-                },
-            }
-        }
-
         # Assert that the result matches the expected result
         self.assertEqual(result, expected_result)
 
     def test_get_function_instance_to_resource_name(self):
-        # Define the input
+        # Set up the test data
         staging_area_placement = {
-            "instances": {
-                "instance1": {
-                    "instance_name": "instance1",
-                },
+            "function1:instance1": {
+                "provider_region": {"provider": "provider1", "region": "region1"},
             },
-            "workflow_placement": {
-                "current_deployment": {
-                    "instances": {
-                        "instance1": {
-                            "provider_region": {
-                                "provider": "provider1",
-                                "region": "region1",
-                            },
-                        },
-                    }
-                }
+            "function2:instance2": {
+                "provider_region": {"provider": "provider2", "region": "region2"},
             },
         }
 
@@ -407,7 +335,8 @@ class TestWorkflow(unittest.TestCase):
 
         # Define the expected result
         expected_result = {
-            "instance1": "instance1_provider1-region1",
+            "function1:instance1": "function1_provider1-region1",
+            "function2:instance2": "function2_provider2-region2",
         }
 
         # Assert that the result matches the expected result
@@ -440,49 +369,13 @@ class TestWorkflow(unittest.TestCase):
         self.workflow._get_workflow_placement = MagicMock(return_value="workflow_placement")
 
         # Call the method
-        result = self.workflow.get_workflow_placement_decision()
+        result = self.workflow.get_workflow_placement_decision_initial_deployment()
 
         # Define the expected result
         expected_result = {
             "instances": "instances",
             "current_instance_name": "entry_point_instance_name",
-            "workflow_placement": {"current_deployment": "workflow_placement", "home_deployment": "workflow_placement"},
-        }
-
-        # Assert that the result matches the expected result
-        self.assertEqual(result, expected_result)
-
-    def test_get_workflow_placement_decision_extend_staging(self):
-        # Mock the _get_entry_point_from_previous_instances, _extend_stage_area_workflow_placement, and _update_instances methods
-        self.workflow._get_entry_point_from_previous_instances = MagicMock(return_value="entry_point_instance_name")
-        self.workflow._extend_stage_area_workflow_placement = MagicMock()
-        self.workflow._update_instances = MagicMock()
-
-        # Define the input
-        staging_area_placement = {
-            "workflow_placement": {
-                "home_deployment": {"instances": {"instance1": {}, "instance2": {}}},
-            },
-        }
-        previous_workflow_placement_decision_json = {
-            "instances": {"instance1": {}, "instance2": {}},
-            "workflow_placement": {
-                "home_deployment": {"instances": {"instance1": {}, "instance2": {}}},
-            },
-        }
-
-        # Call the method
-        result = self.workflow.get_workflow_placement_decision_extend_staging(
-            staging_area_placement, previous_workflow_placement_decision_json
-        )
-
-        # Define the expected result
-        expected_result = {
-            "instances": {"instance1": {}, "instance2": {}},
-            "current_instance_name": "entry_point_instance_name",
-            "workflow_placement": {
-                "home_deployment": {"instances": {"instance1": {}, "instance2": {}}},
-            },
+            "workflow_placement": {"home_deployment": "workflow_placement"},
         }
 
         # Assert that the result matches the expected result

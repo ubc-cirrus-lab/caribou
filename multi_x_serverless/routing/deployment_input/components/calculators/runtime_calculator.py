@@ -1,3 +1,5 @@
+from typing import Optional
+
 import numpy as np
 
 from multi_x_serverless.routing.deployment_input.components.calculator import InputCalculator
@@ -10,6 +12,58 @@ class RuntimeCalculator(InputCalculator):
         super().__init__()
         self._performance_loader: PerformanceLoader = performance_loader
         self._workflow_loader: WorkflowLoader = workflow_loader
+
+    def get_transmission_size_distribution(
+        self,
+        from_instance_name: Optional[str],
+        to_instance_name: str,
+        from_region_name: str,
+        to_region_name: str,
+    ) -> np.ndarray:
+        # Get the data transfer size distribution
+        if from_instance_name:
+            transmission_size_distribution = np.array(
+                self._workflow_loader.get_data_transfer_size_distribution(
+                    from_instance_name, to_instance_name, from_region_name, to_region_name
+                )
+            )
+        else:
+            transmission_size_distribution = np.array(
+                self._workflow_loader.get_start_hop_size_distribution(from_region_name)
+            )
+
+        return transmission_size_distribution
+
+    def get_transmission_latency_distribution(
+        self,
+        from_instance_name: Optional[str],
+        to_instance_name: str,
+        from_region_name: str,
+        to_region_name: str,
+        data_transfer_size: Optional[float],
+    ) -> np.ndarray:
+        if data_transfer_size is not None:
+            if from_instance_name:
+                # Not for start hop
+                # Get the data transfer size distribution
+                transmission_latency_distribution = np.array(
+                    self._workflow_loader.get_latency_distribution(
+                        from_instance_name, to_instance_name, from_region_name, to_region_name, data_transfer_size
+                    )
+                )
+            else:
+                # No size information, we default to performance loader
+                transmission_latency_distribution = np.array(
+                    self._workflow_loader.get_start_hop_latency_distribution(from_region_name, data_transfer_size)
+                )
+        else:
+            # No size information, we default to performance loader
+            # Get the data transfer size distribution
+            transmission_latency_distribution = np.array(
+                self._performance_loader.get_transmission_latency_distribution(from_region_name, to_region_name)
+            )
+
+        return transmission_latency_distribution
 
     def calculate_runtime_distribution(self, instance_name: str, region_name: str) -> np.ndarray:
         raw_runtime_distribution: list[float] = self._workflow_loader.get_runtime_distribution(
@@ -38,28 +92,3 @@ class RuntimeCalculator(InputCalculator):
         runtime_distribution.sort()
 
         return runtime_distribution
-
-    def calculate_latency_distribution(
-        self, from_instance_name: str, to_instance_name: str, from_region_name: str, to_region_name: str
-    ) -> np.ndarray:
-        raw_latency_distribution: list[float] = self._workflow_loader.get_latency_distribution(
-            from_instance_name, to_instance_name, from_region_name, to_region_name
-        )
-
-        # If the latency is not found, then we need to use the performance loader to estimate the relative latency
-        if len(raw_latency_distribution) == 0:
-            # TODO (#166): Potentially we can do something here? Take the home region latency?
-            if from_instance_name == "start_hop":
-                return np.array([0.0])
-            # Currently our performance loader does not consider data transfer size for latency
-            raw_latency_distribution = self._performance_loader.get_transmission_latency_distribution(
-                from_region_name, to_region_name
-            )
-
-        # Now we convert the list to a numpy array an return it
-        latency_distribution = np.array(raw_latency_distribution)
-
-        # Sort the array in place
-        latency_distribution.sort()
-
-        return latency_distribution

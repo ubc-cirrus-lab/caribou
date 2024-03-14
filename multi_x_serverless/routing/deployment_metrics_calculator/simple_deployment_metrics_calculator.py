@@ -23,7 +23,7 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
 
         while number_of_iterations < max_number_of_iterations:
             for _ in range(batch_size):
-                results = self._calculate_workflow(deployment, True)
+                results = self._calculate_workflow(deployment)
                 costs_distribution_list.append(results["cost"])
                 runtimes_distribution_list.append(results["runtime"])
                 carbons_distribution_list.append(results["carbon"])

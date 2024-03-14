@@ -21,10 +21,13 @@ class TestClient(unittest.TestCase):
                 "current_instance_name": "instance1",
                 "workflow_placement": {
                     "current_deployment": {
+                        "time_keys": ["23"],
                         "instances": {
-                            "instance1": {
-                                "provider_region": {"provider": "aws", "region": "us-east-1"},
-                                "identifier": "function1",
+                            "23": {
+                                "instance1": {
+                                    "provider_region": {"provider": "aws", "region": "us-east-1"},
+                                    "identifier": "function1",
+                                }
                             }
                         },
                         "expiry_time": "2022-01-01 00:01:00",
@@ -57,7 +60,7 @@ class TestClient(unittest.TestCase):
         # Verify the remote client was invoked with the correct parameters
         mock_get_remote_client.assert_called_with("aws", "us-east-1")
         mock_remote_client.invoke_function.assert_called_once_with(
-            message='{"input_data": {"key": "value"}, "time_request_sent": "2022-01-01 00:00:00,000000", "workflow_placement_decision": {"current_instance_name": "instance1", "workflow_placement": {"current_deployment": {"instances": {"instance1": {"provider_region": {"provider": "aws", "region": "us-east-1"}, "identifier": "function1"}}, "expiry_time": "2022-01-01 00:01:00"}, "home_deployment": {"instances": {"instance1": {"provider_region": {"provider": "aws", "region": "us-west-2"}, "identifier": "function1"}}}}, "send_to_home_region": false}}',
+            message='{"input_data": {"key": "value"}, "time_request_sent": "2022-01-01 00:00:00,000000", "workflow_placement_decision": {"current_instance_name": "instance1", "workflow_placement": {"current_deployment": {"time_keys": ["23"], "instances": {"23": {"instance1": {"provider_region": {"provider": "aws", "region": "us-east-1"}, "identifier": "function1"}}}, "expiry_time": "2022-01-01 00:01:00"}, "home_deployment": {"instances": {"instance1": {"provider_region": {"provider": "aws", "region": "us-west-2"}, "identifier": "function1"}}}}, "time_key": "23", "send_to_home_region": false}}',
             identifier="function1",
             workflow_instance_id="0",
         )
@@ -219,55 +222,6 @@ class TestClient(unittest.TestCase):
         # Test with no expiry time
         workflow_placement_decision["workflow_placement"]["current_deployment"]["expiry_time"] = None
         self.assertEqual(client._get_deployment_key(workflow_placement_decision, False), "home_deployment")
-
-    @patch.object(Endpoints, "get_deployment_algorithm_update_checker_client")
-    def test_solve(self, mock_get_deployment_algorithm_update_checker_client):
-        # Mocking the scenario where the workflow id is provided and the deployment_algorithm is solved successfully
-        mock_deployment_algorithm_client = MagicMock()
-        mock_get_deployment_algorithm_update_checker_client.return_value = mock_deployment_algorithm_client
-
-        client = Client()
-        client._workflow_id = "workflow_id"
-
-        # Mock the return value of get_value_from_table
-        mock_deployment_algorithm_client.get_value_from_table.return_value = json.dumps(
-            {"workflow_config": json.dumps({"key": "value"})}
-        )
-
-        # Mock the deployment_algorithm classes
-        with patch(
-            "multi_x_serverless.endpoint.client.CoarseGrainedDeploymentAlgorithm"
-        ) as MockCoarseGrainedSolver, patch(
-            "multi_x_serverless.endpoint.client.FineGrainedDeploymentAlgorithm"
-        ) as MockBFSFineGrainedSolver, patch(
-            "multi_x_serverless.endpoint.client.StochasticHeuristicDeploymentAlgorithm"
-        ) as MockStochasticHeuristicDescentSolver, patch(
-            "multi_x_serverless.endpoint.client.WorkflowConfig"
-        ) as MockWorkflowConfig:
-            mock_coarse_grained_deployment_algorithm = MockCoarseGrainedSolver.return_value
-            mock_bfs_fine_grained_deployment_algorithm = MockBFSFineGrainedSolver.return_value
-            mock_stochastic_heuristic_descent_deployment_algorithm = MockStochasticHeuristicDescentSolver.return_value
-
-            # Test with deployment_algorithm=None
-            client.solve()
-            mock_coarse_grained_deployment_algorithm.run.assert_called_once()
-
-            # Test with deployment_algorithm="coarse-grained"
-            client.solve("coarse-grained")
-            mock_coarse_grained_deployment_algorithm.run.assert_called()
-
-            # Test with deployment_algorithm="fine-grained"
-            client.solve("fine-grained")
-            mock_bfs_fine_grained_deployment_algorithm.run.assert_called_once()
-
-            # Test with deployment_algorithm="heuristic"
-            client.solve("heuristic")
-            mock_stochastic_heuristic_descent_deployment_algorithm.run.assert_called_once()
-
-            # Test with unsupported deployment_algorithm
-            with self.assertRaises(ValueError) as context:
-                client.solve("unsupported_deployment_algorithm")
-            self.assertEqual(str(context.exception), "Solver unsupported_deployment_algorithm not supported")
 
 
 if __name__ == "__main__":

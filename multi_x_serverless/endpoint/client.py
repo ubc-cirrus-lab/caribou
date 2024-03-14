@@ -20,17 +20,6 @@ from multi_x_serverless.common.constants import (
 from multi_x_serverless.common.models.endpoints import Endpoints
 from multi_x_serverless.common.models.remote_client.aws_remote_client import AWSRemoteClient
 from multi_x_serverless.common.models.remote_client.remote_client_factory import RemoteClientFactory
-from multi_x_serverless.routing.deployment_algorithms.coarse_grained_deployment_algorithm import (
-    CoarseGrainedDeploymentAlgorithm,
-)
-from multi_x_serverless.routing.deployment_algorithms.deployment_algorithm import DeploymentAlgorithm
-from multi_x_serverless.routing.deployment_algorithms.fine_grained_deployment_algorithm import (
-    FineGrainedDeploymentAlgorithm,
-)
-from multi_x_serverless.routing.deployment_algorithms.stochastic_heuristic_deployment_algorithm import (
-    StochasticHeuristicDeploymentAlgorithm,
-)
-from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -63,6 +52,10 @@ class Client:
 
         send_to_home_region = random.random() < self._home_region_threshold
 
+        workflow_placement_decision["time_key"] = self._get_time_key(workflow_placement_decision)
+
+        print(f"Sending to home region: {send_to_home_region}, time_key: {workflow_placement_decision['time_key']}")
+
         provider, region, identifier = self.__get_initial_node_workflow_placement_decision(
             workflow_placement_decision, send_to_home_region
         )
@@ -85,22 +78,48 @@ class Client:
             workflow_instance_id="0",
         )
 
+    def _get_time_key(self, workflow_placement_decision: dict[str, Any]) -> str:
+        if "current_deployment" not in workflow_placement_decision["workflow_placement"]:
+            return "N/A"
+
+        all_time_keys = workflow_placement_decision["workflow_placement"]["current_deployment"]["time_keys"]
+
+        current_hour_of_day = datetime.now(GLOBAL_TIME_ZONE).hour
+
+        previous_time_key = all_time_keys[0]
+        for time_key in all_time_keys:
+            if int(time_key) > current_hour_of_day:
+                break
+            previous_time_key = time_key
+        return previous_time_key
+
     def __get_initial_node_workflow_placement_decision(
         self, workflow_placement_decision: dict[str, Any], send_to_home_region: bool
     ) -> tuple[str, str, str]:
         initial_instance_name = workflow_placement_decision["current_instance_name"]
         key = self._get_deployment_key(workflow_placement_decision, send_to_home_region)
-        provider_region = workflow_placement_decision["workflow_placement"][key]["instances"][initial_instance_name][
-            "provider_region"
-        ]
-        identifier = workflow_placement_decision["workflow_placement"][key]["instances"][initial_instance_name][
-            "identifier"
-        ]
+        if key == "current_deployment":
+            provider_region = workflow_placement_decision["workflow_placement"]["current_deployment"]["instances"][
+                workflow_placement_decision["time_key"]
+            ][initial_instance_name]["provider_region"]
+            identifier = workflow_placement_decision["workflow_placement"]["current_deployment"]["instances"][
+                workflow_placement_decision["time_key"]
+            ][initial_instance_name]["identifier"]
+        else:
+            provider_region = workflow_placement_decision["workflow_placement"]["home_deployment"][
+                initial_instance_name
+            ]["provider_region"]
+            identifier = workflow_placement_decision["workflow_placement"]["home_deployment"][initial_instance_name][
+                "identifier"
+            ]
         return provider_region["provider"], provider_region["region"], identifier
 
     def _get_deployment_key(self, workflow_placement_decision: dict[str, Any], send_to_home_region: bool) -> str:
         key = "home_deployment"
         if send_to_home_region:
+            return key
+
+        if "current_deployment" not in workflow_placement_decision["workflow_placement"]:
             return key
 
         # Check if the deployment is not expired
@@ -205,41 +224,3 @@ class Client:
             print(f"Could not remove role {role_name}: {str(e)}")
 
         print(f"Removed function {function_instance} from provider {provider} in region {region}")
-
-    def solve(self, solver: Optional[str] = None) -> None:
-        if self._workflow_id is None:
-            raise RuntimeError("No workflow id provided")
-
-        workflow_information = self._endpoints.get_deployment_algorithm_update_checker_client().get_value_from_table(
-            SOLVER_UPDATE_CHECKER_RESOURCE_TABLE, self._workflow_id
-        )
-
-        if workflow_information is None:
-            raise RuntimeError(f"No workflow with id {self._workflow_id} found")
-
-        workflow_information_dict = json.loads(workflow_information)
-
-        if "workflow_config" not in workflow_information_dict:
-            raise RuntimeError(f"Workflow with id {self._workflow_id} has no workflow_config")
-
-        workflow_config_json = workflow_information_dict["workflow_config"]
-
-        workflow_config = json.loads(workflow_config_json)
-
-        workflow_config_instance = WorkflowConfig(workflow_config)
-
-        solver_instance: Optional[DeploymentAlgorithm] = None
-
-        if solver is None or solver == "coarse-grained":
-            solver_instance = CoarseGrainedDeploymentAlgorithm(workflow_config_instance)
-        elif solver == "fine-grained":
-            solver_instance = FineGrainedDeploymentAlgorithm(workflow_config_instance)
-        elif solver == "heuristic":
-            solver_instance = StochasticHeuristicDeploymentAlgorithm(workflow_config_instance)
-        else:
-            raise ValueError(f"Solver {solver} not supported")
-
-        if solver_instance is None:
-            raise RuntimeError("Solver instance is None")
-
-        solver_instance.run()

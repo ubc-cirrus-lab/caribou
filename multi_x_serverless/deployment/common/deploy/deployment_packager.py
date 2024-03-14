@@ -73,6 +73,8 @@ class DeploymentPackager:
         with open(requirements_filename, "r", encoding="utf-8") as file:
             requirements = file.read().splitlines()
 
+        requirements = [requirement.split("==")[0] for requirement in requirements]
+
         with open(requirements_filename, "a", encoding="utf-8") as file:
             if "boto3" not in requirements:
                 file.write(f"\nboto3=={boto3.__version__}\n")

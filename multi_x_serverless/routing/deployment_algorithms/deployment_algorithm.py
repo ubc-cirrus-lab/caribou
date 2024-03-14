@@ -1,7 +1,13 @@
 import json
 from abc import ABC, abstractmethod
+from datetime import datetime, timedelta
+from typing import Any
 
-from multi_x_serverless.common.constants import WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE
+from multi_x_serverless.common.constants import (
+    GLOBAL_TIME_ZONE,
+    TIME_FORMAT,
+    WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE,
+)
 from multi_x_serverless.common.models.endpoints import Endpoints
 from multi_x_serverless.routing.deployment_input.input_manager import InputManager
 from multi_x_serverless.routing.deployment_metrics_calculator.deployment_metrics_calculator import (
@@ -46,7 +52,9 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
 
         self._ranker = Ranker(workflow_config, self._home_deployment_metrics)
 
-        self._formatter = Formatter(self._home_deployment, self._home_deployment_metrics, expiry_time_delta_seconds)
+        self._expiry_time_delta_seconds = expiry_time_delta_seconds
+
+        self._formatter = Formatter(self._home_deployment, self._home_deployment_metrics)
 
         self._endpoints = Endpoints()
 
@@ -55,15 +63,29 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
             for instance in range(self._number_of_instances)
         ]
 
-    def run(self) -> None:
-        deployments = self._run_algorithm()
-        ranked_deployments = self._ranker.rank(deployments)
-        selected_deployment = self._select_deployment(ranked_deployments)
-        formatted_deployment = self._formatter.format(
-            selected_deployment, self._instance_indexer.indicies_to_values(), self._region_indexer.indicies_to_values()
-        )
+    def run(self, hours_to_run: list[str]) -> None:
+        hour_to_run_to_result: dict[str, Any] = {
+            "time_keys_to_staging_area_data": {},
+        }
+        for hour_to_run in hours_to_run:
+            deployments = self._run_algorithm()
+            ranked_deployments = self._ranker.rank(deployments)
+            selected_deployment = self._select_deployment(ranked_deployments)
+            formatted_deployment = self._formatter.format(
+                selected_deployment,
+                self._instance_indexer.indicies_to_values(),
+                self._region_indexer.indicies_to_values(),
+            )
+            hour_to_run_to_result["time_keys_to_staging_area_data"][hour_to_run] = formatted_deployment
 
-        self._upload_result(formatted_deployment)
+        self._add_expiry_date_to_results(hour_to_run_to_result)
+
+        self._upload_result(hour_to_run_to_result)
+
+    def _add_expiry_date_to_results(self, hour_to_run_to_result: dict[str, Any]) -> None:
+        expiry_date = datetime.now(GLOBAL_TIME_ZONE) + timedelta(seconds=self._expiry_time_delta_seconds)
+        expiry_date_str = expiry_date.strftime(TIME_FORMAT)
+        hour_to_run_to_result["expiry_time"] = expiry_date_str
 
     @abstractmethod
     def _run_algorithm(self) -> list[tuple[list[int], dict[str, float]]]:
@@ -86,9 +108,11 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
     def _filter_regions_instance(self, regions: list[str], instance_index: int) -> list[str]:
         return self._filter_regions(
             regions,
-            self._workflow_config.instances[self._instance_indexer.index_to_value(instance_index)][
-                "regions_and_providers"
-            ],
+            self._workflow_config.create_altered_regions_and_providers(
+                self._workflow_config.instances[self._instance_indexer.index_to_value(instance_index)][
+                    "regions_and_providers"
+                ]
+            ),
         )
 
     def _filter_regions(self, regions: list[str], regions_and_providers: dict) -> list[str]:
@@ -152,7 +176,9 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
     def _get_permitted_region_indices(self, regions: list[str], instance: int) -> list[int]:
         permitted_regions: list[str] = self._filter_regions_instance(regions, instance)
         if len(permitted_regions) == 0:  # Should never happen in a valid DAG
-            raise ValueError("There are no permitted regions for this instance")
+            raise ValueError(
+                f"There are no permitted regions for this instance {self._instance_indexer.index_to_value(instance)}"
+            )
 
         all_regions_indices = self._region_indexer.get_value_indices()
         permitted_regions_indices = [all_regions_indices[region] for region in permitted_regions]

@@ -93,25 +93,6 @@ class TestDeployerFactory(unittest.TestCase):
         deployer = factory.create_deployer(config)
         self.assertIsInstance(deployer, Deployer)
 
-    @mock.patch("multi_x_serverless.deployment.common.factories.deployer_factory.create_deletion_deployer")
-    def test_create_deletion_deployer(self, mock_create_deployer):
-        config = Config(
-            {
-                "workflow_name": "test",
-                "workflow_version": "test",
-                "environment_variables": {"test": "test"},
-                "iam_policy_file": "test",
-                "regions_and_providers": {
-                    "providers": {"provider1": {"region": "region4", "account_id": "123456789012", "role_name": "test"}}
-                },
-            },
-            "project_dir",
-        )
-        mock_create_deployer.return_value = Deployer(config, None, None, None)
-        factory = DeployerFactory("project_dir")
-        deployer = factory.create_deletion_deployer(config)
-        self.assertIsInstance(deployer, Deployer)
-
     def test_validate_allowed_and_disallowed_regions_and_providers(self):
         factory = DeployerFactory("project_dir")
         # Test with valid project_config

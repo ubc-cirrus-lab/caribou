@@ -1,6 +1,5 @@
 import unittest
-from unittest.mock import MagicMock
-import numpy as np
+from unittest.mock import MagicMock, patch
 from multi_x_serverless.routing.deployment_input.components.calculators.cost_calculator import CostCalculator
 from multi_x_serverless.routing.deployment_input.components.loaders.datacenter_loader import DatacenterLoader
 from multi_x_serverless.routing.deployment_input.components.loaders.workflow_loader import WorkflowLoader
@@ -8,43 +7,102 @@ from multi_x_serverless.routing.deployment_input.components.calculators.runtime_
 
 
 class TestCostCalculator(unittest.TestCase):
-    def test_calculate_execution_cost_distribution(self):
-        # Arrange
-        mock_datacenter_loader = MagicMock(spec=DatacenterLoader)
-        mock_workflow_loader = MagicMock(spec=WorkflowLoader)
-        mock_runtime_calculator = MagicMock(spec=RuntimeCalculator)
-        cost_calculator = CostCalculator(mock_datacenter_loader, mock_workflow_loader, mock_runtime_calculator)
-        mock_runtime_calculator.calculate_runtime_distribution.return_value = np.array([0.2, 0.1, 0.3])
-        mock_workflow_loader.get_vcpu.return_value = 2.0
-        mock_workflow_loader.get_memory.return_value = 2048.0
-        mock_workflow_loader.get_architecture.return_value = "x86"
-        mock_datacenter_loader.get_compute_cost.return_value = 0.01
-        mock_datacenter_loader.get_invocation_cost.return_value = 0.00001
+    def setUp(self):
+        # Create the CostCalculator object
+        self.datacenter_loader = MagicMock(spec=DatacenterLoader)
+        self.workflow_loader = MagicMock(spec=WorkflowLoader)
+        self.runtime_calculator = MagicMock(spec=RuntimeCalculator)
+        self.cost_calculator = CostCalculator(self.datacenter_loader, self.workflow_loader, self.runtime_calculator)
 
-        # Act
-        execution_cost_distribution = cost_calculator.calculate_execution_cost_distribution(
-            "instance1", "AWS:us-east-1"
+    def test_init(self):
+        # Check that the attributes were initialized correctly
+        self.assertEqual(self.cost_calculator._datacenter_loader, self.datacenter_loader)
+        self.assertEqual(self.cost_calculator._workflow_loader, self.workflow_loader)
+        self.assertEqual(self.cost_calculator._runtime_calculator, self.runtime_calculator)
+        self.assertEqual(self.cost_calculator._execution_conversion_ratio_cache, {})
+        self.assertEqual(self.cost_calculator._transmission_conversion_ratio_cache, {})
+
+    @patch.object(CostCalculator, "_get_transmission_conversion_ratio")
+    def test_calculate_transmission_cost(self, mock_get_transmission_conversion_ratio):
+        # Set up the mock
+        mock_get_transmission_conversion_ratio.return_value = 1.0
+
+        # Call the method
+        result = self.cost_calculator.calculate_transmission_cost("from_region_name", "to_region_name", 2.0)
+
+        # Check that the result is correct
+        self.assertEqual(result, 1.0 * 2.0)
+
+        # Check that the mock was called with the correct arguments
+        mock_get_transmission_conversion_ratio.assert_called_once_with("from_region_name", "to_region_name")
+
+    @patch.object(CostCalculator, "_get_execution_conversion_ratio")
+    def test_calculate_execution_cost(self, mock_get_execution_conversion_ratio):
+        # Set up the mock
+        mock_get_execution_conversion_ratio.return_value = (1.0, 2.0)
+
+        # Call the method
+        result = self.cost_calculator.calculate_execution_cost("instance_name", "region_name", 3.0)
+
+        # Check that the result is correct
+        self.assertEqual(result, 1.0 * 3.0 + 2.0)
+
+        # Check that the mock was called with the correct arguments
+        mock_get_execution_conversion_ratio.assert_called_once_with("instance_name", "region_name")
+
+    def test_get_transmission_conversion_ratio(self):
+        # Set up the mock
+        self.cost_calculator._datacenter_loader.get_transmission_cost.return_value = 1.0
+
+        # Call the method
+        result = self.cost_calculator._get_transmission_conversion_ratio(
+            "provider1:from_region_name", "provider2:to_region_name"
         )
 
-        # Assert
-        np.testing.assert_array_almost_equal(execution_cost_distribution, np.array([0.00401, 0.00801, 0.01201]))
+        # Check that the result is correct
+        self.assertEqual(result, 1.0)
 
-    def test_calculate_transmission_cost_distribution(self):
-        # Arrange
-        mock_datacenter_loader = MagicMock(spec=DatacenterLoader)
-        mock_workflow_loader = MagicMock(spec=WorkflowLoader)
-        mock_runtime_calculator = MagicMock(spec=RuntimeCalculator)
-        cost_calculator = CostCalculator(mock_datacenter_loader, mock_workflow_loader, mock_runtime_calculator)
-        mock_workflow_loader.get_data_transfer_size_distribution.return_value = [0.2, 0.1, 0.3]
-        mock_datacenter_loader.get_transmission_cost.return_value = 0.01
-
-        # Act
-        transmission_cost_distribution = cost_calculator.calculate_transmission_cost_distribution(
-            "instance1", "instance2", "AWS:us-east-1", "AWS:us-west-2"
+        # Check that the mock was called with the correct arguments
+        self.cost_calculator._datacenter_loader.get_transmission_cost.assert_called_once_with(
+            "provider2:to_region_name", False
         )
 
-        # Assert
-        np.testing.assert_array_almost_equal(transmission_cost_distribution, np.array([0.001, 0.002, 0.003]))
+        # Check that the _transmission_conversion_ratio_cache attribute was updated correctly
+        self.assertEqual(
+            self.cost_calculator._transmission_conversion_ratio_cache,
+            {"provider1:from_region_name_provider2:to_region_name": 1.0},
+        )
+
+    def test_get_execution_conversion_ratio(self):
+        # Set up the mocks
+        self.cost_calculator._workflow_loader.get_vcpu.return_value = 2.0
+        self.cost_calculator._workflow_loader.get_memory.return_value = 2048.0
+        self.cost_calculator._workflow_loader.get_architecture.return_value = "architecture"
+        self.cost_calculator._datacenter_loader.get_compute_cost.return_value = 3.0
+        self.cost_calculator._datacenter_loader.get_invocation_cost.return_value = 4.0
+
+        # Call the method
+        result = self.cost_calculator._get_execution_conversion_ratio("instance_name", "provider:region_name")
+
+        # Check that the result is correct
+        self.assertEqual(result, (3.0 * 2.0 * 2.0, 4.0))
+
+        # Check that the mocks were called with the correct arguments
+        self.cost_calculator._workflow_loader.get_vcpu.assert_called_once_with("instance_name", "provider")
+        self.cost_calculator._workflow_loader.get_memory.assert_called_once_with("instance_name", "provider")
+        self.cost_calculator._workflow_loader.get_architecture.assert_called_once_with("instance_name", "provider")
+        self.cost_calculator._datacenter_loader.get_compute_cost.assert_called_once_with(
+            "provider:region_name", "architecture"
+        )
+        self.cost_calculator._datacenter_loader.get_invocation_cost.assert_called_once_with(
+            "provider:region_name", "architecture"
+        )
+
+        # Check that the _execution_conversion_ratio_cache attribute was updated correctly
+        self.assertEqual(
+            self.cost_calculator._execution_conversion_ratio_cache,
+            {"instance_name_provider:region_name": (3.0 * 2.0 * 2.0, 4.0)},
+        )
 
 
 if __name__ == "__main__":

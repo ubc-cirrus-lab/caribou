@@ -41,7 +41,7 @@ class DeploymentMetricsCalculator(ABC):
         """
         raise NotImplementedError
 
-    def _calculate_workflow(self, deployment: list[int], probabilistic_case: bool) -> dict[str, float]:
+    def _calculate_workflow(self, deployment: list[int]) -> dict[str, float]:
         total_cost = 0.0
         total_carbon = 0.0
 
@@ -66,8 +66,8 @@ class DeploymentMetricsCalculator(ABC):
                         transmission_cost,
                         transmission_carbon,
                         transmission_runtime,
-                    ) = self._input_manager.get_transmission_cost_carbon_runtime(
-                        -1, instance_index, self._home_region_index, region_index, probabilistic_case
+                    ) = self._input_manager.get_transmission_cost_carbon_latency(
+                        -1, instance_index, self._home_region_index, region_index
                     )
 
                     total_cost += transmission_cost
@@ -86,12 +86,11 @@ class DeploymentMetricsCalculator(ABC):
                                 transmission_cost,
                                 transmission_carbon,
                                 transmission_runtime,
-                            ) = self._input_manager.get_transmission_cost_carbon_runtime(
+                            ) = self._input_manager.get_transmission_cost_carbon_latency(
                                 predecessor_instance_index,
                                 instance_index,
                                 deployment[predecessor_instance_index],
                                 region_index,
-                                probabilistic_case,
                             )
 
                             total_cost += transmission_cost
@@ -106,9 +105,7 @@ class DeploymentMetricsCalculator(ABC):
                     execution_cost,
                     execution_carbon,
                     execution_runtime,
-                ) = self._input_manager.get_execution_cost_carbon_runtime(
-                    instance_index, region_index, probabilistic_case
-                )
+                ) = self._input_manager.get_execution_cost_carbon_latency(instance_index, region_index)
 
                 total_cost += execution_cost
                 total_carbon += execution_carbon
@@ -120,7 +117,7 @@ class DeploymentMetricsCalculator(ABC):
                 # Determine if the next instances will be invoked
                 cumulative_invoked_instance_set = set()
                 for successor_instance_index in self._successor_dictionary[instance_index]:
-                    if self._is_invoked(instance_index, successor_instance_index, probabilistic_case):
+                    if self._is_invoked(instance_index, successor_instance_index):
                         invoked_instance_set.add(successor_instance_index)
                         cumulative_invoked_instance_set.add(successor_instance_index)
 
@@ -133,14 +130,6 @@ class DeploymentMetricsCalculator(ABC):
             "carbon": total_carbon,
         }
 
-    def _is_invoked(self, from_instance_index: int, to_instance_index: int, probabilistic_case: bool) -> bool:
-        """
-        Return true if the edge would be triggered, if the probabilistic_case is True,
-        It triggers dependent on the probability of the edge, if the probabilistic_case is False,
-        It always triggers the edge.
-        """
-        if not probabilistic_case:
-            return True
-
+    def _is_invoked(self, from_instance_index: int, to_instance_index: int) -> bool:
         invocation_probability = self._input_manager.get_invocation_probability(from_instance_index, to_instance_index)
         return random.random() < invocation_probability

@@ -1,9 +1,11 @@
 import unittest
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, Mock, patch, call
 
 import numpy as np
-from multi_x_serverless.common.models.endpoints import Endpoints
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
+from multi_x_serverless.routing.deployment_input.components.calculators.carbon_calculator import CarbonCalculator
+from multi_x_serverless.routing.deployment_input.components.calculators.cost_calculator import CostCalculator
+from multi_x_serverless.routing.deployment_input.components.calculators.runtime_calculator import RuntimeCalculator
 from multi_x_serverless.routing.models.instance_indexer import InstanceIndexer
 from multi_x_serverless.routing.models.region_indexer import RegionIndexer
 from multi_x_serverless.routing.deployment_input.input_manager import InputManager
@@ -68,6 +70,58 @@ class TestInputManager(unittest.TestCase):
         self.input_manager._performance_loader.setup.assert_called_once()
         self.input_manager._carbon_loader.setup.assert_called_once()
 
+    def test_get_execution_cost_carbon_latency(self):
+        self.input_manager._instance_indexer = MagicMock(spec=InstanceIndexer)
+        self.input_manager._region_indexer = MagicMock(spec=RegionIndexer)
+
+        self.input_manager._runtime_calculator = MagicMock(spec=RuntimeCalculator)
+        self.input_manager._runtime_calculator.calculate_runtime_distribution.return_value = np.array([3])
+
+        self.input_manager._cost_calculator = MagicMock(spec=CostCalculator)
+        self.input_manager._carbon_calculator = MagicMock(spec=CarbonCalculator)
+
+        self.input_manager._execution_latency_distribution_cache = {}
+
+        self.input_manager.get_execution_cost_carbon_latency(1, 2)  # run the function
+
+        # Asset calls
+        self.input_manager._instance_indexer.index_to_value.assert_called_once()
+        self.input_manager._region_indexer.index_to_value.assert_called_once()
+
+        self.input_manager._runtime_calculator.calculate_runtime_distribution.assert_called_once()
+        self.input_manager._cost_calculator.calculate_execution_cost.assert_called_once()
+        self.input_manager._carbon_calculator.calculate_execution_carbon.assert_called_once()
+
+    def test_get_transmission_cost_carbon_latency(self):
+        self.input_manager._instance_indexer = MagicMock(spec=InstanceIndexer)
+        self.input_manager._region_indexer = MagicMock(spec=RegionIndexer)
+
+        self.input_manager._runtime_calculator = MagicMock(spec=RuntimeCalculator)
+        self.input_manager._runtime_calculator.get_transmission_size_distribution.return_value = np.array([3])
+        self.input_manager._runtime_calculator.get_transmission_latency_distribution.return_value = np.array([3])
+
+        self.input_manager._cost_calculator = MagicMock(spec=CostCalculator)
+        self.input_manager._carbon_calculator = MagicMock(spec=CarbonCalculator)
+
+        self.input_manager._execution_latency_distribution_cache = {}
+
+        self.input_manager.get_transmission_cost_carbon_latency(1, 2, 3, 4)  # run the function
+
+        # Asset calls
+        self.input_manager._instance_indexer.index_to_value.assert_has_calls([call(1), call(2)])
+        self.input_manager._region_indexer.index_to_value.assert_has_calls([call(3), call(4)])
+
+        self.input_manager._runtime_calculator.get_transmission_size_distribution.assert_called_once()
+        self.input_manager._runtime_calculator.get_transmission_latency_distribution.assert_called_once()
+
+        self.input_manager._cost_calculator.calculate_transmission_cost.assert_called_once()
+        self.input_manager._carbon_calculator.calculate_transmission_carbon.assert_called_once()
+
+    def test_alter_carbon_setting(self):
+        self.input_manager._carbon_calculator.alter_carbon_setting = MagicMock()
+        self.input_manager.alter_carbon_setting("1")
+        self.input_manager._carbon_calculator.alter_carbon_setting.assert_called_once_with("1")
+
     def test_get_invocation_probability(self):
         mock_instance_indexer = MagicMock(spec=InstanceIndexer)
         mock_instance_indexer.index_to_value = MagicMock(return_value="node1")
@@ -86,104 +140,6 @@ class TestInputManager(unittest.TestCase):
         # Assert called indexers
         self.input_manager._instance_indexer.index_to_value.assert_any_call(1)
         self.input_manager._instance_indexer.index_to_value.assert_any_call(2)
-
-    def test_get_execution_cost_carbon_runtime_distribution(self):
-        self.input_manager._execution_distribution_cache = {"1_2": (np.array([1]), np.array([2]), np.array([3]))}
-        self.assertEqual(
-            self.input_manager.get_execution_cost_carbon_runtime_distribution(1, 2),
-            (np.array([1]), np.array([2]), np.array([3])),
-        )
-
-        # For uncached case
-        mock_instance_indexer = MagicMock(spec=InstanceIndexer)
-        mock_instance_indexer.index_to_value = MagicMock(return_value="node1")
-        self.input_manager._instance_indexer = mock_instance_indexer
-
-        mock_region_indexer = MagicMock(spec=RegionIndexer)
-        mock_region_indexer.index_to_value = MagicMock(return_value="provider1:region1")
-        self.input_manager._region_indexer = mock_region_indexer
-
-        self.input_manager._execution_distribution_cache = {}
-        self.input_manager._cost_calculator.calculate_execution_cost_distribution = MagicMock(
-            return_value=np.array([10])
-        )
-        self.input_manager._carbon_calculator.calculate_execution_carbon_distribution = MagicMock(
-            return_value=np.array([20])
-        )
-        self.input_manager._runtime_calculator.calculate_runtime_distribution = MagicMock(return_value=np.array([30]))
-        self.assertEqual(
-            self.input_manager.get_execution_cost_carbon_runtime_distribution(1, 2),
-            (np.array([10]), np.array([20]), np.array([30])),
-        )
-
-    def test_get_transmission_cost_carbon_runtime_distribution(self):
-        self.input_manager._transmission_distribution_cache = {"1_2_3_4": (np.array([1]), np.array([2]), np.array([3]))}
-        self.assertEqual(
-            self.input_manager.get_transmission_cost_carbon_runtime_distribution(1, 2, 3, 4),
-            (np.array([1]), np.array([2]), np.array([3])),
-        )
-
-        # For uncached case
-        mock_instance_indexer = MagicMock(spec=InstanceIndexer)
-        mock_instance_indexer.index_to_value = MagicMock(return_value="node1")
-        self.input_manager._instance_indexer = mock_instance_indexer
-
-        mock_region_indexer = MagicMock(spec=RegionIndexer)
-        mock_region_indexer.index_to_value = MagicMock(return_value="provider1:region1")
-        self.input_manager._region_indexer = mock_region_indexer
-
-        self.input_manager._transmission_distribution_cache = {}
-        self.input_manager._cost_calculator.calculate_transmission_cost_distribution = MagicMock(
-            return_value=np.array([10])
-        )
-        self.input_manager._carbon_calculator.calculate_transmission_carbon_distribution = MagicMock(
-            return_value=np.array([20])
-        )
-        self.input_manager._runtime_calculator.calculate_latency_distribution = MagicMock(return_value=np.array([30]))
-
-        self.assertEqual(
-            self.input_manager.get_transmission_cost_carbon_runtime_distribution(1, 2, 3, 4),
-            (np.array([10]), np.array([20]), np.array([30])),
-        )
-
-    def test_get_execution_cost_carbon_runtime(self):
-        self.input_manager.get_execution_cost_carbon_runtime_distribution = MagicMock(
-            return_value=([1, 2, 3], [4, 5, 6], [7, 8, 9])
-        )
-        self.input_manager._consider_probabilistic_invocations = MagicMock(return_value=(1.0, 2.0, 3.0))
-
-        result = self.input_manager.get_execution_cost_carbon_runtime(0, 0, True)
-
-        self.input_manager.get_execution_cost_carbon_runtime_distribution.assert_called_once_with(0, 0)
-        self.input_manager._consider_probabilistic_invocations.assert_called_once_with(
-            [1, 2, 3], [4, 5, 6], [7, 8, 9], True
-        )
-        self.assertEqual(result, (1.0, 2.0, 3.0))
-
-    def test_get_transmission_cost_carbon_runtime(self):
-        self.input_manager.get_transmission_cost_carbon_runtime_distribution = MagicMock(
-            return_value=([1, 2, 3], [4, 5, 6], [7, 8, 9])
-        )
-        self.input_manager._consider_probabilistic_invocations = MagicMock(return_value=(1.0, 2.0, 3.0))
-
-        result = self.input_manager.get_transmission_cost_carbon_runtime(0, 1, 0, 1, True)
-
-        self.input_manager.get_transmission_cost_carbon_runtime_distribution.assert_called_once_with(0, 1, 0, 1)
-        self.input_manager._consider_probabilistic_invocations.assert_called_once_with(
-            [1, 2, 3], [4, 5, 6], [7, 8, 9], True
-        )
-        self.assertEqual(result, (1.0, 2.0, 3.0))
-
-    def test__consider_probabilistic_invocations(self):
-        cost_distribution = np.array([1])
-        carbon_distribution = np.array([2])
-        runtime_distribution = np.array([3])
-        self.assertEqual(
-            self.input_manager._consider_probabilistic_invocations(
-                cost_distribution, carbon_distribution, runtime_distribution, True
-            ),
-            (1, 2, 3),
-        )
 
     def test_get_all_regions(self):
         self.input_manager._region_viability_loader = Mock()

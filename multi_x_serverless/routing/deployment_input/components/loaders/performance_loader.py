@@ -24,8 +24,6 @@ class PerformanceLoader(InputLoader):
         )
 
     def get_transmission_latency_distribution(self, from_region_name: str, to_region_name: str) -> list[float]:
-        # TODO (#121): Implement data transfer size dependent performance data
-        # Currently, performance data is not dependent on data transfer size, this should be implemented later.
         return (
             self._performance_data.get(from_region_name, {})
             .get("transmission_latency", {})
