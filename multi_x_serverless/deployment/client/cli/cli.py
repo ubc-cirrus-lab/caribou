@@ -14,9 +14,9 @@ from multi_x_serverless.deployment.common.config.config import Config
 from multi_x_serverless.deployment.common.deploy.deployer import Deployer
 from multi_x_serverless.deployment.common.factories.deployer_factory import DeployerFactory
 from multi_x_serverless.endpoint.client import Client
+from multi_x_serverless.monitors.deployment_optimization_monitor import DeploymentOptimizationMonitor
+from multi_x_serverless.monitors.function_deployment_monitor import FunctionDeploymentMonitor
 from multi_x_serverless.syncers.log_syncer import LogSyncer
-from multi_x_serverless.update_checkers.deployment_update_checker import DeploymentUpdateChecker
-from multi_x_serverless.update_checkers.solver_update_checker import SolverUpdateChecker
 
 
 @click.group()
@@ -96,14 +96,14 @@ def log_sync() -> None:
 
 @cli.command("update_check_solver", help="Check if the solver should be run.")
 def update_check_solver() -> None:
-    solver_update_checker = SolverUpdateChecker()
-    solver_update_checker.check()
+    deployment_optimization_monitor = DeploymentOptimizationMonitor()
+    deployment_optimization_monitor.check()
 
 
 @cli.command("update_check_deployment", help="Check if the deployment should be updated.")
 def update_check_deployment() -> None:
-    deployment_update_checker = DeploymentUpdateChecker()
-    deployment_update_checker.check()
+    function_deployment_monitor = FunctionDeploymentMonitor()
+    function_deployment_monitor.check()
 
 
 @cli.command("setup_tables", help="Setup the tables.")
