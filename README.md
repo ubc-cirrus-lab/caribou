@@ -143,6 +143,12 @@ Where `<collector>` is the name of the collector you want to run. The available 
 - `workflow`
 - `all`
 
+The `all` and `workflow` collectors need a workflow id to be passed as an argument with `--workflow_id` or `-w`.
+
+This manual data collecting is only necessary if you want to collect data for a specific workflow for testing purposes. The first three collectors are automatically run periodically.
+
+The workflow collector is invoked by the monitor and is used to collect data for the workflows that are currently being solved.
+
 Important: For the data collectors to work locally, you need to set some environment variables.
 
 ```bash
@@ -150,36 +156,22 @@ export ELECTRICITY_MAPS_AUTH_TOKEN=<your_token>
 export GOOGLE_API_KEY=<your_key>
 ```
 
-### Solve
+### Find new (optimal) Deployment
 
-To solve for a workflow you can either do it manually by using the following command:
-
-```bash
-poetry run multi_x_serverless solve <workflow_id> -s <solver>
-```
-
-Where `<workflow_id>` is the id of the workflow you want to run. And the `-s` flag is used to denote running a specific solver.
-Where `<solver>` is the name of the solver you want to run.
-The available solver are:
-
-- `fine-grained`
-- `coarse-grained`
-- `heuristic`
-
-Or use the update checker to solve for all workflows that have been invoked enough (100 times in last month):
+Use the monitor to solve for all workflows that have a check outstanding:
 
 ```bash
-poetry run multi_x_serverless update_check_solver
+poetry run multi_x_serverless monitor_deployment_optimization
 ```
 
 ### Re-Deploy
 
 Since we are restricted by the AWS lambda environment to not use docker, we have to use [crane](https://github.com/google/go-containerregistry/tree/main/cmd/crane) to deploy the workflows. For the following step to work please install crane as described in the [crane documentation](https://github.com/google/go-containerregistry/blob/main/cmd/crane/README.md).
 
-Once a workflow has been solved and a new deployment is required, you can use the following command:
+Once a new deployment has been found for a workflow, you can use the following command to deploy the new workflow:
 
 ```bash
-poetry run multi_x_serverless update_check_deployment
+poetry run multi_x_serverless monitor_function_deployment
 ```
 
 Which will check if a new deployment is required for any workflow and if so, deploy the new workflow.

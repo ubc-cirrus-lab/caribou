@@ -3,6 +3,8 @@ import subprocess
 import sys
 import boto3
 
+from multi_x_serverless.common.constants import GLOBAL_SYSTEM_REGION
+
 
 def generate_dockerfile(handler: str, runtime: str) -> str:
     return f"""FROM public.ecr.aws/lambda/{runtime}
@@ -43,7 +45,7 @@ def build_docker_image(image_name: str) -> None:
 
 
 def upload_image_to_ecr(image_name: str) -> str:
-    ecr_client = boto3.client("ecr")
+    ecr_client = boto3.client("ecr", region_name=GLOBAL_SYSTEM_REGION)
     repository_name = image_name.split(":")[0]
 
     try:
@@ -51,8 +53,8 @@ def upload_image_to_ecr(image_name: str) -> str:
     except ecr_client.exceptions.RepositoryAlreadyExistsException:
         pass  # Repository already exists, proceed
 
-    account_id = boto3.client("sts").get_caller_identity().get("Account")
-    region = boto3.session.Session().region_name
+    account_id = boto3.client("sts", region_name=GLOBAL_SYSTEM_REGION).get_caller_identity().get("Account")
+    region = GLOBAL_SYSTEM_REGION
     ecr_repository_uri = f"{account_id}.dkr.ecr.{region}.amazonaws.com/{repository_name}"
 
     print(f"Logging in to ECR")
@@ -79,7 +81,7 @@ def upload_image_to_ecr(image_name: str) -> str:
 
 
 def create_lambda_function(handler: str, image_uri: str, role: str, timeout: int, memory_size: int) -> None:
-    lambda_client = boto3.client("lambda")
+    lambda_client = boto3.client("lambda", region_name=GLOBAL_SYSTEM_REGION)
 
     try:
         lambda_client.create_function(

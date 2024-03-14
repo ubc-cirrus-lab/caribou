@@ -159,7 +159,7 @@ class DeploymentOptimizationMonitor(Monitor):
         solve_hours: Optional[list[str]] = None,
         expiry_delta_seconds: int = DEFAULT_MONITOR_COOLDOWN,
     ) -> None:
-        # TODO (#178): Instead of directly calling add message to solver queue
+        # TODO (#178): Instead of directly calling add message to solver queue (low-priority right now)
         deployment_algorithm_class = deployment_algorithm_mapping.get(workflow_config.deployment_algorithm)
         if deployment_algorithm_class:
             deployment_algorithm: DeploymentAlgorithm = deployment_algorithm_class(workflow_config, expiry_delta_seconds)  # type: ignore

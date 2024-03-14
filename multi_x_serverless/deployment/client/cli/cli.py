@@ -94,14 +94,14 @@ def log_sync() -> None:
     log_syncer.sync()
 
 
-@cli.command("update_check_solver", help="Check if the solver should be run.")
-def update_check_solver() -> None:
+@cli.command("monitor_deployment_optimization", help="Check if the deployment algorithm should be run.")
+def monitor_deployment_optimization() -> None:
     deployment_optimization_monitor = DeploymentOptimizationMonitor()
     deployment_optimization_monitor.check()
 
 
-@cli.command("update_check_deployment", help="Check if the deployment should be updated.")
-def update_check_deployment() -> None:
+@cli.command("monitor_function_deployment", help="Check if the deployment of a function should be updated.")
+def monitor_function_deployment() -> None:
     function_deployment_monitor = FunctionDeploymentMonitor()
     function_deployment_monitor.check()
 
