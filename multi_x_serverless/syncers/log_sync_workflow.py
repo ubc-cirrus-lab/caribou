@@ -118,7 +118,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
             self._daily_invocation_set[log_day_str] = set()
         self._daily_invocation_set[log_day_str].add(run_id)
 
-        if len(self._collected_logs) == FORGETTING_NUMBER and not self._forgetting:
+        if len(self._collected_logs) >= FORGETTING_NUMBER and not self._forgetting:
             self._check_to_forget()
 
         if run_id not in self._collected_logs:
@@ -173,7 +173,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
                 self._blacklisted_run_ids.add(run_id)
 
         # If the size of the collected logs is still the same, we can start to forget
-        if len(self._collected_logs) == FORGETTING_NUMBER:
+        if len(self._collected_logs) >= FORGETTING_NUMBER:
             self._forgetting = True
 
     def _extract_from_string(self, log_entry: str, regex: str) -> Optional[str]:
