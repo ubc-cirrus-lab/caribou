@@ -51,7 +51,6 @@ WORKFLOW_SUMMARY_TABLE = "workflow_summary_table"
 
 # Solver Input (Loader) Default Values
 ## Carboon Loader
-# SOLVER_INPUT_TRANSMISSION_CARBON_DEFAULT = 1000.0
 SOLVER_INPUT_GRID_CARBON_DEFAULT = 500.0
 
 ## Datacenter Loader
