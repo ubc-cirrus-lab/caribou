@@ -56,7 +56,7 @@ class Client:
 
         print(f"Sending to home region: {send_to_home_region}, time_key: {workflow_placement_decision['time_key']}")
 
-        provider, region, identifier = self.__get_initial_node_workflow_placement_decision(
+        provider, region, identifier = self._get_initial_node_workflow_placement_decision(
             workflow_placement_decision, send_to_home_region
         )
 
@@ -75,7 +75,6 @@ class Client:
         RemoteClientFactory.get_remote_client(provider, region).invoke_function(
             message=json_payload,
             identifier=identifier,
-            workflow_instance_id="0",
         )
 
     def _get_time_key(self, workflow_placement_decision: dict[str, Any]) -> str:
@@ -89,7 +88,7 @@ class Client:
         previous_time_key = max(time_key for time_key in all_time_keys if int(time_key) <= current_hour_of_day)
         return previous_time_key
 
-    def __get_initial_node_workflow_placement_decision(
+    def _get_initial_node_workflow_placement_decision(
         self, workflow_placement_decision: dict[str, Any], send_to_home_region: bool
     ) -> tuple[str, str, str]:
         initial_instance_name = workflow_placement_decision["current_instance_name"]

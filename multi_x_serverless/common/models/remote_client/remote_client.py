@@ -42,7 +42,7 @@ class RemoteClient(ABC):  # pylint: disable=too-many-public-methods
         self,
         message: str,
         identifier: str,
-        workflow_instance_id: str,
+        workflow_instance_id: str = "0",
         sync: bool = False,
         function_name: Optional[str] = None,
         expected_counter: int = -1,
