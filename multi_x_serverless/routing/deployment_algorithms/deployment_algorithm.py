@@ -64,7 +64,7 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
             for instance in range(self._number_of_instances)
         ]
 
-    def run(self, hours_to_run: Optional[list[str]]) -> None:
+    def run(self, hours_to_run: Optional[list[str]] = None) -> None:
         hour_to_run_to_result: dict[str, Any] = {
             "time_keys_to_staging_area_data": {},
         }

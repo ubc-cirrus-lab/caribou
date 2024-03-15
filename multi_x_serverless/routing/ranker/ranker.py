@@ -83,7 +83,7 @@ class Ranker:
         return number_of_violated_constraints
 
     def is_absolute_or_relative_failed(self, value: float, constraint: dict, relative_to: float) -> bool:
-        if "value" not in constraint:
+        if not constraint or "value" not in constraint:
             return False
         if constraint["type"] == "absolute":
             return value > constraint["value"]
