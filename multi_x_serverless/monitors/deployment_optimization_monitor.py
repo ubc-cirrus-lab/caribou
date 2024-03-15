@@ -12,6 +12,7 @@ from multi_x_serverless.common.constants import (
     DEFAULT_MONITOR_COOLDOWN,
     DEPLOYMENT_OPTIMIZATION_MONITOR_RESOURCE_TABLE,
     DEPLOYMENT_OPTIMIZATION_MONITOR_WORKFLOW_INFO_TABLE,
+    DISTANCE_FOR_POTENTIAL_MIGRATION,
     FORGETTING_TIME_DAYS,
     GLOBAL_SYSTEM_REGION,
     GLOBAL_TIME_ZONE,
@@ -22,7 +23,6 @@ from multi_x_serverless.common.constants import (
     TIME_FORMAT,
     TIME_FORMAT_DAYS,
     WORKFLOW_INSTANCE_TABLE,
-    DISTANCE_FOR_POTENTIAL_MIGRATION,
 )
 from multi_x_serverless.data_collector.components.workflow.workflow_collector import WorkflowCollector
 from multi_x_serverless.monitors.monitor import Monitor
