@@ -161,14 +161,14 @@ class WorkflowRetriever(DataRetriever):
 
                     # Scale missing latencies based on the common transfer size (if available)
                     for transfer_information in to_regions.values():
-                        existing_sizes = transfer_information["transfer_size_to_transfer_latencies"].keys()
+                        existing_sizes = set([float(data) for data in transfer_information["transfer_size_to_transfer_latencies"].keys()])
                         missing_sizes = all_transfer_sizes - existing_sizes
 
                         for missing_size in missing_sizes:
                             # Find the nearest size for which we have data
                             nearest_size = min(
                                 transfer_information["transfer_size_to_transfer_latencies"].keys(),
-                                key=lambda x, missing_size=missing_size: abs(x - missing_size),  # type: ignore
+                                key=lambda x, missing_size=missing_size: abs(float(x) - float(missing_size)),  # type: ignore
                             )
                             scaling_factor = (
                                 global_avg_latency_per_size[missing_size] / global_avg_latency_per_size[nearest_size]
