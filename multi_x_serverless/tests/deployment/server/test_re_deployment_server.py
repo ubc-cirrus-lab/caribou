@@ -6,7 +6,7 @@ from multi_x_serverless.common.constants import (
     DEPLOYMENT_MANAGER_RESOURCE_TABLE,
     WORKFLOW_PLACEMENT_DECISION_TABLE,
     WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE,
-    SOLVER_UPDATE_CHECKER_RESOURCE_TABLE,
+    DEPLOYMENT_OPTIMIZATION_MONITOR_RESOURCE_TABLE,
 )
 
 
@@ -61,7 +61,7 @@ class TestReDeploymentServer(unittest.TestCase):
                 "expiry_time": "expiry_time",
             }
         )
-        self.mock_endpoints.return_value.get_deployment_algorithm_update_checker_client.return_value = mock_client
+        self.mock_endpoints.return_value.get_deployment_optimization_monitor_client.return_value = mock_client
 
         self.re_deployment_server._workflow_data = {
             "workflow_function_descriptions": json.dumps(["description1", "description2"]),
@@ -127,7 +127,7 @@ class TestReDeploymentServer(unittest.TestCase):
         # Set up the mock
         mock_client = MagicMock()
         mock_client.get_value_from_table.return_value = json.dumps({"workflow_placement": {}})
-        self.mock_endpoints.return_value.get_deployment_algorithm_update_checker_client.return_value = mock_client
+        self.mock_endpoints.return_value.get_deployment_optimization_monitor_client.return_value = mock_client
 
         self.re_deployment_server._time_keys_to_instances = {"time_key": "instance"}
 
@@ -179,14 +179,14 @@ class TestReDeploymentServer(unittest.TestCase):
         # Set up the mock
         mock_client = MagicMock()
         mock_client.get_key_present_in_table.return_value = True
-        self.mock_endpoints.return_value.get_deployment_algorithm_update_checker_client.return_value = mock_client
+        self.mock_endpoints.return_value.get_deployment_optimization_monitor_client.return_value = mock_client
 
         # Call the method and check that it does not raise an exception
         self.re_deployment_server._check_workflow_already_deployed()
 
         # Check that the mock was called with the correct arguments
         mock_client.get_key_present_in_table.assert_called_once_with(
-            SOLVER_UPDATE_CHECKER_RESOURCE_TABLE, "workflow_id"
+            DEPLOYMENT_OPTIMIZATION_MONITOR_RESOURCE_TABLE, "workflow_id"
         )
 
         # Set up the mock to return False

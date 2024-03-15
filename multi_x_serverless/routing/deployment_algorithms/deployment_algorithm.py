@@ -1,9 +1,10 @@
 import json
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, Optional
 
 from multi_x_serverless.common.constants import (
+    DEFAULT_MONITOR_COOLDOWN,
     GLOBAL_TIME_ZONE,
     TIME_FORMAT,
     WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE,
@@ -24,7 +25,7 @@ from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
 
 class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
-    def __init__(self, workflow_config: WorkflowConfig, expiry_time_delta_seconds: int = 604800):  # 604800 = 7 days
+    def __init__(self, workflow_config: WorkflowConfig, expiry_time_delta_seconds: int = DEFAULT_MONITOR_COOLDOWN):
         self._workflow_config = workflow_config
 
         self._input_manager = InputManager(workflow_config=workflow_config)
@@ -63,11 +64,14 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
             for instance in range(self._number_of_instances)
         ]
 
-    def run(self, hours_to_run: list[str]) -> None:
+    def run(self, hours_to_run: Optional[list[str]]) -> None:
         hour_to_run_to_result: dict[str, Any] = {
             "time_keys_to_staging_area_data": {},
         }
+        if hours_to_run is None:
+            hours_to_run = [None]  # type: ignore
         for hour_to_run in hours_to_run:
+            self._input_manager.alter_carbon_setting(hour_to_run)
             deployments = self._run_algorithm()
             ranked_deployments = self._ranker.rank(deployments)
             selected_deployment = self._select_deployment(ranked_deployments)
@@ -76,6 +80,10 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
                 self._instance_indexer.indicies_to_values(),
                 self._region_indexer.indicies_to_values(),
             )
+            if hour_to_run is None:
+                # If the hour_to_run is None, we have used the daily average and thus only have one result
+                # For this result to be selected at all times, we set the key to "0"
+                hour_to_run = "0"
             hour_to_run_to_result["time_keys_to_staging_area_data"][hour_to_run] = formatted_deployment
 
         self._add_expiry_date_to_results(hour_to_run_to_result)

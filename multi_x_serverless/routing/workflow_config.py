@@ -73,9 +73,9 @@ class WorkflowConfig:
             "fine_grained_deployment_algorithm",
             "stochastic_heuristic_deployment_algorithm",
         }
-        result = self._lookup("deployment_algorithm", "coarse_grained_deployment_algorithm")
+        result = self._lookup("deployment_algorithm", "stochastic_heuristic_deployment_algorithm")
         if len(result) == 0:
-            result = "coarse_grained_deployment_algorithm"
+            result = "stochastic_heuristic_deployment_algorithm"
         if result not in allowed_deployment_algorithms:
             raise ValueError(f"Invalid deployment algorithm: {result}")
         return result

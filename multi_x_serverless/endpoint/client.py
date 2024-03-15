@@ -8,9 +8,9 @@ import botocore.exceptions
 
 from multi_x_serverless.common.constants import (
     DEPLOYMENT_MANAGER_RESOURCE_TABLE,
+    DEPLOYMENT_OPTIMIZATION_MONITOR_RESOURCE_TABLE,
     GLOBAL_TIME_ZONE,
     MULTI_X_SERVERLESS_WORKFLOW_IMAGES_TABLE,
-    SOLVER_UPDATE_CHECKER_RESOURCE_TABLE,
     TIME_FORMAT,
     WORKFLOW_INSTANCE_TABLE,
     WORKFLOW_PLACEMENT_DECISION_TABLE,
@@ -86,11 +86,7 @@ class Client:
 
         current_hour_of_day = datetime.now(GLOBAL_TIME_ZONE).hour
 
-        previous_time_key = all_time_keys[0]
-        for time_key in all_time_keys:
-            if int(time_key) > current_hour_of_day:
-                break
-            previous_time_key = time_key
+        previous_time_key = max(time_key for time_key in all_time_keys if int(time_key) <= current_hour_of_day)
         return previous_time_key
 
     def __get_initial_node_workflow_placement_decision(
@@ -134,8 +130,8 @@ class Client:
         return key
 
     def list_workflows(self) -> None:
-        deployed_workflows = self._endpoints.get_deployment_algorithm_update_checker_client().get_keys(
-            SOLVER_UPDATE_CHECKER_RESOURCE_TABLE
+        deployed_workflows = self._endpoints.get_deployment_optimization_monitor_client().get_keys(
+            DEPLOYMENT_OPTIMIZATION_MONITOR_RESOURCE_TABLE
         )
 
         if deployed_workflows is None:
@@ -152,11 +148,11 @@ class Client:
         self._endpoints.get_deployment_algorithm_workflow_placement_decision_client().remove_key(
             WORKFLOW_PLACEMENT_DECISION_TABLE, self._workflow_id
         )
-        self._endpoints.get_deployment_algorithm_update_checker_client().remove_key(
+        self._endpoints.get_deployment_optimization_monitor_client().remove_key(
             WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE, self._workflow_id
         )
-        self._endpoints.get_deployment_algorithm_update_checker_client().remove_key(
-            SOLVER_UPDATE_CHECKER_RESOURCE_TABLE, self._workflow_id
+        self._endpoints.get_deployment_optimization_monitor_client().remove_key(
+            DEPLOYMENT_OPTIMIZATION_MONITOR_RESOURCE_TABLE, self._workflow_id
         )
 
         currently_deployed_workflows = self._endpoints.get_deployment_manager_client().get_all_values_from_table(
