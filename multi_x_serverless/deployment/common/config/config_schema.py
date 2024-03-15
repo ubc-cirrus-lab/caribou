@@ -74,7 +74,7 @@ class Constraints(BaseModel):
 class ConfigSchema(BaseModel):
     workflow_name: str = Field(..., title="The name of the workflow")
     workflow_version: str = Field(..., title="The version of the workflow")
-    environment_variables: List[EnvironmentVariable] = Field(..., title="List of environment variables")
+    environment_variables: Optional[List[EnvironmentVariable]] = Field(None, title="List of environment variables")
     iam_policy_file: str = Field(..., title="The IAM policy file")
     home_region: ProviderRegion = Field(..., title="Home region of the application")
     regions_and_providers: RegionAndProviders = Field(..., title="List of regions and providers")
