@@ -22,6 +22,7 @@ from multi_x_serverless.common.constants import (
     TIME_FORMAT,
     TIME_FORMAT_DAYS,
     WORKFLOW_INSTANCE_TABLE,
+    DISTANCE_FOR_POTENTIAL_MIGRATION,
 )
 from multi_x_serverless.data_collector.components.workflow.workflow_collector import WorkflowCollector
 from multi_x_serverless.monitors.monitor import Monitor
@@ -209,7 +210,7 @@ class DeploymentOptimizationMonitor(Monitor):
         potential_offloading_regions = []
 
         for region, distance in home_region_carbon_info["transmission_distances"].items():
-            if distance <= 4000:
+            if distance <= DISTANCE_FOR_POTENTIAL_MIGRATION:
                 potential_offloading_regions.append(region)
 
         carbon_intensities = []
@@ -221,6 +222,10 @@ class DeploymentOptimizationMonitor(Monitor):
                 region_carbon_intensity = SOLVER_INPUT_GRID_CARBON_DEFAULT
             else:
                 region_carbon_intensity = json.loads(region_carbon_raw)["averages"]["overall"]
+
+            if region_carbon_intensity == SOLVER_INPUT_GRID_CARBON_DEFAULT:
+                # Filter out regions with no carbon intensity data since they skew the std
+                continue
 
             carbon_intensities.append(region_carbon_intensity)
 
