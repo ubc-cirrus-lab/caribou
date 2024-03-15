@@ -666,9 +666,6 @@ class MultiXServerlessWorkflow:
 
         current_hour_of_day = datetime.now(GLOBAL_TIME_ZONE).hour
 
-        previous_time_key = all_time_keys[0]
-        for time_key in all_time_keys:
-            if int(time_key) > current_hour_of_day:
-                break
-            previous_time_key = time_key
+        previous_time_key = max(time_key for time_key in all_time_keys if int(time_key) <= current_hour_of_day)
+
         return previous_time_key

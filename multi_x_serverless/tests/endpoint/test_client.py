@@ -21,9 +21,9 @@ class TestClient(unittest.TestCase):
                 "current_instance_name": "instance1",
                 "workflow_placement": {
                     "current_deployment": {
-                        "time_keys": ["23"],
+                        "time_keys": ["0"],
                         "instances": {
-                            "23": {
+                            "0": {
                                 "instance1": {
                                     "provider_region": {"provider": "aws", "region": "us-east-1"},
                                     "identifier": "function1",
@@ -60,7 +60,7 @@ class TestClient(unittest.TestCase):
         # Verify the remote client was invoked with the correct parameters
         mock_get_remote_client.assert_called_with("aws", "us-east-1")
         mock_remote_client.invoke_function.assert_called_once_with(
-            message='{"input_data": {"key": "value"}, "time_request_sent": "2022-01-01 00:00:00,000000", "workflow_placement_decision": {"current_instance_name": "instance1", "workflow_placement": {"current_deployment": {"time_keys": ["23"], "instances": {"23": {"instance1": {"provider_region": {"provider": "aws", "region": "us-east-1"}, "identifier": "function1"}}}, "expiry_time": "2022-01-01 00:01:00"}, "home_deployment": {"instances": {"instance1": {"provider_region": {"provider": "aws", "region": "us-west-2"}, "identifier": "function1"}}}}, "time_key": "23", "send_to_home_region": false}}',
+            message='{"input_data": {"key": "value"}, "time_request_sent": "2022-01-01 00:00:00,000000", "workflow_placement_decision": {"current_instance_name": "instance1", "workflow_placement": {"current_deployment": {"time_keys": ["0"], "instances": {"0": {"instance1": {"provider_region": {"provider": "aws", "region": "us-east-1"}, "identifier": "function1"}}}, "expiry_time": "2022-01-01 00:01:00"}, "home_deployment": {"instances": {"instance1": {"provider_region": {"provider": "aws", "region": "us-west-2"}, "identifier": "function1"}}}}, "time_key": "0", "send_to_home_region": false}}',
             identifier="function1",
             workflow_instance_id="0",
         )
@@ -84,12 +84,12 @@ class TestClient(unittest.TestCase):
             "No workflow placement decision found for workflow, did you deploy the workflow and is the workflow id (workflow_name) correct?",
         )
 
-    @patch.object(Endpoints, "get_deployment_algorithm_update_checker_client")
-    def test_list_workflows_no_workflows_deployed(self, mock_get_deployment_algorithm_update_checker_client):
+    @patch.object(Endpoints, "get_deployment_optimization_monitor_client")
+    def test_list_workflows_no_workflows_deployed(self, mock_get_deployment_optimization_monitor_client):
         # Mocking the scenario where no workflows are deployed
         mock_deployment_algorithm_client = MagicMock()
         mock_deployment_algorithm_client.get_keys.return_value = None
-        mock_get_deployment_algorithm_update_checker_client.return_value = mock_deployment_algorithm_client
+        mock_get_deployment_optimization_monitor_client.return_value = mock_deployment_algorithm_client
 
         client = Client()
 
@@ -100,12 +100,12 @@ class TestClient(unittest.TestCase):
         # Check that the print statement in the if block was executed
         mocked_print.assert_called_once_with("No workflows deployed")
 
-    @patch.object(Endpoints, "get_deployment_algorithm_update_checker_client")
-    def test_list_workflows_workflows_deployed(self, mock_get_deployment_algorithm_update_checker_client):
+    @patch.object(Endpoints, "get_deployment_optimization_monitor_client")
+    def test_list_workflows_workflows_deployed(self, mock_get_deployment_optimization_monitor_client):
         # Mocking the scenario where workflows are deployed
         mock_deployment_algorithm_client = MagicMock()
         mock_deployment_algorithm_client.get_keys.return_value = ["workflow1", "workflow2"]
-        mock_get_deployment_algorithm_update_checker_client.return_value = mock_deployment_algorithm_client
+        mock_get_deployment_optimization_monitor_client.return_value = mock_deployment_algorithm_client
 
         client = Client()
 
@@ -118,14 +118,14 @@ class TestClient(unittest.TestCase):
         mocked_print.assert_has_calls(calls)
 
     @patch.object(Endpoints, "get_deployment_algorithm_workflow_placement_decision_client")
-    @patch.object(Endpoints, "get_deployment_algorithm_update_checker_client")
+    @patch.object(Endpoints, "get_deployment_optimization_monitor_client")
     @patch.object(Endpoints, "get_deployment_manager_client")
     @patch.object(RemoteClientFactory, "get_remote_client")
     def test_remove(
         self,
         mock_get_remote_client,
         mock_get_deployment_manager_client,
-        mock_get_deployment_algorithm_update_checker_client,
+        mock_get_deployment_optimization_monitor_client,
         mock_get_deployment_algorithm_workflow_placement_decision_client,
     ):
         # Mocking the scenario where the workflow id is provided and the workflow is removed successfully
@@ -133,7 +133,7 @@ class TestClient(unittest.TestCase):
         mock_deployment_manager_client = MagicMock()
         mock_remote_client = MagicMock()
         mock_get_deployment_algorithm_workflow_placement_decision_client.return_value = mock_deployment_algorithm_client
-        mock_get_deployment_algorithm_update_checker_client.return_value = mock_deployment_algorithm_client
+        mock_get_deployment_optimization_monitor_client.return_value = mock_deployment_algorithm_client
         mock_get_deployment_manager_client.return_value = mock_deployment_manager_client
         mock_get_remote_client.return_value = mock_remote_client
 

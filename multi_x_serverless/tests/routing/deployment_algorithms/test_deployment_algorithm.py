@@ -6,6 +6,7 @@ from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
 class ConcreteDeploymentAlgorithm(DeploymentAlgorithm):
     def __init__(self, workflow_config):
+        self._input_manager = MagicMock()
         pass
 
     def _run_algorithm(self):

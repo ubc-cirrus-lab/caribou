@@ -34,9 +34,11 @@ class TestDeployer(unittest.TestCase):
         workflow_builder.build_workflow.return_value = workflow
         executor.get_deployed_resources.return_value = [Resource("test_resource", "test_resource")]
 
-        with patch.object(Deployer, "_upload_workflow_to_solver_update_checker", return_value=None), patch.object(
-            Deployer, "_upload_workflow_to_deployer_server", return_value=None
-        ), patch.object(Deployer, "_upload_deployment_package_resource", return_value=None), patch.object(
+        with patch.object(
+            Deployer, "_upload_workflow_to_deployment_optimization_monitor", return_value=None
+        ), patch.object(Deployer, "_upload_workflow_to_deployer_server", return_value=None), patch.object(
+            Deployer, "_upload_deployment_package_resource", return_value=None
+        ), patch.object(
             Deployer, "_upload_workflow_placement_decision", return_value=None
         ), patch.object(
             Deployer, "_get_workflow_already_deployed", return_value=False
@@ -57,9 +59,11 @@ class TestDeployer(unittest.TestCase):
         regions = [{"region": "region2"}]
         workflow_builder.build_workflow.side_effect = ClientError({"Error": {}}, "operation")
 
-        with patch.object(Deployer, "_upload_workflow_to_solver_update_checker", return_value=None), patch.object(
-            Deployer, "_upload_workflow_to_deployer_server", return_value=None
-        ), patch.object(Deployer, "_upload_deployment_package_resource", return_value=None):
+        with patch.object(
+            Deployer, "_upload_workflow_to_deployment_optimization_monitor", return_value=None
+        ), patch.object(Deployer, "_upload_workflow_to_deployer_server", return_value=None), patch.object(
+            Deployer, "_upload_deployment_package_resource", return_value=None
+        ):
             with self.assertRaises(DeploymentError):
                 deployer.deploy(regions)
 
@@ -73,9 +77,11 @@ class TestDeployer(unittest.TestCase):
         workflow = Workflow("test_workflow", "0.0.1", [], [], [], config)
         workflow_builder.build_workflow.return_value = workflow
 
-        with patch.object(Deployer, "_upload_workflow_to_solver_update_checker", return_value=None), patch.object(
-            Deployer, "_upload_workflow_to_deployer_server", return_value=None
-        ), patch.object(Deployer, "_upload_deployment_package_resource", return_value=None), patch.object(
+        with patch.object(
+            Deployer, "_upload_workflow_to_deployment_optimization_monitor", return_value=None
+        ), patch.object(Deployer, "_upload_workflow_to_deployer_server", return_value=None), patch.object(
+            Deployer, "_upload_deployment_package_resource", return_value=None
+        ), patch.object(
             Deployer, "_get_workflow_already_deployed", return_value=False
         ):
             with self.assertRaises(AssertionError, msg="Executor is None, this should not happen"):
@@ -100,7 +106,7 @@ class TestDeployer(unittest.TestCase):
             with self.assertRaises(DeploymentError, msg="Workflow {} with version {} already deployed"):
                 deployer.deploy(regions)
 
-    def test_upload_workflow_to_solver_update_checker(self):
+    def test_upload_workflow_to_deployment_optimization_monitor(self):
         config = Config({}, self.test_dir)
         workflow_builder = Mock()
         deployment_packager = Mock()
@@ -115,10 +121,10 @@ class TestDeployer(unittest.TestCase):
         deployer._workflow = workflow
 
         with patch.object(AWSRemoteClient, "set_value_in_table") as set_value_in_table:
-            deployer._upload_workflow_to_solver_update_checker()
+            deployer._upload_workflow_to_deployment_optimization_monitor()
 
             set_value_in_table.assert_called_once_with(
-                "solver_update_checker_resources_table",
+                "deployment_optimization_monitor_resource_table",
                 {},
                 '{"workflow_id": {}, "workflow_config": "test_workflow_description"}',
             )
@@ -172,7 +178,7 @@ class TestDeployer(unittest.TestCase):
         executor = Mock()
         deployer = Deployer(config, workflow_builder, deployment_packager, executor)
 
-        deployer._endpoints.get_deployment_algorithm_update_checker_client().get_key_present_in_table = Mock(
+        deployer._endpoints.get_deployment_optimization_monitor_client().get_key_present_in_table = Mock(
             return_value=True
         )
         result = deployer._get_workflow_already_deployed()
@@ -332,9 +338,9 @@ class TestDeployer(unittest.TestCase):
         mock_endpoints = Mock()
         deployer._endpoints = mock_endpoints
 
-        # Create a mock for the get_deployment_algorithm_update_checker_client method
+        # Create a mock for the get_deployment_optimization_monitor_client method
         mock_client = Mock()
-        mock_endpoints.get_deployment_algorithm_update_checker_client.return_value = mock_client
+        mock_endpoints.get_deployment_optimization_monitor_client.return_value = mock_client
 
         # Set up the mocks
         mock_workflow.get_workflow_placement_decision_initial_deployment.return_value = "workflow_placement_decision"
