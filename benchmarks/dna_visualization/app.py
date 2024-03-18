@@ -8,7 +8,7 @@ import boto3
 import os
 
 
-workflow = MultiXServerlessWorkflow(name="dna_visualization", version="0.0.1")
+workflow = MultiXServerlessWorkflow(name="dna_visualization", version="0.0.2")
 
 
 @workflow.serverless_function(
