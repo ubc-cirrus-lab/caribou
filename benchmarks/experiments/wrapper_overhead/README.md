@@ -39,3 +39,12 @@ For each benchmark, we deploy each of the configuration and run 100 times to col
 
 We then take the results of each of the configurations and compare the End-To-End Latency
 between the first invocation to the last finished function of the workflow. 
+
+## How to run experiments
+
+Run all the code of the setup.ipynb jupyter notebook, this will setup
+the experiments and deploy all necessarily code to AWS.
+
+Then run the run.ipynb to perform experiments.
+
+Finally use the plot.ipynb for generating plots of the experiments.
