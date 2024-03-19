@@ -3,5 +3,5 @@ sns_topic_name: "sns_topic-wo-dna_vis-ed-direct_sns-visualize"
 iam_policy_file: "iam_policy.json"
 handler: "app.visualize"
 configs:
-  memory: 128
-  timeout: 60
+  timeout: 300
+  memory: 512
