@@ -1,1 +1,2 @@
+type: "boto3_direct"
 starting_function_name: "wo-dna_vis-ed-direct-get_input"

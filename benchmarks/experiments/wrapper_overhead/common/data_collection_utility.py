@@ -1,10 +1,8 @@
-from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
-from multi_x_serverless.common.models.remote_client.remote_client_factory import RemoteClientFactory
-from multi_x_serverless.common.provider import Provider
+from benchmarks.experiments.wrapper_overhead.common.extended_aws_remote_client import ExtendedAWSRemoteClient
 
 class WrapperOverheadCollectionUtility():
     def __init__(self, aws_region: str):
-        self._client: RemoteClient = RemoteClientFactory.get_remote_client(Provider.AWS, aws_region)
+        self._client: ExtendedAWSRemoteClient = ExtendedAWSRemoteClient(aws_region)
 
     def deploy_statemachine(self, directory_path: str) -> bool:
         # Step 1: Go through all the folders in the directory_path
