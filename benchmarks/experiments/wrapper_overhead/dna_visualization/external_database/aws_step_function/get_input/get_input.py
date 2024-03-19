@@ -1,19 +1,8 @@
 def get_input(event, context):
-    if "gen_file_name" in event:
-        gen_file_name = event["gen_file_name"]
-    else:
+    # Check if 'gen_file_name' is in the event and raise an error if not.
+    if "gen_file_name" not in event:
         raise ValueError("No gen_file_name provided")
+    
+    gen_file_name = event["gen_file_name"]
 
-    if "gen_file_name" in event:
-        gen_file_name = event["gen_file_name"]
-    else:
-        raise ValueError("No gen_file_name provided")
-
-    payload = {
-        "gen_file_name": gen_file_name,
-    }
-
-    return {
-        "status": 200,
-        "Payload": payload
-    }
+    return {"gen_file_name": gen_file_name}

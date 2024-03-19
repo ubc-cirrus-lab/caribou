@@ -2,13 +2,15 @@ import json
 import boto3
 
 def get_input(event, context):
-    if "gen_file_name" in event:
-        gen_file_name = event["gen_file_name"]
+    sns_message = json.loads(event['Records'][0]['Sns']['Message'])
+
+    if "gen_file_name" in sns_message:
+        gen_file_name = sns_message["gen_file_name"]
     else:
         raise ValueError("No gen_file_name provided")
 
-    if "publish_topic_arn" in event:
-        publish_topic_arn = event["publish_topic_arn"]
+    if "publish_topic_arn" in sns_message:
+        publish_topic_arn = sns_message["publish_topic_arn"]
     else:
         raise ValueError("No ARN for publish provided")
 
@@ -25,4 +27,4 @@ def get_input(event, context):
         MessageStructure='json'
     )
 
-    return {"status": 200}
+    return {"statusCode": 200}

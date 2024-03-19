@@ -2,9 +2,15 @@ from dna_features_viewer import BiopythonTranslator
 import uuid
 import boto3
 import os
+import json
 
 def visualize(event, context):
-    gen_file_name = event["gen_file_name"]
+    sns_message = json.loads(event['Records'][0]['Sns']['Message'])
+
+    if "gen_file_name" in sns_message:
+        gen_file_name = sns_message["gen_file_name"]
+    else:
+        raise ValueError("No gen_file_name provided")
 
     req_id = uuid.uuid4()
 
@@ -32,4 +38,4 @@ def visualize(event, context):
     os.remove(local_gen_filename)
     os.remove(local_result_filename)
 
-    return {"status": 200}
+    return {"statusCode": 200}

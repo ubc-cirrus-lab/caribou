@@ -1,50 +1,16 @@
 {
-    "Comment": "A description of my state machine",
-    "StartAt": "Get Input",
-    "States": {
-      "Get Input": {
-        "Type": "Task",
-        "Resource": "arn:aws:states:::lambda:invoke",
-        "OutputPath": "$.Payload",
-        "Parameters": {
-          "Payload.$": "$",
-          "FunctionName": "arn:aws:lambda:us-east-2:417140135939:function:VideoAnalyticsGetInput:$LATEST"
-        },
-        "Retry": [
-          {
-            "ErrorEquals": [
-              "Lambda.ServiceException",
-              "Lambda.AWSLambdaException",
-              "Lambda.SdkClientException"
-            ],
-            "IntervalSeconds": 2,
-            "MaxAttempts": 6,
-            "BackoffRate": 2
-          }
-        ],
-        "Next": "Visualize"
-      },
-      "Visualize": {
-        "Type": "Task",
-        "Resource": "arn:aws:states:::lambda:invoke",
-        "OutputPath": "$.Payload",
-        "Parameters": {
-          "Payload.$": "$",
-          "FunctionName": "arn:aws:lambda:us-east-2:417140135939:function:VideoAnalyticsStreaming:$LATEST"
-        },
-        "Retry": [
-          {
-            "ErrorEquals": [
-              "Lambda.ServiceException",
-              "Lambda.AWSLambdaException",
-              "Lambda.SdkClientException"
-            ],
-            "IntervalSeconds": 2,
-            "MaxAttempts": 6,
-            "BackoffRate": 2
-          }
-        ],
-        "End": true
-      }
+  "Comment": "A workflow to visualize DNA sequences.",
+  "StartAt": "GetInput",
+  "States": {
+    "GetInput": {
+      "Type": "Task",
+      "Resource": "wo-dna_vis-ed-step_function-get_input",
+      "Next": "Visualize"
+    },
+    "Visualize": {
+      "Type": "Task",
+      "Resource": "wo-dna_vis-ed-step_function-visualize", 
+      "End": true
+    }
   }
 }

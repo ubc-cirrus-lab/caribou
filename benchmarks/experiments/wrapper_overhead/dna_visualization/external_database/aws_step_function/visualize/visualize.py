@@ -4,10 +4,12 @@ import boto3
 import os
 
 def visualize(event, context):
+    if "gen_file_name" not in event:
+        raise ValueError("No gen_file_name provided in event.")
+    
     gen_file_name = event["gen_file_name"]
 
     req_id = uuid.uuid4()
-
     local_gen_filename = f"/tmp/genbank-{req_id}.gb"
     local_result_filename = f"/tmp/result-{req_id}.png"
 
@@ -32,4 +34,5 @@ def visualize(event, context):
     os.remove(local_gen_filename)
     os.remove(local_result_filename)
 
-    return {"status": 200}
+    # Return a success response
+    return {"status": "Visualization completed", "file": f"{gen_file_name}.png"}
