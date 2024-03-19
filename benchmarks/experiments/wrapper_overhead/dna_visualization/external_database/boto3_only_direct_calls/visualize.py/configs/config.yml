@@ -1,0 +1,6 @@
+function_name: "wo-dna_vis-ed-direct-visualize"
+iam_policy_file: "iam_policy.json"
+handler: "app.visualize"
+configs:
+  memory: 128
+  timeout: 60

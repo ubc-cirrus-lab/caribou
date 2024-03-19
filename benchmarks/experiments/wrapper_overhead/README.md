@@ -4,7 +4,7 @@
 
 The plot generated from this experiment will be the following:
 
-- x-axis: Benchmark and configuration
+- x-axis: Benchmarks
 - y-axis: Relative/Absolute End-To-End Latency
 
 The benchmarks we want to test are the following applications:
