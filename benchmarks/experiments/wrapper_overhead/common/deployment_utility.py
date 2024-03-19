@@ -5,6 +5,7 @@ class WrapperOverheadDeploymentUtility():
     def __init__(self, aws_region: str):
         self._client: ExtendedAWSRemoteClient = ExtendedAWSRemoteClient(aws_region)
         self._file_utility: FileUtility = FileUtility()
+        self._runtime: str = "python3.8"
 
     def deploy_experiment(self, directory_path: str) -> bool:
         files_dict, directories_dict = self._file_utility.get_files_and_directories(directory_path)
@@ -13,7 +14,7 @@ class WrapperOverheadDeploymentUtility():
             config_content = self._file_utility.load_yaml_file(files_dict['config.yml'])
             experiment_type = config_content['type']
             if experiment_type == 'boto3_direct' or experiment_type == 'boto3_sns':
-                return self._deploy_lambda_functions(files_dict, directories_dict)
+                return self._deploy_lambda_functions(files_dict, directories_dict, experiment_type == 'boto3_sns')
             elif experiment_type == 'aws_step_function':
                 return self._deploy_statemachine(files_dict, directories_dict)
             elif experiment_type == 'multi_x':
@@ -24,7 +25,7 @@ class WrapperOverheadDeploymentUtility():
         else:
             raise ValueError('Invalid experiment type: config.yml not found')
 
-    def _deploy_lambda_functions(self, files_dict: dict[str, str], directories_dict: dict[str, str]) -> bool:
+    def _deploy_lambda_functions(self, files_dict: dict[str, str], directories_dict: dict[str, str], require_sns: bool) -> bool:
         # Step 1: Go through all the folders in the directory_path
         # Those are the lambda functions that need to be deployed
 

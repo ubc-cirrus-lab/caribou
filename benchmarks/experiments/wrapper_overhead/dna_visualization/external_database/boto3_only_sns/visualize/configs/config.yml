@@ -1,5 +1,4 @@
 function_name: "wo-dna_vis-ed-direct_sns-visualize"
-sns_topic_name: "sns_topic-wo-dna_vis-ed-direct_sns-visualize"
 iam_policy_file: "iam_policy.json"
 handler: "app.visualize"
 configs:
