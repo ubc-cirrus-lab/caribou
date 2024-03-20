@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import base64
+import binascii
 import inspect
 import json
 import logging
@@ -24,6 +26,42 @@ from multi_x_serverless.deployment.client.multi_x_serverless_function import Mul
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 logger.addHandler(logging.StreamHandler())
+
+
+class CustomEncoder(json.JSONEncoder):
+    def default(self, o: Any) -> Any:
+        if isinstance(o, bytes):
+            return "b64:" + base64.b64encode(o).decode()
+        return json.JSONEncoder.default(self, o)
+
+
+class CustomDecoder(json.JSONDecoder):
+    def decode(self, s, _w=json.decoder.WHITESPACE.match):  # type: ignore
+        decoded_dict = super().decode(s)
+        self.decode_values(decoded_dict)
+        return decoded_dict
+
+    def decode_values(self, item: Any) -> None:
+        if isinstance(item, dict):
+            for key, value in item.items():
+                if isinstance(value, str) and value.startswith("b64:"):
+                    try:
+                        # Remove the prefix before decoding
+                        item[key] = base64.b64decode(value[4:])
+                    except (TypeError, binascii.Error):
+                        pass
+                else:
+                    self.decode_values(value)
+        elif isinstance(item, list):
+            for i, value in enumerate(item):
+                if isinstance(value, str) and value.startswith("b64:"):
+                    try:
+                        # Remove the prefix before decoding
+                        item[i] = base64.b64decode(value[4:])
+                    except (TypeError, binascii.Error):
+                        pass
+                else:
+                    self.decode_values(value)
 
 
 class MultiXServerlessWorkflow:
@@ -147,7 +185,7 @@ class MultiXServerlessWorkflow:
 
         payload_wrapper["workflow_placement_decision"] = successor_workflow_placement_decision_dictionary
         payload_wrapper["transmission_taint"] = transmission_taint
-        json_payload = json.dumps(payload_wrapper)
+        json_payload = json.dumps(payload_wrapper, cls=CustomEncoder)
 
         provider, region, identifier = self.get_successor_workflow_placement_decision(
             successor_instance_name, workflow_placement_decision
@@ -384,7 +422,7 @@ class MultiXServerlessWorkflow:
 
         response = client.get_predecessor_data(current_instance_name, workflow_instance_id)
 
-        return [json.loads(message) for message in response]
+        return [json.loads(message, cls=CustomDecoder) for message in response]
 
     def get_current_instance_provider_region_instance_name(self) -> tuple[str, str, str, str]:
         # We need to go back two frames to get the frame of the wrapper function that
@@ -544,10 +582,10 @@ class MultiXServerlessWorkflow:
                     and "Sns" in argument_raw["Records"][0]
                     and "Message" in argument_raw["Records"][0]["Sns"]
                 ):
-                    argument = json.loads(argument_raw["Records"][0]["Sns"]["Message"])
+                    argument = json.loads(argument_raw["Records"][0]["Sns"]["Message"], cls=CustomDecoder)
                 else:
                     try:
-                        argument = json.loads(argument_raw)
+                        argument = json.loads(argument_raw, cls=CustomDecoder)
                     except json.JSONDecodeError as e:
                         raise RuntimeError(
                             f"Could not get message from argument {argument_raw}, there should be meta information in the message"  # pylint: disable=line-too-long
@@ -595,7 +633,7 @@ class MultiXServerlessWorkflow:
                         f"ENTRY_POINT: : Entry Point INSTANCE "
                         f'({wrapper.workflow_placement_decision["current_instance_name"]}) '  # type: ignore
                         f'of workflow {f"{self.name}-{self.version}"} called with PAYLOAD_SIZE '
-                        f'({len(json.dumps(payload).encode("utf-8")) / (1024**3)}) GB and '
+                        f'({len(json.dumps(payload, cls=CustomEncoder).encode("utf-8")) / (1024**3)}) GB and '
                         f"INIT_LATENCY ({init_latency}) s"
                     )
                     self.log_for_retrieval(
