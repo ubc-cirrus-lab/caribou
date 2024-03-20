@@ -33,10 +33,10 @@ class WorkflowLoader(InputLoader):
             self._instances_regions_and_providers[instance["instance_name"]] = providers
 
         # Caches
-        self._data_transfer_size_cache = {}
-        self._start_hop_size_cache = {}
-        self._runtime_distribution_cache = {}
-        self._start_hop_latency_distribution_cache = {}
+        self._data_transfer_size_cache: dict[str, list] = {}
+        self._start_hop_size_cache: dict[str, list] = {}
+        self._runtime_distribution_cache: dict[str, list] = {}
+        self._start_hop_latency_distribution_cache: dict[str, list] = {}
 
     def setup(self, workflow_id: str) -> None:
         self._workflow_data = self._retrieve_workflow_data(workflow_id)

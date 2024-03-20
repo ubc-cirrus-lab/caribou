@@ -15,7 +15,7 @@ class PerformanceRetriever(DataRetriever):
         self._aws_latency_retriever = AWSLatencyRetriever()
         self._integration_test_latency_retriever = IntegrationTestLatencyRetriever()
         self._modified_regions: set[str] = set()
-        self._latency_distribution_cache: dict[str, list[float]] = {}
+        self._latency_distribution_cache: dict[tuple, list[float]] = {}
 
     def retrieve_runtime_region_data(self) -> dict[str, dict[str, Any]]:
         result_dict: dict[str, dict[str, Any]] = {}
