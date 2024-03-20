@@ -230,18 +230,21 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
 
         account_id = self._client("sts").get_caller_identity().get("Account")
 
+        original_ecr_registry = f"{account_id}.dkr.ecr.{original_region}.amazonaws.com"
         ecr_registry = f"{account_id}.dkr.ecr.{new_region}.amazonaws.com"
 
         new_image_uri = f"{ecr_registry}/{new_image_name}"
 
         login_password = (
-            subprocess.check_output(["aws", "ecr", "get-login-password", "--region", new_region])
+            subprocess.check_output(["aws", "--region", original_region, "ecr", "get-login-password"])
             .strip()
             .decode("utf-8")
         )
         # Use crane to copy the image
         try:
-            subprocess.run(["crane", "auth", "login", ecr_registry, "-u", "AWS", "-p", login_password], check=True)
+            subprocess.run(
+                ["crane", "auth", "login", original_ecr_registry, "-u", "AWS", "-p", login_password], check=True
+            )
             subprocess.run(["crane", "cp", deployed_image_uri, new_image_uri], check=True)
             logger.info("Docker image %s copied successfully.", new_image_uri)
         except subprocess.CalledProcessError as e:
@@ -347,7 +350,7 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         ecr_registry = f"{account_id}.dkr.ecr.{region}.amazonaws.com"
 
         login_password = (
-            subprocess.check_output(["aws", "ecr", "get-login-password", "--region", region]).strip().decode("utf-8")
+            subprocess.check_output(["aws", "--region", region, "ecr", "get-login-password"]).strip().decode("utf-8")
         )
         subprocess.run(["docker", "login", "--username", "AWS", "--password", login_password, ecr_registry], check=True)
 
