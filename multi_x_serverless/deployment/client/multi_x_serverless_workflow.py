@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import base64
+import binascii
 import inspect
 import json
 import logging
@@ -9,8 +11,6 @@ import uuid
 from datetime import datetime
 from types import FrameType
 from typing import Any, Callable, Optional
-import base64
-import binascii
 
 from multi_x_serverless.common.constants import (
     GLOBAL_TIME_ZONE,
