@@ -80,7 +80,7 @@ SOLVER_INPUT_ARCHITECTURE_DEFAULT = "x86_64"
 # Carbon Transmission Cost Calculator Constants
 # KWH_PER_GB_ESTIMATE = 0.1
 KWH_PER_KM_GB_ESTIMATE = 0.005
-CARBON_TRANSMISSION_CARBON_METHOD = "distance"  # Or latency
+CARBON_TRANSMISSION_CARBON_METHOD = "latency"  # Or latency
 KWH_PER_S_GB_ESTIMATE = 0.005
 
 # Deployment Optimization Monitor Constants

@@ -198,9 +198,6 @@ class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attri
     def _get_raw_carbon_intensity_history_range(
         self, latitude: float, longitude: float, start_timestamp: str, end_timestamp: str
     ) -> list[dict[str, str]]:
-        # if self._integration_test_on:
-        #     return [{"carbon_intensity": latitude + longitude, "timestamp": 0}]
-
         electricitymaps = "https://api-access.electricitymaps.com/free-tier/carbon-intensity/past-range?"
 
         if (datetime.now(GLOBAL_TIME_ZONE) - self._last_request).total_seconds() < self._request_backoff:

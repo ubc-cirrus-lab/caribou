@@ -63,6 +63,7 @@ class TestStochasticHeuristicDeploymentAlgorithm(unittest.TestCase):
         self._algorithm._is_improvement.return_value = True
         self._algorithm._number_of_instances = 3
         self._algorithm._temperature = 0.99
+        self._algorithm._max_number_combinations = 10
 
         # Act
         result = self._algorithm._generate_stochastic_heuristic_deployments()
