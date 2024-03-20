@@ -177,6 +177,12 @@ class DeploymentPackager:
                 zip_file.write(full_path, zip_path)
 
     def _add_application_files(self, zip_file: zipfile.ZipFile, project_dir: str) -> None:
+        src_dir = os.path.join(project_dir, "src")
+        if not os.path.exists(src_dir):
+            os.makedirs(src_dir)
+            with open(os.path.join(src_dir, ".gitkeep"), "w"):
+                pass
+
         for root, _, files in os.walk(project_dir):
             for filename in files:
                 if filename.endswith(".pyc"):
