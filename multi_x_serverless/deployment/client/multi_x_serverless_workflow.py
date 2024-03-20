@@ -29,19 +29,19 @@ logger.addHandler(logging.StreamHandler())
 
 
 class CustomEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, bytes):
-            return "b64:" + base64.b64encode(obj).decode()
-        return json.JSONEncoder.default(self, obj)
+    def default(self, o: Any) -> Any:
+        if isinstance(o, bytes):
+            return "b64:" + base64.b64encode(o).decode()
+        return json.JSONEncoder.default(self, o)
 
 
 class CustomDecoder(json.JSONDecoder):
-    def decode(self, s, _w=json.decoder.WHITESPACE.match):
+    def decode(self, s, _w=json.decoder.WHITESPACE.match):  # type: ignore
         decoded_dict = super().decode(s)
         self.decode_values(decoded_dict)
         return decoded_dict
 
-    def decode_values(self, item):
+    def decode_values(self, item: Any) -> None:
         if isinstance(item, dict):
             for key, value in item.items():
                 if isinstance(value, str) and value.startswith("b64:"):
