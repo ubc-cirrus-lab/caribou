@@ -241,16 +241,17 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
             .decode("utf-8")
         )
         login_password_new = (
-            subprocess.check_output(["aws", "--region", new_region, "ecr", "get-login-password"]).strip().decode("utf-8")
+            subprocess.check_output(["aws", "--region", new_region, "ecr", "get-login-password"])
+            .strip()
+            .decode("utf-8")
         )
         # Use crane to copy the image
         try:
             subprocess.run(
-                ["crane", "auth", "login", original_ecr_registry, "-u", "AWS", "-p", login_password_original], check=True
+                ["crane", "auth", "login", original_ecr_registry, "-u", "AWS", "-p", login_password_original],
+                check=True,
             )
-            subprocess.run(
-                ["crane", "auth", "login", ecr_registry, "-u", "AWS", "-p", login_password_new], check=True
-            )
+            subprocess.run(["crane", "auth", "login", ecr_registry, "-u", "AWS", "-p", login_password_new], check=True)
             subprocess.run(["crane", "cp", deployed_image_uri, new_image_uri], check=True)
             logger.info("Docker image %s copied successfully.", new_image_uri)
         except subprocess.CalledProcessError as e:
