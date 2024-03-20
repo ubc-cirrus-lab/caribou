@@ -180,8 +180,9 @@ class DeploymentPackager:
         src_dir = os.path.join(project_dir, "src")
         if not os.path.exists(src_dir):
             os.makedirs(src_dir)
-            with open(os.path.join(src_dir, ".gitkeep"), "w"):
-                pass
+            
+        with open(os.path.join(src_dir, ".gitkeep"), "w"):
+            pass
 
         for root, _, files in os.walk(project_dir):
             for filename in files:
