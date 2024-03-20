@@ -21,6 +21,7 @@ class TestStochasticHeuristicDeploymentAlgorithm(unittest.TestCase):
         self._algorithm._region_indexer.get_value_indices.return_value = {1: 1, 2: 2}
         self._algorithm._instance_indexer.get_value_indices.return_value = {1: 1, 2: 2}
         self._algorithm._temperature = 1.0
+        self._algorithm._per_instance_permitted_regions = [[0, 1, 2], [0, 1, 2], [0, 1, 2]]
 
         # Act
         self._algorithm._setup()
@@ -64,6 +65,7 @@ class TestStochasticHeuristicDeploymentAlgorithm(unittest.TestCase):
         self._algorithm._number_of_instances = 3
         self._algorithm._temperature = 0.99
         self._algorithm._max_number_combinations = 10
+        self._algorithm._per_instance_permitted_regions = [[0, 1, 2], [0, 1, 2], [0, 1, 2]]
 
         # Act
         result = self._algorithm._generate_stochastic_heuristic_deployments()

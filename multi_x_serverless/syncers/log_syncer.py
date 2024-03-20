@@ -58,7 +58,7 @@ class LogSyncer:
         start_time = current_time - timedelta(days=FORGETTING_TIME_DAYS)
         if last_sync_time is not None:
             last_sync_time_datetime = datetime.strptime(last_sync_time, TIME_FORMAT)
-            if last_sync_time_datetime > start_time:
+            if last_sync_time_datetime > start_time:  # pylint: disable=consider-using-max-builtin
                 start_time = last_sync_time_datetime
 
         time_intervals_to_sync = []

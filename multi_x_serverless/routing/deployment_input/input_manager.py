@@ -1,6 +1,5 @@
+import random
 from typing import Optional
-
-import numpy as np
 
 from multi_x_serverless.common.constants import TAIL_LATENCY_THRESHOLD
 from multi_x_serverless.common.models.endpoints import Endpoints
@@ -21,7 +20,7 @@ from multi_x_serverless.routing.workflow_config import WorkflowConfig
 class InputManager:  # pylint: disable=too-many-instance-attributes
     _region_indexer: RegionIndexer
     _instance_indexer: InstanceIndexer
-    _execution_latency_distribution_cache: dict[str, np.ndarray]
+    _execution_latency_distribution_cache: dict[str, list[float]]
     _invocation_probability_cache: dict[str, float]
 
     def __init__(self, workflow_config: WorkflowConfig, tail_latency_threshold: int = TAIL_LATENCY_THRESHOLD) -> None:
@@ -80,7 +79,7 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
 
         # Clear cache
         self._invocation_probability_cache: dict[str, float] = {}
-        self._execution_latency_distribution_cache: dict[str, np.ndarray] = {}
+        self._execution_latency_distribution_cache: dict[str, list[float]] = {}
 
     def get_execution_cost_carbon_latency(self, instance_index: int, region_index: int) -> tuple[float, float, float]:
         # Convert the instance and region indices to their names
@@ -100,7 +99,9 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
             self._execution_latency_distribution_cache[key] = execution_latency_distribution
 
         # Now we can get a random sample from the distribution
-        execution_latency = np.random.choice(execution_latency_distribution)
+        execution_latency = execution_latency_distribution[
+            int(random.random() * (len(execution_latency_distribution) - 1))
+        ]
 
         # Now we can calculate the cost and carbon
         cost = self._cost_calculator.calculate_execution_cost(instance_name, region_name, execution_latency)
@@ -124,22 +125,26 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         to_region_name = self._region_indexer.index_to_value(to_region_index)
 
         # Get the transmission size distribution
-        transmission_size_distribution: np.ndarray = self._runtime_calculator.get_transmission_size_distribution(
+        transmission_size_distribution: list[float] = self._runtime_calculator.get_transmission_size_distribution(
             from_instance_name, to_instance_name, from_region_name, to_region_name
         )
 
         # Pick a transmission size or default to None
         transmission_size: Optional[float] = None
         if len(transmission_size_distribution) > 0:
-            transmission_size = np.random.choice(transmission_size_distribution)
+            transmission_size = transmission_size_distribution[
+                int(random.random() * (len(transmission_size_distribution) - 1))
+            ]
 
         # Get the transmission latency distribution
-        transmission_latency_distribution: np.ndarray = self._runtime_calculator.get_transmission_latency_distribution(
+        transmission_latency_distribution: list[float] = self._runtime_calculator.get_transmission_latency_distribution(
             from_instance_name, to_instance_name, from_region_name, to_region_name, transmission_size
         )
 
         # Now we can get a random sample from the distribution
-        transmission_latency: float = np.random.choice(transmission_latency_distribution)
+        transmission_latency: float = transmission_latency_distribution[
+            int(random.random() * (len(transmission_latency_distribution) - 1))
+        ]
 
         if (
             transmission_size is None

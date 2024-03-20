@@ -14,8 +14,8 @@ class TestPerformanceRetriever(unittest.TestCase):
         mock_client = MagicMock()
         performance_retriever = PerformanceRetriever(mock_client)
         performance_retriever._available_regions = {
-            "region1": {"provider": Provider.AWS.value, "region": "us-west-1"},
-            "region2": {"provider": Provider.AWS.value, "region": "us-west-2"},
+            "region1": {"provider": Provider.AWS.value, "code": "us-west-1"},
+            "region2": {"provider": Provider.AWS.value, "code": "us-west-2"},
         }
         mock_aws_latency_retriever().get_latency_distribution.side_effect = [
             [0.1, 0.2, 0.3],
