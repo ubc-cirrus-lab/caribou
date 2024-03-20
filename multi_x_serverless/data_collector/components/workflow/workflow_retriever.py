@@ -146,7 +146,9 @@ class WorkflowRetriever(DataRetriever):
                     all_transfer_sizes = set()
                     # Aggregate all sizes and latencies
                     for transfer_information in to_regions.values():
-                        all_transfer_sizes.update(transfer_information["transfer_size_to_transfer_latencies"].keys())
+                        all_transfer_sizes.update(
+                            [float(data) for data in transfer_information["transfer_size_to_transfer_latencies"].keys()]
+                        )
 
                     # Calculate global averages for each size
                     global_avg_latency_per_size = {}
