@@ -20,9 +20,10 @@ class StochasticHeuristicDeploymentAlgorithm(DeploymentAlgorithm):
         self._temperature = 1.0
         self._bias_regions: set[int] = set()
         self._bias_probability = 0.2
-        self._max_number_combinations = (
-            len(self._region_indexer.get_value_indices().values()) ** self._number_of_instances
-        )
+
+        self._max_number_combinations = 1
+        for instance in range(self._number_of_instances):
+            self._max_number_combinations *= len(self._per_instance_permitted_regions[instance])
 
     def _run_algorithm(self) -> list[tuple[list[int], dict[str, float]]]:
         deployments = self._generate_stochastic_heuristic_deployments()
