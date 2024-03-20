@@ -13,7 +13,7 @@ class WorkflowConfig:
         self._modified_regions_and_providers = self.create_altered_regions_and_providers(
             self._workflow_config["regions_and_providers"]
         )
-        
+
         allowed_deployment_algorithms = {
             "coarse_grained_deployment_algorithm",
             "fine_grained_deployment_algorithm",

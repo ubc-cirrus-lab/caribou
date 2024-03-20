@@ -1,6 +1,5 @@
-from typing import Optional
-
 import random
+from typing import Optional
 
 from multi_x_serverless.common.constants import TAIL_LATENCY_THRESHOLD
 from multi_x_serverless.common.models.endpoints import Endpoints
@@ -100,7 +99,9 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
             self._execution_latency_distribution_cache[key] = execution_latency_distribution
 
         # Now we can get a random sample from the distribution
-        execution_latency = execution_latency_distribution[int(random.random()*(len(execution_latency_distribution)-1))]
+        execution_latency = execution_latency_distribution[
+            int(random.random() * (len(execution_latency_distribution) - 1))
+        ]
 
         # Now we can calculate the cost and carbon
         cost = self._cost_calculator.calculate_execution_cost(instance_name, region_name, execution_latency)
@@ -131,7 +132,9 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         # Pick a transmission size or default to None
         transmission_size: Optional[float] = None
         if len(transmission_size_distribution) > 0:
-            transmission_size = transmission_size_distribution[int(random.random()*(len(transmission_size_distribution)-1))]
+            transmission_size = transmission_size_distribution[
+                int(random.random() * (len(transmission_size_distribution) - 1))
+            ]
 
         # Get the transmission latency distribution
         transmission_latency_distribution: list[float] = self._runtime_calculator.get_transmission_latency_distribution(
@@ -139,7 +142,9 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         )
 
         # Now we can get a random sample from the distribution
-        transmission_latency: float = transmission_latency_distribution[int(random.random()*(len(transmission_latency_distribution)-1))]
+        transmission_latency: float = transmission_latency_distribution[
+            int(random.random() * (len(transmission_latency_distribution) - 1))
+        ]
 
         if (
             transmission_size is None

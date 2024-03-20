@@ -1,6 +1,7 @@
+import statistics
+
 import numpy as np
 import scipy.stats as st
-import statistics
 
 from multi_x_serverless.routing.deployment_metrics_calculator.deployment_metrics_calculator import (
     DeploymentMetricsCalculator,

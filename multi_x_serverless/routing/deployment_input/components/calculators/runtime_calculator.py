@@ -21,8 +21,8 @@ class RuntimeCalculator(InputCalculator):
         # Get the data transfer size distribution
         if from_instance_name:
             transmission_size_distribution = self._workflow_loader.get_data_transfer_size_distribution(
-                    from_instance_name, to_instance_name, from_region_name, to_region_name
-                )
+                from_instance_name, to_instance_name, from_region_name, to_region_name
+            )
         else:
             transmission_size_distribution = self._workflow_loader.get_start_hop_size_distribution(from_region_name)
         return transmission_size_distribution
@@ -40,22 +40,24 @@ class RuntimeCalculator(InputCalculator):
                 # Not for start hop
                 # Get the data transfer size distribution
                 transmission_latency_distribution = self._workflow_loader.get_latency_distribution(
-                        from_instance_name, to_instance_name, from_region_name, to_region_name, data_transfer_size
-                    )
+                    from_instance_name, to_instance_name, from_region_name, to_region_name, data_transfer_size
+                )
             else:
                 # No size information, we default to performance loader
-                transmission_latency_distribution = self._workflow_loader.get_start_hop_latency_distribution(from_region_name, data_transfer_size)
+                transmission_latency_distribution = self._workflow_loader.get_start_hop_latency_distribution(
+                    from_region_name, data_transfer_size
+                )
         else:
             # No size information, we default to performance loader
             # Get the data transfer size distribution
-            transmission_latency_distribution = self._performance_loader.get_transmission_latency_distribution(from_region_name, to_region_name)
+            transmission_latency_distribution = self._performance_loader.get_transmission_latency_distribution(
+                from_region_name, to_region_name
+            )
 
         return transmission_latency_distribution
 
     def calculate_runtime_distribution(self, instance_name: str, region_name: str) -> list[float]:
-        runtime_distribution: list[float] = self._workflow_loader.get_runtime_distribution(
-            instance_name, region_name
-        )
+        runtime_distribution: list[float] = self._workflow_loader.get_runtime_distribution(instance_name, region_name)
 
         # If the runtime is not found, then we simply default to home region runtime
         if len(runtime_distribution) == 0:

@@ -46,7 +46,9 @@ class PerformanceRetriever(DataRetriever):
                 if region_from["provider"] == Provider.AWS.value:
                     latency_distribution = self._aws_latency_retriever.get_latency_distribution(region_from, region_to)
                 if region_from["provider"] == Provider.INTEGRATION_TEST_PROVIDER.value:
-                    latency_distribution = self._integration_test_latency_retriever.get_latency_distribution(region_from, region_to)
+                    latency_distribution = self._integration_test_latency_retriever.get_latency_distribution(
+                        region_from, region_to
+                    )
                 self._latency_distribution_cache[(region_from["code"], region_to["code"])] = latency_distribution
         except ValueError:
             return []
