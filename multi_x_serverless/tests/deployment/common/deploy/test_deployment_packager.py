@@ -84,11 +84,14 @@ class TestDeploymentPackager(unittest.TestCase):
 
         self.assertEqual(result, "from pip._internal.cli.main import main")
 
+    @patch("builtins.open", new_callable=mock_open)
+    @patch("os.path.exists")
     @patch("os.walk")
     @patch("zipfile.ZipFile")
-    def test__add_application_files(self, mock_zipfile, mock_os_walk):
+    def test__add_application_files(self, mock_zipfile, mock_os_walk, mock_exists, mock_open):
         mock_os_walk.return_value = [("/app_dir", [], ["src/file1.py", "src/file2.py"])]
         mock_zipfile.return_value.__enter__.return_value = MagicMock()
+        mock_exists.return_value = True
 
         config = MagicMock()
         packager = DeploymentPackager(config)
