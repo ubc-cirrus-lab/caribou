@@ -1,5 +1,6 @@
 import numpy as np
 import scipy.stats as st
+import statistics
 
 from multi_x_serverless.routing.deployment_metrics_calculator.deployment_metrics_calculator import (
     DeploymentMetricsCalculator,
@@ -16,10 +17,10 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
         runtimes_distribution_list: list[float] = []
         carbons_distribution_list: list[float] = []
 
-        max_number_of_iterations = 20000
+        max_number_of_iterations = 1000
         number_of_iterations = 0
-        threshold = 0.05
-        batch_size = 1000
+        threshold = 0.1
+        batch_size = 100
 
         while number_of_iterations < max_number_of_iterations:
             for _ in range(batch_size):
@@ -32,35 +33,30 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
 
             all_within_threshold = True
 
-            for distribution in [costs_distribution_list, runtimes_distribution_list, carbons_distribution_list]:
+            for distribution in [runtimes_distribution_list, carbons_distribution_list, costs_distribution_list]:
                 mean = np.mean(distribution)
-                if len(distribution) > 1 and np.std(distribution, ddof=1) > 0:
+                len_distribution = len(distribution)
+                if mean and len_distribution > 1:
                     ci_low, ci_up = st.t.interval(
-                        1 - threshold, len(distribution) - 1, loc=mean, scale=st.sem(distribution)
+                        1 - threshold, len_distribution - 1, loc=mean, scale=st.sem(distribution)
                     )
                     ci_width = ci_up - ci_low
-                    relative_ci_width = ci_width / mean if mean else float("inf")
-                else:
-                    if all_within_threshold:
+                    relative_ci_width = ci_width / mean
+                    if relative_ci_width > threshold:
+                        all_within_threshold = False
                         break
-
-                if relative_ci_width > threshold:
-                    all_within_threshold = False
+                elif all_within_threshold:
                     break
 
-            if all_within_threshold or number_of_iterations >= max_number_of_iterations:
-                break
-
-        # Sort and convert to numpy arrays
-        costs_distribution: np.ndarray = np.array(costs_distribution_list)
-        runtimes_distribution: np.ndarray = np.array(runtimes_distribution_list)
-        carbons_distribution: np.ndarray = np.array(carbons_distribution_list)
-
         return {
-            "average_cost": float(np.mean(costs_distribution)),
-            "average_runtime": float(np.mean(runtimes_distribution)),
-            "average_carbon": float(np.mean(carbons_distribution)),
-            "tail_cost": float(np.percentile(costs_distribution, self._tail_latency_threshold)),
-            "tail_runtime": float(np.percentile(runtimes_distribution, self._tail_latency_threshold)),
-            "tail_carbon": float(np.percentile(carbons_distribution, self._tail_latency_threshold)),
+            "average_cost": statistics.mean(costs_distribution_list),
+            "average_runtime": statistics.mean(runtimes_distribution_list),
+            "average_carbon": statistics.mean(carbons_distribution_list),
+            "tail_cost": statistics.quantiles(costs_distribution_list, n=100)[int(self._tail_latency_threshold) - 1],
+            "tail_runtime": statistics.quantiles(runtimes_distribution_list, n=100)[
+                int(self._tail_latency_threshold) - 1
+            ],
+            "tail_carbon": statistics.quantiles(carbons_distribution_list, n=100)[
+                int(self._tail_latency_threshold) - 1
+            ],
         }

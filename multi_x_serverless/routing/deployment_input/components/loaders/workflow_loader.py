@@ -32,6 +32,12 @@ class WorkflowLoader(InputLoader):
             providers = instance.get("regions_and_providers", {}).get("providers", {})
             self._instances_regions_and_providers[instance["instance_name"]] = providers
 
+        # Caches
+        self._data_transfer_size_cache = {}
+        self._start_hop_size_cache = {}
+        self._runtime_distribution_cache = {}
+        self._start_hop_latency_distribution_cache = {}
+
     def setup(self, workflow_id: str) -> None:
         self._workflow_data = self._retrieve_workflow_data(workflow_id)
 
@@ -47,21 +53,25 @@ class WorkflowLoader(InputLoader):
         )
 
     def get_start_hop_size_distribution(self, from_region_name: str) -> list[float]:
+        if from_region_name in self._start_hop_size_cache:
+            return self._start_hop_size_cache[from_region_name]
         resulting_size = [
             float(size) for size in self._workflow_data.get("start_hop_summary", {}).get(from_region_name, {}).keys()
         ]
-
-        # # Return the list if more than 0 size is available, else return SOLVER_INPUT_DATA_TRANSFER_SIZE_DEFAULT
-        # return resulting_size if len(resulting_size) > 0 else [SOLVER_INPUT_DATA_TRANSFER_SIZE_DEFAULT]
-
+        self._start_hop_size_cache[from_region_name] = resulting_size
         return resulting_size
 
     def get_start_hop_latency_distribution(self, from_region_name: str, data_transfer_size: float) -> list[float]:
-        return (
+        cache_key = f"{from_region_name}_{data_transfer_size}"
+        if cache_key in self._start_hop_latency_distribution_cache:
+            return self._start_hop_latency_distribution_cache[cache_key]
+        start_hop_latency_distribution = (
             self._workflow_data.get("start_hop_summary", {})
             .get(from_region_name, {})
             .get(str(data_transfer_size), [SOLVER_INPUT_TRANSMISSION_LATENCY_DEFAULT])
         )
+        self._start_hop_latency_distribution_cache[cache_key] = start_hop_latency_distribution
+        return start_hop_latency_distribution
 
     def get_data_transfer_size_distribution(
         self,
@@ -70,6 +80,9 @@ class WorkflowLoader(InputLoader):
         from_region_name: str,
         to_region_name: str,
     ) -> list[float]:
+        cache_key = f"{from_instance_name}_{to_instance_name}_{from_region_name}_{to_region_name}"
+        if cache_key in self._data_transfer_size_cache:
+            return self._data_transfer_size_cache[cache_key]
         resulting_size = [
             float(size)
             for size in self._workflow_data.get("instance_summary", {})
@@ -81,9 +94,7 @@ class WorkflowLoader(InputLoader):
             .get(to_region_name, {})
             .get("transfer_sizes", [])
         ]
-
-        # # Return the list if more than 0 size is available, else return SOLVER_INPUT_DATA_TRANSFER_SIZE_DEFAULT
-        # return resulting_size if len(resulting_size) > 0 else [SOLVER_INPUT_DATA_TRANSFER_SIZE_DEFAULT]
+        self._data_transfer_size_cache[cache_key] = resulting_size
         return resulting_size
 
     def get_latency_distribution(

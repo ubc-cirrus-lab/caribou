@@ -47,9 +47,9 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
 
     def _get_execution_conversion_ratio(self, instance_name: str, region_name: str) -> tuple[float, float, float]:
         # Check if the conversion ratio is in the cache
-        key = instance_name + "_" + region_name
-        if key in self._execution_conversion_ratio_cache:
-            return self._execution_conversion_ratio_cache[key]
+        cache_key = f"{instance_name}_{region_name}"
+        if cache_key in self._execution_conversion_ratio_cache:
+            return self._execution_conversion_ratio_cache[cache_key]
 
         # datacenter loader data
         ## Get the average power consumption of the instance in the given region (kw_compute)
@@ -79,8 +79,8 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
         power_factor = (1 - cfe) * pue * grid_co2e
 
         # Add the conversion ratio to the cache
-        self._execution_conversion_ratio_cache[key] = (compute_factor, memory_factor, power_factor)
-        return self._execution_conversion_ratio_cache[key]
+        self._execution_conversion_ratio_cache[cache_key] = (compute_factor, memory_factor, power_factor)
+        return self._execution_conversion_ratio_cache[cache_key]
 
     def calculate_transmission_carbon(
         self, from_region_name: str, to_region_name: str, data_transfer_size: float, transmission_latency: float
@@ -99,9 +99,9 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
 
     def _get_transmission_conversion_ratio(self, from_region_name: str, to_region_name: str) -> tuple[float, float]:
         # Check if the conversion ratio is in the cache
-        key = from_region_name + "_" + to_region_name
-        if key in self._transmission_conversion_ratio_cache:
-            return self._transmission_conversion_ratio_cache[key]
+        cache_key = f"{from_region_name}_{to_region_name}"
+        if cache_key in self._transmission_conversion_ratio_cache:
+            return self._transmission_conversion_ratio_cache[cache_key]
 
         # Get the distance in KM between the two regions
         distance = self._carbon_loader.get_transmission_distance(from_region_name, to_region_name)
@@ -122,5 +122,5 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
         distance_factor_latency = transmission_carbon_intensity * KWH_PER_S_GB_ESTIMATE  # gCo2eq/GBs
 
         # Add the conversion ratio to the cache
-        self._transmission_conversion_ratio_cache[key] = (distance_factor_distance, distance_factor_latency)
-        return self._transmission_conversion_ratio_cache[key]
+        self._transmission_conversion_ratio_cache[cache_key] = (distance_factor_distance, distance_factor_latency)
+        return self._transmission_conversion_ratio_cache[cache_key]
