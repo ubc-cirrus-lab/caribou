@@ -39,7 +39,7 @@ class PerformanceRetriever(DataRetriever):
         return result_dict
 
     def _get_latency_distribution(self, region_from: dict[str, Any], region_to: dict[str, Any]) -> list[float]:
-        cache_key = f"{region_from['provider']}_{region_from['region']}_{region_to['provider']}_{region_to['region']}"
+        cache_key = f"{region_from['provider']}_{region_from['code']}_{region_to['provider']}_{region_to['code']}"
         if cache_key in self._latency_distribution_cache:
             return self._latency_distribution_cache[cache_key]
         try:
