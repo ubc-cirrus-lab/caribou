@@ -15,7 +15,7 @@ class PerformanceRetriever(DataRetriever):
         self._aws_latency_retriever = AWSLatencyRetriever()
         self._integration_test_latency_retriever = IntegrationTestLatencyRetriever()
         self._modified_regions: set[str] = set()
-        self._latency_distribution_cache: dict[tuple, list[float]] = {}
+        self._latency_distribution_cache: dict[str, list[float]] = {}
 
     def retrieve_runtime_region_data(self) -> dict[str, dict[str, Any]]:
         result_dict: dict[str, dict[str, Any]] = {}
@@ -39,17 +39,19 @@ class PerformanceRetriever(DataRetriever):
         return result_dict
 
     def _get_latency_distribution(self, region_from: dict[str, Any], region_to: dict[str, Any]) -> list[float]:
-        if (region_from["code"], region_to["code"]) in self._latency_distribution_cache:
-            return self._latency_distribution_cache[(region_from["code"], region_to["code"])]
+        cache_key = f"{region_from['provider']}_{region_from['region']}_{region_to['provider']}_{region_to['region']}"
+        if cache_key in self._latency_distribution_cache:
+            return self._latency_distribution_cache[cache_key]
         try:
             if region_from["provider"] == region_to["provider"]:
                 if region_from["provider"] == Provider.AWS.value:
                     latency_distribution = self._aws_latency_retriever.get_latency_distribution(region_from, region_to)
-                if region_from["provider"] == Provider.INTEGRATION_TEST_PROVIDER.value:
+                elif region_from["provider"] == Provider.INTEGRATION_TEST_PROVIDER.value:
                     latency_distribution = self._integration_test_latency_retriever.get_latency_distribution(
                         region_from, region_to
                     )
-                self._latency_distribution_cache[(region_from["code"], region_to["code"])] = latency_distribution
+                self._latency_distribution_cache[cache_key] = latency_distribution
+                return latency_distribution
         except ValueError:
             return []
 
