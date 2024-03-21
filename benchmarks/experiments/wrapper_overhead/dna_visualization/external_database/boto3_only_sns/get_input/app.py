@@ -1,16 +1,21 @@
+import datetime
 import json
 import boto3
 
 def get_input(event, context):
-    sns_message = json.loads(event['Records'][0]['Sns']['Message'])
-    if "gen_file_name" not in sns_message:
-        raise ValueError("No gen_file_name provided")
-    if "metadata" not in sns_message:
+    start_time = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S,%f%z")
+    event = json.loads(event['Records'][0]['Sns']['Message'])
+    if "metadata" not in event:
         raise ValueError("No metadata provided")
-    
+    if "gen_file_name" not in event:
+        raise ValueError("No gen_file_name provided")
+
+    # Get the additional metadata
+    metadata = event['metadata']
+    metadata['first_function_start_time'] = start_time    
     data = {
-        "gen_file_name": sns_message["gen_file_name"],
-        'metadata': sns_message['metadata']
+        "gen_file_name": event["gen_file_name"],
+        'metadata': metadata
     }
 
     payload = json.dumps(data)

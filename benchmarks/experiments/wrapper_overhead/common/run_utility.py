@@ -98,7 +98,7 @@ class WrapperOverheadRunUtility():
     def _get_metadata(self, config: dict[str, Any]) -> dict[str, Any]:
         # Parse and append metadata to the payload
         request_id = str(uuid.uuid4())
-        current_time = datetime.datetime.now().isoformat()
+        current_time = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S,%f%z")
         return {
             "workload_name": config['workload_name'],
             "experiment_type": config['type'], # "boto3_direct", "boto3_sns", "aws_step_function", "multi_x
