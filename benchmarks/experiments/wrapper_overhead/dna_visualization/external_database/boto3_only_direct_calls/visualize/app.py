@@ -13,7 +13,6 @@ def visualize(event, context):
     else:
         raise ValueError("No gen_file_name provided")
     
-
     req_id = uuid.uuid4()
 
     local_gen_filename = f"/tmp/genbank-{req_id}.gb"

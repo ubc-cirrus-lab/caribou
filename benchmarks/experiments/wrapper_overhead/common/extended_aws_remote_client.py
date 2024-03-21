@@ -17,7 +17,7 @@ class ExtendedAWSRemoteClient(AWSRemoteClient):
     def __init__(self, region: str) -> None:
         super().__init__(region)
 
-    def create_function_image(
+    def create_local_function(
         self,
         function_name: str,
         role_identifier: str,
@@ -65,3 +65,21 @@ class ExtendedAWSRemoteClient(AWSRemoteClient):
             self._wait_for_function_to_become_active(function_name)
 
         return arn
+
+    def get_sns_topic_arn(self, topic_name: str) -> Optional[str]:
+        client = self._client("sns")
+        next_token = ""
+
+        while True:
+            response = client.list_topics(NextToken=next_token) if next_token else client.list_topics()
+
+            for topic in response["Topics"]:
+                if topic_name in topic["TopicArn"]:
+                    return topic["TopicArn"]
+
+            next_token = response.get("NextToken")
+            if not next_token:
+                break
+
+        return None
+    

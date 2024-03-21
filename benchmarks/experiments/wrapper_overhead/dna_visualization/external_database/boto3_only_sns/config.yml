@@ -1,2 +1,3 @@
 type: "boto3_sns"
-starting_sns_topic_name: "sns_topic-wo-dna_vis-ed-direct_sns-get_input"
+workload_name: "workflow-wo-dna_vis-ed-direct_sns"
+starting_function_name: "wo-dna_vis-ed-direct_sns-get_input"

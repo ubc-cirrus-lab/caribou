@@ -489,7 +489,7 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         # See: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sns/client/create_topic.html
         return response["TopicArn"]
 
-    def subscribe_sns_topic(self, topic_arn: str, protocol: str, endpoint: str) -> None:
+    def subscribe_sns_topic(self, topic_arn: str, protocol: str, endpoint: str) -> str:
         client = self._client("sns")
         response = client.subscribe(
             TopicArn=topic_arn,

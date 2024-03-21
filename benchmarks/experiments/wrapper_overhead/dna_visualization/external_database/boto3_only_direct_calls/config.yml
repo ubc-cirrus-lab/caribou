@@ -1,2 +1,3 @@
 type: "boto3_direct"
+workload_name: "workflow-wo-dna_vis-ed-direct"
 starting_function_name: "wo-dna_vis-ed-direct-get_input"
