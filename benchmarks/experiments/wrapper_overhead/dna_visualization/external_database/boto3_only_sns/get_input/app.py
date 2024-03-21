@@ -9,8 +9,8 @@ def get_input(event, context):
         raise ValueError("No metadata provided")
     
     data = {
-        "gen_file_name": event["gen_file_name"],
-        'metadata': event['metadata']
+        "gen_file_name": sns_message["gen_file_name"],
+        'metadata': sns_message['metadata']
     }
 
     payload = json.dumps(data)

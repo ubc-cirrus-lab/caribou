@@ -2,6 +2,7 @@ import json
 import os
 import uuid
 import datetime
+import pytz
 from typing import Any
 from benchmarks.experiments.wrapper_overhead.common.common_utility import CommonUtility
 from benchmarks.experiments.wrapper_overhead.common.extended_aws_remote_client import ExtendedAWSRemoteClient
@@ -133,3 +134,5 @@ if __name__ == "__main__":
     additional_path = 'benchmarks/experiments/wrapper_overhead/dna_visualization/external_database/multi_x'
     full_path = os.path.join(current_path, additional_path)
     # run_utility.run_experiment(full_path, payload, times)
+    # current_time = datetime.datetime.now(pytz.utc).isoformat()
+    # print(current_time)

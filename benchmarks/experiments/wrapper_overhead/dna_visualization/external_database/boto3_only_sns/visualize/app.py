@@ -16,8 +16,8 @@ def visualize(event, context):
     if "metadata" not in sns_message:
         raise ValueError("No metadata provided")
     
-    gen_file_name = event["gen_file_name"]
-    req_id = event["metadata"]["request_id"]
+    gen_file_name = sns_message["gen_file_name"]
+    req_id = sns_message["metadata"]["request_id"]
     local_gen_filename = f"/tmp/genbank-{req_id}.gb"
     local_result_filename = f"/tmp/result-{req_id}.png"
 
@@ -47,14 +47,14 @@ def visualize(event, context):
     current_time = datetime.datetime.now()
 
     ## Get the start time from the metadata
-    start_time = event["metadata"]["start_time"]
+    start_time = sns_message["metadata"]["start_time"]
     start_time = datetime.datetime.strptime(start_time, '%Y-%m-%dT%H:%M:%S.%f')
 
     ## Calculate the time delta in microseconds
     microseconds_from_start = (current_time - start_time).microseconds
 
     ## Get the workload name from the metadata
-    workload_name = event["metadata"]["workload_name"]
+    workload_name = sns_message["metadata"]["workload_name"]
 
     ## Log the time taken along with the request ID and workload name
     logger.info(f"Workload Name: {workload_name}, Request ID: {req_id}, Time Taken from workload start: {microseconds_from_start} microseconds")

@@ -107,12 +107,15 @@ class WrapperOverheadDeploymentUtility():
             # If it requires it
             if has_sns:
                 print(f"Creating sns topic and subscribing lambda function")
-                protocol = "lambda"
                 sns_topic_arn = self._client.create_sns_topic(sns_topic_name)
                 print(f"Resulting Topic ARN: {sns_topic_arn}")
+
+                protocol = "lambda"
                 sns_subscription_arn = self._client.subscribe_sns_topic(sns_topic_arn, protocol, function_arn)
                 print(f"Resulting Subscription ARN: {sns_subscription_arn}")
-        
+
+                self._client.add_lambda_permission_for_sns_topic(sns_topic_arn, function_arn)
+
         print(f"Completed deployment of {config['workload_name']}\n\n")
 
         return True
