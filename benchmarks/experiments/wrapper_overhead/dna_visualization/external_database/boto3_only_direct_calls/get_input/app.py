@@ -3,10 +3,8 @@ import json
 
 def get_input(event, context):
     # Read the payload from the event and parse the JSON string to a Python dictionary
-    parsed_event = json.loads(event["Payload"])
-
-    if "gen_file_name" in parsed_event:
-        gen_file_name = parsed_event["gen_file_name"]
+    if "gen_file_name" in event:
+        gen_file_name = event["gen_file_name"]
     else:
         raise ValueError("No gen_file_name provided")
 

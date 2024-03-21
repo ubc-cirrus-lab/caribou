@@ -17,7 +17,7 @@
     },
     {
       "Action": ["s3:GetObject", "s3:PutObject"],
-      "Resource": "arn:aws:s3:::multi-x-serverless-image-processing-benchmark/*",
+      "Resource": "arn:aws:s3:::multi-x-serverless-dna-visualization/*",
       "Effect": "Allow"
     }
   ]
