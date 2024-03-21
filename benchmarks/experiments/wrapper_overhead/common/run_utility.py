@@ -88,12 +88,11 @@ class WrapperOverheadRunUtility():
             self._client.run_state_machine(state_machine_arn, json.dumps(payload))
 
     def _run_multi_x(self, config: dict[str, Any], payload: dict[str, Any], times: int = 1) -> None:
-        # Step 1: Read the config.yaml file
-        # To get the starting lambda function name
+        # Get the workflow name
+        workload_name = config['workload_name']
 
-        # Step 2: For n times, run the starting lambda functions with the payload
+        # Step 2: For n times, invoke the workflow with the payload
 
-        pass
 
     def _get_metadata(self, config: dict[str, Any]) -> dict[str, Any]:
         # Parse and append metadata to the payload
@@ -125,14 +124,12 @@ if __name__ == "__main__":
     full_path = os.path.join(current_path, additional_path)
     # run_utility.run_experiment(full_path, payload, times)
 
-
     # Step Function
     additional_path = 'benchmarks/experiments/wrapper_overhead/dna_visualization/external_database/aws_step_function'
     full_path = os.path.join(current_path, additional_path)
-    run_utility.run_experiment(full_path, payload, times)
+    # run_utility.run_experiment(full_path, payload, times)
 
-#     # config = common_utility.get_config(full_path) # This is the config file that is read
-#     # arns = common_utility.aquire_arns(config)
-#     # print(arns)
-#     # config["functions"] = {}
-#     # print(config)
+    # Multi X
+    additional_path = 'benchmarks/experiments/wrapper_overhead/dna_visualization/external_database/multi_x'
+    full_path = os.path.join(current_path, additional_path)
+    # run_utility.run_experiment(full_path, payload, times)

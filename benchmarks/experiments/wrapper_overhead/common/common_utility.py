@@ -44,6 +44,9 @@ class CommonUtility():
         if 'config.yml' in files_dict:
             config_content = self.load_yaml_file(files_dict['config.yml'])
             loadded_config.update(config_content)
+
+            if config_content['type'] == 'multi_x':
+                return loadded_config
             
             functions = {}
             # Go get information on every function
