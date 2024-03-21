@@ -1,4 +1,4 @@
-import os
+import json
 from typing import Any
 from unittest.mock import MagicMock
 from benchmarks.experiments.wrapper_overhead.common.extended_aws_remote_client import ExtendedAWSRemoteClient
@@ -76,11 +76,11 @@ class WrapperOverheadDeploymentUtility():
             # Create iam role
             print(f"Creating iam role")
             policy_arn = self._client.create_role(iam_policy_name, iam_policies_content, self._lambda_trust_policy)
-            self._deployment_packager_config.workflow_name = function_name
             print(f"Resulting Policy ARN: {policy_arn}")
 
             # Create lambda function
             ## First zip the code content
+            self._deployment_packager_config.workflow_name = function_name
             zip_path = self._deployment_packager._create_deployment_package(data_directory_path, self._runtime)
             with open(zip_path, 'rb') as f:
                 zip_contents = f.read()
@@ -121,60 +121,72 @@ class WrapperOverheadDeploymentUtility():
         # Now we need to aquire the arn of the lambda functions
         arns = self._common_utility.aquire_arns(config)
 
-        # Now lets load the state_machine.json and config.yaml
-        print(arns)
-
-
-
-        # Step 1: Go through all the folders in the directory_path
-        # Those are the lambda functions that need to be deployed
-
-        # Step 2: For each folder, access the config to get the configuration
-        # and iam policies files
-
-        # Step 3: Check if the lambda function exists
-        # If it does, delete the old lambda function
-
-        # Step 4: Create a zip file of the contents of the code and the requirements
+        # Now lets alter state machine content with the arns
+        state_machine_content = config['state_machine_content']
+        self._alter_state_machine_content(state_machine_content, arns)
+        state_machine_definition = json.dumps(state_machine_content)
         
-        # Step 5: Create the lambda function, with the zip file and the configuration with docker
+        # Time to look at the state machine names and roles
+        state_machine_name = config['state_machine_name']
+        state_machine_iam_policy_name = f'{state_machine_name}-policy'
 
-        # Step 6: verify that the lambda function created
+        # First, delete the old state machine and all associated roles
+        print(f"Removing old resources")
+        if self._client.resource_exists(Resource(state_machine_iam_policy_name, "iam_role")): # For iam role
+            self._client.remove_role(state_machine_iam_policy_name)
+        # For state machine
+        state_machine_arn = self._client.get_state_machine_arn(state_machine_name)
+        if state_machine_arn:
+            self._client.remove_state_machine(state_machine_arn)
+        print(f"Old resources for Removed")
 
-        # Step 7: Get the arn of the lambda functions
+        # Create iam role
+        print(f"Creating state machine iam role")
+        policy_arn = self._client.create_role(state_machine_iam_policy_name, config['state_machine_iam_policies_content'], self._lambda_trust_policy)
+        print(f"Resulting Policy ARN: {policy_arn}")
 
-        # Step 8: Read the config.yaml and state_machine.json files
-        # To get the needed information to create the state machine
+        # Create state machine
+        print(f"Creating state machine")
+        state_machine_arn = self._client.create_state_machine(state_machine_name, state_machine_definition, policy_arn)
+        print(f"Resulting State Machine ARN: {state_machine_arn}")
 
-        # Step 9: Delete the old state machine if it exists
-
-        # Step 10: Load the config.yaml and replace the resources with the arn of the lambda functions
-
-        # Step 11: Create the state machine with the arn of the lambda functions
-
-        # Step 12: Verify that the state machine is created and correctly configured
+        print(f"Completed deployment of {config['workload_name']}\n\n")
 
         return True
+    
+    def _alter_state_machine_content(self, state_machine_content: dict[str, Any], arns: dict[str, str]) -> None:
+        # Replace the arns in the state machine content
+        # with the arns of the lambda functions
+        for state in state_machine_content['States'].values():
+            if 'Resource' in state:
+                if state['Resource'] in arns:
+                    state['Resource'] = arns[state['Resource']]
 
-if __name__ == "__main__":
-    desired_region = 'us-east-2'
-    deployment_utility = WrapperOverheadDeploymentUtility(desired_region)
-    common_utility = CommonUtility(desired_region)
-    current_path = os.getcwd()
+# if __name__ == "__main__":
+#     desired_region = 'us-east-2'
+#     deployment_utility = WrapperOverheadDeploymentUtility(desired_region)
+#     common_utility = CommonUtility(desired_region)
+#     current_path = os.getcwd()
 
-    # Direct calls
-    additional_path = 'benchmarks/experiments/wrapper_overhead/dna_visualization/external_database/boto3_only_direct_calls'
-    full_path = os.path.join(current_path, additional_path)
-    # deployment_utility.deploy_experiment(full_path)
-
-
-    # SNS calls
-    additional_path = 'benchmarks/experiments/wrapper_overhead/dna_visualization/external_database/boto3_only_sns'
-    full_path = os.path.join(current_path, additional_path)
-    # deployment_utility.deploy_experiment(full_path)
+#     # Direct calls
+#     additional_path = 'benchmarks/experiments/wrapper_overhead/dna_visualization/external_database/boto3_only_direct_calls'
+#     full_path = os.path.join(current_path, additional_path)
+#     # deployment_utility.deploy_experiment(full_path)
 
 
-    # Step Function
-    additional_path = 'benchmarks/experiments/wrapper_overhead/dna_visualization/external_database/aws_step_function'
-    full_path = os.path.join(current_path, additional_path)
-    deployment_utility.deploy_experiment(full_path)
+#     # SNS calls
+#     additional_path = 'benchmarks/experiments/wrapper_overhead/dna_visualization/external_database/boto3_only_sns'
+#     full_path = os.path.join(current_path, additional_path)
+#     # deployment_utility.deploy_experiment(full_path)
+
+
+#     # Step Function
+#     additional_path = 'benchmarks/experiments/wrapper_overhead/dna_visualization/external_database/aws_step_function'
+#     full_path = os.path.join(current_path, additional_path)
+#     # deployment_utility.deploy_experiment(full_path)
+
+#     # config = common_utility.get_config(full_path) # This is the config file that is read
+#     # arns = common_utility.aquire_arns(config)
+#     # print(arns)
+#     # config["functions"] = {}
+#     # print(config)

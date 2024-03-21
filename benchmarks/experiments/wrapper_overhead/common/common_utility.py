@@ -27,9 +27,14 @@ class CommonUtility():
                 sns_arn = self._client.get_sns_topic_arn(sns_topic_name)
                 arns[sns_topic_name] = sns_arn
         
+        if 'state_machine_name' in config:
+            state_machine_name = config['state_machine_name']
+            state_machine_arn = self._client.get_state_machine_arn(state_machine_name)
+            arns[state_machine_name] = state_machine_arn
+
         return arns
 
-    def get_config(self, directory_path: str) -> dict[str, Any]:
+    def get_config(self, directory_path: str, load_additional_content: bool = True) -> dict[str, Any]:
         loadded_config = {}
 
         files_dict, directories_dict = self.get_files_and_directories(directory_path)
@@ -55,14 +60,15 @@ class CommonUtility():
                     # Load the config file
                     if 'config.yml' in config_files_dict:
                         config_content = self.load_yaml_file(config_files_dict['config.yml'])
-                        # print(config_content)
                     else:
                         raise ValueError('config.yml not found in the configs directory')
                     
                     # Load the iam policies file
                     if 'iam_policy.json' in config_files_dict:
-                        iam_policies_content = self.load_json_file(config_files_dict['iam_policy.json'], load_as_dict=False)
-                        # print(iam_policies_content)
+                        if load_additional_content:
+                            iam_policies_content = self.load_json_file(config_files_dict['iam_policy.json'], load_as_dict=False)
+                        else:
+                            iam_policies_content = config_files_dict['iam_policy.json']
                     else:
                         raise ValueError('iam_policy.json not found in the configs directory')
                 else:
@@ -75,7 +81,6 @@ class CommonUtility():
                 timeout = config_content['configs']['timeout']
                 memory = config_content['configs']['memory']
                 handler = config_content['handler']
-                sns_topic_name = f'{function_name}-sns_topic'
                 directory_path = folder_path
                 additional_docker_commands = config_content.get('additional_docker_commands', None)
 
@@ -93,6 +98,20 @@ class CommonUtility():
                 }
 
             loadded_config['functions'] = functions
+
+        # For state_machine
+        if 'state_machine.json' in files_dict:
+            if load_additional_content:
+                state_machine_content = self.load_json_file(files_dict['state_machine.json'], True)
+                loadded_config['state_machine_content'] = state_machine_content
+            else:
+                loadded_config['state_machine_content'] = files_dict['state_machine.json']
+        # Load the iam policies file
+        if 'iam_policy.json' in files_dict:
+            if load_additional_content:
+                loadded_config['state_machine_iam_policies_content'] = self.load_json_file(files_dict['iam_policy.json'], load_as_dict=False)
+            else:
+                loadded_config['state_machine_iam_policies_content'] = files_dict['iam_policy.json']
 
         return loadded_config
 

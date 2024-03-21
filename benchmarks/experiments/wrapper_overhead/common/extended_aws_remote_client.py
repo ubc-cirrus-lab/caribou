@@ -17,6 +17,41 @@ class ExtendedAWSRemoteClient(AWSRemoteClient):
     def __init__(self, region: str) -> None:
         super().__init__(region)
 
+    def create_state_machine(self, state_machine_name: str, state_machine_definition: str, policy_arn: str) -> str:
+        client = self._client("stepfunctions")
+        response = client.create_state_machine(
+            name=state_machine_name,
+            definition=state_machine_definition,
+            roleArn=policy_arn,
+            type='STANDARD'  # or 'EXPRESS' https://docs.aws.amazon.com/step-functions/latest/dg/concepts-standard-vs-express.html
+        )
+        return response["stateMachineArn"]
+
+    def remove_state_machine(self, state_machine_arn: str) -> None:
+        client = self._client("stepfunctions")
+        client.delete_state_machine(stateMachineArn=state_machine_arn)
+
+    def get_state_machine_arn(self, state_machine_name: str) -> Optional[str]:
+        client = self._client("stepfunctions")
+        next_token = ""
+
+        while True:
+            if next_token:
+                response = client.list_state_machines(nextToken=next_token)
+            else:
+                response = client.list_state_machines()
+
+            for state_machine in response["stateMachines"]:
+                # State machine names are unique, so we check for an exact match
+                if state_machine_name == state_machine["name"]:
+                    return state_machine["stateMachineArn"]
+
+            next_token = response.get("nextToken")
+            if not next_token:
+                break
+
+        return None
+    
     def create_local_function(
         self,
         function_name: str,

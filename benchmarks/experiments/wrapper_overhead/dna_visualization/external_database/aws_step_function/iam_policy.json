@@ -1,0 +1,30 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Action": [
+                "states:StartExecution"
+            ],
+            "Resource": "arn:aws:logs:*:*:*",
+            "Effect": "Allow"
+        },
+        {
+
+            "Action": [
+                "states:DescribeExecution",
+                "states:StopExecution"
+            ],
+            "Resource": "arn:aws:logs:*:*:*",
+            "Effect": "Allow"
+        },
+        {
+            "Action": [
+                "events:PutTargets",
+                "events:PutRule",
+                "events:DescribeRule"
+            ],
+            "Resource": "arn:aws:logs:*:*:*",
+            "Effect": "Allow"
+        }
+    ]
+}
