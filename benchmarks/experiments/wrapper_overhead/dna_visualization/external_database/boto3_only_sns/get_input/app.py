@@ -3,17 +3,17 @@ import boto3
 
 def get_input(event, context):
     sns_message = json.loads(event['Records'][0]['Sns']['Message'])
-
-    if "gen_file_name" in sns_message:
-        gen_file_name = sns_message["gen_file_name"]
-    else:
+    if "gen_file_name" not in sns_message:
         raise ValueError("No gen_file_name provided")
-
-    payload = {
-        "gen_file_name": gen_file_name,
+    if "metadata" not in sns_message:
+        raise ValueError("No metadata provided")
+    
+    data = {
+        "gen_file_name": event["gen_file_name"],
+        'metadata': event['metadata']
     }
 
-    payload = json.dumps(payload)
+    payload = json.dumps(data)
 
     # Invoke the next visualize function
     # With boto3 only, using sns

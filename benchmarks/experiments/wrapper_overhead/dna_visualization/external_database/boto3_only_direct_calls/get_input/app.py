@@ -2,14 +2,14 @@ import boto3
 import json
 
 def get_input(event, context):
-    # Read the payload from the event and parse the JSON string to a Python dictionary
-    if "gen_file_name" in event:
-        gen_file_name = event["gen_file_name"]
-    else:
+    if "gen_file_name" not in event:
         raise ValueError("No gen_file_name provided")
-
+    if "metadata" not in event:
+        raise ValueError("No metadata provided")
+    
     data = {
-        "gen_file_name": gen_file_name,
+        "gen_file_name": event["gen_file_name"],
+        'metadata': event['metadata']
     }
 
     # Convert the data to JSON
