@@ -5,7 +5,30 @@ import yaml
 import os
 import json
 
-class FileUtility():
+from benchmarks.experiments.wrapper_overhead.common.extended_aws_remote_client import ExtendedAWSRemoteClient
+
+class CommonUtility():
+    def __init__(self, aws_region: str):
+        self._client: ExtendedAWSRemoteClient = ExtendedAWSRemoteClient(aws_region)
+
+    def aquire_arns(self, config: dict[str, Any]) -> dict[str, str]:
+        has_sns = (config['type'] == 'boto3_sns')
+        arns = {}
+        for function in config['functions'].values():
+            function_name = function['function_name']
+            
+            # Get AWS Lambda function ARN
+            function_arn = self._client.get_lambda_function(function_name)['FunctionArn']
+            arns[function_name] = function_arn
+
+            # Get AWS SNS topic ARN
+            if has_sns:
+                sns_topic_name = function['sns_topic_name']
+                sns_arn = self._client.get_sns_topic_arn(sns_topic_name)
+                arns[sns_topic_name] = sns_arn
+        
+        return arns
+
     def get_config(self, directory_path: str) -> dict[str, Any]:
         loadded_config = {}
 
