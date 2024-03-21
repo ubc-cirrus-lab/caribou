@@ -30,6 +30,8 @@ class ProviderRetriever(DataRetriever):
 
         if name == "Columbus":
             name = "Columbus, Ohio"  # Somehow Google Maps doesn't know where Columbus, OH is
+        if name == "Canada (Central)":
+            name = "Varennes, QC"
         geocode_result = google_maps.geocode(name)
         if geocode_result:
             latitude = geocode_result[0]["geometry"]["location"]["lat"]

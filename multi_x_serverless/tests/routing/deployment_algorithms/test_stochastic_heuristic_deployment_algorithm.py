@@ -21,6 +21,8 @@ class TestStochasticHeuristicDeploymentAlgorithm(unittest.TestCase):
         self._algorithm._region_indexer.get_value_indices.return_value = {1: 1, 2: 2}
         self._algorithm._instance_indexer.get_value_indices.return_value = {1: 1, 2: 2}
         self._algorithm._temperature = 1.0
+        self._algorithm._per_instance_permitted_regions = [[0, 1, 2], [0, 1, 2], [0, 1, 2]]
+        self._algorithm._home_deployment_metrics = {"metric1": 1.0, "metric2": 2.0}
 
         # Act
         self._algorithm._setup()
@@ -32,11 +34,15 @@ class TestStochasticHeuristicDeploymentAlgorithm(unittest.TestCase):
 
     def test_run_algorithm(self):
         # Arrange
-        self._algorithm._generate_stochastic_heuristic_deployments = MagicMock()
-        self._algorithm._generate_stochastic_heuristic_deployments.return_value = [
+        self._algorithm._generate_all_possible_coarse_deployments = MagicMock()
+        self._algorithm._generate_all_possible_coarse_deployments.return_value = [
             ([1, 1, 1], {"metric1": 1.0, "metric2": 2.0})
         ]
+        self._algorithm._generate_stochastic_heuristic_deployments = MagicMock()
         self._algorithm._number_of_instances = 3
+        self._algorithm._home_deployment_metrics = {"metric1": 1.0, "metric2": 2.0}
+        self._algorithm._home_deployment = [1, 1, 1]
+        self._algorithm._num_iterations = 2
 
         # Act
         result = self._algorithm._run_algorithm()
@@ -63,9 +69,13 @@ class TestStochasticHeuristicDeploymentAlgorithm(unittest.TestCase):
         self._algorithm._is_improvement.return_value = True
         self._algorithm._number_of_instances = 3
         self._algorithm._temperature = 0.99
+        self._algorithm._max_number_combinations = 10
+        self._algorithm._per_instance_permitted_regions = [[0, 1, 2], [0, 1, 2], [0, 1, 2]]
+
+        result = []
 
         # Act
-        result = self._algorithm._generate_stochastic_heuristic_deployments()
+        self._algorithm._generate_stochastic_heuristic_deployments(result)
 
         # Assert
         expected_result = [([2, 2, 2], {"metric1": 2.0, "metric2": 3.0})]
@@ -75,15 +85,13 @@ class TestStochasticHeuristicDeploymentAlgorithm(unittest.TestCase):
         # Arrange
         self._algorithm._ranker = MagicMock()
         self._algorithm._ranker.number_one_priority = "metric1"
-        current_deployment_metrics = {"metric1": 1.0, "metric2": 2.0}
         new_deployment_metrics = {"metric1": 0.5, "metric2": 1.5}
         new_deployment = [1, 1, 1]
         current_deployment = [1, 1, 1]
+        self._algorithm._best_deployment_metrics = {"metric1": 1.0, "metric2": 2.0}
 
         # Act
-        result = self._algorithm._is_improvement(
-            current_deployment_metrics, new_deployment_metrics, new_deployment, current_deployment
-        )
+        result = self._algorithm._is_improvement(new_deployment_metrics, new_deployment, current_deployment)
 
         # Assert
         self.assertTrue(result)
@@ -134,6 +142,57 @@ class TestStochasticHeuristicDeploymentAlgorithm(unittest.TestCase):
         # Assert
         self.assertIn(result, permitted_regions)
         self.assertTrue(result in self._algorithm._bias_regions or result in permitted_regions)
+
+    def test_generate_all_possible_coarse_deployments(self):
+        # Arrange
+        self._algorithm._region_indexer.get_value_indices.return_value = {1: 1, 2: 2}
+        self._algorithm._generate_and_check_deployment = MagicMock()
+        self._algorithm._generate_and_check_deployment.side_effect = [
+            ([1, 1, 1], {"metric1": 1.0, "metric2": 2.0}),
+            None,
+        ]
+
+        # Act
+        result = self._algorithm._generate_all_possible_coarse_deployments()
+
+        # Assert
+        expected_result = [([1, 1, 1], {"metric1": 1.0, "metric2": 2.0})]
+        self.assertEqual(result, expected_result)
+
+    def test_generate_and_check_deployment(self):
+        # Arrange
+        self._algorithm._number_of_instances = 3
+        self._algorithm._per_instance_permitted_regions = [[0, 1, 2], [0, 1, 2], [0, 1, 2]]
+        self._algorithm._generate_deployment = MagicMock()
+        self._algorithm._generate_deployment.return_value = [1, 1, 1]
+        self._algorithm._deployment_metrics_calculator = MagicMock()
+        self._algorithm._deployment_metrics_calculator.calculate_deployment_metrics.return_value = {
+            "metric1": 1.0,
+            "metric2": 2.0,
+        }
+        self._algorithm._is_hard_constraint_failed = MagicMock()
+        self._algorithm._is_hard_constraint_failed.return_value = False
+        self._algorithm._ranker = MagicMock()
+        self._algorithm._ranker.number_one_priority = "metric1"
+        self._algorithm._best_deployment_metrics = {"metric1": 0.5, "metric2": 1.5}
+
+        # Act
+        result = self._algorithm._generate_and_check_deployment(1)
+
+        # Assert
+        expected_result = ([1, 1, 1], {"metric1": 1.0, "metric2": 2.0})
+        self.assertEqual(result, expected_result)
+
+    def test_generate_deployment(self):
+        # Arrange
+        self._algorithm._number_of_instances = 3
+
+        # Act
+        result = self._algorithm._generate_deployment(1)
+
+        # Assert
+        expected_result = [1, 1, 1]
+        self.assertEqual(result, expected_result)
 
 
 if __name__ == "__main__":

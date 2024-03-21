@@ -14,6 +14,18 @@ class WorkflowConfig:
             self._workflow_config["regions_and_providers"]
         )
 
+        allowed_deployment_algorithms = {
+            "coarse_grained_deployment_algorithm",
+            "fine_grained_deployment_algorithm",
+            "stochastic_heuristic_deployment_algorithm",
+        }
+        result = self._lookup("deployment_algorithm", "stochastic_heuristic_deployment_algorithm")
+        if len(result) == 0:
+            result = "stochastic_heuristic_deployment_algorithm"
+        if result not in allowed_deployment_algorithms:
+            raise ValueError(f"Invalid deployment algorithm: {result}")
+        self.deployment_algorithm = result
+
     def _verify(self, workflow_config: dict) -> None:
         try:
             WorkflowConfigSchema(**workflow_config)
@@ -65,20 +77,6 @@ class WorkflowConfig:
     @property
     def num_calls_in_one_month(self) -> int:
         return self._lookup("num_calls_in_one_month", 100)
-
-    @property
-    def deployment_algorithm(self) -> str:
-        allowed_deployment_algorithms = {
-            "coarse_grained_deployment_algorithm",
-            "fine_grained_deployment_algorithm",
-            "stochastic_heuristic_deployment_algorithm",
-        }
-        result = self._lookup("deployment_algorithm", "stochastic_heuristic_deployment_algorithm")
-        if len(result) == 0:
-            result = "stochastic_heuristic_deployment_algorithm"
-        if result not in allowed_deployment_algorithms:
-            raise ValueError(f"Invalid deployment algorithm: {result}")
-        return result
 
     def write_back(self, key: str, value: Any) -> None:
         self._workflow_config[key] = value

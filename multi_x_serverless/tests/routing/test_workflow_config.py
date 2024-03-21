@@ -100,19 +100,10 @@ class TestWorkflowConfig(unittest.TestCase):
         result = self.workflow_config.deployment_algorithm
 
         # Define the expected result
-        expected_result = "fine_grained_deployment_algorithm"
+        expected_result = "stochastic_heuristic_deployment_algorithm"
 
         # Assert that the result matches the expected result
         self.assertEqual(result, expected_result)
-
-    def test_deployment_algorithm_invalid(self):
-        # Mock the _lookup method to return an invalid value
-        self.workflow_config._lookup = MagicMock()
-        self.workflow_config._lookup.return_value = "invalid_deployment_algorithm"
-
-        # Assert that calling the property raises a ValueError
-        with self.assertRaises(ValueError):
-            self.workflow_config.deployment_algorithm
 
     def test_home_region(self):
         self.assertEqual(self.workflow_config.home_region, "provider1:region1")

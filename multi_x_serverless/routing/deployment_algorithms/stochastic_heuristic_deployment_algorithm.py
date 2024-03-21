@@ -1,4 +1,5 @@
 import random
+from typing import Optional
 
 from multi_x_serverless.routing.deployment_algorithms.deployment_algorithm import DeploymentAlgorithm
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
@@ -21,16 +22,20 @@ class StochasticHeuristicDeploymentAlgorithm(DeploymentAlgorithm):
         self._bias_regions: set[int] = set()
         self._bias_probability = 0.2
 
+        self._max_number_combinations = 1
+        for instance in range(self._number_of_instances):
+            self._max_number_combinations *= len(self._per_instance_permitted_regions[instance])
+        self._best_deployment_metrics = self._home_deployment_metrics.copy()
+
     def _run_algorithm(self) -> list[tuple[list[int], dict[str, float]]]:
-        deployments = self._generate_stochastic_heuristic_deployments()
+        deployments = self._generate_all_possible_coarse_deployments()
+        self._generate_stochastic_heuristic_deployments(deployments)
         return deployments
 
-    def _generate_stochastic_heuristic_deployments(self) -> list[tuple[list[int], dict[str, float]]]:
-        current_deployment_metrics = self._home_deployment_metrics.copy()
+    def _generate_stochastic_heuristic_deployments(self, deployments: list[tuple[list[int], dict[str, float]]]) -> None:
         current_deployment = self._home_deployment.copy()
 
-        deployments = []
-        generated_deployments: set[tuple[int, ...]] = set()
+        generated_deployments: set[tuple[int, ...]] = {tuple(deployment) for deployment, _ in deployments}
         for _ in range(self._num_iterations):
             new_deployment = self._generate_new_deployment(current_deployment)
             if tuple(new_deployment) in generated_deployments:
@@ -40,17 +45,47 @@ class StochasticHeuristicDeploymentAlgorithm(DeploymentAlgorithm):
             if self._is_hard_constraint_failed(new_deployment_metrics):
                 continue
 
-            if self._is_improvement(
-                current_deployment_metrics, new_deployment_metrics, new_deployment, current_deployment
-            ):
+            if self._is_improvement(new_deployment_metrics, new_deployment, current_deployment):
                 current_deployment = new_deployment
-                current_deployment_metrics = new_deployment_metrics
-                deployments.append((current_deployment, current_deployment_metrics))
+                deployments.append((current_deployment, new_deployment_metrics))
                 generated_deployments.add(tuple(current_deployment))
 
             self._temperature *= 0.99
 
+            if len(deployments) >= self._max_number_combinations:
+                break
+
+    def _generate_all_possible_coarse_deployments(self) -> list[tuple[list[int], dict[str, float]]]:
+        deployments = []
+        for index_value in self._region_indexer.get_value_indices().values():
+            deployment = self._generate_and_check_deployment(index_value)
+            if deployment is not None:
+                deployments.append(deployment)
         return deployments
+
+    def _generate_and_check_deployment(self, region_index: int) -> Optional[tuple[list[int], dict[str, float]]]:
+        if any(
+            region_index not in self._per_instance_permitted_regions[instance_index]
+            for instance_index in range(self._number_of_instances)
+        ):
+            return None
+        deployment = self._generate_deployment(region_index)
+        deployment_metrics = self._deployment_metrics_calculator.calculate_deployment_metrics(deployment)
+
+        if self._is_hard_constraint_failed(deployment_metrics):
+            return None
+
+        if (
+            deployment_metrics[self._ranker.number_one_priority]
+            < self._best_deployment_metrics[self._ranker.number_one_priority]
+        ):
+            self._best_deployment_metrics = deployment_metrics.copy()  # pylint: disable=attribute-defined-outside-init
+            self._store_bias_regions(deployment, self._home_deployment)
+
+        return (deployment, deployment_metrics)
+
+    def _generate_deployment(self, region_index: int) -> list[int]:
+        return [region_index for _ in range(self._number_of_instances)]
 
     def _store_bias_regions(self, new_deployment: list[int], current_deployment: list[int]) -> None:
         for instance, new_region in enumerate(new_deployment):
@@ -59,15 +94,17 @@ class StochasticHeuristicDeploymentAlgorithm(DeploymentAlgorithm):
 
     def _is_improvement(
         self,
-        current_deployment_metrics: dict[str, float],
         new_deployment_metrics: dict[str, float],
         new_deployment: list[int],
         current_deployment: list[int],
     ) -> bool:
         if (
             new_deployment_metrics[self._ranker.number_one_priority]
-            < current_deployment_metrics[self._ranker.number_one_priority]
+            < self._best_deployment_metrics[self._ranker.number_one_priority]
         ):
+            self._best_deployment_metrics = (  # pylint: disable=attribute-defined-outside-init
+                new_deployment_metrics.copy()
+            )
             self._store_bias_regions(new_deployment, current_deployment)
             return True
         return random.random() < self._acceptance_probability()

@@ -117,7 +117,7 @@ class TestWorkflowRetriever(unittest.TestCase):
         # Set up the test data
         instance_summary = {}
         log = {
-            "execution_latencies": {"instance1": {"provider_region": "provider1:region1", "latency": "0.1"}},
+            "execution_latencies": {"instance1": {"provider_region": "provider1:region1", "latency": 0.1}},
             "start_hop_destination": {"provider": "provider1", "region": "region1"},
             "transmission_data": [
                 {
@@ -132,6 +132,7 @@ class TestWorkflowRetriever(unittest.TestCase):
             "non_executions": {"instance1": {"instance2": 1}},
         }
 
+        self.workflow_retriever._handle_missing_region_to_region_transmission_data = Mock()
         # Call the method
         self.workflow_retriever._extend_instance_summary(instance_summary, log)
 
@@ -139,7 +140,7 @@ class TestWorkflowRetriever(unittest.TestCase):
         expected_result = {
             "instance1": {
                 "invocations": 1,
-                "executions": {"provider1:region1": ["0.1"]},
+                "executions": {"provider1:region1": [0.1]},
                 "to_instance": {
                     "instance2": {
                         "invoked": 0,
@@ -198,7 +199,7 @@ class TestWorkflowRetriever(unittest.TestCase):
                                 "provider2:region3": {
                                     "transfer_size_to_transfer_latencies": {
                                         1.0: [0.1, 0.2, 0.3],
-                                        2.0: [0.14999999999999997, 0.29999999999999993, 0.44999999999999984],
+                                        2.0: [0.15000000000000002, 0.30000000000000004, 0.44999999999999996],
                                     },
                                     "transfer_sizes": [1.0, 1.0, 1.0, 2.0, 2.0, 2.0],
                                 },
@@ -251,14 +252,14 @@ class TestWorkflowRetriever(unittest.TestCase):
                                 "provider2:region2": {
                                     "transfer_size_to_transfer_latencies": {
                                         2.0: [0.2, 0.3, 0.4],
-                                        1.0: [0.1333333333333334, 0.20000000000000004, 0.2666666666666668],
+                                        1.0: [0.13333333333333333, 0.19999999999999998, 0.26666666666666666],
                                     },
                                     "transfer_sizes": [2.0, 2.0, 2.0, 1.0, 1.0, 1.0],
                                 },
                                 "provider2:region3": {
                                     "transfer_size_to_transfer_latencies": {
                                         1.0: [0.1, 0.2, 0.3],
-                                        2.0: [0.14999999999999997, 0.29999999999999993, 0.44999999999999984],
+                                        2.0: [0.15000000000000002, 0.30000000000000004, 0.44999999999999996],
                                     },
                                     "transfer_sizes": [1.0, 1.0, 1.0, 2.0, 2.0, 2.0],
                                 },
