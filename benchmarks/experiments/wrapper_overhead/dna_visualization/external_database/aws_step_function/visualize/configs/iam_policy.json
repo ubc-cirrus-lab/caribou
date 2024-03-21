@@ -1,26 +1,24 @@
 {
-  "aws": {
-    "Version": "2012-10-17",
-    "Statement": [
-      {
-        "Action": [
-          "logs:CreateLogGroup",
-          "logs:CreateLogStream",
-          "logs:PutLogEvents"
-        ],
-        "Resource": "arn:aws:logs:*:*:*",
-        "Effect": "Allow"
-      },
-      {
-        "Action": ["dynamodb:GetItem", "dynamodb:UpdateItem"],
-        "Resource": "arn:aws:dynamodb:*:*:*",
-        "Effect": "Allow"
-      },
-      {
-        "Action": ["s3:GetObject", "s3:PutObject"],
-        "Resource": "arn:aws:s3:::multi-x-serverless-image-processing-benchmark/*",
-        "Effect": "Allow"
-      }
-    ]
-  }
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
+      "Resource": "arn:aws:logs:*:*:*",
+      "Effect": "Allow"
+    },
+    {
+      "Action": ["dynamodb:GetItem", "dynamodb:UpdateItem"],
+      "Resource": "arn:aws:dynamodb:*:*:*",
+      "Effect": "Allow"
+    },
+    {
+      "Action": ["s3:GetObject", "s3:PutObject"],
+      "Resource": "arn:aws:s3:::multi-x-serverless-image-processing-benchmark/*",
+      "Effect": "Allow"
+    }
+  ]
 }
