@@ -17,6 +17,13 @@ class ExtendedAWSRemoteClient(AWSRemoteClient):
     def __init__(self, region: str) -> None:
         super().__init__(region)
 
+    def run_state_machine(self, state_machine_arn: str, payload: str) -> None:
+        client = self._client("stepfunctions")
+        client.start_execution(
+            stateMachineArn=state_machine_arn,
+            input=payload
+        )
+
     def invoke_lambda_function(self, function_name: str, payload: str) -> int:
         client = self._client("lambda")
         response = client.invoke(
@@ -35,6 +42,14 @@ class ExtendedAWSRemoteClient(AWSRemoteClient):
             type='STANDARD'  # or 'EXPRESS' https://docs.aws.amazon.com/step-functions/latest/dg/concepts-standard-vs-express.html
         )
         return response["stateMachineArn"]
+
+    def update_state_machine(self, state_machine_arn: str, new_definition: str, new_role_arn: str) -> None:
+        client = self._client("stepfunctions")
+        client.update_state_machine(
+            stateMachineArn=state_machine_arn,
+            definition=new_definition,
+            roleArn=new_role_arn
+        )
 
     def remove_state_machine(self, state_machine_arn: str) -> None:
         client = self._client("stepfunctions")

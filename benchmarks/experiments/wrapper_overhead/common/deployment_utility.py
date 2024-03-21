@@ -1,4 +1,5 @@
 import json
+import os
 from typing import Any
 from unittest.mock import MagicMock
 from benchmarks.experiments.wrapper_overhead.common.extended_aws_remote_client import ExtendedAWSRemoteClient
@@ -116,7 +117,7 @@ class WrapperOverheadDeploymentUtility():
 
     def _deploy_statemachine(self, config: dict[str, Any]) -> None:
         # Use the _deploy_lambda_functions to deploy all aws functions and rols
-        self._deploy_lambda_functions(config, False)
+        # self._deploy_lambda_functions(config, False)
 
         # Now we need to aquire the arn of the lambda functions
         arns = self._common_utility.aquire_arns(config)
@@ -130,14 +131,10 @@ class WrapperOverheadDeploymentUtility():
         state_machine_name = config['state_machine_name']
         state_machine_iam_policy_name = f'{state_machine_name}-policy'
 
-        # First, delete the old state machine and all associated roles
-        print(f"Removing old resources")
+        # Delete old arn
+        print(f"Delete role arn")
         if self._client.resource_exists(Resource(state_machine_iam_policy_name, "iam_role")): # For iam role
             self._client.remove_role(state_machine_iam_policy_name)
-        # For state machine
-        state_machine_arn = self._client.get_state_machine_arn(state_machine_name)
-        if state_machine_arn:
-            self._client.remove_state_machine(state_machine_arn)
         print(f"Old resources for Removed")
 
         # Create iam role
@@ -145,10 +142,17 @@ class WrapperOverheadDeploymentUtility():
         policy_arn = self._client.create_role(state_machine_iam_policy_name, config['state_machine_iam_policies_content'], self._lambda_trust_policy)
         print(f"Resulting Policy ARN: {policy_arn}")
 
-        # Create state machine
-        print(f"Creating state machine")
-        state_machine_arn = self._client.create_state_machine(state_machine_name, state_machine_definition, policy_arn)
-        print(f"Resulting State Machine ARN: {state_machine_arn}")
+        # Delete or override the old state machine and iam role
+        state_machine_arn = arns[config['state_machine_name']]
+        if state_machine_arn: 
+            print(f"Updating state machine")
+            self._client.update_state_machine(state_machine_arn, state_machine_definition, policy_arn)
+            print(f"Resulting State Machine ARN: {state_machine_arn}")
+        else:
+            # Create state machine
+            print(f"Creating state machine")
+            state_machine_arn = self._client.create_state_machine(state_machine_name, state_machine_definition, policy_arn)
+            print(f"Resulting State Machine ARN: {state_machine_arn}")
 
         print(f"Completed deployment of {config['workload_name']}\n\n")
 
@@ -165,7 +169,6 @@ class WrapperOverheadDeploymentUtility():
 # if __name__ == "__main__":
 #     desired_region = 'us-east-2'
 #     deployment_utility = WrapperOverheadDeploymentUtility(desired_region)
-#     common_utility = CommonUtility(desired_region)
 #     current_path = os.getcwd()
 
 #     # Direct calls
@@ -185,8 +188,3 @@ class WrapperOverheadDeploymentUtility():
 #     full_path = os.path.join(current_path, additional_path)
 #     # deployment_utility.deploy_experiment(full_path)
 
-#     # config = common_utility.get_config(full_path) # This is the config file that is read
-#     # arns = common_utility.aquire_arns(config)
-#     # print(arns)
-#     # config["functions"] = {}
-#     # print(config)
