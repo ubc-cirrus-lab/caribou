@@ -122,7 +122,7 @@ class WrapperOverheadDeploymentUtility():
         arns = self._common_utility.aquire_arns(config)
 
         # Now lets load the state_machine.json and config.yaml
-
+        print(arns)
 
 
 
@@ -161,14 +161,20 @@ if __name__ == "__main__":
     deployment_utility = WrapperOverheadDeploymentUtility(desired_region)
     common_utility = CommonUtility(desired_region)
     current_path = os.getcwd()
+
+    # Direct calls
     additional_path = 'benchmarks/experiments/wrapper_overhead/dna_visualization/external_database/boto3_only_direct_calls'
     full_path = os.path.join(current_path, additional_path)
-
-    # config = common_utility.get_config(full_path)
-    # arns = common_utility.aquire_arns(config)
-    # print(arns)
+    # deployment_utility.deploy_experiment(full_path)
 
 
+    # SNS calls
     additional_path = 'benchmarks/experiments/wrapper_overhead/dna_visualization/external_database/boto3_only_sns'
+    full_path = os.path.join(current_path, additional_path)
+    # deployment_utility.deploy_experiment(full_path)
+
+
+    # Step Function
+    additional_path = 'benchmarks/experiments/wrapper_overhead/dna_visualization/external_database/aws_step_function'
     full_path = os.path.join(current_path, additional_path)
     deployment_utility.deploy_experiment(full_path)

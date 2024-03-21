@@ -1,5 +1,4 @@
 function_name: "wo-dna_vis-ed-step_function-visualize"
-iam_policy_file: "iam_policy.json"
 handler: "app.visualize"
 configs:
   timeout: 300

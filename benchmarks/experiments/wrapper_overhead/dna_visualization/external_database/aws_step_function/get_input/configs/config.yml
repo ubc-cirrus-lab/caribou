@@ -1,5 +1,4 @@
 function_name: "wo-dna_vis-ed-step_function-get_input"
-iam_policy_file: "iam_policy.json"
 handler: "app.get_input"
 configs:
   timeout: 300
