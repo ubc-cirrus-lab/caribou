@@ -22,7 +22,9 @@ class WrapperOverheadDeploymentUtility():
                 {
                     "Sid": "",
                     "Effect": "Allow",
-                    "Principal": {"Service": "lambda.amazonaws.com"},
+                    "Principal": {
+                        "Service": ["lambda.amazonaws.com", "states.amazonaws.com"]
+                    },
                     "Action": "sts:AssumeRole",
                 }
             ],
@@ -117,7 +119,7 @@ class WrapperOverheadDeploymentUtility():
 
     def _deploy_statemachine(self, config: dict[str, Any]) -> None:
         # Use the _deploy_lambda_functions to deploy all aws functions and rols
-        # self._deploy_lambda_functions(config, False)
+        self._deploy_lambda_functions(config, False)
 
         # Now we need to aquire the arn of the lambda functions
         arns = self._common_utility.aquire_arns(config)
