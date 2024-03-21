@@ -17,6 +17,15 @@ class ExtendedAWSRemoteClient(AWSRemoteClient):
     def __init__(self, region: str) -> None:
         super().__init__(region)
 
+    def invoke_lambda_function(self, function_name: str, payload: str) -> int:
+        client = self._client("lambda")
+        response = client.invoke(
+            FunctionName=function_name,
+            InvocationType="Event",
+            Payload=payload
+        )
+        return response['StatusCode']
+
     def create_state_machine(self, state_machine_name: str, state_machine_definition: str, policy_arn: str) -> str:
         client = self._client("stepfunctions")
         response = client.create_state_machine(
