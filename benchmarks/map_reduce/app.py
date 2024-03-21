@@ -4,17 +4,21 @@ import json
 import boto3
 import tempfile
 import os
-import datetime
+from datetime import datetime 
+import logging
 
 from multi_x_serverless.deployment.client import MultiXServerlessWorkflow
 
-workflow = MultiXServerlessWorkflow(name="map_reduce", version="0.0.1")
+workflow = MultiXServerlessWorkflow(name="map_reduce", version="0.0.2")
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 @workflow.serverless_function(
     name="GetInput",
     entry_point=True,
 )
-def get_input(event: dict[str, Any]) -> dict[str, Any]:
+def get_input(event: dict[str, Any]) -> dict[str, Any]:    
     if isinstance(event, str):
         event = json.loads(event)
 
@@ -43,7 +47,7 @@ def input_processor(event: dict[str, Any]) -> dict[str, Any]:
     tmp_dir = tempfile.mkdtemp()
     local_file_path = f"{tmp_dir}/{input_name}"
 
-    s3.download_file("multi-x-serverless-map-reduce/input", input_name, local_file_path)
+    s3.download_file("multi-x-serverless-map-reduce", f"input/{input_name}", local_file_path)
 
     file_size = os.path.getsize(local_file_path)
     chunk_size = file_size // 4
@@ -65,6 +69,9 @@ def input_processor(event: dict[str, Any]) -> dict[str, Any]:
                 chunk_data = file.read()  # Read the rest of the file for the last chunk
 
             payloads.append({"data": chunk_data})
+
+
+    logger.info(f"Payload to mappers: {payloads}")
 
     workflow.invoke_serverless_function(mapper, payloads[0])
     workflow.invoke_serverless_function(mapper, payloads[1])
@@ -98,6 +105,8 @@ def mapper(event: dict[str, Any]) -> dict[str, Any]:
         "word_counts": word_counts,
     }
 
+    logger.info(f"Payloads to shuffler: {payload}")
+
     workflow.invoke_serverless_function(shuffler, payload)
 
     return {"status": 200}
@@ -118,6 +127,8 @@ def shuffler(event: dict[str, Any]) -> dict[str, Any]:
 
     workflow.invoke_serverless_function(reducer, reducer_payloads[0])
     workflow.invoke_serverless_function(reducer, reducer_payloads[1])
+
+    logger.info(f"Payloads to reducers: {reducer_payloads}")
 
     return {"status": 200}
 
@@ -142,11 +153,13 @@ def reducer(event: dict[str, Any]) -> dict[str, Any]:
         else:
             merged_word_counts[word] = count
 
-    sorted_word_counts = sorted(merged_word_counts.keys())
+    sorted_word_counts = {word: merged_word_counts[word] for word in sorted(merged_word_counts)}
 
     payload = {
         "sorted_word_counts": sorted_word_counts,
     }
+
+    logger.info(f"Payloads to output processor: {payload}")
 
     workflow.invoke_serverless_function(output_processor, payload)
 
@@ -160,11 +173,11 @@ def output_processor(event: dict[str, Any]) -> dict[str, Any]:
     final_word_counts = {}
 
     for result in results:
-        for word in result["sorted_word_counts"]:
+        for word, count in result["sorted_word_counts"].items():
             if word in final_word_counts:
-                final_word_counts[word] += 1
+                final_word_counts[word] += count
             else:
-                final_word_counts[word] = 1
+                final_word_counts[word] = count
 
     s3 = boto3.client("s3")
     tmp_dir = tempfile.mkdtemp()
@@ -175,6 +188,6 @@ def output_processor(event: dict[str, Any]) -> dict[str, Any]:
         for word, count in final_word_counts.items():
             file.write(f"{word}: {count}\n")
 
-    s3.upload_file(local_file_path, "multi-x-serverless-map-reduce/results", f"results{file_name}")
+    s3.upload_file(local_file_path, "multi-x-serverless-map-reduce", f"{file_name}")
 
     return {"status": 200}
