@@ -42,6 +42,29 @@ class WrapperOverheadRunUtility():
         
         print("Done\n")
 
+    def _run_sns_topic(self, config: dict[str, Any], payload: str, times: int = 1) -> None:
+        print(f"Running {config['type']} workload: {config['workload_name']}")
+        print(f"Payload: {payload}")
+        print(f"Times: {times}")
+
+        # Get the starting function name
+        starting_function_name = config['starting_function_name']
+        
+        # Get the sns topic of this function
+        sns_topic_name = f'{starting_function_name}-sns_topic'
+
+        # Get the arn of the sns topic
+        sns_topic_arn = self._client.get_sns_topic_arn(sns_topic_name)
+
+        if not sns_topic_arn:
+            raise ValueError(f"No sns topic found for {sns_topic_name}")
+        
+        # Publish the payload to the sns topic n times
+        for _ in range(times):
+            self._client.send_message_to_messaging_service(sns_topic_arn, payload)
+
+        print("Done\n")
+
     def _run_statemachine(self, directory_path: str, config: dict[str, Any], payload: str, times: int = 1) -> None:
         # Step 1: Read the config.yaml file
         # To get the state machine name
@@ -52,29 +75,7 @@ class WrapperOverheadRunUtility():
 
         pass
 
-    def _run_sns_topic(self, config: dict[str, Any], payload: str, times: int = 1) -> None:
-        # Step 1: Read the config.yaml file
-        # To get the starting sns topic name
-        # # Get the starting function name
-        # starting_function_name = config['starting_function_name']
 
-        # # Get the function arn of only the starting function
-        # starting_function_arn = self._client.get_lambda_function(starting_function_name)['FunctionArn']
-
-        # # Invoke the starting function n times
-        # for _ in range(times):
-        #     response = self._client.invoke_lambda_function(starting_function_arn, payload)
-        #     print(response)
-
-        # Step 2: Go through all the folders in the directory_path
-        # To get all the arns of the sns topics
-
-        # Step 3: For n times, publish the payload to the starting sns topic
-        # Apart of the payload will be the arn of each sns topic
-
-        # Step 4: For n times, publish the payload to the starting sns topic
-
-        pass
 
     def _run_multi_x(self, config: dict[str, Any], payload: str, times: int = 1) -> None:
         # Step 1: Read the config.yaml file
@@ -87,9 +88,7 @@ class WrapperOverheadRunUtility():
 if __name__ == "__main__":
     desired_region = 'us-east-2'
     run_utility = WrapperOverheadRunUtility(desired_region)
-    common_utility = CommonUtility(desired_region)
     current_path = os.getcwd()
-
     payload = {
         "gen_file_name": "small_sequence.gb"
     }
@@ -99,13 +98,12 @@ if __name__ == "__main__":
     # Direct calls
     additional_path = 'benchmarks/experiments/wrapper_overhead/dna_visualization/external_database/boto3_only_direct_calls'
     full_path = os.path.join(current_path, additional_path)
+    # run_utility.run_experiment(full_path, payload, times)
+
+    # SNS calls
+    additional_path = 'benchmarks/experiments/wrapper_overhead/dna_visualization/external_database/boto3_only_sns'
+    full_path = os.path.join(current_path, additional_path)
     run_utility.run_experiment(full_path, payload, times)
-
-
-#     # SNS calls
-#     additional_path = 'benchmarks/experiments/wrapper_overhead/dna_visualization/external_database/boto3_only_sns'
-#     full_path = os.path.join(current_path, additional_path)
-#     # deployment_utility.deploy_experiment(full_path)
 
 
 #     # Step Function
