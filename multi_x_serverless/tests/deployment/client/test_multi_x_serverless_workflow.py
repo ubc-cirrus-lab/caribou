@@ -4,6 +4,8 @@ from unittest.mock import Mock, patch
 from typing import Any
 from multi_x_serverless.deployment.client.multi_x_serverless_workflow import (
     MultiXServerlessWorkflow,
+    CustomDecoder,
+    CustomEncoder,
 )
 from multi_x_serverless.deployment.client.multi_x_serverless_function import (
     MultiXServerlessFunction,
@@ -1214,6 +1216,38 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
         # Test with no current_deployment
         del workflow_placement_decision["workflow_placement"]["current_deployment"]
         self.assertEqual(self.workflow._get_time_key(workflow_placement_decision), "N/A")
+
+
+class TestCustomEncoder(unittest.TestCase):
+    def test_encode_bytes(self):
+        encoder = CustomEncoder()
+        data = {"key": b"test"}
+        result = encoder.encode(data)
+        expected = '{"key": "b64:dGVzdA=="}'
+        self.assertEqual(result, expected)
+
+
+class TestCustomDecoder(unittest.TestCase):
+    def test_decode_bytes(self):
+        decoder = CustomDecoder()
+        data = '{"key": "b64:dGVzdA=="}'
+        result = decoder.decode(data)
+        expected = {"key": b"test"}
+        self.assertEqual(result, expected)
+
+    def test_decode_nested_bytes(self):
+        decoder = CustomDecoder()
+        data = '{"key": {"nested_key": "b64:dGVzdA=="}}'
+        result = decoder.decode(data)
+        expected = {"key": {"nested_key": b"test"}}
+        self.assertEqual(result, expected)
+
+    def test_decode_list_of_bytes(self):
+        decoder = CustomDecoder()
+        data = '{"key": ["b64:dGVzdA==", "b64:dGVzdA=="]}'
+        result = decoder.decode(data)
+        expected = {"key": [b"test", b"test"]}
+        self.assertEqual(result, expected)
 
 
 if __name__ == "__main__":
