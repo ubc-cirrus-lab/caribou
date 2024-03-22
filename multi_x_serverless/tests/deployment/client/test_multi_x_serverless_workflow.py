@@ -901,6 +901,7 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
 
     def test_get_next_instance_name_non_sync_successor(self):
         workflow_placement_decision = {
+            "run_id": "123",
             "instances": {
                 "current_instance": {
                     "instance_name": "current_instance",
@@ -915,13 +916,13 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
                         f"{self.workflow.name}-{self.workflow.version.replace('.', '_')}-other_successor_function:sync:"
                     ],
                 },
-            }
+            },
         }
         current_instance_name = "current_instance"
         successor_function_name = "successor_function"
 
         # Test with _successor_index = 0
-        self.workflow._successor_index = 0
+        self.workflow._run_id_to_successor_index = {"123": 0}
         next_instance_name = self.workflow.get_next_instance_name(
             current_instance_name, workflow_placement_decision, successor_function_name
         )
