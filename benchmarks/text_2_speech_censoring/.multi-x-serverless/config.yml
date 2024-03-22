@@ -1,32 +1,23 @@
 workflow_name: "text_2_speech_censoring"
 workflow_version: "0.0.1"
-environment_variables:
-  - key: "ENV_VAR_1"
-    value: "value_1"
 iam_policy_file: "iam_policy.json"
 home_region:
   provider: "aws"
   region: "us-east-1"
 estimated_invocations_per_month: 1000000
 constraints:
-  hard_resource_constraints: # None for none
-    cost:
-      type: "absolute" # Absolute value as 'absolute' (in USD) or Percentage from deployment at home regions as 'relative' (In fractions such as 1.1)
-      value: 100
-    runtime:
-      type: "absolute"
-      value: 100
-    carbon:
-      type: "absolute"
-      value: 100
-  soft_resource_constraints: # None for none
+  hard_resource_constraints:
+    cost: null
+    runtime: null
+    carbon: null
+  soft_resource_constraints:
     cost: null
     runtime: null
     carbon: null
   priority_order:
+    - carbon
     - cost
     - runtime
-    - carbon
 regions_and_providers: # Either the user specify only allowed regions (which will override everything else)
   allowed_regions:
     - provider: "aws"
@@ -41,8 +32,8 @@ regions_and_providers: # Either the user specify only allowed regions (which wil
   providers:
     aws:
       config:
-        timeout: 60
-        memory: 128
+        timeout: 300
+        memory: 512
         additional_docker_commands:
           - "yum update -y"
           - "yum install -y tar gzip"
