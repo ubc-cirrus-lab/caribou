@@ -81,7 +81,7 @@ class MultiXServerlessWorkflow:
         self.name = name
         self.version = version
         self.functions: dict[str, MultiXServerlessFunction] = {}
-        self._successor_index = 0
+        self._run_id_to_successor_index: dict[str, int] = {}
         self._function_names: set[str] = set()
         self._endpoint = Endpoints()
 
@@ -168,7 +168,7 @@ class MultiXServerlessWorkflow:
             )
 
             # We still need to increment the successor index, because the next function might not be conditional.
-            self._successor_index += 1
+            self._run_id_to_successor_index[workflow_placement_decision["run_id"]] += 1
 
             # However, for the sync nodes we still need to inform the platform that the function has finished.
             self._inform_sync_node_of_conditional_non_execution(
@@ -373,8 +373,10 @@ class MultiXServerlessWorkflow:
             ):
                 if successor_instance.split(":", maxsplit=2)[1] == "sync":
                     return successor_instance
-                if successor_instance.split(":", maxsplit=2)[1].split("_")[-1] == str(self._successor_index):
-                    self._successor_index += 1
+                if successor_instance.split(":", maxsplit=2)[1].split("_")[-1] == str(
+                    self._run_id_to_successor_index[workflow_placement_decision["run_id"]]
+                ):
+                    self._run_id_to_successor_index[workflow_placement_decision["run_id"]] += 1
                     return successor_instance
         raise RuntimeError(f"Could not find successor instance for successor function name {successor_function_name} in {successor_instances}")  # type: ignore  # pylint: disable=line-too-long
 
@@ -657,6 +659,8 @@ class MultiXServerlessWorkflow:
                     log_message,
                     wrapper.workflow_placement_decision["run_id"],  # type: ignore
                 )
+
+                self._run_id_to_successor_index[wrapper.workflow_placement_decision["run_id"]] = 0  # type: ignore
 
                 # Call the original function with the modified arguments
                 start_time = time.time()
