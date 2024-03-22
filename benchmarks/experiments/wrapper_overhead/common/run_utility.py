@@ -2,10 +2,10 @@ import json
 import os
 import uuid
 import datetime
-import pytz
 from typing import Any
 from benchmarks.experiments.wrapper_overhead.common.common_utility import CommonUtility
 from benchmarks.experiments.wrapper_overhead.common.extended_aws_remote_client import ExtendedAWSRemoteClient
+from multi_x_serverless.endpoint.client import Client
 
 class WrapperOverheadRunUtility():
     def __init__(self, aws_region: str):
@@ -87,13 +87,22 @@ class WrapperOverheadRunUtility():
             payload['metadata'] = metadata
 
             self._client.run_state_machine(state_machine_arn, json.dumps(payload))
+        
+        print("Done\n")
 
     def _run_multi_x(self, config: dict[str, Any], payload: dict[str, Any], times: int = 1) -> None:
         # Get the workflow name
         workload_name = config['workload_name']
+        client = Client(workload_name)
+        # Step 3: For n times, run the state machine with the payload
+        for _ in range(times):
+            # Get the additional metadata
+            metadata = self._get_metadata(config)
+            payload['metadata'] = metadata
 
-        # Step 2: For n times, invoke the workflow with the payload
-
+            client.run(json.dumps(payload))
+        
+        print("Done\n")
 
     def _get_metadata(self, config: dict[str, Any]) -> dict[str, Any]:
         # Parse and append metadata to the payload
@@ -106,33 +115,31 @@ class WrapperOverheadRunUtility():
             "start_time": current_time
         }
 
-if __name__ == "__main__":
-    desired_region = 'us-east-2'
-    run_utility = WrapperOverheadRunUtility(desired_region)
-    current_path = os.getcwd()
-    payload = {
-        "gen_file_name": "small_sequence.gb"
-    }
-    times = 1
+# if __name__ == "__main__":
+#     desired_region = 'us-east-2'
+#     run_utility = WrapperOverheadRunUtility(desired_region)
+#     current_path = os.getcwd()
+#     payload = {
+#         "gen_file_name": "small_sequence.gb"
+#     }
+#     times = 1
 
-    # Direct calls
-    additional_path = 'benchmarks/experiments/wrapper_overhead/dna_visualization/external_database/boto3_only_direct_calls'
-    full_path = os.path.join(current_path, additional_path)
-    # run_utility.run_experiment(full_path, payload, times)
+#     # Direct calls
+#     additional_path = 'benchmarks/experiments/wrapper_overhead/dna_visualization/external_database/boto3_only_direct_calls'
+#     full_path = os.path.join(current_path, additional_path)
+#     # run_utility.run_experiment(full_path, payload, times)
 
-    # SNS calls
-    additional_path = 'benchmarks/experiments/wrapper_overhead/dna_visualization/external_database/boto3_only_sns'
-    full_path = os.path.join(current_path, additional_path)
-    # run_utility.run_experiment(full_path, payload, times)
+#     # SNS calls
+#     additional_path = 'benchmarks/experiments/wrapper_overhead/dna_visualization/external_database/boto3_only_sns'
+#     full_path = os.path.join(current_path, additional_path)
+#     # run_utility.run_experiment(full_path, payload, times)
 
-    # Step Function
-    additional_path = 'benchmarks/experiments/wrapper_overhead/dna_visualization/external_database/aws_step_function'
-    full_path = os.path.join(current_path, additional_path)
-    # run_utility.run_experiment(full_path, payload, times)
+#     # Step Function
+#     additional_path = 'benchmarks/experiments/wrapper_overhead/dna_visualization/external_database/aws_step_function'
+#     full_path = os.path.join(current_path, additional_path)
+#     # run_utility.run_experiment(full_path, payload, times)
 
-    # Multi X
-    additional_path = 'benchmarks/experiments/wrapper_overhead/dna_visualization/external_database/multi_x'
-    full_path = os.path.join(current_path, additional_path)
-    # run_utility.run_experiment(full_path, payload, times)
-    # current_time = datetime.datetime.now(pytz.utc).isoformat()
-    # print(current_time)
+#     # Multi X
+#     additional_path = 'benchmarks/experiments/wrapper_overhead/dna_visualization/external_database/multi_x'
+#     full_path = os.path.join(current_path, additional_path)
+#     # run_utility.run_experiment(full_path, payload, times)

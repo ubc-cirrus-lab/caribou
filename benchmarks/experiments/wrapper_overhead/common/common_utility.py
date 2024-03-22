@@ -36,7 +36,7 @@ class CommonUtility():
 
     def get_config(self, directory_path: str, load_additional_content: bool = True) -> dict[str, Any]:
         loadded_config = {
-            directory_path: directory_path
+            "directory_path": directory_path
         }
 
         files_dict, directories_dict = self.get_files_and_directories(directory_path)

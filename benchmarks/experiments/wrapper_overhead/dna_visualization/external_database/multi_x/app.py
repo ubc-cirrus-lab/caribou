@@ -1,15 +1,18 @@
+import datetime
 from typing import Any
 
 from multi_x_serverless.deployment.client import MultiXServerlessWorkflow
 import json
 from dna_features_viewer import BiopythonTranslator
-import uuid
 import boto3
 import os
+import logging 
 
+# Configure logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)  # Set the logging level
 
-workflow = MultiXServerlessWorkflow(name="wo-dna_vis-ed-multi-x", version="0.0.1")
-
+workflow = MultiXServerlessWorkflow(name="wo-dna_vis-ed-multi_x", version="0.0.2")
 
 @workflow.serverless_function(
     name="GetInput",
@@ -19,13 +22,19 @@ def get_input(event: dict[str, Any]) -> dict[str, Any]:
     if isinstance(event, str):
         event = json.loads(event)
 
-    if "gen_file_name" in event:
-        gen_file_name = event["gen_file_name"]
-    else:
+    start_time = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S,%f%z")
+    if "gen_file_name" not in event:
         raise ValueError("No gen_file_name provided")
+    if "metadata" not in event:
+        raise ValueError("No metadata provided")
+
+    # Get the additional metadata
+    metadata = event['metadata']
+    metadata['first_function_start_time'] = start_time
 
     payload = {
-        "gen_file_name": gen_file_name,
+        "gen_file_name": event["gen_file_name"],
+        'metadata': metadata
     }
 
     workflow.invoke_serverless_function(visualize, payload)
@@ -35,9 +44,13 @@ def get_input(event: dict[str, Any]) -> dict[str, Any]:
 
 @workflow.serverless_function(name="Visualize")
 def visualize(event: dict[str, Any]) -> dict[str, Any]:
+    if "gen_file_name" not in event:
+        raise ValueError("No gen_file_name provided")
+    if "metadata" not in event:
+        raise ValueError("No metadata provided")
+    
     gen_file_name = event["gen_file_name"]
-
-    req_id = uuid.uuid4()
+    req_id = event["metadata"]["request_id"]
 
     local_gen_filename = f"/tmp/genbank-{req_id}.gb"
     local_result_filename = f"/tmp/result-{req_id}.png"
@@ -62,5 +75,38 @@ def visualize(event: dict[str, Any]) -> dict[str, Any]:
 
     os.remove(local_gen_filename)
     os.remove(local_result_filename)
+
+    # Log the end time of the function
+    ## Get the current time
+    current_time = datetime.datetime.now(datetime.timezone.utc)
+    final_function_end_time = current_time.strftime("%Y-%m-%d %H:%M:%S,%f%z")
+
+    ## Get the start time from the metadata
+    start_time_str = event["metadata"]["start_time"]
+    start_time = datetime.datetime.strptime(start_time_str, "%Y-%m-%d %H:%M:%S,%f%z")
+
+    first_function_start_time_str = event["metadata"]["first_function_start_time"]
+    first_function_start_time = datetime.datetime.strptime(first_function_start_time_str, "%Y-%m-%d %H:%M:%S,%f%z")
+    
+    ## Calculate the time delta in miliseconds
+    ### For the time taken from the perspective of customer
+    time_difference = current_time - start_time
+    ms_from_start = (time_difference.days * 24 * 3600 * 1000) + (time_difference.seconds * 1000) + (time_difference.microseconds / 1000)
+
+    ### For the time taken from the first function running
+    time_difference = current_time - first_function_start_time
+    ms_from_first_function = (time_difference.days * 24 * 3600 * 1000) + (time_difference.seconds * 1000) + (time_difference.microseconds / 1000)
+
+    ## Get the workload name from the metadata
+    workload_name = event["metadata"]["workload_name"]
+
+    ## Log the time taken along with the request ID and workload name
+    logger.info(f"Workload Name: {workload_name}, "
+                f"Request ID: {req_id}, "
+                f"Client Start Time: {start_time_str}, "
+                f"First Function Start Time: {first_function_start_time_str}, "
+                f"Time Taken from workload invocation from client: {ms_from_start} ms, "
+                f"Time Taken from first function: {ms_from_first_function} ms, "
+                f"Function End Time: {final_function_end_time}")
 
     return {"status": 200}

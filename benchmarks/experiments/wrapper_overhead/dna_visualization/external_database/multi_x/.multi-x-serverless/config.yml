@@ -1,5 +1,5 @@
-workflow_name: "wo-dna_vis-ed-multi-x"
-workflow_version: "0.0.1"
+workflow_name: "wo-dna_vis-ed-multi_x"
+workflow_version: "0.0.2"
 iam_policy_file: "iam_policy.json"
 home_region:
   provider: "aws"

@@ -1,12 +1,14 @@
 import json
-import os
 from typing import Any
 from unittest.mock import MagicMock
 from benchmarks.experiments.wrapper_overhead.common.extended_aws_remote_client import ExtendedAWSRemoteClient
 from benchmarks.experiments.wrapper_overhead.common.common_utility import CommonUtility
+from multi_x_serverless.deployment.common.deploy.deployer import Deployer
 from multi_x_serverless.deployment.common.deploy.deployment_packager import DeploymentPackager
 from multi_x_serverless.deployment.common.deploy.models.resource import Resource
 from multi_x_serverless.deployment.common.config.config import Config
+from multi_x_serverless.deployment.common.factories.deployer_factory import DeployerFactory
+from multi_x_serverless.endpoint.client import Client
 
 class WrapperOverheadDeploymentUtility():
     def __init__(self, aws_region: str):
@@ -30,20 +32,41 @@ class WrapperOverheadDeploymentUtility():
             ],
         }
 
-    def deploy_experiment(self, directory_path: str) -> bool:
+    def deploy_experiment(self, directory_path: str) -> None:
         config = self._common_utility.get_config(directory_path)
+
         if config != {}:
             experiment_type = config['type']
             if experiment_type == 'boto3_direct' or experiment_type == 'boto3_sns':
-                return self._deploy_lambda_functions(config, experiment_type == 'boto3_sns')
+                self._deploy_lambda_functions(config, experiment_type == 'boto3_sns')
+                return
             elif experiment_type == 'aws_step_function':
-                return self._deploy_statemachine(config)
+                self._deploy_statemachine(config)
+                return
             elif experiment_type == 'multi_x':
-                pass # We do not handle launching multi_x, follow the instructions in the README
+                self._multi_x(config)
+                return
             else:
                 raise ValueError('Invalid experiment type: config.yml misconfigured')
         else:
             raise ValueError('Invalid experiment type: config.yml not found')
+
+    def _multi_x(self, config: dict[str, Any]) -> None:
+        print(f"Deploying {config['type']} workload")
+        worflow_name = config['workload_name']
+        print(f"{worflow_name}")
+    
+        directory_path = config["directory_path"]
+
+        client = Client(worflow_name)
+        client.remove()
+
+        factory: DeployerFactory = DeployerFactory(directory_path)
+        config: Config = factory.create_config_obj()
+        deployer: Deployer = factory.create_deployer(config=config)
+        deployer.deploy([config.home_region])
+
+        print(f"Completed deployment of {worflow_name}\n\n")
 
     def _deploy_lambda_functions(self, config: dict[str, Any], has_sns: bool) -> None:
         print(f"Deploying {config['type']} workload")
@@ -190,6 +213,11 @@ class WrapperOverheadDeploymentUtility():
 
 #     # Step Function
 #     additional_path = 'benchmarks/experiments/wrapper_overhead/dna_visualization/external_database/aws_step_function'
+#     full_path = os.path.join(current_path, additional_path)
+#     # deployment_utility.deploy_experiment(full_path)
+
+#     # Multi_X
+#     additional_path = 'benchmarks/experiments/wrapper_overhead/dna_visualization/external_database/multi_x'
 #     full_path = os.path.join(current_path, additional_path)
 #     # deployment_utility.deploy_experiment(full_path)
 
