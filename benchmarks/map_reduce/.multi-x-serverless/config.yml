@@ -1,5 +1,5 @@
 workflow_name: "map_reduce"
-workflow_version: "0.0.2"
+workflow_version: "0.0.1"
 environment_variables:
   - key: "ENV_VAR_1"
     value: "value_1"
@@ -21,7 +21,7 @@ constraints:
     - carbon
     - cost
     - runtime
-regions_and_providers: # Either the user specify only allowed regions (which will override everything else)
+regions_and_providers:
   allowed_regions:
     - provider: "aws"
       region: "us-east-1"
