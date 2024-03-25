@@ -65,7 +65,6 @@ class CostCalculator(InputCalculator):
 
         # Get the number of vCPUs and Memory of the instance
         provider, _ = region_name.split(":")
-        vcpu: float = self._workflow_loader.get_vcpu(instance_name, provider)
         memory: float = self._workflow_loader.get_memory(instance_name, provider)
 
         ## datacenter loader data
@@ -76,9 +75,7 @@ class CostCalculator(InputCalculator):
         # Compute cost in USD /  GB-seconds
         # Memory in MB, execution_time in seconds, vcpu in vcpu
         memory_gb: float = memory / 1024
-        gbs: float = memory_gb * vcpu
-
-        cost_from_compute_s: float = compute_cost * gbs
+        cost_from_compute_s: float = compute_cost * memory_gb  # IN USD / s
 
         # Add the conversion ratio to the cache
         self._execution_conversion_ratio_cache[key] = (cost_from_compute_s, invocation_cost)
