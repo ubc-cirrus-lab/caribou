@@ -75,7 +75,6 @@ class TestCostCalculator(unittest.TestCase):
 
     def test_get_execution_conversion_ratio(self):
         # Set up the mocks
-        self.cost_calculator._workflow_loader.get_vcpu.return_value = 2.0
         self.cost_calculator._workflow_loader.get_memory.return_value = 2048.0
         self.cost_calculator._workflow_loader.get_architecture.return_value = "architecture"
         self.cost_calculator._datacenter_loader.get_compute_cost.return_value = 3.0
@@ -85,10 +84,9 @@ class TestCostCalculator(unittest.TestCase):
         result = self.cost_calculator._get_execution_conversion_ratio("instance_name", "provider:region_name")
 
         # Check that the result is correct
-        self.assertEqual(result, (3.0 * 2.0 * 2.0, 4.0))
+        self.assertEqual(result, (3.0 * 2.0, 4.0))
 
         # Check that the mocks were called with the correct arguments
-        self.cost_calculator._workflow_loader.get_vcpu.assert_called_once_with("instance_name", "provider")
         self.cost_calculator._workflow_loader.get_memory.assert_called_once_with("instance_name", "provider")
         self.cost_calculator._workflow_loader.get_architecture.assert_called_once_with("instance_name", "provider")
         self.cost_calculator._datacenter_loader.get_compute_cost.assert_called_once_with(
@@ -101,7 +99,7 @@ class TestCostCalculator(unittest.TestCase):
         # Check that the _execution_conversion_ratio_cache attribute was updated correctly
         self.assertEqual(
             self.cost_calculator._execution_conversion_ratio_cache,
-            {"instance_name_provider:region_name": (3.0 * 2.0 * 2.0, 4.0)},
+            {"instance_name_provider:region_name": (3.0 * 2.0, 4.0)},
         )
 
 
