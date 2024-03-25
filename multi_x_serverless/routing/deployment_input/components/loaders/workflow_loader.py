@@ -10,8 +10,8 @@ from multi_x_serverless.common.constants import (
 from multi_x_serverless.common.models.remote_client.remote_client import RemoteClient
 from multi_x_serverless.common.provider import Provider
 from multi_x_serverless.routing.deployment_input.components.loader import InputLoader
-from multi_x_serverless.routing.workflow_config import WorkflowConfig
 from multi_x_serverless.routing.deployment_input.components.loaders.performance_loader import PerformanceLoader
+from multi_x_serverless.routing.workflow_config import WorkflowConfig
 
 
 class WorkflowLoader(InputLoader):

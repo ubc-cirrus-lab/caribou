@@ -1,5 +1,5 @@
-from typing import Optional
 import random
+from typing import Optional
 
 from multi_x_serverless.routing.deployment_input.components.calculator import InputCalculator
 from multi_x_serverless.routing.deployment_input.components.loaders.performance_loader import PerformanceLoader
@@ -55,20 +55,25 @@ class RuntimeCalculator(InputCalculator):
                 )
         else:
             # No size information, we default to performance loader
-            # Get the data transfer size distribution
             transmission_latency_distribution = self._performance_loader.get_transmission_latency_distribution(
                 from_region_name, to_region_name
             )
 
-            # Since this will underestimate the latency, we multiply by the underestimation factor retrieved from home region
+            # Since this will underestimate the latency, we multiply by the
+            # underestimation factor retrieved from home region
             home_region_name = self._workflow_loader.get_home_region()
             home_region_latency_distribution_performance = (
                 self._performance_loader.get_transmission_latency_distribution(home_region_name, home_region_name)
             )
 
+            # Select a random latency from the distribution
             home_region_latency_performance = home_region_latency_distribution_performance[
                 int(random.random() * (len(home_region_latency_distribution_performance) - 1))
             ]
+
+            assert (
+                from_instance_name is not None
+            ), "From instance name must be provided for underestimation factor, something went wrong."
 
             home_region_transmission_size_distribution = self._workflow_loader.get_data_transfer_size_distribution(
                 from_instance_name, to_instance_name, home_region_name, home_region_name
