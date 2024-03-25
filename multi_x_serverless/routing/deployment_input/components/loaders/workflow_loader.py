@@ -11,12 +11,14 @@ from multi_x_serverless.common.models.remote_client.remote_client import RemoteC
 from multi_x_serverless.common.provider import Provider
 from multi_x_serverless.routing.deployment_input.components.loader import InputLoader
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
+from multi_x_serverless.routing.deployment_input.components.loaders.performance_loader import PerformanceLoader
 
 
 class WorkflowLoader(InputLoader):
     _workflow_data: dict[str, Any]
     _instances_regions_and_providers: dict[str, Any]
     _home_region: str
+    _performance_loader: PerformanceLoader
 
     def __init__(self, client: RemoteClient, workflow_config: WorkflowConfig) -> None:
         super().__init__(client, WORKFLOW_INSTANCE_TABLE)
@@ -52,24 +54,44 @@ class WorkflowLoader(InputLoader):
             .get(region_name, [])
         )
 
-    def get_start_hop_size_distribution(self, from_region_name: str) -> list[float]:
-        if from_region_name in self._start_hop_size_cache:
-            return self._start_hop_size_cache[from_region_name]
+    def get_start_hop_size_distribution(self, home_region_name: str, to_region_name: str) -> list[float]:
+        if to_region_name in self._start_hop_size_cache:
+            return self._start_hop_size_cache[to_region_name]
         resulting_size = [
-            float(size) for size in self._workflow_data.get("start_hop_summary", {}).get(from_region_name, {}).keys()
+            float(size) for size in self._workflow_data.get("start_hop_summary", {}).get(to_region_name, {}).keys()
         ]
-        self._start_hop_size_cache[from_region_name] = resulting_size
+        if len(resulting_size) == 0:
+            resulting_size = [
+                float(size)
+                for size in self._workflow_data.get("start_hop_summary", {}).get(home_region_name, {}).keys()
+            ]
+        self._start_hop_size_cache[to_region_name] = resulting_size
         return resulting_size
 
-    def get_start_hop_latency_distribution(self, from_region_name: str, data_transfer_size: float) -> list[float]:
-        cache_key = f"{from_region_name}_{data_transfer_size}"
+    def get_start_hop_latency_distribution(
+        self, home_region_name: str, to_region_name: str, data_transfer_size: float
+    ) -> list[float]:
+        cache_key = f"{to_region_name}_{data_transfer_size}"
         if cache_key in self._start_hop_latency_distribution_cache:
             return self._start_hop_latency_distribution_cache[cache_key]
         start_hop_latency_distribution = (
             self._workflow_data.get("start_hop_summary", {})
-            .get(from_region_name, {})
+            .get(to_region_name, {})
             .get(str(data_transfer_size), [SOLVER_INPUT_TRANSMISSION_LATENCY_DEFAULT])
         )
+        if len(start_hop_latency_distribution) == 0:
+            start_hop_latency_distribution = (
+                self._workflow_data.get("start_hop_summary", {})
+                .get(home_region_name, {})
+                .get(str(data_transfer_size), [SOLVER_INPUT_TRANSMISSION_LATENCY_DEFAULT])
+            )
+            transmission_latency_distribution = self._performance_loader.get_transmission_latency_distribution(
+                home_region_name, to_region_name
+            )
+            start_hop_latency_distribution = [
+                latency + transmission_latency_distribution[i % len(transmission_latency_distribution)]
+                for i, latency in enumerate(start_hop_latency_distribution)
+            ]
         self._start_hop_latency_distribution_cache[cache_key] = start_hop_latency_distribution
         return start_hop_latency_distribution
 
