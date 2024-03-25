@@ -29,7 +29,7 @@ class TestStochasticHeuristicDeploymentAlgorithm(unittest.TestCase):
 
         # Assert
         self.assertEqual(self._algorithm._learning_rate, 1)
-        self.assertEqual(self._algorithm._num_iterations, 24)
+        self.assertEqual(self._algorithm._num_iterations, 4)
         self.assertEqual(self._algorithm._temperature, 1.0)
 
     def test_run_algorithm(self):

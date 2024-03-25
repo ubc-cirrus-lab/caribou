@@ -12,6 +12,8 @@ class RuntimeCalculator(InputCalculator):
         self._performance_loader: PerformanceLoader = performance_loader
         self._workflow_loader: WorkflowLoader = workflow_loader
         self._workflow_loader._performance_loader = performance_loader
+        self._transmission_latency_distribution_cache: dict[str, list[float]] = {}
+        self._transmission_size_distribution_cache: dict[str, list[float]] = {}
 
     def get_transmission_size_distribution(
         self,
@@ -20,6 +22,9 @@ class RuntimeCalculator(InputCalculator):
         from_region_name: str,
         to_region_name: str,
     ) -> list[float]:
+        cache_key = f"{from_instance_name}-{to_instance_name}-{from_region_name}-{to_region_name}"
+        if cache_key in self._transmission_size_distribution_cache:
+            return self._transmission_size_distribution_cache[cache_key]
         # Get the data transfer size distribution
         if from_instance_name:
             transmission_size_distribution = self._workflow_loader.get_data_transfer_size_distribution(
@@ -30,6 +35,8 @@ class RuntimeCalculator(InputCalculator):
             transmission_size_distribution = self._workflow_loader.get_start_hop_size_distribution(
                 home_region_name, to_region_name
             )
+
+        self._transmission_size_distribution_cache[cache_key] = transmission_size_distribution
         return transmission_size_distribution
 
     def get_transmission_latency_distribution(
@@ -40,6 +47,9 @@ class RuntimeCalculator(InputCalculator):
         to_region_name: str,
         data_transfer_size: Optional[float],
     ) -> list[float]:
+        cache_key = f"{from_instance_name}-{to_instance_name}-{from_region_name}-{to_region_name}-{data_transfer_size}"
+        if cache_key in self._transmission_latency_distribution_cache:
+            return self._transmission_latency_distribution_cache[cache_key]
         if data_transfer_size is not None:
             if from_instance_name:
                 # Not for start hop
@@ -100,6 +110,7 @@ class RuntimeCalculator(InputCalculator):
                 latency * underestimation_factor for latency in transmission_latency_distribution
             ]
 
+        self._transmission_latency_distribution_cache[cache_key] = transmission_latency_distribution
         return transmission_latency_distribution
 
     def calculate_runtime_distribution(self, instance_name: str, region_name: str) -> list[float]:
