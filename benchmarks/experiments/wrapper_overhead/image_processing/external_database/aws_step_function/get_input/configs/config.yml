@@ -1,0 +1,5 @@
+function_name: "wo-im_p-ed-step_function-get_input"
+handler: "app.get_input"
+configs:
+  timeout: 60
+  memory: 128

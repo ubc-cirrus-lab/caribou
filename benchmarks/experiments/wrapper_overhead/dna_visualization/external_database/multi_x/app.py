@@ -19,10 +19,10 @@ workflow = MultiXServerlessWorkflow(name="wo-dna_vis-ed-multi_x", version="0.0.2
     entry_point=True,
 )
 def get_input(event: dict[str, Any]) -> dict[str, Any]:
+    start_time = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S,%f%z")
     if isinstance(event, str):
         event = json.loads(event)
 
-    start_time = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S,%f%z")
     if "gen_file_name" not in event:
         raise ValueError("No gen_file_name provided")
     if "metadata" not in event:

@@ -1,0 +1,5 @@
+function_name: "wo-im_p-ed-direct-grayscale"
+handler: "app.grayscale"
+configs:
+  timeout: 60
+  memory: 128

@@ -1,0 +1,3 @@
+type: "aws_step_function"
+workload_name: "wo-im_p-ed-step_function"
+state_machine_name: "state_machine-wo-im_p-ed-step_function"

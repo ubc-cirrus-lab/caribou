@@ -1,0 +1,5 @@
+function_name: "wo-im_p-ed-sns-filter"
+handler: "app.filter"
+configs:
+  timeout: 60
+  memory: 128

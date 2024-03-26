@@ -1,0 +1,5 @@
+function_name: "wo-im_p-ed-direct-flip"
+handler: "app.flip"
+configs:
+  timeout: 60
+  memory: 128

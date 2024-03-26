@@ -15,7 +15,6 @@ class WrapperOverheadRunUtility():
 
     def run_experiment(self, directory_path: str, payload: dict[str, Any], times: int, wait_time: int = 0) -> bool:
         config = self._common_utility.get_config(directory_path, False)
-
         print(f"Running {config['type']} workload: {config['workload_name']}")
         print(f"Payload: {payload}")
         print(f"Times: {times}")
@@ -48,7 +47,7 @@ class WrapperOverheadRunUtility():
             status_code = self._client.invoke_lambda_function(starting_function_name, json.dumps(payload))
             if status_code != 202:
                 print(f"Recieved wrong status code {status_code}")
-        
+
             time.sleep(wait_time)
                 
         print("Done\n")

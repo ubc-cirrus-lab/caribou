@@ -1,0 +1,5 @@
+function_name: "wo-im_p-ed-sns-rotate"
+handler: "app.rotate"
+configs:
+  timeout: 60
+  memory: 128

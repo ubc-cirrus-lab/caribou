@@ -24,7 +24,7 @@ class WrapperOverheadCollectionUtility():
                                        experiment_root_directory_paths: list[str],
                                        allowed_experiment_types: Optional[dict[str, str]] = None,
                                        enforce_all_types: bool = True,
-                                       from_invocation: bool = False
+                                       from_user_invocation: bool = False
                                        ) -> dict[str, dict[str, list[float]]]:
         
         # Get all log groups, this will be used for accessing the logs
@@ -47,7 +47,7 @@ class WrapperOverheadCollectionUtility():
 
                 # Now get all the log groups that are related to the workflow
                 log_groups = [log_group for log_group in all_log_groups if workflow_name_altered in log_group]
-                latency_output[experiment_name][allowed_experiment_types[experiment_type_name]] = self._aquire_latency_from_experiment(log_groups, from_invocation)
+                latency_output[experiment_name][allowed_experiment_types[experiment_type_name]] = self._aquire_latency_from_experiment(log_groups, from_user_invocation)
 
             if enforce_all_types:
                 # If we want to enforce all types, then we need to make sure that all types are present
@@ -59,7 +59,7 @@ class WrapperOverheadCollectionUtility():
         return latency_output
     
         
-    def _aquire_latency_from_experiment(self, log_groups: list[str], from_invocation: bool = False) -> list[float]:
+    def _aquire_latency_from_experiment(self, log_groups: list[str], from_user_invocation: bool = False) -> list[float]:
         joined_logs = []
         for log_group in log_groups:
             logs = self._client.get_special_log_events(log_group, self._log_pattern)
@@ -81,7 +81,7 @@ class WrapperOverheadCollectionUtility():
             max_time_from_first_function = max([float(log['time_from_first_function']) for log in logs])
             # print(max_time_from_invocation, max_time_from_first_function)
 
-            if from_invocation:
+            if from_user_invocation:
                 time_results.append(max_time_from_invocation)
             else:
                 time_results.append(max_time_from_first_function)

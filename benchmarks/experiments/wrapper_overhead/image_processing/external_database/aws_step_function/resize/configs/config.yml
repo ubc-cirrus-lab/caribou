@@ -1,0 +1,5 @@
+function_name: "wo-im_p-ed-step_function-resize"
+handler: "app.resize"
+configs:
+  timeout: 60
+  memory: 128

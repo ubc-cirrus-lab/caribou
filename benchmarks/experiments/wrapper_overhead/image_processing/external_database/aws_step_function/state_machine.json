@@ -1,0 +1,31 @@
+{
+  "Comment": "A workflow to Perform Image Processing.",
+  "StartAt": "GetInput",
+  "States": {
+    "GetInput": {
+      "Type": "Task",
+      "Resource": "wo-im_p-ed-step_function-get_input",
+      "Next": "Flip"
+    },
+    "Flip": {
+      "Type": "Task",
+      "Resource": "wo-im_p-ed-step_function-flip",
+      "Next": "Rotate"
+    },
+    "Rotate": {
+      "Type": "Task",
+      "Resource": "wo-im_p-ed-step_function-rotate",
+      "Next": "GrayScale"
+    },
+    "GrayScale": {
+      "Type": "Task",
+      "Resource": "wo-im_p-ed-step_function-grayscale",
+      "Next": "Resize"
+    },
+    "Resize": {
+      "Type": "Task",
+      "Resource": "wo-im_p-ed-step_function-resize", 
+      "End": true
+    }
+  }
+}
