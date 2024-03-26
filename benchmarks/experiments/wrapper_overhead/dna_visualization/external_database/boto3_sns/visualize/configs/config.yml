@@ -1,4 +1,4 @@
-function_name: "wo-dna_vis-ed-direct_sns-visualize"
+function_name: "wo-dna_vis-ed-sns-visualize"
 handler: "app.visualize"
 configs:
   timeout: 300

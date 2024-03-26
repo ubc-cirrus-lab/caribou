@@ -22,7 +22,7 @@ def get_input(event, context):
 
     # Invoke the next visualize function
     # With boto3 only, using sns
-    sns_topic_name = "wo-dna_vis-ed-direct_sns-visualize-sns_topic"
+    sns_topic_name = "wo-dna_vis-ed-sns-visualize-sns_topic"
     
     # Create an SNS client
     sns_client = boto3.client('sns')

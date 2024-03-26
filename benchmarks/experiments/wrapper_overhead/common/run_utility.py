@@ -1,5 +1,6 @@
 import json
 import os
+import time
 import uuid
 import datetime
 from typing import Any
@@ -12,7 +13,7 @@ class WrapperOverheadRunUtility():
         self._client: ExtendedAWSRemoteClient = ExtendedAWSRemoteClient(aws_region)
         self._common_utility: CommonUtility = CommonUtility(aws_region)
 
-    def run_experiment(self, directory_path: str, payload: dict[str, Any], times: int) -> bool:
+    def run_experiment(self, directory_path: str, payload: dict[str, Any], times: int, wait_time: int = 0) -> bool:
         config = self._common_utility.get_config(directory_path, False)
 
         print(f"Running {config['type']} workload: {config['workload_name']}")
@@ -22,19 +23,19 @@ class WrapperOverheadRunUtility():
         if config != {}:
             experiment_type = config['type']
             if experiment_type == 'boto3_direct':
-                self._run_lambda_functions(config, payload, times)
+                self._run_lambda_functions(config, payload, times, wait_time)
             elif experiment_type == 'boto3_sns':
-                self._run_sns_topic(config, payload, times)
+                self._run_sns_topic(config, payload, times, wait_time)
             elif experiment_type == 'aws_step_function':
-                self._run_statemachine(config, payload, times)
+                self._run_statemachine(config, payload, times, wait_time)
             elif experiment_type == 'multi_x':
-                self._run_multi_x(config, payload, times)
+                self._run_multi_x(config, payload, times, wait_time)
             else:
                 raise ValueError('Invalid experiment type: config.yml misconfigured')
         else:
             raise ValueError('Invalid experiment type: config.yml not found')
 
-    def _run_lambda_functions(self, config: dict[str, Any], payload: dict[str, Any], times: int = 1) -> None:
+    def _run_lambda_functions(self, config: dict[str, Any], payload: dict[str, Any], times: int = 1, wait_time: int = 0) -> None:
         # Get the starting function name
         starting_function_name = config['starting_function_name']
 
@@ -48,9 +49,11 @@ class WrapperOverheadRunUtility():
             if status_code != 202:
                 print(f"Recieved wrong status code {status_code}")
         
+            time.sleep(wait_time)
+                
         print("Done\n")
 
-    def _run_sns_topic(self, config: dict[str, Any], payload: dict[str, Any], times: int = 1) -> None:
+    def _run_sns_topic(self, config: dict[str, Any], payload: dict[str, Any], times: int = 1, wait_time: int = 0) -> None:
         # Get the starting function name
         starting_function_name = config['starting_function_name']
         
@@ -71,9 +74,11 @@ class WrapperOverheadRunUtility():
 
             self._client.send_message_to_messaging_service(sns_topic_arn, json.dumps(payload))
 
+            time.sleep(wait_time)
+
         print("Done\n")
 
-    def _run_statemachine(self, config: dict[str, Any], payload: dict[str, Any], times: int = 1) -> None:
+    def _run_statemachine(self, config: dict[str, Any], payload: dict[str, Any], times: int = 1, wait_time: int = 30) -> None:
         # Get the state machine name
         state_machine_name = config['state_machine_name']
 
@@ -87,10 +92,13 @@ class WrapperOverheadRunUtility():
             payload['metadata'] = metadata
 
             self._client.run_state_machine(state_machine_arn, json.dumps(payload))
+
+            # To avoid throttling
+            time.sleep(wait_time)
         
         print("Done\n")
 
-    def _run_multi_x(self, config: dict[str, Any], payload: dict[str, Any], times: int = 1) -> None:
+    def _run_multi_x(self, config: dict[str, Any], payload: dict[str, Any], times: int = 1, wait_time: int = 30) -> None:
         # Get the workflow name
         workload_name = config['workload_name']
         client = Client(workload_name)
@@ -101,7 +109,9 @@ class WrapperOverheadRunUtility():
             payload['metadata'] = metadata
 
             client.run(json.dumps(payload))
-        
+
+            time.sleep(wait_time)
+
         print("Done\n")
 
     def _get_metadata(self, config: dict[str, Any]) -> dict[str, Any]:

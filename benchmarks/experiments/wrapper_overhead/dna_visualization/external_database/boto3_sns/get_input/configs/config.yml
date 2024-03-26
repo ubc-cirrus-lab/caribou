@@ -1,4 +1,4 @@
-function_name: "wo-dna_vis-ed-direct_sns-get_input"
+function_name: "wo-dna_vis-ed-sns-get_input"
 handler: "app.get_input"
 configs:
   timeout: 300

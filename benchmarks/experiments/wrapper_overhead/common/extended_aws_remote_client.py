@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+from re import Pattern
 import subprocess
 import tempfile
 import time
@@ -16,6 +17,33 @@ from multi_x_serverless.common.models.remote_client.aws_remote_client import AWS
 class ExtendedAWSRemoteClient(AWSRemoteClient): 
     def __init__(self, region: str) -> None:
         super().__init__(region)
+
+    def get_special_log_events(self, log_group_name: str, log_pattern: Pattern[str]) -> list[dict[str, Any]]:
+        client = self._client("logs")
+        response = client.filter_log_events(logGroupName=log_group_name)
+
+        formatted_matches = []
+        for event in response['events']:
+            message = event['message']
+            match = log_pattern.search(message)
+            if match:
+                parsed_data = match.groups()
+                formatted_matches.append({
+                    # "Workload Name": parsed_data[0],
+                    "request_id": parsed_data[1],
+                    # "client_start_time": parsed_data[2],
+                    # "first_function_start_time": parsed_data[3],
+                    "time_from_invocation": parsed_data[4],
+                    "time_from_first_function": parsed_data[5],
+                    # "Function End Time": parsed_data[6]
+                })
+        
+        return formatted_matches
+
+    def list_all_log_groups(self) -> list[str]:
+        client = self._client("logs")
+        response = client.describe_log_groups()
+        return [log_group["logGroupName"] for log_group in response["logGroups"]]
 
     def run_state_machine(self, state_machine_arn: str, payload: str) -> None:
         client = self._client("stepfunctions")
