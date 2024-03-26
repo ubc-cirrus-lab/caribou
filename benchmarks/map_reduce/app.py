@@ -9,7 +9,7 @@ import logging
 
 from multi_x_serverless.deployment.client import MultiXServerlessWorkflow
 
-workflow = MultiXServerlessWorkflow(name="map_reduce", version="0.0.2")
+workflow = MultiXServerlessWorkflow(name="map_reduce", version="0.0.1")
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -188,6 +188,6 @@ def output_processor(event: dict[str, Any]) -> dict[str, Any]:
         for word, count in final_word_counts.items():
             file.write(f"{word}: {count}\n")
 
-    s3.upload_file(local_file_path, "multi-x-serverless-map-reduce", f"{file_name}")
+    s3.upload_file(local_file_path, "multi-x-serverless-map-reduce", f"output/{file_name}")
 
     return {"status": 200}

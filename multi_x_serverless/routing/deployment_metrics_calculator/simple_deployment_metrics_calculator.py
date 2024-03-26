@@ -20,7 +20,7 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
 
         max_number_of_iterations = 1000
         number_of_iterations = 0
-        threshold = 0.1
+        threshold = 0.15
         batch_size = 100
 
         while number_of_iterations < max_number_of_iterations:

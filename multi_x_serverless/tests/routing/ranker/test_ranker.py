@@ -191,7 +191,7 @@ class TestRanker(unittest.TestCase):
         # Arrange
         mock_config = MagicMock()
         ranker = Ranker(mock_config)
-        constraint = {"type": "relative", "value": 2}
+        constraint = {"type": "relative", "value": 200}
 
         # Act
         result = ranker.is_absolute_or_relative_failed(0.5, constraint, 0.3)

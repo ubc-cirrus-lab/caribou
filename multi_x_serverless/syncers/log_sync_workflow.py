@@ -46,6 +46,8 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
             "transmission_from_instance_to_instance_region": {},
         }
 
+        self._forgetting_number = FORGETTING_NUMBER
+
     def _load_information(self, deployment_manager_config_str: str) -> None:
         deployment_manager_config = json.loads(deployment_manager_config_str)
         deployed_regions_str = deployment_manager_config.get("deployed_regions", "{}")
@@ -118,7 +120,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
             self._daily_invocation_set[log_day_str] = set()
         self._daily_invocation_set[log_day_str].add(run_id)
 
-        if len(self._collected_logs) >= FORGETTING_NUMBER and not self._forgetting:
+        if len(self._collected_logs) >= self._forgetting_number and not self._forgetting:
             self._check_to_forget()
 
         if run_id not in self._collected_logs:
@@ -173,7 +175,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
                 self._blacklisted_run_ids.add(run_id)
 
         # If the size of the collected logs is still the same, we can start to forget
-        if len(self._collected_logs) >= FORGETTING_NUMBER:
+        if len(self._collected_logs) >= self._forgetting_number:
             self._forgetting = True
 
     def _extract_from_string(self, log_entry: str, regex: str) -> Optional[str]:
@@ -309,7 +311,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         # Iterate over the previous logs in reverse order,
         for previous_log in reversed(previous_logs):
             # Do this until we either exceed the forgetting number or run out of previous logs
-            if len(collected_logs) >= FORGETTING_NUMBER:
+            if len(collected_logs) >= self._forgetting_number:
                 self._selectively_add_previous_logs(collected_logs, previous_log)
                 continue
             log_start_time = datetime.strptime(previous_log["start_time"], TIME_FORMAT)

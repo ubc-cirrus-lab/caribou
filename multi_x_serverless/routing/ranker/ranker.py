@@ -88,5 +88,5 @@ class Ranker:
         if constraint["type"] == "absolute":
             return value > constraint["value"]
         if constraint["type"] == "relative":
-            return value > constraint["value"] * relative_to
+            return value > constraint["value"] * (relative_to / 100)
         return False
