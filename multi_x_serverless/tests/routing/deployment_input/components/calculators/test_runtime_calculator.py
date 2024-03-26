@@ -65,7 +65,7 @@ class TestRuntimeCalculator(unittest.TestCase):
 
         # Assert
         np.testing.assert_array_equal(transmission_size_distribution, np.array([0.2, 0.1, 0.3]))
-        mock_workflow_loader.get_start_hop_size_distribution.assert_called_once_with("region1", "region2")
+        mock_workflow_loader.get_start_hop_size_distribution.assert_called_once_with("region2")
 
     def test_get_transmission_latency_distribution(self):
         # Arrange
@@ -99,7 +99,7 @@ class TestRuntimeCalculator(unittest.TestCase):
 
         # Assert
         np.testing.assert_array_equal(transmission_latency_distribution, np.array([0.2, 0.1, 0.3]))
-        mock_workflow_loader.get_start_hop_latency_distribution.assert_called_once_with("region1", "region2", 1.0)
+        mock_workflow_loader.get_start_hop_latency_distribution.assert_called_once_with("region2", 1.0)
 
     @patch("random.random", return_value=0.2)
     def test_get_transmission_latency_distribution_with_data_transfer_size(self, mock_random):
@@ -119,7 +119,7 @@ class TestRuntimeCalculator(unittest.TestCase):
         )
 
         # Assert
-        np.testing.assert_array_almost_equal(transmission_latency_distribution, np.array([0.1, 0.05, 0.15]))
+        np.testing.assert_array_almost_equal(transmission_latency_distribution, np.array([0.2, 0.1, 0.3]))
         mock_performance_loader.get_transmission_latency_distribution.assert_called_with("region1", "region1")
         mock_workflow_loader.get_home_region.assert_called_once()
         mock_workflow_loader.get_data_transfer_size_distribution.assert_called_once_with(

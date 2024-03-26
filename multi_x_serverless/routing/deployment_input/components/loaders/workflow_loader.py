@@ -54,39 +54,40 @@ class WorkflowLoader(InputLoader):
             .get(region_name, [])
         )
 
-    def get_start_hop_size_distribution(self, home_region_name: str, to_region_name: str) -> list[float]:
+    def get_start_hop_size_distribution(self, to_region_name: str) -> list[float]:
         if to_region_name in self._start_hop_size_cache:
             return self._start_hop_size_cache[to_region_name]
         resulting_size = [
-            float(size) for size in self._workflow_data.get("start_hop_summary", {}).get(to_region_name, {}).keys()
+            float(size)
+            for size, latencies in self._workflow_data.get("start_hop_summary", {}).get(to_region_name, {}).items()
+            for _ in range(len(latencies))
         ]
         if len(resulting_size) == 0:
             resulting_size = [
                 float(size)
-                for size in self._workflow_data.get("start_hop_summary", {}).get(home_region_name, {}).keys()
+                for size, latencies in self._workflow_data.get("start_hop_summary", {})
+                .get(self.get_home_region(), {})
+                .items()
+                for _ in range(len(latencies))
             ]
         self._start_hop_size_cache[to_region_name] = resulting_size
         return resulting_size
 
-    def get_start_hop_latency_distribution(
-        self, home_region_name: str, to_region_name: str, data_transfer_size: float
-    ) -> list[float]:
+    def get_start_hop_latency_distribution(self, to_region_name: str, data_transfer_size: float) -> list[float]:
         cache_key = f"{to_region_name}_{data_transfer_size}"
         if cache_key in self._start_hop_latency_distribution_cache:
             return self._start_hop_latency_distribution_cache[cache_key]
         start_hop_latency_distribution = (
-            self._workflow_data.get("start_hop_summary", {})
-            .get(to_region_name, {})
-            .get(str(data_transfer_size), [SOLVER_INPUT_TRANSMISSION_LATENCY_DEFAULT])
+            self._workflow_data.get("start_hop_summary", {}).get(to_region_name, {}).get(str(data_transfer_size), [])
         )
         if len(start_hop_latency_distribution) == 0:
             start_hop_latency_distribution = (
                 self._workflow_data.get("start_hop_summary", {})
-                .get(home_region_name, {})
+                .get(self.get_home_region(), {})
                 .get(str(data_transfer_size), [SOLVER_INPUT_TRANSMISSION_LATENCY_DEFAULT])
             )
             transmission_latency_distribution = self._performance_loader.get_transmission_latency_distribution(
-                home_region_name, to_region_name
+                self.get_home_region(), to_region_name
             )
             start_hop_latency_distribution = [
                 latency + transmission_latency_distribution[i % len(transmission_latency_distribution)]

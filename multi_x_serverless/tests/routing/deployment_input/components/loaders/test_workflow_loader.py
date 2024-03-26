@@ -73,14 +73,14 @@ class TestWorkflowLoader(unittest.TestCase):
 
     def test_get_start_hop_size_distribution(self):
         self.loader._workflow_data = self.workflow_data
-        start_hop_size_distribution = self.loader.get_start_hop_size_distribution("aws:us-east-1", "aws:us-east-1")
-        self.assertEqual(start_hop_size_distribution, [3.3527612686157227e-08])
+        start_hop_size_distribution = self.loader.get_start_hop_size_distribution("aws:us-east-1")
+        self.assertEqual(
+            start_hop_size_distribution, [3.3527612686157227e-08, 3.3527612686157227e-08, 3.3527612686157227e-08]
+        )
 
     def test_get_start_hop_latency_distribution(self):
         self.loader._workflow_data = self.workflow_data
-        start_hop_latency = self.loader.get_start_hop_latency_distribution(
-            "aws:us-east-1", "aws:us-east-1", 3.3527612686157227e-08
-        )
+        start_hop_latency = self.loader.get_start_hop_latency_distribution("aws:us-east-1", 3.3527612686157227e-08)
         self.assertEqual(start_hop_latency, [0.52388, 0.514119, 0.519146])
 
     def test_get_data_transfer_size_distribution(self):

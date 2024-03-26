@@ -31,10 +31,7 @@ class RuntimeCalculator(InputCalculator):
                 from_instance_name, to_instance_name, from_region_name, to_region_name
             )
         else:
-            home_region_name = from_region_name
-            transmission_size_distribution = self._workflow_loader.get_start_hop_size_distribution(
-                home_region_name, to_region_name
-            )
+            transmission_size_distribution = self._workflow_loader.get_start_hop_size_distribution(to_region_name)
 
         self._transmission_size_distribution_cache[cache_key] = transmission_size_distribution
         return transmission_size_distribution
@@ -58,10 +55,9 @@ class RuntimeCalculator(InputCalculator):
                     from_instance_name, to_instance_name, from_region_name, to_region_name, data_transfer_size
                 )
             else:
-                home_region_name = from_region_name
                 # No size information, we default to performance loader
                 transmission_latency_distribution = self._workflow_loader.get_start_hop_latency_distribution(
-                    home_region_name, to_region_name, data_transfer_size
+                    to_region_name, data_transfer_size
                 )
         else:
             # No size information, we default to performance loader
@@ -76,10 +72,10 @@ class RuntimeCalculator(InputCalculator):
                 self._performance_loader.get_transmission_latency_distribution(home_region_name, home_region_name)
             )
 
-            # Select a random latency from the distribution
-            home_region_latency_performance = home_region_latency_distribution_performance[
-                int(random.random() * (len(home_region_latency_distribution_performance) - 1))
-            ]
+            # Calculate average latency
+            home_region_latency_performance = sum(home_region_latency_distribution_performance) / len(
+                home_region_latency_distribution_performance
+            )
 
             assert (
                 from_instance_name is not None
@@ -98,9 +94,10 @@ class RuntimeCalculator(InputCalculator):
                 from_instance_name, to_instance_name, home_region_name, home_region_name, home_region_transmission_size
             )
 
-            home_region_latency_measured = home_region_latency_distribution_measured[
-                int(random.random() * (len(home_region_latency_distribution_measured) - 1))
-            ]
+            # Calculate the average latency
+            home_region_latency_measured = sum(home_region_latency_distribution_measured) / len(
+                home_region_latency_distribution_measured
+            )
 
             # Calculate the underestimation factor
             underestimation_factor = home_region_latency_measured / home_region_latency_performance
