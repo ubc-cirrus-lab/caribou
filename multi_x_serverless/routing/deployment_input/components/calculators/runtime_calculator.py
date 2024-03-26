@@ -73,9 +73,9 @@ class RuntimeCalculator(InputCalculator):
             )
 
             # Calculate average latency
-            home_region_latency_performance = sum(home_region_latency_distribution_performance) / len(
-                home_region_latency_distribution_performance
-            )
+            home_region_latency_performance = home_region_latency_distribution_performance[
+                int(random.random() * (len(home_region_latency_distribution_performance) - 1))
+            ]
 
             assert (
                 from_instance_name is not None
@@ -95,9 +95,9 @@ class RuntimeCalculator(InputCalculator):
             )
 
             # Calculate the average latency
-            home_region_latency_measured = sum(home_region_latency_distribution_measured) / len(
-                home_region_latency_distribution_measured
-            )
+            home_region_latency_measured = home_region_latency_distribution_measured[
+                int(random.random() * (len(home_region_latency_distribution_measured) - 1))
+            ]
 
             # Calculate the underestimation factor
             underestimation_factor = home_region_latency_measured / home_region_latency_performance
