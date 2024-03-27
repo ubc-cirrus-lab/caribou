@@ -152,11 +152,14 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
             transmission_size = 0.0
 
         # Now we can calculate the cost and carbon
-        cost = self._cost_calculator.calculate_transmission_cost(
-            from_region_name,
-            to_region_name,
-            transmission_size,
-        )
+        # If start hop, no transmission cost
+        cost = 0.0
+        if from_instance_name is not None:  # Start hop should not incur transmission cost
+            cost = self._cost_calculator.calculate_transmission_cost(
+                from_region_name,
+                to_region_name,
+                transmission_size,
+            )
 
         carbon = self._carbon_calculator.calculate_transmission_carbon(
             from_region_name, to_region_name, transmission_size, transmission_latency

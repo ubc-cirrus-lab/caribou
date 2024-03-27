@@ -26,6 +26,9 @@ class CostCalculator(InputCalculator):
         to_region_name: str,
         data_transfer_size: float,
     ) -> float:
+        if from_region_name == to_region_name:  # No egress cost from self transmission
+            return 0.0
+
         transmission_cost_gb = self._get_transmission_conversion_ratio(from_region_name, to_region_name)
         return transmission_cost_gb * data_transfer_size
 
