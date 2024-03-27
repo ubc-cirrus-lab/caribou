@@ -56,6 +56,10 @@ dna-features-viewer = "^3.1.3"
 networkx = "^3.2.1"
 types-pytz = "^2024.1.0.20240203"
 ipykernel = "^6.29.3"
+tqdm = "^4.66.2"
+statsmodels = "^0.14.1"
+opencv-python = "^4.9.0.80"
+torchvision = "^0.17.1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
