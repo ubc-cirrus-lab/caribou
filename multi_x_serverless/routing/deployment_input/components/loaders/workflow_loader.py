@@ -137,7 +137,7 @@ class WorkflowLoader(InputLoader):
             .get(from_region_name, {})
             .get(to_region_name, {})
             .get("transfer_size_to_transfer_latencies", {})
-            .get(str(data_transfer_size), [SOLVER_INPUT_TRANSMISSION_LATENCY_DEFAULT])
+            .get(str(data_transfer_size), [])
         )
 
     def get_invocation_probability(self, from_instance_name: str, to_instance_name: str) -> float:

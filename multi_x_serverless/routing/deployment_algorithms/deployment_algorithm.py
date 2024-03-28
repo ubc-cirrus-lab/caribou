@@ -49,13 +49,11 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
 
         self._number_of_instances = len(self._instance_indexer.get_value_indices().values())
 
-        self._home_deployment, self._home_deployment_metrics = self._initialise_home_deployment()
-
-        self._ranker = Ranker(workflow_config, self._home_deployment_metrics)
+        self._ranker = Ranker(workflow_config, None)
 
         self._expiry_time_delta_seconds = expiry_time_delta_seconds
 
-        self._formatter = Formatter(self._home_deployment, self._home_deployment_metrics)
+        self._formatter = Formatter()
 
         self._endpoints = Endpoints()
 
@@ -71,7 +69,7 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
         if hours_to_run is None:
             hours_to_run = [None]  # type: ignore
         for hour_to_run in hours_to_run:
-            self._input_manager.alter_carbon_setting(hour_to_run)
+            self._update_data_for_new_hour(hour_to_run)
             deployments = self._run_algorithm()
             ranked_deployments = self._ranker.rank(deployments)
             selected_deployment = self._select_deployment(ranked_deployments)
@@ -89,6 +87,14 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
         self._add_expiry_date_to_results(hour_to_run_to_result)
 
         self._upload_result(hour_to_run_to_result)
+
+    def _update_data_for_new_hour(self, hour_to_run: str) -> None:
+        self._input_manager.alter_carbon_setting(hour_to_run)
+        (
+            self._home_deployment,  # pylint: disable=attribute-defined-outside-init
+            self._home_deployment_metrics,  # pylint: disable=attribute-defined-outside-init
+        ) = self._initialise_home_deployment()
+        self._ranker.update_home_deployment_metrics(self._home_deployment_metrics)
 
     def _add_expiry_date_to_results(self, hour_to_run_to_result: dict[str, Any]) -> None:
         expiry_date = datetime.now(GLOBAL_TIME_ZONE) + timedelta(seconds=self._expiry_time_delta_seconds)

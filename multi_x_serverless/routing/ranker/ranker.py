@@ -10,6 +10,9 @@ class Ranker:
 
         self.number_one_priority = self._get_number_one_priority()
 
+    def update_home_deployment_metrics(self, home_deployment_metrics: dict[str, float]) -> None:
+        self._home_deployment_metrics = home_deployment_metrics
+
     def _get_number_one_priority(self) -> str:
         if self._config.constraints is None or "priority_order" not in self._config.constraints:
             return "average_carbon"

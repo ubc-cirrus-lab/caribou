@@ -1,4 +1,5 @@
 import random
+from copy import deepcopy
 from typing import Optional
 
 from multi_x_serverless.routing.deployment_algorithms.deployment_algorithm import DeploymentAlgorithm
@@ -25,9 +26,11 @@ class StochasticHeuristicDeploymentAlgorithm(DeploymentAlgorithm):
         self._max_number_combinations = 1
         for instance in range(self._number_of_instances):
             self._max_number_combinations *= len(self._per_instance_permitted_regions[instance])
-        self._best_deployment_metrics = self._home_deployment_metrics.copy()
 
     def _run_algorithm(self) -> list[tuple[list[int], dict[str, float]]]:
+        self._best_deployment_metrics = deepcopy(  # pylint: disable=attribute-defined-outside-init
+            self._home_deployment_metrics
+        )
         deployments = self._generate_all_possible_coarse_deployments()
         if len(deployments) == 0:
             deployments.append((self._home_deployment, self._home_deployment_metrics))
@@ -35,7 +38,7 @@ class StochasticHeuristicDeploymentAlgorithm(DeploymentAlgorithm):
         return deployments
 
     def _generate_stochastic_heuristic_deployments(self, deployments: list[tuple[list[int], dict[str, float]]]) -> None:
-        current_deployment = self._home_deployment.copy()
+        current_deployment = deepcopy(self._home_deployment)
 
         generated_deployments: set[tuple[int, ...]] = {tuple(deployment) for deployment, _ in deployments}
         for _ in range(self._num_iterations):
@@ -48,7 +51,7 @@ class StochasticHeuristicDeploymentAlgorithm(DeploymentAlgorithm):
                 continue
 
             if self._is_improvement(new_deployment_metrics, new_deployment, current_deployment):
-                current_deployment = new_deployment
+                current_deployment = deepcopy(new_deployment)
                 deployments.append((current_deployment, new_deployment_metrics))
                 generated_deployments.add(tuple(current_deployment))
 
@@ -81,7 +84,9 @@ class StochasticHeuristicDeploymentAlgorithm(DeploymentAlgorithm):
             deployment_metrics[self._ranker.number_one_priority]
             < self._best_deployment_metrics[self._ranker.number_one_priority]
         ):
-            self._best_deployment_metrics = deployment_metrics.copy()  # pylint: disable=attribute-defined-outside-init
+            self._best_deployment_metrics = deepcopy(  # pylint: disable=attribute-defined-outside-init
+                deployment_metrics
+            )
             self._store_bias_regions(deployment, self._home_deployment)
 
         return (deployment, deployment_metrics)
@@ -104,8 +109,8 @@ class StochasticHeuristicDeploymentAlgorithm(DeploymentAlgorithm):
             new_deployment_metrics[self._ranker.number_one_priority]
             < self._best_deployment_metrics[self._ranker.number_one_priority]
         ):
-            self._best_deployment_metrics = (  # pylint: disable=attribute-defined-outside-init
-                new_deployment_metrics.copy()
+            self._best_deployment_metrics = deepcopy(  # pylint: disable=attribute-defined-outside-init
+                new_deployment_metrics
             )
             self._store_bias_regions(new_deployment, current_deployment)
             return True
@@ -127,7 +132,7 @@ class StochasticHeuristicDeploymentAlgorithm(DeploymentAlgorithm):
         )
 
     def _generate_new_deployment(self, current_deployment: list[int]) -> list[int]:
-        new_deployment = current_deployment.copy()
+        new_deployment = deepcopy(current_deployment)
         instances_to_move = [random.randint(0, self._number_of_instances - 1) for _ in range(self._learning_rate)]
         for instance in instances_to_move:
             new_deployment[instance] = self._choose_new_region(instance)

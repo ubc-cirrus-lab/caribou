@@ -18,10 +18,10 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
         runtimes_distribution_list: list[float] = []
         carbons_distribution_list: list[float] = []
 
-        max_number_of_iterations = 1000
+        max_number_of_iterations = 2000
         number_of_iterations = 0
-        threshold = 0.15
-        batch_size = 100
+        threshold = 0.05
+        batch_size = 200
 
         while number_of_iterations < max_number_of_iterations:
             for _ in range(batch_size):
@@ -49,15 +49,12 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
                 elif all_within_threshold:
                     break
 
-        return {
-            "average_cost": statistics.mean(costs_distribution_list),
-            "average_runtime": statistics.mean(runtimes_distribution_list),
-            "average_carbon": statistics.mean(carbons_distribution_list),
-            "tail_cost": statistics.quantiles(costs_distribution_list, n=100)[int(self._tail_latency_threshold) - 1],
-            "tail_runtime": statistics.quantiles(runtimes_distribution_list, n=100)[
-                int(self._tail_latency_threshold) - 1
-            ],
-            "tail_carbon": statistics.quantiles(carbons_distribution_list, n=100)[
-                int(self._tail_latency_threshold) - 1
-            ],
+        result = {
+            "average_cost": float(statistics.mean(costs_distribution_list)),
+            "average_runtime": float(statistics.mean(runtimes_distribution_list)),
+            "average_carbon": float(statistics.mean(carbons_distribution_list)),
+            "tail_cost": float(np.percentile(costs_distribution_list, self._tail_latency_threshold)),
+            "tail_runtime": float(np.percentile(runtimes_distribution_list, self._tail_latency_threshold)),
+            "tail_carbon": float(np.percentile(carbons_distribution_list, self._tail_latency_threshold)),
         }
+        return result

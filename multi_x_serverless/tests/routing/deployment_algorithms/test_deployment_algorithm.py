@@ -82,6 +82,9 @@ class TestDeploymentAlgorithm(unittest.TestCase):
         self.deployment_algorithm._upload_result = MagicMock()
         self.deployment_algorithm._upload_result.return_value = "formatted_deployment"
         self.deployment_algorithm._expiry_time_delta_seconds = 10
+        self.deployment_algorithm._number_of_instances = 1
+        self.deployment_algorithm._home_region_index = 0
+        self.deployment_algorithm._deployment_metrics_calculator = MagicMock()
 
         # Act
         self.deployment_algorithm.run(["1"])

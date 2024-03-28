@@ -1,4 +1,5 @@
 import random
+import time
 from typing import Optional
 
 from multi_x_serverless.common.constants import TAIL_LATENCY_THRESHOLD
@@ -15,6 +16,8 @@ from multi_x_serverless.routing.deployment_input.components.loaders.workflow_loa
 from multi_x_serverless.routing.models.instance_indexer import InstanceIndexer
 from multi_x_serverless.routing.models.region_indexer import RegionIndexer
 from multi_x_serverless.routing.workflow_config import WorkflowConfig
+
+random.seed(time.time())
 
 
 class InputManager:  # pylint: disable=too-many-instance-attributes
@@ -172,6 +175,11 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         Input should either be 'None' or a string from '0' to '23' indicating the hour of the day.
         """
         self._carbon_calculator.alter_carbon_setting(carbon_setting)
+        self._runtime_calculator.reset_cache()
+
+        # Clear the cache
+        self._execution_latency_distribution_cache = {}
+        self._invocation_probability_cache = {}
 
     def get_invocation_probability(self, from_instance_index: int, to_instance_index: int) -> float:
         """

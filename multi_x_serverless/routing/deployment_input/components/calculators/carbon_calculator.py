@@ -38,6 +38,10 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
     def alter_carbon_setting(self, carbon_setting: Optional[str]) -> None:
         self._hourly_carbon_setting = carbon_setting
 
+        # Clear the cache
+        self._execution_conversion_ratio_cache = {}
+        self._transmission_conversion_ratio_cache = {}
+
     def calculate_execution_carbon(self, instance_name: str, region_name: str, execution_latency: float) -> float:
         compute_factor, memory_factor, power_factor = self._get_execution_conversion_ratio(instance_name, region_name)
 

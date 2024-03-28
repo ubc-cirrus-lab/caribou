@@ -8,9 +8,7 @@ class TestFormatter(unittest.TestCase):
     def test_format(self):
         self.maxDiff = None
         # Arrange
-        home_deployment = [0, 1]
-        home_deployment_metrics = {"average_carbon": 0.1, "average_runtime": 0.2, "average_cost": 0.3}
-        formatter = Formatter(home_deployment, home_deployment_metrics)
+        formatter = Formatter()
         results = ([0, 1], {"average_carbon": 0.2, "average_runtime": 0.3, "average_cost": 0.4})
         index_to_instance_name = {0: "instance1", 1: "instance2", 2: "instance3", 3: "instance4"}
         index_to_region_provider_name = {
