@@ -1,12 +1,4 @@
 class Formatter:
-    def __init__(
-        self,
-        home_deployment: list[int],
-        home_deployment_metrics: dict[str, float],
-    ) -> None:
-        self._home_deployment = home_deployment
-        self._home_deployment_metrics = home_deployment_metrics
-
     def format(
         self,
         results: tuple[list[int], dict[str, float]],

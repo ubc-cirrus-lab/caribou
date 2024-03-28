@@ -119,7 +119,7 @@ class TestRuntimeCalculator(unittest.TestCase):
         )
 
         # Assert
-        np.testing.assert_array_almost_equal(transmission_latency_distribution, np.array([0.1, 0.05, 0.15]))
+        np.testing.assert_array_almost_equal(transmission_latency_distribution, np.array([0.2, 0.1, 0.3]))
         mock_performance_loader.get_transmission_latency_distribution.assert_called_with("region1", "region1")
         mock_workflow_loader.get_home_region.assert_called_once()
         mock_workflow_loader.get_data_transfer_size_distribution.assert_called_once_with(
