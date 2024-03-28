@@ -11,6 +11,8 @@ import torch
 import torchvision.models as models
 from multi_x_serverless.deployment.client import MultiXServerlessWorkflow
 import io
+import torch
+from torchvision import models
 
 FANOUT_NUM = 4
 
@@ -228,6 +230,9 @@ def infer(image_bytes):
     s3 = boto3.client("s3")
     response = s3.get_object(Bucket="multi-x-serverless-video-analytics", Key="imagenet_labels.txt")
     labels = response["Body"].read().decode("utf-8").splitlines()
+
+    tmp_dir = tempfile.mkdtemp()
+    os.environ['TORCH_HOME'] = tmp_dir
 
     # Load the model
     model = models.squeezenet1_1(pretrained=True)
