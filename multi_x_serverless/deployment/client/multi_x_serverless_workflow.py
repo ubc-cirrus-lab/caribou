@@ -372,8 +372,10 @@ class MultiXServerlessWorkflow:
                 if successor_instance.split(":", maxsplit=2)[1] == "sync":
                     return successor_instance
                 if successor_instance.split(":", maxsplit=2)[1].split("_")[-1] == str(
-                    self._run_id_to_successor_index[workflow_placement_decision["run_id"]]
+                    self._run_id_to_successor_index.get(workflow_placement_decision["run_id"], 0)
                 ):
+                    if workflow_placement_decision["run_id"] not in self._run_id_to_successor_index:
+                        self._run_id_to_successor_index[workflow_placement_decision["run_id"]] = 0
                     self._run_id_to_successor_index[workflow_placement_decision["run_id"]] += 1
                     return successor_instance
         raise RuntimeError(f"Could not find successor instance for successor function name {successor_function_name} in {successor_instances}")  # type: ignore  # pylint: disable=line-too-long
