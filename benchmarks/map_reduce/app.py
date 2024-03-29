@@ -135,10 +135,18 @@ def shuffler(event: dict[str, Any]) -> dict[str, Any]:
         "mapper_result2": results[1].get("word_counts", {}) if num_results >= 2 else {}
     })
 
-    workflow.invoke_serverless_function(reducer, {
-        "mapper_result1": results[2].get("word_counts", {}) if num_results >= 3 else {},
-        "mapper_result2": results[3].get("word_counts", {}) if num_results == 4 else {}
-    }, num_results >= 3)
+    if num_results >= 3:
+        payload2 = {
+            "mapper_result1": results[2].get("word_counts", {}) if num_results >= 3 else {},
+            "mapper_result2": results[3].get("word_counts", {}) if num_results == 4 else {}
+        }
+    else:
+        payload2 = {
+            "mapper_result1": {},
+            "mapper_result2": {}
+        }
+
+    workflow.invoke_serverless_function(reducer, payload2, num_results >= 3)
 
     return {"status": 200}
 
