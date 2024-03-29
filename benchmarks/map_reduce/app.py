@@ -78,9 +78,15 @@ def input_processor(event: dict[str, Any]) -> dict[str, Any]:
     logger.info(f"Payload to mappers: {payloads} \n Length: {len(payloads)}")
 
     workflow.invoke_serverless_function(mapper, payloads[0])
-    workflow.invoke_serverless_function(mapper, payloads[1], len(payloads) >= 2)
-    workflow.invoke_serverless_function(mapper, payloads[2], len(payloads) >= 3)
-    workflow.invoke_serverless_function(mapper, payloads[3], len(payloads) == 4)
+
+    payload_one = payloads[1] if len(payloads) >= 2 else None
+    workflow.invoke_serverless_function(mapper, payload_one, len(payloads) >= 2)
+
+    payload_two = payloads[2] if len(payloads) >= 3 else None
+    workflow.invoke_serverless_function(mapper, payload_two, len(payloads) >= 3)
+
+    payload_three = payloads[3] if len(payloads) == 4 else None
+    workflow.invoke_serverless_function(mapper, payload_three, len(payloads) == 4)
 
     return {"status": 200}
 
@@ -126,11 +132,12 @@ def shuffler(event: dict[str, Any]) -> dict[str, Any]:
 
     workflow.invoke_serverless_function(reducer, {
         "mapper_result1": results[0]["word_counts"],
-        "mapper_result2": results[1]["word_counts"] if num_results >= 2 else {}
+        "mapper_result2": results[1].get("word_counts", {}) if num_results >= 2 else {}
     })
+
     workflow.invoke_serverless_function(reducer, {
-        "mapper_result1": results[2]["word_counts"] if num_results >= 3 else {},
-        "mapper_result2": results[3]["word_counts"] if num_results == 4 else {}
+        "mapper_result1": results[2].get("word_counts", {}) if num_results >= 3 else {},
+        "mapper_result2": results[3].get("word_counts", {}) if num_results == 4 else {}
     }, num_results >= 3)
 
     return {"status": 200}
