@@ -3,6 +3,13 @@ import json
 import tempfile
 from PIL import Image
 
+import logging 
+
+# Configure logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)  # Set the logging level
+
+
 def grayscale(event, context):
     event = json.loads(event['Records'][0]['Sns']['Message'])
     image_name = event["image_name"]
@@ -32,7 +39,11 @@ def grayscale(event, context):
     # Convert the data to JSON
     payload = json.dumps(payload)
 
+    # Send the payload to the next function
     send_sns("wo-im_p-ed-sns-resize", payload)
+
+    # Log additional information
+    log_additional_info(event)
 
     return {"statusCode": 200}
 
@@ -63,3 +74,17 @@ def send_sns(next_function_name, payload):
         TopicArn=topic_arn,
         Message=payload
     )
+
+def log_additional_info(event):
+    # Log the CPU model, workflow name, and the request ID
+    cpu_model = ""
+    with open('/proc/cpuinfo') as f:
+        for line in f:
+            if "model name" in line:
+                cpu_model = line.split(":")[1].strip()  # Extracting and cleaning the model name
+                break  # No need to continue the loop once the model name is found
+
+    workload_name = event["metadata"]["workload_name"]
+    request_id = event["metadata"]["request_id"]
+
+    logger.info(f"Workload Name: {workload_name}, Request ID: {request_id}, CPU Model: {cpu_model}")

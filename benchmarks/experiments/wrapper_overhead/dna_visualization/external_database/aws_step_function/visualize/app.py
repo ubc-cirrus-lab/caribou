@@ -41,6 +41,15 @@ def visualize(event, context):
     os.remove(local_gen_filename)
     os.remove(local_result_filename)
 
+    # Log finished time
+    log_finish(event)
+
+    # Log additional information
+    log_additional_info(event)
+
+    return {"status": 200}
+
+def log_finish(event):
     # Log the end time of the function
     ## Get the current time
     current_time = datetime.datetime.now(datetime.timezone.utc)
@@ -64,15 +73,27 @@ def visualize(event, context):
 
     ## Get the workload name from the metadata
     workload_name = event["metadata"]["workload_name"]
+    request_id = event["metadata"]["request_id"]
 
     ## Log the time taken along with the request ID and workload name
     logger.info(f"Workload Name: {workload_name}, "
-                f"Request ID: {req_id}, "
+                f"Request ID: {request_id}, "
                 f"Client Start Time: {start_time_str}, "
                 f"First Function Start Time: {first_function_start_time_str}, "
                 f"Time Taken from workload invocation from client: {ms_from_start} ms, "
                 f"Time Taken from first function: {ms_from_first_function} ms, "
                 f"Function End Time: {final_function_end_time}")
-    
-    # Return a success response
-    return {"status": "Visualization completed", "file": f"{gen_file_name}.png"}
+
+def log_additional_info(event):
+    # Log the CPU model, workflow name, and the request ID
+    cpu_model = ""
+    with open('/proc/cpuinfo') as f:
+        for line in f:
+            if "model name" in line:
+                cpu_model = line.split(":")[1].strip()  # Extracting and cleaning the model name
+                break  # No need to continue the loop once the model name is found
+
+    workload_name = event["metadata"]["workload_name"]
+    request_id = event["metadata"]["request_id"]
+
+    logger.info(f"Workload Name: {workload_name}, Request ID: {request_id}, CPU Model: {cpu_model}")
