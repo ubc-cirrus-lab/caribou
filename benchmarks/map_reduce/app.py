@@ -6,6 +6,7 @@ import tempfile
 import os
 from datetime import datetime 
 import logging
+import math
 
 from multi_x_serverless.deployment.client import MultiXServerlessWorkflow
 
@@ -50,14 +51,17 @@ def input_processor(event: dict[str, Any]) -> dict[str, Any]:
     s3.download_file("multi-x-serverless-map-reduce", f"input/{input_name}", local_file_path)
 
     file_size = os.path.getsize(local_file_path)
-    chunk_size = file_size // 4
 
-    payloads = []  
+    chunk_size = 150 * 1024 # 150 KB
+
+    num_chunks = min(4, math.ceil(file_size / chunk_size))
+
+    payloads = []
 
     with open(local_file_path, 'r') as file:
-        for i in range(4):
+        for i in range(num_chunks):
             chunk_data = ""
-            if i != 3:  
+            if i != num_chunks - 1:  
                 read_bytes = 0
                 while read_bytes < chunk_size:
                     line = file.readline()
@@ -71,13 +75,18 @@ def input_processor(event: dict[str, Any]) -> dict[str, Any]:
             payloads.append({"data": chunk_data})
 
 
-    logger.info(f"Payload to mappers: {payloads}")
+    logger.info(f"Payload to mappers: {payloads} \n Length: {len(payloads)}")
 
     workflow.invoke_serverless_function(mapper, payloads[0])
-    workflow.invoke_serverless_function(mapper, payloads[1])
-    workflow.invoke_serverless_function(mapper, payloads[2])
-    workflow.invoke_serverless_function(mapper, payloads[3])
 
+    payload_one = payloads[1] if len(payloads) >= 2 else None
+    workflow.invoke_serverless_function(mapper, payload_one, len(payloads) >= 2)
+
+    payload_two = payloads[2] if len(payloads) >= 3 else None
+    workflow.invoke_serverless_function(mapper, payload_two, len(payloads) >= 3)
+
+    payload_three = payloads[3] if len(payloads) == 4 else None
+    workflow.invoke_serverless_function(mapper, payload_three, len(payloads) == 4)
 
     return {"status": 200}
 
@@ -117,18 +126,27 @@ def shuffler(event: dict[str, Any]) -> dict[str, Any]:
     
     results = workflow.get_predecessor_data()
 
-    reducer_payloads = [{
+    num_results = len(results)
+
+    logger.info(f"Results: {results} \n Number of results: {num_results}")
+
+    workflow.invoke_serverless_function(reducer, {
         "mapper_result1": results[0]["word_counts"],
-        "mapper_result2": results[1]["word_counts"]
-    }, {
-        "mapper_result1": results[2]["word_counts"],
-        "mapper_result2": results[3]["word_counts"]
-    }]
+        "mapper_result2": results[1].get("word_counts", {}) if num_results >= 2 else {}
+    })
 
-    workflow.invoke_serverless_function(reducer, reducer_payloads[0])
-    workflow.invoke_serverless_function(reducer, reducer_payloads[1])
+    if num_results >= 3:
+        payload2 = {
+            "mapper_result1": results[2].get("word_counts", {}) if num_results >= 3 else {},
+            "mapper_result2": results[3].get("word_counts", {}) if num_results == 4 else {}
+        }
+    else:
+        payload2 = {
+            "mapper_result1": {},
+            "mapper_result2": {}
+        }
 
-    logger.info(f"Payloads to reducers: {reducer_payloads}")
+    workflow.invoke_serverless_function(reducer, payload2, num_results >= 3)
 
     return {"status": 200}
 
@@ -136,22 +154,24 @@ def shuffler(event: dict[str, Any]) -> dict[str, Any]:
 @workflow.serverless_function(name="Reducer-Function")
 def reducer(event: dict[str, Any]) -> dict[str, Any]:
     
-    mapper_result1 = event["mapper_result1"]
-    mapper_result2 = event["mapper_result2"]
+    mapper_result1 = event.get("mapper_result1")
+    mapper_result2 = event.get("mapper_result2")
 
     merged_word_counts = {}
 
-    for word, count in mapper_result1.items():
-        if word in merged_word_counts:
-            merged_word_counts[word] += count
-        else:
-            merged_word_counts[word] = count
+    if mapper_result1 is not None:
+        for word, count in mapper_result1.items():
+            if word in merged_word_counts:
+                merged_word_counts[word] += count
+            else:
+                merged_word_counts[word] = count
     
-    for word, count in mapper_result2.items():
-        if word in merged_word_counts:
-            merged_word_counts[word] += count
-        else:
-            merged_word_counts[word] = count
+    if mapper_result2 is not None:
+        for word, count in mapper_result2.items():
+            if word in merged_word_counts:
+                merged_word_counts[word] += count
+            else:
+                merged_word_counts[word] = count
 
     sorted_word_counts = {word: merged_word_counts[word] for word in sorted(merged_word_counts)}
 

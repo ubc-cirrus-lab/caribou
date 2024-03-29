@@ -786,7 +786,7 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
         self.assertEqual(self.workflow.get_successors(function_obj_1), [])
 
         def test_function_2(x):
-            return invoke_serverless_function("test_function", x)
+            return self.workflow.invoke_serverless_function(test_function, x)
 
         function_obj_2 = MultiXServerlessFunction(
             test_function_2, name, entry_point, regions_and_providers, environment_variables
@@ -797,7 +797,7 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
         self.assertEqual(self.workflow.get_successors(function_obj_2), [function_obj_1])
 
         def function(x):
-            return invoke_serverless_function("test_function_2")
+            return self.workflow.invoke_serverless_function(test_function_2)
 
         function_obj_3 = MultiXServerlessFunction(
             function, name, entry_point, regions_and_providers, environment_variables
@@ -806,8 +806,8 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
         self.assertEqual(self.workflow.get_successors(function_obj_3), [function_obj_2])
 
         def function(x):
-            invoke_serverless_function("test_function", x)
-            invoke_serverless_function("test_function_2", x)
+            self.workflow.invoke_serverless_function(test_function, {"payload": x})
+            self.workflow.invoke_serverless_function(test_function_2, x)
 
         function_obj_4 = MultiXServerlessFunction(
             function, name, entry_point, regions_and_providers, environment_variables
@@ -815,9 +815,12 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
 
         self.assertEqual(self.workflow.get_successors(function_obj_4), [function_obj_1, function_obj_2])
 
+        def not_registered_function(x):
+            return x
+
         def function(x):
-            invoke_serverless_function("test_function", x)
-            invoke_serverless_function("not_registered_function", x)
+            self.workflow.invoke_serverless_function(test_function, x)
+            self.workflow.invoke_serverless_function(not_registered_function, x)
 
         function_obj_5 = MultiXServerlessFunction(
             function, name, entry_point, regions_and_providers, environment_variables
@@ -871,6 +874,7 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
 
     def test_get_next_instance_name(self):
         workflow_placement_decision = {
+            "run_id": "123",
             "instances": {
                 "current_instance": {
                     "instance_name": "current_instance",
@@ -885,10 +889,11 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
                         f"{self.workflow.name}-{self.workflow.version.replace('.', '_')}-other_successor_function:sync:"
                     ],
                 },
-            }
+            },
         }
         current_instance_name = "current_instance"
         successor_function_name = "successor_function"
+        self.workflow._run_id_to_successor_index = {"123": -1}
 
         next_instance_name = self.workflow.get_next_instance_name(
             current_instance_name, workflow_placement_decision, successor_function_name
