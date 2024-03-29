@@ -184,13 +184,13 @@ class WrapperOverheadCollectionUtility():
             if not run_ids.intersection(cold_start_runs):
                 non_cold_start_requests.add(request_id)
         
-        # Lets now short out by matching cpu_model with the request_id
-        # We first want to go through unique_cpu_models and see if we can find a request_id
-        # That solely uses that cpu_model
-        for cpu_model in unique_cpu_models:
-            request_ids = [log['request_id'] for log in joined_logs_additional_info if log['cpu_model'] == cpu_model]
-            if len(request_ids) == 1:
-                non_cold_start_requests.add(request_ids[0])
+        # # Lets now short out by matching cpu_model with the request_id
+        # # We first want to go through unique_cpu_models and see if we can find a request_id
+        # # That solely uses that cpu_model
+        # for cpu_model in unique_cpu_models:
+        #     request_ids = [log['request_id'] for log in joined_logs_additional_info if log['cpu_model'] == cpu_model]
+        #     if len(request_ids) == 1:
+        #         non_cold_start_requests.add(request_ids[0])
 
 
         # Now we finally have a list of request_id that has not experienced any cold start
