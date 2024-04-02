@@ -193,7 +193,7 @@ class WorkflowRetriever(DataRetriever):
             if caller not in instance_summary:
                 instance_summary[caller] = {"invocations": 0, "executions": {}, "to_instance": {}}
             for callee, count in non_execution.items():
-                if callee not in instance_summary[caller]:
+                if callee not in instance_summary[caller]["to_instance"]:
                     instance_summary[caller]["to_instance"][callee] = {
                         "invoked": 0,
                         "regions_to_regions": {},
