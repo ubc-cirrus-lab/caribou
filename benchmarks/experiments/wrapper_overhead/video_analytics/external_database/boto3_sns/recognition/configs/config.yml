@@ -1,0 +1,5 @@
+function_name: "wo-vid_an-ed-sns-recognition"
+handler: "app.recognition"
+configs:
+  timeout: 300
+  memory: 1024

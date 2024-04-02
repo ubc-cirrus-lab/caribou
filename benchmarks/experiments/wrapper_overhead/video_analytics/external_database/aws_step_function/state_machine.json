@@ -1,0 +1,39 @@
+{
+    "Comment": "A workflow to process videos with fan-out pattern",
+    "StartAt": "GetInput",
+    "States": {
+      "GetInput": {
+        "Type": "Task",
+        "Resource": "wo-vid_an-ed-step_function-get_input",
+        "Next": "Map"
+      },
+      "Map": {
+        "Type": "Map",
+        "InputPath": "$",
+        "ItemsPath": "$.payloads",
+        "MaxConcurrency": 0,
+        "Iterator": {
+          "StartAt": "Streaming",
+          "States": {
+            "Streaming": {
+              "Type": "Task",
+              "Resource": "wo-vid_an-ed-step_function-streaming",
+              "Next": "Decode"
+            },
+            "Decode": {
+              "Type": "Task",
+              "Resource": "wo-vid_an-ed-step_function-decode",
+              "Next": "Recognition"
+            },
+            "Recognition": {
+              "Type": "Task",
+              "Resource": "wo-vid_an-ed-step_function-recognition",
+              "End": true
+            }
+          }
+        },
+        "End": true
+      }
+    }
+  }
+  

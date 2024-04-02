@@ -1,0 +1,3 @@
+type: "boto3_sns"
+workload_name: "wo-vid_an-ed-sns"
+starting_function_name: "wo-vid_an-ed-sns-get_input"

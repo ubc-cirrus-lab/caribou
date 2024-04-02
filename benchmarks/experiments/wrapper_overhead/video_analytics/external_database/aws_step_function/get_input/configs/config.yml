@@ -1,0 +1,5 @@
+function_name: "wo-vid_an-ed-step_function-get_input"
+handler: "app.get_input"
+configs:
+  timeout: 300
+  memory: 1024

@@ -1,0 +1,5 @@
+function_name: "wo-vid_an-ed-sns-get_input"
+handler: "app.get_input"
+configs:
+  timeout: 300
+  memory: 1024

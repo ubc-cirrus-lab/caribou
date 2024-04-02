@@ -1,0 +1,5 @@
+function_name: "wo-vid_an-ed-step_function-streaming"
+handler: "app.streaming"
+configs:
+  timeout: 300
+  memory: 1024

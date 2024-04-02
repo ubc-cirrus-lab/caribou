@@ -187,13 +187,28 @@ class WrapperOverheadDeploymentUtility():
         return True
     
     def _alter_state_machine_content(self, state_machine_content: dict[str, Any], arns: dict[str, str]) -> None:
-        # Replace the arns in the state machine content
-        # with the arns of the lambda functions
-        for state in state_machine_content['States'].values():
-            if 'Resource' in state:
-                if state['Resource'] in arns:
-                    state['Resource'] = arns[state['Resource']]
+        # # Replace the arns in the state machine content
+        # # with the arns of the lambda functions
+        # for state in state_machine_content['States'].values():
+        #     if 'Resource' in state:
+        #         if state['Resource'] in arns:
+        #             state['Resource'] = arns[state['Resource']]
 
+        def replace_resource(state_content: dict):
+            # Iterate over the states in the provided state machine content
+            for state in state_content['States'].values():
+                # If the state has a "Resource" field, attempt to replace it
+                if 'Resource' in state:
+                    if state['Resource'] in arns:
+                        state['Resource'] = arns[state['Resource']]
+                # If the state has a "Iterator" field, it's a complex state (e.g., a "Map" state)
+                # Recursively process the nested state machine
+                if 'Iterator' in state:
+                    replace_resource(state['Iterator'])
+
+        # Start the recursive replacement with the top-level state machine content
+        replace_resource(state_machine_content)
+        
 # if __name__ == "__main__":
 #     desired_region = 'us-east-2'
 #     deployment_utility = WrapperOverheadDeploymentUtility(desired_region)
