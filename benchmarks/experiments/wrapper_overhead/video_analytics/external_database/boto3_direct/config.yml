@@ -1,0 +1,3 @@
+type: "boto3_direct"
+workload_name: "wo-vid_an-ed-direct"
+starting_function_name: "wo-vid_an-ed-direct-get_input"

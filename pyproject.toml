@@ -30,6 +30,8 @@ pydantic = "^2.5.3"
 bs4 = "^0.0.2"
 pytz = "^2024.1"
 ipykernel = "^6.29.3"
+opencv-python = "^4.9.0.80"
+torchvision = "^0.17.2"
 
 [tool.poetry.extras]
 # This can be used for a more fine-grained dependency management in the future

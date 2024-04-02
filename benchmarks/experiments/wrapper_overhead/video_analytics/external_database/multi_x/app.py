@@ -13,17 +13,24 @@ from multi_x_serverless.deployment.client import MultiXServerlessWorkflow
 import io
 import torch
 from torchvision import models
+import datetime
 
 FANOUT_NUM = 4
 
-workflow = MultiXServerlessWorkflow(name="video_analytics", version="0.0.1")
+import logging 
 
+# Configure logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)  # Set the logging level
+
+workflow = MultiXServerlessWorkflow(name="wo-vid_an-ed-multi_x", version="0.0.2")
 
 @workflow.serverless_function(
     name="GetInput",
     entry_point=True,
 )
 def get_input(event: dict[str, Any]) -> dict[str, Any]:
+    start_time = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S,%f%z")
     if isinstance(event, str):
         event = json.loads(event)
 
@@ -32,9 +39,14 @@ def get_input(event: dict[str, Any]) -> dict[str, Any]:
     else:
         raise ValueError("No message provided")
 
+    # Get the additional metadata
+    metadata = event['metadata']
+    metadata['first_function_start_time'] = start_time
+
     payload = {
         "video_name": video_name,
         "request_id": 1,
+        'metadata': metadata
     }
 
     workflow.invoke_serverless_function(streaming, payload)
@@ -51,8 +63,10 @@ def get_input(event: dict[str, Any]) -> dict[str, Any]:
 
     workflow.invoke_serverless_function(streaming, payload)
 
+    # Log additional information
+    log_additional_info(event)
+    
     return {"status": 200}
-
 
 @workflow.serverless_function(name="Streaming")
 def streaming(event: dict[str, Any]) -> dict[str, Any]:
@@ -65,12 +79,15 @@ def streaming(event: dict[str, Any]) -> dict[str, Any]:
     payload = {
         "video_name": video_name,
         "request_id": request_id,
+        'metadata': event['metadata']
     }
 
     workflow.invoke_serverless_function(decode, payload)
 
+    # Log additional information
+    log_additional_info(event)
+    
     return {"status": 200}
-
 
 @workflow.serverless_function(name="Decode")
 def decode(event: dict[str, Any]) -> dict[str, Any]:
@@ -83,12 +100,15 @@ def decode(event: dict[str, Any]) -> dict[str, Any]:
     payload = {
         "decoded_filename": decoded_filename,
         "request_id": request_id,
+        'metadata': event['metadata']
     }
 
     workflow.invoke_serverless_function(recognition, payload)
 
-    return {"status": 200}
+    # Log additional information
+    log_additional_info(event)
 
+    return {"status": 200}
 
 @workflow.serverless_function(name="Recognition")
 def recognition(event: dict[str, Any]) -> dict[str, Any]:
@@ -107,8 +127,62 @@ def recognition(event: dict[str, Any]) -> dict[str, Any]:
     result_key = f"output/{request_id}-{decoded_filename}-result.txt"
     s3.put_object(Bucket="multi-x-serverless-video-analytics", Key=result_key, Body=result.encode("utf-8"))
 
+    # Log finished time
+    log_finish(event)
+
+    # Log additional information
+    log_additional_info(event)
+    
     return {"status": 200, "result_key": result_key}
 
+def log_finish(event):
+    # Log the end time of the function
+    ## Get the current time
+    current_time = datetime.datetime.now(datetime.timezone.utc)
+    final_function_end_time = current_time.strftime("%Y-%m-%d %H:%M:%S,%f%z")
+
+    ## Get the start time from the metadata
+    start_time_str = event["metadata"]["start_time"]
+    start_time = datetime.datetime.strptime(start_time_str, "%Y-%m-%d %H:%M:%S,%f%z")
+
+    first_function_start_time_str = event["metadata"]["first_function_start_time"]
+    first_function_start_time = datetime.datetime.strptime(first_function_start_time_str, "%Y-%m-%d %H:%M:%S,%f%z")
+    
+    ## Calculate the time delta in miliseconds
+    ### For the time taken from the perspective of customer
+    time_difference = current_time - start_time
+    ms_from_start = (time_difference.days * 24 * 3600 * 1000) + (time_difference.seconds * 1000) + (time_difference.microseconds / 1000)
+
+    ### For the time taken from the first function running
+    time_difference = current_time - first_function_start_time
+    ms_from_first_function = (time_difference.days * 24 * 3600 * 1000) + (time_difference.seconds * 1000) + (time_difference.microseconds / 1000)
+
+    ## Get the workload name from the metadata
+    workload_name = event["metadata"]["workload_name"]
+    request_id = event["metadata"]["request_id"]
+
+    ## Log the time taken along with the request ID and workload name
+    logger.info(f"Workload Name: {workload_name}, "
+                f"Request ID: {request_id}, "
+                f"Client Start Time: {start_time_str}, "
+                f"First Function Start Time: {first_function_start_time_str}, "
+                f"Time Taken from workload invocation from client: {ms_from_start} ms, "
+                f"Time Taken from first function: {ms_from_first_function} ms, "
+                f"Function End Time: {final_function_end_time}")
+
+def log_additional_info(event):
+    # Log the CPU model, workflow name, and the request ID
+    cpu_model = ""
+    with open('/proc/cpuinfo') as f:
+        for line in f:
+            if "model name" in line:
+                cpu_model = line.split(":")[1].strip()  # Extracting and cleaning the model name
+                break  # No need to continue the loop once the model name is found
+
+    workload_name = event["metadata"]["workload_name"]
+    request_id = event["metadata"]["request_id"]
+
+    logger.info(f"Workload Name: {workload_name}, Request ID: {request_id}, CPU Model: {cpu_model}")
 
 def video_analytics_streaming(filename: str, request_id: int) -> str:
     tmp_dir = tempfile.mkdtemp()
@@ -128,7 +202,6 @@ def video_analytics_streaming(filename: str, request_id: int) -> str:
     s3.upload_file(resized_local_filename, "multi-x-serverless-video-analytics", streaming_filename)
 
     return streaming_filename
-
 
 def resize_and_store(local_filename: str) -> str:
     tmp_dir = tempfile.mkdtemp()

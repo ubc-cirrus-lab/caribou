@@ -1,0 +1,5 @@
+function_name: "wo-vid_an-ed-direct-decode"
+handler: "app.decode"
+configs:
+  timeout: 300
+  memory: 1024
