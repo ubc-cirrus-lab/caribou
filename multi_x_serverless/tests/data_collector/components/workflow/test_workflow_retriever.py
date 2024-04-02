@@ -143,10 +143,17 @@ class TestWorkflowRetriever(unittest.TestCase):
                 "executions": {"provider1:region1": [0.1]},
                 "to_instance": {
                     "instance2": {
-                        "invoked": 0,
-                        "regions_to_regions": {},
+                        "invoked": 1,
+                        "regions_to_regions": {
+                            "provider1:region1": {
+                                "provider2:region2": {
+                                    "transfer_size_to_transfer_latencies": {"1.0": [0.1]},
+                                    "transfer_sizes": [1.0],
+                                }
+                            }
+                        },
                         "non_executions": 1,
-                        "invocation_probability": 0.0,
+                        "invocation_probability": 0.5,
                     }
                 },
             }
