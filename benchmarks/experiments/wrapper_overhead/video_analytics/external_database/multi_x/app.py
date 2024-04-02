@@ -23,7 +23,7 @@ import logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)  # Set the logging level
 
-workflow = MultiXServerlessWorkflow(name="wo-vid_an-ed-multi_x", version="0.0.2")
+workflow = MultiXServerlessWorkflow(name="wo-vid_an-ed-multi_x", version="0.0.3")
 
 @workflow.serverless_function(
     name="GetInput",
@@ -116,7 +116,7 @@ def recognition(event: dict[str, Any]) -> dict[str, Any]:
     request_id = event["request_id"]
     print(f"Recognizing video: {decoded_filename}")
 
-    s3 = boto3.client("s3")
+    s3 = boto3.client("s3", region_name="us-west-2")
     response = s3.get_object(Bucket="multi-x-serverless-video-analytics", Key=decoded_filename)
     image_bytes = response["Body"].read()
 
@@ -300,7 +300,7 @@ def preprocess_image(image_bytes):
 
 def infer(image_bytes):
     # Load model labels
-    s3 = boto3.client("s3")
+    s3 = boto3.client("s3", region_name="us-west-2")
     response = s3.get_object(Bucket="multi-x-serverless-video-analytics", Key="imagenet_labels.txt")
     labels = response["Body"].read().decode("utf-8").splitlines()
 

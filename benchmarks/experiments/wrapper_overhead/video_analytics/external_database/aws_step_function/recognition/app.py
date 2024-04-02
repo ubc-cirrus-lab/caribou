@@ -18,7 +18,7 @@ def recognition(event, context):
     request_id = event["request_id"]
     print(f"Recognizing video: {decoded_filename}")
 
-    s3 = boto3.client("s3")
+    s3 = boto3.client("s3", region_name="us-west-2")
     response = s3.get_object(Bucket="multi-x-serverless-video-analytics", Key=decoded_filename)
     image_bytes = response["Body"].read()
 
@@ -39,7 +39,7 @@ def recognition(event, context):
 
 def infer(image_bytes):
     # Load model labels
-    s3 = boto3.client("s3")
+    s3 = boto3.client("s3", region_name="us-west-2")
     response = s3.get_object(Bucket="multi-x-serverless-video-analytics", Key="imagenet_labels.txt")
     labels = response["Body"].read().decode("utf-8").splitlines()
 

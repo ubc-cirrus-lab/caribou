@@ -206,6 +206,20 @@ class WrapperOverheadDeploymentUtility():
                 if 'Iterator' in state:
                     replace_resource(state['Iterator'])
 
+                state['Retry'] = [ # Add retry logic to the state
+                    {
+                    "ErrorEquals": [
+                        "Lambda.ServiceException",
+                        "Lambda.AWSLambdaException",
+                        "Lambda.SdkClientException",
+                        "Lambda.TooManyRequestsException"
+                    ],
+                    "IntervalSeconds": 1,
+                    "MaxAttempts": 3,
+                    "BackoffRate": 2
+                    }
+                ]
+
         # Start the recursive replacement with the top-level state machine content
         replace_resource(state_machine_content)
         
