@@ -1,9 +1,6 @@
 from typing import Optional
 
-from multi_x_serverless.common.constants import (  # KWH_PER_GB_ESTIMATE,
-    DFM,
-    DFI,
-)
+from multi_x_serverless.common.constants import DFI, DFM  # KWH_PER_GB_ESTIMATE,
 from multi_x_serverless.routing.deployment_input.components.calculator import InputCalculator
 from multi_x_serverless.routing.deployment_input.components.calculators.runtime_calculator import RuntimeCalculator
 from multi_x_serverless.routing.deployment_input.components.loaders.carbon_loader import CarbonLoader
@@ -29,7 +26,7 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
 
         # Conversion ratio cache
         self._execution_conversion_ratio_cache: dict[str, tuple[float, float, float]] = {}
-        self._transmission_conversion_ratio_cache: dict[str, float, float] = {}
+        self._transmission_conversion_ratio_cache: dict[str, float] = {}
 
         # Carbon setting - hourly or average policy
         self._hourly_carbon_setting: Optional[str] = None  # None indicates the default setting -> Average everything
@@ -89,11 +86,9 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
         return self._execution_conversion_ratio_cache[cache_key]
 
     def calculate_transmission_carbon(
-        self, from_region_name: str, to_region_name: str, data_transfer_size: float, transmission_latency: float
+        self, from_region_name: str, to_region_name: str, data_transfer_size: float
     ) -> float:
-        distance_factor_distance = self._get_transmission_conversion_ratio(
-            from_region_name, to_region_name
-        )
+        distance_factor_distance = self._get_transmission_conversion_ratio(from_region_name, to_region_name)
         return data_transfer_size * distance_factor_distance
 
     def _get_transmission_conversion_ratio(self, from_region_name: str, to_region_name: str) -> float:
