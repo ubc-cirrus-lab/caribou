@@ -1,9 +1,8 @@
 from typing import Optional
 
 from multi_x_serverless.common.constants import (  # KWH_PER_GB_ESTIMATE,
-    CARBON_TRANSMISSION_CARBON_METHOD,
-    KWH_PER_KM_GB_ESTIMATE,
-    KWH_PER_S_GB_ESTIMATE,
+    DFM,
+    DFI,
 )
 from multi_x_serverless.routing.deployment_input.components.calculator import InputCalculator
 from multi_x_serverless.routing.deployment_input.components.calculators.runtime_calculator import RuntimeCalculator
@@ -30,7 +29,7 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
 
         # Conversion ratio cache
         self._execution_conversion_ratio_cache: dict[str, tuple[float, float, float]] = {}
-        self._transmission_conversion_ratio_cache: dict[str, tuple[float, float]] = {}
+        self._transmission_conversion_ratio_cache: dict[str, float, float] = {}
 
         # Carbon setting - hourly or average policy
         self._hourly_carbon_setting: Optional[str] = None  # None indicates the default setting -> Average everything
@@ -89,19 +88,12 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
     def calculate_transmission_carbon(
         self, from_region_name: str, to_region_name: str, data_transfer_size: float, transmission_latency: float
     ) -> float:
-        distance_factor_distance, distance_factor_latency = self._get_transmission_conversion_ratio(
+        distance_factor_distance = self._get_transmission_conversion_ratio(
             from_region_name, to_region_name
         )
+        return data_transfer_size * distance_factor_distance
 
-        if CARBON_TRANSMISSION_CARBON_METHOD == "distance":
-            return data_transfer_size * distance_factor_distance
-
-        if CARBON_TRANSMISSION_CARBON_METHOD == "latency":
-            return data_transfer_size * transmission_latency * distance_factor_latency
-
-        raise ValueError(f"Invalid carbon transmission method: {CARBON_TRANSMISSION_CARBON_METHOD}")
-
-    def _get_transmission_conversion_ratio(self, from_region_name: str, to_region_name: str) -> tuple[float, float]:
+    def _get_transmission_conversion_ratio(self, from_region_name: str, to_region_name: str) -> float:
         # Check if the conversion ratio is in the cache
         cache_key = f"{from_region_name}_{to_region_name}"
         if cache_key in self._transmission_conversion_ratio_cache:
@@ -122,9 +114,8 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
 
         transmission_carbon_intensity = (from_region_carbon_intensity + to_region_carbon_intensity) / 2  # gCo2eq/kWh
 
-        distance_factor_distance = transmission_carbon_intensity * (KWH_PER_KM_GB_ESTIMATE * distance)  # gCo2eq/GB
-        distance_factor_latency = transmission_carbon_intensity * KWH_PER_S_GB_ESTIMATE  # gCo2eq/GBs
+        distance_factor_distance = transmission_carbon_intensity * (DFM * distance + DFI)  # gCo2eq/GB
 
         # Add the conversion ratio to the cache
-        self._transmission_conversion_ratio_cache[cache_key] = (distance_factor_distance, distance_factor_latency)
+        self._transmission_conversion_ratio_cache[cache_key] = distance_factor_distance
         return self._transmission_conversion_ratio_cache[cache_key]

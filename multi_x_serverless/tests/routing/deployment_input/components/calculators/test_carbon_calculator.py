@@ -112,7 +112,7 @@ class TestCarbonCalculator(unittest.TestCase):
         result = self.carbon_calculator._get_transmission_conversion_ratio("from_region_name", "to_region_name")
 
         # Check that the result is correct
-        self.assertEqual(result, (2.0 * (KWH_PER_KM_GB_ESTIMATE * 1.0), 2.0 * KWH_PER_S_GB_ESTIMATE))
+        self.assertEqual(result, 2.0 * (7.564e-6 * 1.0 + 5.762e-3))
 
         # Check that the mocks were called with the correct arguments
         self.carbon_calculator._carbon_loader.get_transmission_distance.assert_called_once_with(
