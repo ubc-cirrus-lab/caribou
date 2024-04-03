@@ -58,7 +58,7 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
         ## Get the average power consumption of the instance in the given region (kw_compute)
         average_cpu_power: float = self._datacenter_loader.get_average_cpu_power(region_name)
 
-        ## Get the average power consumption of the instance in the given region (kw_mb)
+        ## Get the average power consumption of the instance in the given region (kw_GB)
         average_memory_power: float = self._datacenter_loader.get_average_memory_power(region_name)
 
         ## Get the carbon free energy of the grid in the given region
@@ -76,6 +76,9 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
         provider, _ = region_name.split(":")  # Get the provider from the region name
         vcpu: float = self._workflow_loader.get_vcpu(instance_name, provider)
         memory: float = self._workflow_loader.get_memory(instance_name, provider)
+
+        # Covert memory in MB to GB
+        memory = memory / 1024
 
         compute_factor = average_cpu_power * vcpu / 3600
         memory_factor = average_memory_power * memory / 3600
