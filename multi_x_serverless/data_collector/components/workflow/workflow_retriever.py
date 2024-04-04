@@ -175,21 +175,16 @@ class WorkflowRetriever(DataRetriever):
                                 key=lambda x, missing_size=missing_size: abs(float(x) - float(missing_size)),  # type: ignore  # pylint: disable=line-too-long
                             )
                             scaling_factor = (
-                                global_avg_latency_per_size[missing_size]
-                                / global_avg_latency_per_size[nearest_size]
+                                global_avg_latency_per_size[missing_size] / global_avg_latency_per_size[nearest_size]
                                 if nearest_size in global_avg_latency_per_size
                                 else 1
                             )
 
                             scaled_latencies = [
                                 latency * scaling_factor
-                                for latency in transfer_information["transfer_size_to_transfer_latencies"][
-                                    nearest_size
-                                ]
+                                for latency in transfer_information["transfer_size_to_transfer_latencies"][nearest_size]
                             ]
-                            transfer_information["transfer_size_to_transfer_latencies"][
-                                missing_size
-                            ] = scaled_latencies
+                            transfer_information["transfer_size_to_transfer_latencies"][missing_size] = scaled_latencies
                             transfer_information["transfer_sizes"].extend([missing_size] * len(scaled_latencies))
 
     def _handle_non_executions(self, log: dict[str, Any], instance_summary: dict[str, Any]) -> None:
