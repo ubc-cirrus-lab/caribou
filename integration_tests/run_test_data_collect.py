@@ -46,19 +46,19 @@ def run_data_collection():
     expected_provider_region_data = [
         (
             "integration_test_provider:rivendell",
-            '{"execution_cost": {"invocation_cost": {"arm64": 2.4e-07, "x86_64": 2.3e-07, "free_tier_invocations": 1000000}, "compute_cost": {"arm64": 1.56138e-05, "x86_64": 1.95172e-05, "free_tier_compute_gb_s": 400000}, "unit": "USD"}, "transmission_cost": {"global_data_transfer": 0.09, "provider_data_transfer": 0.02, "unit": "USD/GB"}, "pue": 1.15, "cfe": 0.9, "average_memory_power": 3.92e-06, "average_cpu_power": 0.00212, "available_architectures": ["arm64", "x86_64"]}',
+            '{"execution_cost": {"invocation_cost": {"arm64": 2.4e-07, "x86_64": 2.3e-07, "free_tier_invocations": 1000000}, "compute_cost": {"arm64": 1.56138e-05, "x86_64": 1.95172e-05, "free_tier_compute_gb_s": 400000}, "unit": "USD"}, "transmission_cost": {"global_data_transfer": 0.09, "provider_data_transfer": 0.02, "unit": "USD/GB"}, "pue": 1.15, "cfe": 1, "average_memory_power": 0.0003725, "average_cpu_power": 0.00212, "available_architectures": ["arm64", "x86_64"]}',
         ),
         (
             "integration_test_provider:lothlorien",
-            '{"execution_cost": {"invocation_cost": {"arm64": 2.3e-07, "x86_64": 2.2e-07, "free_tier_invocations": 1000000}, "compute_cost": {"arm64": 1.56118e-05, "x86_64": 1.93172e-05, "free_tier_compute_gb_s": 400000}, "unit": "USD"}, "transmission_cost": {"global_data_transfer": 0.04, "provider_data_transfer": 0.09, "unit": "USD/GB"}, "pue": 1.15, "cfe": 0.9, "average_memory_power": 3.92e-06, "average_cpu_power": 0.00212, "available_architectures": ["arm64", "x86_64"]}',
+            '{"execution_cost": {"invocation_cost": {"arm64": 2.3e-07, "x86_64": 2.2e-07, "free_tier_invocations": 1000000}, "compute_cost": {"arm64": 1.56118e-05, "x86_64": 1.93172e-05, "free_tier_compute_gb_s": 400000}, "unit": "USD"}, "transmission_cost": {"global_data_transfer": 0.04, "provider_data_transfer": 0.09, "unit": "USD/GB"}, "pue": 1.15, "cfe": 1, "average_memory_power": 0.0003725, "average_cpu_power": 0.00212, "available_architectures": ["arm64", "x86_64"]}',
         ),
         (
             "integration_test_provider:anduin",
-            '{"execution_cost": {"invocation_cost": {"arm64": 2.2e-07, "x86_64": 2.1e-07, "free_tier_invocations": 1000000}, "compute_cost": {"arm64": 1.56128e-05, "x86_64": 1.91172e-05, "free_tier_compute_gb_s": 400000}, "unit": "USD"}, "transmission_cost": {"global_data_transfer": 0.11, "provider_data_transfer": 0.05, "unit": "USD/GB"}, "pue": 1.15, "cfe": 0.9, "average_memory_power": 3.92e-06, "average_cpu_power": 0.00212, "available_architectures": ["arm64", "x86_64"]}',
+            '{"execution_cost": {"invocation_cost": {"arm64": 2.2e-07, "x86_64": 2.1e-07, "free_tier_invocations": 1000000}, "compute_cost": {"arm64": 1.56128e-05, "x86_64": 1.91172e-05, "free_tier_compute_gb_s": 400000}, "unit": "USD"}, "transmission_cost": {"global_data_transfer": 0.11, "provider_data_transfer": 0.05, "unit": "USD/GB"}, "pue": 1.15, "cfe": 1, "average_memory_power": 0.0003725, "average_cpu_power": 0.00212, "available_architectures": ["arm64", "x86_64"]}',
         ),
         (
             "integration_test_provider:fangorn",
-            '{"execution_cost": {"invocation_cost": {"arm64": 2.1e-07, "x86_64": 2e-07, "free_tier_invocations": 1000000}, "compute_cost": {"arm64": 1.56148e-05, "x86_64": 1.89172e-05, "free_tier_compute_gb_s": 400000}, "unit": "USD"}, "transmission_cost": {"global_data_transfer": 0.07, "provider_data_transfer": 0.03, "unit": "USD/GB"}, "pue": 1.15, "cfe": 0.9, "average_memory_power": 3.92e-06, "average_cpu_power": 0.00212, "available_architectures": ["arm64", "x86_64"]}',
+            '{"execution_cost": {"invocation_cost": {"arm64": 2.1e-07, "x86_64": 2e-07, "free_tier_invocations": 1000000}, "compute_cost": {"arm64": 1.56148e-05, "x86_64": 1.89172e-05, "free_tier_compute_gb_s": 400000}, "unit": "USD"}, "transmission_cost": {"global_data_transfer": 0.07, "provider_data_transfer": 0.03, "unit": "USD/GB"}, "pue": 1.15, "cfe": 1, "average_memory_power": 0.0003725, "average_cpu_power": 0.00212, "available_architectures": ["arm64", "x86_64"]}',
         ),
     ]
 

@@ -219,8 +219,8 @@ class ProviderRetriever(DataRetriever):
                 "execution_cost": execution_cost_dict[region],
                 "transmission_cost": transmission_cost_dict[region],
                 "pue": 1.15,
-                "cfe": 0.9,
-                "average_memory_power": 0.00000392,
+                "cfe": 1,
+                "average_memory_power": 0.0003725,
                 "average_cpu_power": (0.74 + 0.5 * (3.5 - 0.74)) / 1000,
                 "available_architectures": ["arm64", "x86_64"],
             }

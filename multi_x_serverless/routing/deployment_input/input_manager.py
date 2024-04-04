@@ -165,7 +165,7 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
             )
 
         carbon = self._carbon_calculator.calculate_transmission_carbon(
-            from_region_name, to_region_name, transmission_size, transmission_latency
+            from_region_name, to_region_name, transmission_size
         )
 
         return (cost, carbon, transmission_latency)

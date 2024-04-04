@@ -78,9 +78,8 @@ SOLVER_INPUT_VCPU_DEFAULT = -1.0  # Denotes that the vCPU is not available
 SOLVER_INPUT_ARCHITECTURE_DEFAULT = "x86_64"
 
 # Carbon Transmission Cost Calculator Constants
-KWH_PER_KM_GB_ESTIMATE = 0.1
-CARBON_TRANSMISSION_CARBON_METHOD = "latency"  # Or latency
-KWH_PER_S_GB_ESTIMATE = 0.01
+DFM = 7.564e-6
+DFI = 5.762e-3
 
 # Deployment Optimization Monitor Constants
 CARBON_INTENSITY_TO_INVOCATION_SECOND_ESTIMATE = 0.001

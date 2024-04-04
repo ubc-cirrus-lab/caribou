@@ -164,8 +164,8 @@ class WorkflowLoader(InputLoader):
             # Configure memory and vcpu configuration and or translation
             if provider_name == Provider.AWS.value:
                 # vcpu ratio (assuming linear, intercept at 0 scaling)
-                # for aws lambda https://docs.aws.amazon.com/lambda/latest/dg/configuration-function-common.html
-                vcpu = self.get_memory(instance_name, provider_name) / 1792
+                # for aws lambda https://docs.aws.amazon.com/lambda/latest/dg/configuration-memory.html
+                vcpu = self.get_memory(instance_name, provider_name) / 1769
             else:
                 raise ValueError(
                     f"vCPU count for instance {instance_name} in provider {provider_name} is not available"
