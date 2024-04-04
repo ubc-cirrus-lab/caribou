@@ -60,6 +60,8 @@ tqdm = "^4.66.2"
 statsmodels = "^0.14.1"
 opencv-python = "^4.9.0.80"
 torchvision = "^0.17.1"
+pyaes = "^1.6.1"
+markdown = "^3.6"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
