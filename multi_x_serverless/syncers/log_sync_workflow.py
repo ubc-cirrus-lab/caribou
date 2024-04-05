@@ -100,6 +100,11 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
             if request_id:
                 self._tainted_cold_start_samples.add(request_id)
 
+        if "CPU_MODEL" in log_entry and "Intel(R) Xeon(R) Processor @ 2.50GHz" not in log_entry:
+            request_id = self._extract_from_string(log_entry, r"RequestId: (.*?)\t")
+            if request_id:
+                self._tainted_cold_start_samples.add(request_id)
+
         # Ensure that the log entry is a valid log entry and has the correct version
         if f"LOG_VERSION ({LOG_VERSION})" not in log_entry or "[INFO]" not in log_entry:
             return

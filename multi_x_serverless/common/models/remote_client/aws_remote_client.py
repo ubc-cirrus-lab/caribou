@@ -434,6 +434,8 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         return response["FunctionArn"]
 
     def create_role(self, role_name: str, policy: str, trust_policy: dict) -> str:
+        if len(role_name) > 64:
+            role_name = role_name[:64]
         client = self._client("iam")
         response = client.create_role(RoleName=role_name, AssumeRolePolicyDocument=json.dumps(trust_policy))
         self.put_role_policy(role_name=role_name, policy_name=role_name, policy_document=policy)

@@ -170,22 +170,25 @@ class WorkflowRetriever(DataRetriever):
 
                         for missing_size in missing_sizes:
                             # Find the nearest size for which we have data
-                            nearest_size = min(
-                                transfer_information["transfer_size_to_transfer_latencies"].keys(),
-                                key=lambda x, missing_size=missing_size: abs(float(x) - float(missing_size)),  # type: ignore  # pylint: disable=line-too-long
-                            )
-                            scaling_factor = (
-                                global_avg_latency_per_size[missing_size] / global_avg_latency_per_size[nearest_size]
-                                if nearest_size in global_avg_latency_per_size
-                                else 1
-                            )
+                            try:
+                                nearest_size = min(
+                                    transfer_information["transfer_size_to_transfer_latencies"].keys(),
+                                    key=lambda x, missing_size=missing_size: abs(float(x) - float(missing_size)),  # type: ignore  # pylint: disable=line-too-long
+                                )
+                                scaling_factor = (
+                                    global_avg_latency_per_size[missing_size] / global_avg_latency_per_size[nearest_size]
+                                    if nearest_size in global_avg_latency_per_size
+                                    else 1
+                                )
 
-                            scaled_latencies = [
-                                latency * scaling_factor
-                                for latency in transfer_information["transfer_size_to_transfer_latencies"][nearest_size]
-                            ]
-                            transfer_information["transfer_size_to_transfer_latencies"][missing_size] = scaled_latencies
-                            transfer_information["transfer_sizes"].extend([missing_size] * len(scaled_latencies))
+                                scaled_latencies = [
+                                    latency * scaling_factor
+                                    for latency in transfer_information["transfer_size_to_transfer_latencies"][nearest_size]
+                                ]
+                                transfer_information["transfer_size_to_transfer_latencies"][missing_size] = scaled_latencies
+                                transfer_information["transfer_sizes"].extend([missing_size] * len(scaled_latencies))
+                            except KeyError:
+                                pass
 
     def _handle_non_executions(self, log: dict[str, Any], instance_summary: dict[str, Any]) -> None:
         non_executions = log.get("non_executions", {})

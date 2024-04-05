@@ -625,6 +625,12 @@ class MultiXServerlessWorkflow:
                 self._current_workflow_placement_decision = workflow_placement_decision
                 self._run_id_to_successor_index[workflow_placement_decision["run_id"]] = 0
 
+                cpu_model = self.get_cpu_info()
+                self.log_for_retrieval(
+                    f"CPU_MODEL: {cpu_model}",
+                    wrapper.workflow_placement_decision["run_id"],  # type: ignore
+                )
+
                 # Call the original function with the modified arguments
                 start_time = time.time()
                 result = func(payload)
@@ -672,3 +678,13 @@ class MultiXServerlessWorkflow:
         previous_time_key = max(time_key for time_key in all_time_keys if int(time_key) <= current_hour_of_day)
 
         return previous_time_key
+
+    def get_cpu_info(self):
+        # Log the CPU model, workflow name, and the request ID
+        cpu_model = ""
+        with open("/proc/cpuinfo") as f:
+            for line in f:
+                if "model name" in line:
+                    cpu_model = line.split(":")[1].strip()  # Extracting and cleaning the model name
+                    break  # No need to continue the loop once the model name is found
+        return cpu_model
