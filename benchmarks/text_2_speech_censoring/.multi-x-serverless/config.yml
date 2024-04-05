@@ -28,6 +28,8 @@ regions_and_providers:
       region: "us-west-1"
     - provider: "aws"
       region: "us-west-2"
+    - provider: "aws"
+      region: "ca-central-1"
   disallowed_regions:
   providers:
     aws:

@@ -35,6 +35,8 @@ regions_and_providers: # Either the user specify only allowed regions (which wil
       region: "us-west-1"
     - provider: "aws"
       region: "us-west-2"
+    - provider: "aws"
+      region: "ca-central-1"
   disallowed_regions:
     - provider: "aws"
       region: "us-east-2"
