@@ -2,7 +2,7 @@ from typing import Any
 
 import json
 import boto3
-import tempfile
+from tempfile import TemporaryDirectory
 import os
 from datetime import datetime 
 import logging
@@ -45,48 +45,48 @@ def input_processor(event: dict[str, Any]) -> dict[str, Any]:
     input_name = event["input_name"]
 
     s3 = boto3.client("s3")
-    tmp_dir = tempfile.mkdtemp()
-    local_file_path = f"{tmp_dir}/{input_name}"
+    with TemporaryDirectory() as tmp_dir:
+        local_file_path = f"{tmp_dir}/{input_name}"
 
-    s3.download_file("multi-x-serverless-map-reduce", f"input/{input_name}", local_file_path)
+        s3.download_file("multi-x-serverless-map-reduce", f"input/{input_name}", local_file_path)
 
-    file_size = os.path.getsize(local_file_path)
+        file_size = os.path.getsize(local_file_path)
 
-    chunk_size = 150 * 1024 # 150 KB
+        chunk_size = 150 * 1024 # 150 KB
 
-    num_chunks = min(4, math.ceil(file_size / chunk_size))
+        num_chunks = min(4, math.ceil(file_size / chunk_size))
 
-    payloads = []
+        payloads = []
 
-    with open(local_file_path, 'r') as file:
-        for i in range(num_chunks):
-            chunk_data = ""
-            if i != num_chunks - 1:  
-                read_bytes = 0
-                while read_bytes < chunk_size:
-                    line = file.readline()
-                    if not line:
-                        break  
-                    read_bytes += len(line.encode('utf-8')) 
-                    chunk_data += line
-            else:
-                chunk_data = file.read()  # Read the rest of the file for the last chunk
+        with open(local_file_path, 'r') as file:
+            for i in range(num_chunks):
+                chunk_data = ""
+                if i != num_chunks - 1:  
+                    read_bytes = 0
+                    while read_bytes < chunk_size:
+                        line = file.readline()
+                        if not line:
+                            break  
+                        read_bytes += len(line.encode('utf-8')) 
+                        chunk_data += line
+                else:
+                    chunk_data = file.read()  # Read the rest of the file for the last chunk
 
-            payloads.append({"data": chunk_data})
+                payloads.append({"data": chunk_data})
 
 
-    logger.info(f"Payload to mappers: {payloads} \n Length: {len(payloads)}")
+        logger.info(f"Payload to mappers: {payloads} \n Length: {len(payloads)}")
 
-    workflow.invoke_serverless_function(mapper, payloads[0])
+        workflow.invoke_serverless_function(mapper, payloads[0])
 
-    payload_one = payloads[1] if len(payloads) >= 2 else None
-    workflow.invoke_serverless_function(mapper, payload_one, len(payloads) >= 2)
+        payload_one = payloads[1] if len(payloads) >= 2 else None
+        workflow.invoke_serverless_function(mapper, payload_one, len(payloads) >= 2)
 
-    payload_two = payloads[2] if len(payloads) >= 3 else None
-    workflow.invoke_serverless_function(mapper, payload_two, len(payloads) >= 3)
+        payload_two = payloads[2] if len(payloads) >= 3 else None
+        workflow.invoke_serverless_function(mapper, payload_two, len(payloads) >= 3)
 
-    payload_three = payloads[3] if len(payloads) == 4 else None
-    workflow.invoke_serverless_function(mapper, payload_three, len(payloads) == 4)
+        payload_three = payloads[3] if len(payloads) == 4 else None
+        workflow.invoke_serverless_function(mapper, payload_three, len(payloads) == 4)
 
     return {"status": 200}
 
@@ -200,14 +200,14 @@ def output_processor(event: dict[str, Any]) -> dict[str, Any]:
                 final_word_counts[word] = count
 
     s3 = boto3.client("s3")
-    tmp_dir = tempfile.mkdtemp()
-    local_file_path = f"{tmp_dir}/output.txt"
-    file_name = datetime.now().strftime("%Y%m%d-%H%M%S") + "output.txt"
+    with TemporaryDirectory() as tmp_dir:
+        local_file_path = f"{tmp_dir}/output.txt"
+        file_name = datetime.now().strftime("%Y%m%d-%H%M%S") + "output.txt"
 
-    with open(local_file_path, 'w') as file:
-        for word, count in final_word_counts.items():
-            file.write(f"{word}: {count}\n")
+        with open(local_file_path, 'w') as file:
+            for word, count in final_word_counts.items():
+                file.write(f"{word}: {count}\n")
 
-    s3.upload_file(local_file_path, "multi-x-serverless-map-reduce", f"output/{file_name}")
+        s3.upload_file(local_file_path, "multi-x-serverless-map-reduce", f"output/{file_name}")
 
     return {"status": 200}

@@ -2,7 +2,7 @@ from typing import Any
 
 import json
 import boto3
-import tempfile
+from tempfile import TemporaryDirectory
 from PIL import Image
 import uuid
 
@@ -32,27 +32,25 @@ def get_input(event: dict[str, Any]) -> dict[str, Any]:
 
     return {"status": 200}
 
-
 @workflow.serverless_function(name="Flip")
 def flip(event: dict[str, Any]) -> dict[str, Any]:
     image_name = event["image_name"]
 
     s3 = boto3.client("s3")
-    tmp_dir = tempfile.mkdtemp()
+    with TemporaryDirectory() as tmp_dir:
+        s3.download_file("multi-x-serverless-image-processing-benchmark", image_name, f"{tmp_dir}/{image_name}")
 
-    s3.download_file("multi-x-serverless-image-processing-benchmark", image_name, f"{tmp_dir}/{image_name}")
+        image = Image.open(f"{tmp_dir}/{image_name}")
+        img = image.transpose(Image.FLIP_LEFT_RIGHT)
 
-    image = Image.open(f"{tmp_dir}/{image_name}")
-    img = image.transpose(Image.FLIP_LEFT_RIGHT)
+        unique_id = str(uuid.uuid4())
 
-    unique_id = str(uuid.uuid4())
+        new_image_name = f"flip-left-right-{unique_id}-{image_name}"
+        img.save(f"{tmp_dir}/{new_image_name}")
 
-    new_image_name = f"flip-left-right-{unique_id}-{image_name}"
-    img.save(f"{tmp_dir}/{new_image_name}")
+        upload_path = f"image_processing_light/{new_image_name}"
 
-    upload_path = f"image_processing_light/{new_image_name}"
-
-    s3.upload_file(f"{tmp_dir}/{new_image_name}", "multi-x-serverless-image-processing-benchmark", upload_path)
+        s3.upload_file(f"{tmp_dir}/{new_image_name}", "multi-x-serverless-image-processing-benchmark", upload_path)
 
     return {"status": 200}
 

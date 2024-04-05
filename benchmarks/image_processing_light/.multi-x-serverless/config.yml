@@ -42,4 +42,4 @@ regions_and_providers:
     aws:
       config:
         timeout: 60
-        memory: 128
+        memory: 1024

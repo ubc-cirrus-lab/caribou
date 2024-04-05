@@ -2,7 +2,7 @@ from typing import Any
 
 import json
 import boto3
-import tempfile
+from tempfile import TemporaryDirectory
 from PIL import Image, ImageFilter
 import uuid
 from io import BytesIO
@@ -26,30 +26,29 @@ def get_input(event: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("No image name provided")
 
     s3 = boto3.client("s3")
-    tmp_dir = tempfile.mkdtemp()
+    with TemporaryDirectory() as tmp_dir:
+        s3.download_file("multi-x-serverless-image-processing-benchmark", image_name, f"{tmp_dir}/{image_name}")
 
-    s3.download_file("multi-x-serverless-image-processing-benchmark", image_name, f"{tmp_dir}/{image_name}")
+        image = Image.open(f"{tmp_dir}/{image_name}")
 
-    image = Image.open(f"{tmp_dir}/{image_name}")
+        image_stream = BytesIO()
 
-    image_stream = BytesIO()
+        image.save(image_stream, format='JPEG', quality=50)
 
-    image.save(image_stream, format='JPEG', quality=50)
+        image_bytes = image_stream.getvalue()
 
-    image_bytes = image_stream.getvalue()
+        unique_id = str(uuid.uuid4())
 
-    unique_id = str(uuid.uuid4())
+        image_name_without_extension = image_name.split(".")[0]
 
-    image_name_without_extension = image_name.split(".")[0]
+        new_image_name = f"{image_name_without_extension}-{unique_id}.jpg"
 
-    new_image_name = f"{image_name_without_extension}-{unique_id}.jpg"
+        payload = {
+            "image": image_bytes,
+            "image_name": new_image_name,
+        }
 
-    payload = {
-        "image": image_bytes,
-        "image_name": new_image_name,
-    }
-
-    workflow.invoke_serverless_function(flip, payload)
+        workflow.invoke_serverless_function(flip, payload)
 
     return {"status": 200}
 
@@ -165,13 +164,11 @@ def resize(event: dict[str, Any]) -> dict[str, Any]:
     new_image_name = f"resize-{image_name}"
 
     s3 = boto3.client("s3")
+    with TemporaryDirectory() as tmp_dir:
+        img.save(f"{tmp_dir}/{new_image_name}", format='JPEG', quality=50)
 
-    tmp_dir = tempfile.mkdtemp()
+        upload_path = f"image_processing/{new_image_name}"
 
-    img.save(f"{tmp_dir}/{new_image_name}", format='JPEG', quality=50)
-
-    upload_path = f"image_processing/{new_image_name}"
-
-    s3.upload_file(f"{tmp_dir}/{new_image_name}", "multi-x-serverless-image-processing-benchmark", upload_path)
+        s3.upload_file(f"{tmp_dir}/{new_image_name}", "multi-x-serverless-image-processing-benchmark", upload_path)
 
     return {"status": 200}
