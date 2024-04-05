@@ -121,7 +121,7 @@ def video_analytics_streaming(filename: str, request_id: int) -> str:
 
         s3.download_file("multi-x-serverless-video-analytics", filename, local_filename)
 
-        resized_local_filename = resize_and_store(local_filename)
+        resized_local_filename = resize_and_store(local_filename, tmp_dir)
 
         streaming_filename = f"output/streaming-{request_id}-{filename}"
 
@@ -129,24 +129,22 @@ def video_analytics_streaming(filename: str, request_id: int) -> str:
 
         return streaming_filename
 
+def resize_and_store(local_filename: str, tmp_dir: str) -> str:
+    cap = cv2.VideoCapture(local_filename)
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    fourcc = cv2.VideoWriter_fourcc("m", "p", "4", "v")
+    resized_local_filename = os.path.join(tmp_dir, "resized.mp4")
+    width, height = 340, 256
+    writer = cv2.VideoWriter(resized_local_filename, fourcc, fps, (width, height))
 
-def resize_and_store(local_filename: str) -> str:
-    with TemporaryDirectory() as tmp_dir:
-        cap = cv2.VideoCapture(local_filename)
-        fps = cap.get(cv2.CAP_PROP_FPS)
-        fourcc = cv2.VideoWriter_fourcc("m", "p", "4", "v")
-        resized_local_filename = os.path.join(tmp_dir, "resized.mp4")
-        width, height = 340, 256
-        writer = cv2.VideoWriter(resized_local_filename, fourcc, fps, (width, height))
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+        frame = cv2.resize(frame, (width, height))
+        writer.write(frame)
 
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                break
-            frame = cv2.resize(frame, (width, height))
-            writer.write(frame)
-        return resized_local_filename
-
+    return resized_local_filename
 
 def video_analytics_decode(filename: str, request_id: int) -> str:
     with TemporaryDirectory() as tmp_dir:
