@@ -3,7 +3,7 @@ from typing import Any
 import json
 import boto3
 import cv2
-import tempfile
+from tempfile import TemporaryDirectory
 import os
 from torchvision import transforms
 from PIL import Image
@@ -111,93 +111,93 @@ def recognition(event: dict[str, Any]) -> dict[str, Any]:
 
 
 def video_analytics_streaming(filename: str, request_id: int) -> str:
-    tmp_dir = tempfile.mkdtemp()
-    local_filename = os.path.join(tmp_dir, filename)
+    with TemporaryDirectory() as tmp_dir:
+        local_filename = os.path.join(tmp_dir, filename)
 
-    # Make sure the directory exists
-    os.makedirs(os.path.dirname(local_filename), exist_ok=True)
+        # Make sure the directory exists
+        os.makedirs(os.path.dirname(local_filename), exist_ok=True)
 
-    s3 = boto3.client("s3")
+        s3 = boto3.client("s3")
 
-    s3.download_file("multi-x-serverless-video-analytics", filename, local_filename)
+        s3.download_file("multi-x-serverless-video-analytics", filename, local_filename)
 
-    resized_local_filename = resize_and_store(local_filename)
+        resized_local_filename = resize_and_store(local_filename)
 
-    streaming_filename = f"output/streaming-{request_id}-{filename}"
+        streaming_filename = f"output/streaming-{request_id}-{filename}"
 
-    s3.upload_file(resized_local_filename, "multi-x-serverless-video-analytics", streaming_filename)
+        s3.upload_file(resized_local_filename, "multi-x-serverless-video-analytics", streaming_filename)
 
-    return streaming_filename
+        return streaming_filename
 
 
 def resize_and_store(local_filename: str) -> str:
-    tmp_dir = tempfile.mkdtemp()
-    cap = cv2.VideoCapture(local_filename)
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    fourcc = cv2.VideoWriter_fourcc("m", "p", "4", "v")
-    resized_local_filename = os.path.join(tmp_dir, "resized.mp4")
-    width, height = 340, 256
-    writer = cv2.VideoWriter(resized_local_filename, fourcc, fps, (width, height))
+    with TemporaryDirectory() as tmp_dir:
+        cap = cv2.VideoCapture(local_filename)
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        fourcc = cv2.VideoWriter_fourcc("m", "p", "4", "v")
+        resized_local_filename = os.path.join(tmp_dir, "resized.mp4")
+        width, height = 340, 256
+        writer = cv2.VideoWriter(resized_local_filename, fourcc, fps, (width, height))
 
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
-        frame = cv2.resize(frame, (width, height))
-        writer.write(frame)
-    return resized_local_filename
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+            frame = cv2.resize(frame, (width, height))
+            writer.write(frame)
+        return resized_local_filename
 
 
 def video_analytics_decode(filename: str, request_id: int) -> str:
-    tmp_dir = tempfile.mkdtemp()
-    local_filename = os.path.join(tmp_dir, filename)
-
-    # Make sure the directory exists
-    os.makedirs(os.path.dirname(local_filename), exist_ok=True)
-
-    s3 = boto3.client("s3")
-
-    # Download the video file from S3
-    s3.download_file("multi-x-serverless-video-analytics", filename, local_filename)
-
-    # Open the video file
-    cap = cv2.VideoCapture(local_filename)
-    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-
-    # Calculate frame range for this request_id
-    frames_per_section = total_frames // FANOUT_NUM
-    start_frame = frames_per_section * (request_id - 1)
-    end_frame = start_frame + frames_per_section
-
-    # Adjust for the last section to cover all remaining frames
-    if request_id == FANOUT_NUM:
-        end_frame = total_frames
-
-    # Seek to the start frame
-    cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
-
-    # Process and upload frames from start_frame to end_frame
-    for frame_idx in range(start_frame, end_frame):
-        success, image = cap.read()
-        if not success:
-            break  # Exit loop if no frame is found
-
-        frame_name = filename.split(".")[0]
-
-        decoded_filename = f"output/decoded-{request_id}-{frame_idx}-{frame_name}.jpg"
-        decoded_local_path = os.path.join(tmp_dir, decoded_filename)
+    with TemporaryDirectory() as tmp_dir:
+        local_filename = os.path.join(tmp_dir, filename)
 
         # Make sure the directory exists
-        os.makedirs(os.path.dirname(decoded_local_path), exist_ok=True)
+        os.makedirs(os.path.dirname(local_filename), exist_ok=True)
 
-        # Write the frame to a temporary file
-        cv2.imwrite(decoded_local_path, image)
+        s3 = boto3.client("s3")
 
-        # Upload the frame to S3
-        s3.upload_file(decoded_local_path, "multi-x-serverless-video-analytics", decoded_filename)
+        # Download the video file from S3
+        s3.download_file("multi-x-serverless-video-analytics", filename, local_filename)
 
-    # Return the name of the last uploaded frame as an example
-    return decoded_filename
+        # Open the video file
+        cap = cv2.VideoCapture(local_filename)
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+        # Calculate frame range for this request_id
+        frames_per_section = total_frames // FANOUT_NUM
+        start_frame = frames_per_section * (request_id - 1)
+        end_frame = start_frame + frames_per_section
+
+        # Adjust for the last section to cover all remaining frames
+        if request_id == FANOUT_NUM:
+            end_frame = total_frames
+
+        # Seek to the start frame
+        cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
+
+        # Process and upload frames from start_frame to end_frame
+        for frame_idx in range(start_frame, end_frame):
+            success, image = cap.read()
+            if not success:
+                break  # Exit loop if no frame is found
+
+            frame_name = filename.split(".")[0]
+
+            decoded_filename = f"output/decoded-{request_id}-{frame_idx}-{frame_name}.jpg"
+            decoded_local_path = os.path.join(tmp_dir, decoded_filename)
+
+            # Make sure the directory exists
+            os.makedirs(os.path.dirname(decoded_local_path), exist_ok=True)
+
+            # Write the frame to a temporary file
+            cv2.imwrite(decoded_local_path, image)
+
+            # Upload the frame to S3
+            s3.upload_file(decoded_local_path, "multi-x-serverless-video-analytics", decoded_filename)
+
+        # Return the name of the last uploaded frame as an example
+        return decoded_filename
 
 
 def decode_video(local_filename: str) -> bytes:
@@ -231,17 +231,17 @@ def infer(image_bytes):
     response = s3.get_object(Bucket="multi-x-serverless-video-analytics", Key="imagenet_labels.txt")
     labels = response["Body"].read().decode("utf-8").splitlines()
 
-    tmp_dir = tempfile.mkdtemp()
-    os.environ['TORCH_HOME'] = tmp_dir
+    with TemporaryDirectory() as tmp_dir:
+        os.environ['TORCH_HOME'] = tmp_dir
 
-    # Load the model
-    model = models.squeezenet1_1(pretrained=True)
+        # Load the model
+        model = models.squeezenet1_1(pretrained=True)
 
-    frame = preprocess_image(image_bytes)
-    model.eval()
-    with torch.no_grad():
-        out = model(frame)
-    _, indices = torch.sort(out, descending=True)
-    percentages = torch.nn.functional.softmax(out, dim=1)[0] * 100
+        frame = preprocess_image(image_bytes)
+        model.eval()
+        with torch.no_grad():
+            out = model(frame)
+        _, indices = torch.sort(out, descending=True)
+        percentages = torch.nn.functional.softmax(out, dim=1)[0] * 100
 
-    return ",".join([f"{labels[idx]}: {percentages[idx].item()}%" for idx in indices[0][:5]]).strip()
+        return ",".join([f"{labels[idx]}: {percentages[idx].item()}%" for idx in indices[0][:5]]).strip()
