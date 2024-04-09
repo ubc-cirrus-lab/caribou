@@ -275,7 +275,7 @@ class MultiXServerlessWorkflow:
                 workflow_instance_id=workflow_placement_decision["run_id"],
                 sync=False,
             )
-        
+
         log_message = (
             f"INFORMING_SYNC_NODE: INSTANCE ({predecessor_instance_name}) informing "
             f"SYNC_NODE ({successor_instance_name}) of non-execution"
