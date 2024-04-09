@@ -158,6 +158,11 @@ class MultiXServerlessWorkflow:
         )
 
         if not conditional:
+            # For the sync nodes we still need to inform the platform that the function has finished.
+            self._inform_sync_node_of_conditional_non_execution(
+                workflow_placement_decision, successor_instance_name, current_instance_name
+            )
+
             # We don't call the function if it is conditional and the condition is not met.
             log_message = (
                 f"CONDITIONAL_NON_EXECUTION: INSTANCE ({current_instance_name}) calling "
@@ -166,11 +171,6 @@ class MultiXServerlessWorkflow:
             self.log_for_retrieval(
                 log_message,
                 workflow_placement_decision["run_id"],
-            )
-
-            # However, for the sync nodes we still need to inform the platform that the function has finished.
-            self._inform_sync_node_of_conditional_non_execution(
-                workflow_placement_decision, successor_instance_name, current_instance_name
             )
             return
 
@@ -197,16 +197,6 @@ class MultiXServerlessWorkflow:
                 set(workflow_placement_decision["instances"][successor_instance_name]["preceding_instances"])
             )
 
-        log_message = (
-            f"INVOKING_SUCCESSOR: INSTANCE ({current_instance_name}) calling "
-            f"SUCCESSOR ({successor_instance_name}) with PAYLOAD_SIZE "
-            f"({len(json_payload.encode('utf-8')) / (1024**3)}) GB and TAINT ({transmission_taint})"
-        )
-        self.log_for_retrieval(
-            log_message,
-            workflow_placement_decision["run_id"],
-        )
-
         RemoteClientFactory.get_remote_client(provider, region).invoke_function(
             message=json_payload,
             identifier=identifier,
@@ -215,6 +205,16 @@ class MultiXServerlessWorkflow:
             function_name=successor_instance_name,
             expected_counter=expected_counter,
             current_instance_name=current_instance_name,
+        )
+
+        log_message = (
+            f"INVOKING_SUCCESSOR: INSTANCE ({current_instance_name}) calling "
+            f"SUCCESSOR ({successor_instance_name}) with PAYLOAD_SIZE "
+            f"({len(json_payload.encode('utf-8')) / (1024**3)}) GB and TAINT ({transmission_taint})"
+        )
+        self.log_for_retrieval(
+            log_message,
+            workflow_placement_decision["run_id"],
         )
 
     def _inform_sync_node_of_conditional_non_execution(
@@ -259,18 +259,8 @@ class MultiXServerlessWorkflow:
             direct_call=False,
         )
 
-        log_message = (
-            f"INFORMING_SYNC_NODE: INSTANCE ({predecessor_instance_name}) informing "
-            f"SYNC_NODE ({successor_instance_name}) of non-execution"
-        )
-        self.log_for_retrieval(
-            log_message,
-            workflow_placement_decision["run_id"],
-        )
-
         # If all the predecessors have been reached and any of them have directly reached the sync node
         # then we can call the sync node
-
         if len(reached_states) == expected_counter and any(reached_states):
             successor_workflow_placement_decision = self.get_successor_workflow_placement_decision_dictionary(
                 workflow_placement_decision, successor_instance_name
@@ -285,6 +275,15 @@ class MultiXServerlessWorkflow:
                 workflow_instance_id=workflow_placement_decision["run_id"],
                 sync=False,
             )
+
+        log_message = (
+            f"INFORMING_SYNC_NODE: INSTANCE ({predecessor_instance_name}) informing "
+            f"SYNC_NODE ({successor_instance_name}) of non-execution"
+        )
+        self.log_for_retrieval(
+            log_message,
+            workflow_placement_decision["run_id"],
+        )
 
     def get_successor_workflow_placement_decision(
         self, successor_instance_name: str, workflow_placement_decision: dict[str, Any]
