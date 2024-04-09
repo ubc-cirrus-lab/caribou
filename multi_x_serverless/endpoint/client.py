@@ -67,7 +67,7 @@ class Client:
         wrapped_input_data = {
             "input_data": input_data,
             "time_request_sent": current_time,
-            "workflow_placement_decision": workflow_placement_decision,
+            # "workflow_placement_decision": workflow_placement_decision,
         }
 
         json_payload = json.dumps(wrapped_input_data)

@@ -574,6 +574,8 @@ class MultiXServerlessWorkflow:
             handler_name = name if name is not None else func.__name__
 
             def wrapper(*args, **kwargs):  # type: ignore # pylint: disable=unused-argument, too-many-branches
+                start_time = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S,%f%z")
+
                 # Modify args and kwargs here as needed
                 argument_raw = args[0]
 
@@ -629,6 +631,9 @@ class MultiXServerlessWorkflow:
                     if len(args) == 0:
                         return func()
                     payload = argument
+                    
+                    if 'first_function_start_time' not in payload['metadata']: # FOR WRAPPER OVERHEAD EXPERIMENT
+                        payload['metadata']['first_function_start_time'] = start_time
 
                     log_message = (
                         f"ENTRY_POINT: : Entry Point INSTANCE "
