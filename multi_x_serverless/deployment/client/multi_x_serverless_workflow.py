@@ -632,8 +632,15 @@ class MultiXServerlessWorkflow:
                         return func()
                     payload = argument
                     
-                    if 'first_function_start_time' not in payload['metadata']: # FOR WRAPPER OVERHEAD EXPERIMENT
-                        payload['metadata']['first_function_start_time'] = start_time
+                    # payload_str = json.dumps(payload, cls=CustomEncoder)
+                    # logger.info(payload_str)
+
+                    # payload_type_str = type(payload)
+                    # logger.info(payload_type_str)
+
+                    loaded_input_data = json.loads(payload['input_data'])
+                    loaded_input_data['metadata']['first_function_start_time'] = start_time
+                    payload = loaded_input_data
 
                     log_message = (
                         f"ENTRY_POINT: : Entry Point INSTANCE "
