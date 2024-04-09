@@ -8,7 +8,7 @@ import json
 import logging
 import time
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from types import FrameType
 from typing import Any, Callable, Optional
 
@@ -574,7 +574,7 @@ class MultiXServerlessWorkflow:
             handler_name = name if name is not None else func.__name__
 
             def wrapper(*args, **kwargs):  # type: ignore # pylint: disable=unused-argument, too-many-branches
-                start_time = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S,%f%z")
+                start_time = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S,%f%z")
 
                 # Modify args and kwargs here as needed
                 argument_raw = args[0]
