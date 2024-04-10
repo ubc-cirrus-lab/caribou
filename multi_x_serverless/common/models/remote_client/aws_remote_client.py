@@ -319,8 +319,8 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
     def _generate_dockerfile(self, runtime: str, handler: str, additional_docker_commands: Optional[list[str]]) -> str:
         run_command = ""
         if additional_docker_commands and len(additional_docker_commands) > 0:
-            # run_command += " && ".join(additional_docker_commands)
-            run_command += "".join(additional_docker_commands)
+            run_command += " && ".join(additional_docker_commands)
+            # run_command += "".join(additional_docker_commands)
         if len(run_command) > 0:
             run_command = f"RUN {run_command}"
         return f"""
