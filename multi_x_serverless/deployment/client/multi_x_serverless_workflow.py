@@ -611,8 +611,6 @@ class MultiXServerlessWorkflow:
                     if "workflow_placement_decision" not in argument:
                         raise RuntimeError("Could not get workflow_placement decision from message")
                     workflow_placement_decision = argument["workflow_placement_decision"]
-                    if "payload" not in argument:
-                        return func({})
                     payload = argument.get("payload", {})
 
                 log_message = (
