@@ -11,7 +11,7 @@ import concurrent.futures
 
 from multi_x_serverless.deployment.client import MultiXServerlessWorkflow
 
-workflow = MultiXServerlessWorkflow(name="map_reduce", version="0.0.1")
+workflow = MultiXServerlessWorkflow(name="map_reduce", version="0.0.4")
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
