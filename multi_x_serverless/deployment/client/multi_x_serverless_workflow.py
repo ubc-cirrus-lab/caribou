@@ -3,13 +3,11 @@ from __future__ import annotations
 import ast
 import base64
 import binascii
-import inspect
 import json
 import logging
 import time
 import uuid
 from datetime import datetime
-from types import FrameType
 from typing import Any, Callable, Optional
 
 from multi_x_serverless.common.constants import (
@@ -84,6 +82,10 @@ class MultiXServerlessWorkflow:
         self._run_id_to_successor_index: dict[str, int] = {}
         self._function_names: set[str] = set()
         self._endpoint = Endpoints()
+        self._current_workflow_placement_decision: dict[str, Any] = {}
+
+    def get_run_id(self) -> str:
+        return self._current_workflow_placement_decision["run_id"]
 
     def _verify_name_and_version(self) -> None:
         # Both colon and minus are not allowed in the name and version
@@ -91,19 +93,6 @@ class MultiXServerlessWorkflow:
             raise RuntimeError("Name cannot contain colon or minus")
         if ":" in self.version or "-" in self.version:
             raise RuntimeError("Version cannot contain colon or minus")
-
-    def get_wrapper_frame(self, current_frame: Optional[FrameType]) -> FrameType:
-        if not current_frame:
-            raise RuntimeError("Could not get current frame")
-
-        frame = current_frame
-
-        while "wrapper" not in frame.f_locals:
-            frame = frame.f_back  # type: ignore
-            if not frame:
-                raise RuntimeError("Could not get wrapper frame")
-
-        return frame
 
     def get_successors(self, function: MultiXServerlessFunction) -> list[MultiXServerlessFunction]:
         """
@@ -143,13 +132,7 @@ class MultiXServerlessWorkflow:
         # predecessor function
         # Post message to SNS -> return
         # Do not wait for response
-
-        # We need to go back two frames to get the frame of the wrapper function that stores
-        # the workflow_placement decision
-        # and the payload (see more on this in the explanation of the decorator `serverless_function`)
-        wrapper_frame = self.get_wrapper_frame(inspect.currentframe())
-
-        workflow_placement_decision = self.get_workflow_placement_decision(wrapper_frame)
+        workflow_placement_decision = self.get_workflow_placement_decision()
 
         current_instance_name = workflow_placement_decision["current_instance_name"]
 
@@ -308,7 +291,6 @@ class MultiXServerlessWorkflow:
         return provider_region["provider"], provider_region["region"], identifier
 
     # This method is used to get the name of the next successor instance and its workflow_placement decision.
-    # It takes the current function, workflow_placement decision, wrapper frame, and function frame as parameters.
     def get_successor_instance_name(
         self,
         function: Callable[..., Any],
@@ -350,7 +332,9 @@ class MultiXServerlessWorkflow:
     ) -> str:
         # Get the workflow_placement decision for the current instance
         if current_instance_name not in workflow_placement_decision["instances"]:
-            raise RuntimeError(f"Could not find current instance name {current_instance_name} in {workflow_placement_decision['instances']}")  # type: ignore  # pylint: disable=line-too-long
+            raise RuntimeError(
+                f"Could not find current instance name {current_instance_name} in {workflow_placement_decision['instances']}"  # pylint: disable=line-too-long
+            )
         instance = workflow_placement_decision["instances"][current_instance_name]
         successor_instances = instance["succeeding_instances"]
         # If there is only one successor instance, return it
@@ -360,7 +344,9 @@ class MultiXServerlessWorkflow:
                 == f"{self.name}-{self.version.replace('.', '_')}-{successor_function_name}"
             ):
                 return successor_instances[0]
-            raise RuntimeError(f"Could not find successor instance for successor function name {successor_function_name} in {successor_instances}")  # type: ignore  # pylint: disable=line-too-long
+            raise RuntimeError(
+                f"Could not find successor instance for successor function name {successor_function_name} in {successor_instances}"  # pylint: disable=line-too-long
+            )
         # If there are multiple successor instances, return the first one that matches the successor function
         # name and has the correct index
         for successor_instance in successor_instances:
@@ -377,33 +363,16 @@ class MultiXServerlessWorkflow:
                         self._run_id_to_successor_index[workflow_placement_decision["run_id"]] = 0
                     self._run_id_to_successor_index[workflow_placement_decision["run_id"]] += 1
                     return successor_instance
-        raise RuntimeError(f"Could not find successor instance for successor function name {successor_function_name} in {successor_instances}")  # type: ignore  # pylint: disable=line-too-long
+        raise RuntimeError(
+            f"Could not find successor instance for successor function name {successor_function_name} in {successor_instances}"  # pylint: disable=line-too-long
+        )
 
-    def get_workflow_placement_decision(self, frame: FrameType) -> dict[str, Any]:
+    def get_workflow_placement_decision(self) -> dict[str, Any]:
         """
         The structure of the workflow placement decision is explained in the
         `docs/design.md` file under `Workflow Placement Decision`.
         """
-        # Get the workflow_placement decision from the wrapper function
-        while "wrapper" not in frame.f_locals:
-            frame = frame.f_back  # type: ignore
-            if not frame:
-                raise RuntimeError("Could not get workflow_placement decision")
-        wrapper = frame.f_locals["wrapper"]
-        if hasattr(wrapper, "workflow_placement_decision"):
-            return wrapper.workflow_placement_decision
-
-        raise RuntimeError("Could not get workflow_placement decision")
-
-    def is_entry_point(self, frame: FrameType) -> bool:
-        # Check if the function is the entry point
-        if "wrapper" in frame.f_locals:
-            wrapper = frame.f_locals["wrapper"]
-            if hasattr(wrapper, "entry_point"):
-                return wrapper.entry_point
-            return False
-
-        raise RuntimeError("Could not get entry point")
+        return self._current_workflow_placement_decision
 
     def get_predecessor_data(self) -> list[dict[str, Any]]:
         """
@@ -426,12 +395,7 @@ class MultiXServerlessWorkflow:
         return [json.loads(message, cls=CustomDecoder) for message in response]
 
     def get_current_instance_provider_region_instance_name(self) -> tuple[str, str, str, str]:
-        # We need to go back two frames to get the frame of the wrapper function that
-        # stores the workflow_placement decision.
-        # and the payload (see more on this in the explanation of the decorator `serverless_function`)
-        wrapper_frame = self.get_wrapper_frame(inspect.currentframe())
-
-        workflow_placement_decision = self.get_workflow_placement_decision(wrapper_frame)
+        workflow_placement_decision = self.get_workflow_placement_decision()
 
         if "current_instance_name" not in workflow_placement_decision:
             raise RuntimeError(
@@ -573,7 +537,7 @@ class MultiXServerlessWorkflow:
         def _register_handler(func: Callable[..., Any]) -> Callable[..., Any]:
             handler_name = name if name is not None else func.__name__
 
-            def wrapper(*args, **kwargs):  # type: ignore # pylint: disable=unused-argument, too-many-branches
+            def wrapper(*args, **kwargs):  # type: ignore  # pylint: disable=unused-argument, too-many-branches
                 # Modify args and kwargs here as needed
                 argument_raw = args[0]
 
@@ -615,51 +579,53 @@ class MultiXServerlessWorkflow:
                         # Get s from the time difference
                         init_latency = str(time_difference_datetime.total_seconds())
                     if pre_loaded_workflow_placement_decision:
-                        wrapper.workflow_placement_decision = pre_loaded_workflow_placement_decision  # type: ignore
+                        workflow_placement_decision = pre_loaded_workflow_placement_decision
                     else:
-                        wrapper.workflow_placement_decision = self.get_workflow_placement_decision_from_platform()  # type: ignore  # pylint: disable=line-too-long
+                        workflow_placement_decision = (
+                            self.get_workflow_placement_decision_from_platform()
+                        )  # pylint: disable=line-too-long
 
                     # This is the first function to be called, so we need to generate a run id
                     # This run id will be used to identify the workflow instance
-                    wrapper.workflow_placement_decision["run_id"] = uuid.uuid4().hex  # type: ignore
-                    wrapper.workflow_placement_decision["send_to_home_region"] = send_to_home_region  # type: ignore
-                    wrapper.workflow_placement_decision["time_key"] = self._get_time_key(  # type: ignore
-                        wrapper.workflow_placement_decision  # type: ignore
-                    )
+                    workflow_placement_decision["run_id"] = uuid.uuid4().hex
+                    workflow_placement_decision["send_to_home_region"] = send_to_home_region
+                    workflow_placement_decision["time_key"] = self._get_time_key(workflow_placement_decision)
+
                     if len(args) == 0:
                         return func()
                     payload = argument
 
                     log_message = (
                         f"ENTRY_POINT: : Entry Point INSTANCE "
-                        f'({wrapper.workflow_placement_decision["current_instance_name"]}) '  # type: ignore
+                        f'({workflow_placement_decision["current_instance_name"]}) '
                         f'of workflow {f"{self.name}-{self.version}"} called with PAYLOAD_SIZE '
                         f'({len(json.dumps(payload, cls=CustomEncoder).encode("utf-8")) / (1024**3)}) GB and '
                         f"INIT_LATENCY ({init_latency}) s"
                     )
                     self.log_for_retrieval(
                         log_message,
-                        wrapper.workflow_placement_decision["run_id"],  # type: ignore
+                        workflow_placement_decision["run_id"],
                     )
                 else:
                     # Get the workflow_placement decision from the message received from the predecessor function
                     if "workflow_placement_decision" not in argument:
                         raise RuntimeError("Could not get workflow_placement decision from message")
-                    wrapper.workflow_placement_decision = argument["workflow_placement_decision"]  # type: ignore
+                    workflow_placement_decision = argument["workflow_placement_decision"]
                     if "payload" not in argument:
                         return func({})
                     payload = argument.get("payload", {})
 
                 log_message = (
-                    f'INVOKED: INSTANCE ({wrapper.workflow_placement_decision["current_instance_name"]}) '  # type: ignore  # pylint: disable=line-too-long
+                    f'INVOKED: INSTANCE ({workflow_placement_decision["current_instance_name"]}) '
                     f"called with TAINT ({transmission_taint})"
                 )
                 self.log_for_retrieval(
                     log_message,
-                    wrapper.workflow_placement_decision["run_id"],  # type: ignore
+                    workflow_placement_decision["run_id"],
                 )
 
-                self._run_id_to_successor_index[wrapper.workflow_placement_decision["run_id"]] = 0  # type: ignore
+                self._current_workflow_placement_decision = workflow_placement_decision
+                self._run_id_to_successor_index[workflow_placement_decision["run_id"]] = 0
 
                 # Call the original function with the modified arguments
                 start_time = time.time()
@@ -667,18 +633,16 @@ class MultiXServerlessWorkflow:
                 end_time = time.time()
 
                 log_message = (
-                    f'EXECUTED: INSTANCE ({wrapper.workflow_placement_decision["current_instance_name"]}) '  # type: ignore  # pylint: disable=line-too-long
+                    f'EXECUTED: INSTANCE ({workflow_placement_decision["current_instance_name"]}) '
                     f"executed EXECUTION_TIME ({end_time - start_time})"
                 )
                 self.log_for_retrieval(
                     log_message,
-                    wrapper.workflow_placement_decision["run_id"],  # type: ignore
+                    workflow_placement_decision["run_id"],
                 )
 
                 return result
 
-            wrapper.workflow_placement_decision = {}  # type: ignore
-            wrapper.entry_point = entry_point  # type: ignore
             wrapper.original_function = func  # type: ignore
             self.register_function(func, handler_name, entry_point, regions_and_providers, environment_variables)
             return wrapper
