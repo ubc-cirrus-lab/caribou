@@ -11,11 +11,8 @@ from multi_x_serverless.deployment.client import MultiXServerlessWorkflow
 workflow = MultiXServerlessWorkflow(name="image_processing", version="0.0.1")
 
 
-@workflow.serverless_function(
-    name="GetInput",
-    entry_point=True,
-)
-def get_input(event: dict[str, Any]) -> dict[str, Any]:
+@workflow.serverless_function(name="Flip", entry_point=True,)
+def flip(event: dict[str, Any]) -> dict[str, Any]:
     if isinstance(event, str):
         event = json.loads(event)
 
@@ -24,51 +21,12 @@ def get_input(event: dict[str, Any]) -> dict[str, Any]:
     else:
         raise ValueError("No image name provided")
 
-    run_id = workflow.get_run_id()
-
-    s3 = boto3.client("s3")
-    with TemporaryDirectory() as tmp_dir:
-        s3.download_file("multi-x-serverless-image-processing-benchmark", image_name, f"{tmp_dir}/{image_name}")
-
-        image = Image.open(f"{tmp_dir}/{image_name}")
-
-        image_stream = BytesIO()
-
-        image.save(image_stream, format="JPEG", quality=100)
-
-        tmp_result_file = f"{tmp_dir}/{image_name}"
-
-        with open(tmp_result_file, "wb") as f:
-            f.write(image_stream.getvalue())
-
-        image_name_without_extension = image_name.split(".")[0]
-
-        new_image_name = f"{image_name_without_extension}-{run_id}.jpg"
-
-        remote_path = f"input_images/{new_image_name}"
-
-        s3.upload_file(tmp_result_file, "multi-x-serverless-image-processing-benchmark", remote_path)
-
-        payload = {
-            "path": remote_path,
-        }
-
-        workflow.invoke_serverless_function(flip, payload)
-
-    return {"status": 200}
-
-
-@workflow.serverless_function(name="Flip")
-def flip(event: dict[str, Any]) -> dict[str, Any]:
-    path = event["path"]
-
     s3 = boto3.client("s3")
 
     with TemporaryDirectory() as tmp_dir:
+        remote_image_name_path = f"input/{image_name}"
 
-        image_name = path.split("/")[-1]
-
-        s3.download_file("multi-x-serverless-image-processing-benchmark", path, f"{tmp_dir}/{image_name}")
+        s3.download_file("multi-x-serverless-image-processing-benchmark", remote_image_name_path, f"{tmp_dir}/{image_name}")
 
         image = Image.open(f"{tmp_dir}/{image_name}")
 

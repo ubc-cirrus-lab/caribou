@@ -18,34 +18,17 @@ logger.setLevel(logging.INFO)
 
 
 @workflow.serverless_function(
-    name="GetInput",
+    name="Input-Processor",
     entry_point=True,
 )
-def get_input(event: dict[str, Any]) -> dict[str, Any]:
+def input_processor(event: dict[str, Any]) -> dict[str, Any]:
     if isinstance(event, str):
         event = json.loads(event)
 
-    if "message" in event:
-        message = event["message"]
+    if "input_file" in event:
+        input_name = event["input_file"]
     else:
         raise ValueError("No message provided")
-
-    payload = {
-        "input_name": message,
-    }
-
-    workflow.invoke_serverless_function(input_processor, payload)
-
-    return {"status": 200}
-
-
-@workflow.serverless_function(
-    name="Input-Processor",
-    entry_point=False,
-)
-def input_processor(event: dict[str, Any]) -> dict[str, Any]:
-    # get data from s3
-    input_name = event["input_name"]
 
     run_id = workflow.get_run_id()
 
@@ -83,14 +66,19 @@ def input_processor(event: dict[str, Any]) -> dict[str, Any]:
                     chunk_file.write(chunk_data)
 
                 remote_chunk_file_path = f"chunks/{input_name}_chunk_{i}_{run_id}.txt"
+
+                # Upload the chunk to S3
+                s3.upload_file(chunk_file_path, "multi-x-serverless-map-reduce", remote_chunk_file_path)
+
+                # Remove the chunk file
+                os.remove(chunk_file_path)
+
                 payloads.append(
                     {
                         "chunk_file_path": remote_chunk_file_path,
                         "chunk_index": i,
                     }
                 )
-                # Upload the chunk to S3
-                s3.upload_file(chunk_file_path, "multi-x-serverless-map-reduce", remote_chunk_file_path)
 
         logger.info(f"Payload to mappers: {payloads}, Length: {len(payloads)}")
 

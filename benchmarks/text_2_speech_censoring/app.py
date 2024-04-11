@@ -119,7 +119,7 @@ def profanity(event: dict[str, Any]) -> dict[str, Any]:
             "index_file": extracted_indexes,
         }
 
-        workflow.invoke_serverless_function(sync_function, payload)
+        workflow.invoke_serverless_function(censor, payload)
     return {"status": 200}
 
 
@@ -222,13 +222,13 @@ def compression(event: dict[str, Any]) -> dict[str, Any]:
             "file_name": remote_file_name,
         }
 
-        workflow.invoke_serverless_function(sync_function, payload)
+        workflow.invoke_serverless_function(censor, payload)
 
     return {"status": 200}
 
 
-@workflow.serverless_function(name="MergeFunction")
-def sync_function(event: dict[str, Any]) -> dict[str, Any]:
+@workflow.serverless_function(name="Censor")
+def censor(event: dict[str, Any]) -> dict[str, Any]:
     results = workflow.get_predecessor_data()
 
     for result in results:
@@ -240,21 +240,6 @@ def sync_function(event: dict[str, Any]) -> dict[str, Any]:
 
     if not "file_name" or not "data":
         raise ValueError("No file name or data provided")
-
-    payload = {
-        "file_name": file_name,
-        "index_file": index_file,
-    }
-
-    workflow.invoke_serverless_function(censor, payload)
-
-    return {"status": 200}
-
-
-@workflow.serverless_function(name="Censor")
-def censor(event: dict[str, Any]) -> dict[str, Any]:
-    file_name = event["file_name"]
-    index_file = event["index_file"]
 
     s3 = boto3.client("s3")
     with TemporaryDirectory() as tmp_dir:
