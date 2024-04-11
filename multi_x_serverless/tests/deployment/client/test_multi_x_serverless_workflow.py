@@ -98,14 +98,14 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
             ),
         )
 
-        self.assertEqual(test_func.workflow_placement_decision, {})
+        self.assertEqual(self.workflow._current_workflow_placement_decision, {})
 
         argument_raw = {"Records": [{"Sns": {"Message": "2"}}]}
 
         self.assertEqual(test_func(argument_raw), 4)
 
         self.assertEqual(
-            test_func.workflow_placement_decision["current_instance_name"],
+            self.workflow._current_workflow_placement_decision["current_instance_name"],
             "test_func",
         )
 
@@ -178,7 +178,7 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
         self.assertEqual(registered_func.__name__, "test_func")
         self.assertEqual(args[1:], ("test_func", False, {}, []))
 
-        self.assertEqual(test_func.workflow_placement_decision, {})
+        self.assertEqual(self.workflow._current_workflow_placement_decision, {})
 
         self.assertEqual(
             test_func(
@@ -189,7 +189,7 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
 
         # Check if the workflow_placement_decision attribute was set correctly
         self.assertEqual(
-            test_func.workflow_placement_decision,
+            self.workflow._current_workflow_placement_decision,
             {
                 "workflow_placement": {
                     "test_instance_1": {
@@ -832,45 +832,8 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
             self.workflow.get_successors(function_obj_5)
 
     def test_get_workflow_placement_decision(self):
-        # Test when 'wrapper' is in frame.f_locals and wrapper has 'workflow_placement_decision' attribute
-        frame = Mock(spec=FrameType)
-        frame.f_locals = {"wrapper": Mock(workflow_placement_decision="decision")}
-        self.assertEqual(self.workflow.get_workflow_placement_decision(frame), "decision")
-
-        # Test when 'wrapper' is in frame.f_locals but wrapper does not have 'workflow_placement_decision' attribute
-        mock_wrapper = Mock()
-        mock_wrapper.workflow_placement_decision = None
-        frame.f_locals = {"wrapper": mock_wrapper}
-        self.assertEqual(self.workflow.get_workflow_placement_decision(frame), None)
-
-        mock_wrapper = Mock()
-        del mock_wrapper.workflow_placement_decision
-        frame.f_locals = {"wrapper": mock_wrapper}
-        with self.assertRaises(RuntimeError, msg="Could not get routing decision"):
-            self.workflow.get_workflow_placement_decision(frame)
-
-    def test_is_entry_point(self):
-        # Test when 'wrapper' is in frame.f_locals and wrapper has 'entry_point' attribute
-        frame = Mock(spec=FrameType)
-        frame.f_locals = {"wrapper": Mock(entry_point=True)}
-        self.assertTrue(self.workflow.is_entry_point(frame))
-
-        # Test when 'wrapper' is not in frame.f_locals
-        frame.f_locals = {}
-        with self.assertRaises(RuntimeError):
-            self.workflow.is_entry_point(frame)
-
-        # Test when 'wrapper' is in frame.f_locals but wrapper does not have 'entry_point' attribute
-        wrapper_mock = Mock()
-        wrapper_mock.entry_point = False
-        frame.f_locals = {"wrapper": wrapper_mock}
-        self.assertFalse(self.workflow.is_entry_point(frame))
-
-        frame = Mock()
-        wrapper_mock = Mock()
-        del wrapper_mock.entry_point  # Ensure wrapper does not have 'entry_point' attribute
-        frame.f_locals = {"wrapper": wrapper_mock}
-        self.assertFalse(self.workflow.is_entry_point(frame))
+        self.workflow._current_workflow_placement_decision = "decision"
+        self.assertEqual(self.workflow.get_workflow_placement_decision(), "decision")
 
     def test_get_next_instance_name(self):
         workflow_placement_decision = {
@@ -989,18 +952,6 @@ class TestMultiXServerlessWorkflow(unittest.TestCase):
             self.workflow.get_next_instance_name(
                 current_instance_name, workflow_placement_decision, successor_function_name
             )
-
-    def test_get_function_and_wrapper_frame_no_current_frame(self):
-        with self.assertRaises(RuntimeError, msg="Could not get current frame"):
-            self.workflow.get_wrapper_frame(None)
-
-    def test_get_function_and_wrapper_frame_no_wrapper_frame(self):
-        with self.assertRaises(RuntimeError, msg="Could not get previous frame"):
-            self.workflow.get_wrapper_frame(MockFrame(None))
-
-    def test_get_function_and_wrapper_frame_no_wrapper_frame_inner(self):
-        with self.assertRaises(RuntimeError, msg="Could not get previous frame"):
-            self.workflow.get_wrapper_frame(MockFrame(MockFrame(None)))
 
     def test_register_function(self):
         function = lambda x: x
