@@ -25,86 +25,64 @@ def input_processor(event: dict[str, Any]) -> dict[str, Any]:
     if isinstance(event, str):
         event = json.loads(event)
 
-    if "input_file" in event:
-        input_name = event["input_file"]
+    if "input_base_dir" in event and "number_shards" in event and "input_file_size" in event:
+        input_name = event["input_base_dir"]
+        number_shards = event["number_shards"]
+        input_file_size = event["input_file_size"]
     else:
         raise ValueError("No message provided")
 
-    run_id = workflow.get_run_id()
+    min_workload_per_worker = 12.8 * 1024 * 1024  # 12.8 MB
 
-    s3 = boto3.client("s3")
-    with TemporaryDirectory() as tmp_dir:
-        local_file_path = f"{tmp_dir}/{input_name}"
+    # If the input file size is less than 6 times the
+    # minimum workload per worker, we can process it with less than 6 workers
+    if input_file_size < min_workload_per_worker * 6:
+        number_of_workers_needed = math.ceil(input_file_size / min_workload_per_worker)
+    else:
+        number_of_workers_needed = 6
 
-        s3.download_file("multi-x-serverless-map-reduce", f"input/{input_name}", local_file_path)
+    shards_per_worker = math.ceil(number_shards / number_of_workers_needed)
 
-        file_size = os.path.getsize(local_file_path)
+    payload = {
+        "input_base_dir": input_name,
+        "number_shards": number_shards,
+        "shards_per_worker": shards_per_worker,
+    }
 
-        chunk_size = 150 * 1024  # 150 KB
+    pool = concurrent.futures.ThreadPoolExecutor(max_workers=6)
 
-        num_chunks = min(4, math.ceil(file_size / chunk_size))
+    def worker1():
+        payload["worker_index"] = 0
+        workflow.invoke_serverless_function(mapper, payload)
 
-        payloads = []
+    def worker2():
+        payload["worker_index"] = 1
+        workflow.invoke_serverless_function(mapper, payload, number_of_workers_needed > 1)
 
-        with open(local_file_path, "r") as file:
-            for i in range(num_chunks):
-                chunk_data = ""
-                if i != num_chunks - 1:
-                    read_bytes = 0
-                    while read_bytes < chunk_size:
-                        line = file.readline()
-                        if not line:
-                            break
-                        read_bytes += len(line.encode("utf-8"))
-                        chunk_data += line
-                else:
-                    chunk_data = file.read()  # Read the rest of the file for the last chunk
+    def worker3():
+        payload["worker_index"] = 2
+        workflow.invoke_serverless_function(mapper, payload, number_of_workers_needed > 2)
 
-                # Write the chunk to a temporary file
-                chunk_file_path = f"{tmp_dir}/chunk_{i}.txt"
-                with open(chunk_file_path, "w") as chunk_file:
-                    chunk_file.write(chunk_data)
+    def worker4():
+        payload["worker_index"] = 3
+        workflow.invoke_serverless_function(mapper, payload, number_of_workers_needed > 3)
 
-                remote_chunk_file_path = f"chunks/{input_name}_chunk_{i}_{run_id}.txt"
+    def worker5():
+        payload["worker_index"] = 4
+        workflow.invoke_serverless_function(mapper, payload, number_of_workers_needed > 4)
 
-                # Upload the chunk to S3
-                s3.upload_file(chunk_file_path, "multi-x-serverless-map-reduce", remote_chunk_file_path)
+    def worker6():
+        payload["worker_index"] = 5
+        workflow.invoke_serverless_function(mapper, payload, number_of_workers_needed > 5)
 
-                # Remove the chunk file
-                os.remove(chunk_file_path)
+    pool.submit(worker1)
+    pool.submit(worker2)
+    pool.submit(worker3)
+    pool.submit(worker4)
+    pool.submit(worker5)
+    pool.submit(worker6)
 
-                payloads.append(
-                    {
-                        "chunk_file_path": remote_chunk_file_path,
-                        "chunk_index": i,
-                    }
-                )
-
-        logger.info(f"Payload to mappers: {payloads}, Length: {len(payloads)}")
-
-        pool = concurrent.futures.ThreadPoolExecutor(max_workers=4)
-
-        def worker1():
-            workflow.invoke_serverless_function(mapper, payloads[0])
-
-        def worker2():
-            payload_one = payloads[1] if len(payloads) >= 2 else None
-            workflow.invoke_serverless_function(mapper, payload_one, len(payloads) >= 2)
-
-        def worker3():
-            payload_two = payloads[2] if len(payloads) >= 3 else None
-            workflow.invoke_serverless_function(mapper, payload_two, len(payloads) >= 3)
-
-        def worker4():
-            payload_three = payloads[3] if len(payloads) == 4 else None
-            workflow.invoke_serverless_function(mapper, payload_three, len(payloads) == 4)
-
-        pool.submit(worker1)
-        pool.submit(worker2)
-        pool.submit(worker3)
-        pool.submit(worker4)
-
-        pool.shutdown(wait=True)
+    pool.shutdown(wait=True)
 
     return {"status": 200}
 
@@ -112,32 +90,42 @@ def input_processor(event: dict[str, Any]) -> dict[str, Any]:
 @workflow.serverless_function(name="Mapper-Function")
 def mapper(event: dict[str, Any]) -> dict[str, Any]:
 
-    chunk_file_path = event["chunk_file_path"]
-    chunk_index = event["chunk_index"]
+    input_base_dir = event["input_base_dir"]
+    number_shards = event["number_shards"]
+    shards_per_worker = event["shards_per_worker"]
+    worker_index = event["worker_index"]
+
     run_id = workflow.get_run_id()
 
     s3 = boto3.client("s3")
     with TemporaryDirectory() as tmp_dir:
 
-        local_file_path = f"{tmp_dir}/chunk.txt"
-
-        s3.download_file("multi-x-serverless-map-reduce", chunk_file_path, local_file_path)
-
-        with open(local_file_path, "r") as file:
-            data = file.read()
+        start_index = worker_index * shards_per_worker
+        end_index = min((worker_index + 1) * shards_per_worker, number_shards)
 
         word_counts = {}
+        local_file_path = f"{tmp_dir}/chunk.txt"
 
-        words = data.split()
+        for chunk_index in range(start_index, end_index):
+            chunk_file_path = f"input/{input_base_dir}/chunk_{chunk_index}.txt"
 
-        for word in words:
-            cleaned_word = "".join(char for char in word if char.isalnum()).lower()
+            s3.download_file("multi-x-serverless-map-reduce", chunk_file_path, local_file_path)
 
-            if cleaned_word:
-                if cleaned_word in word_counts:
-                    word_counts[cleaned_word] += 1
-                else:
-                    word_counts[cleaned_word] = 1
+            with open(local_file_path, "r") as file:
+                data = file.read()
+
+            words = data.split()
+
+            for word in words:
+                cleaned_word = "".join(char for char in word if char.isalnum()).lower()
+
+                if cleaned_word:
+                    if cleaned_word in word_counts:
+                        word_counts[cleaned_word] += 1
+                    else:
+                        word_counts[cleaned_word] = 1
+
+            os.remove(local_file_path)
 
         word_count_file_path = f"{tmp_dir}/word_count.json"
         with open(word_count_file_path, "w") as file:
@@ -190,7 +178,7 @@ def shuffler(event: dict[str, Any]) -> dict[str, Any]:
             payload2 = {"mapper_result1": None, "mapper_result2": None, "reducer_index": 2}
 
         workflow.invoke_serverless_function(reducer, payload2, num_results >= 3)
-    
+
     pool.submit(worker1)
     pool.submit(worker2)
 

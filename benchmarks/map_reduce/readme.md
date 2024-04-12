@@ -8,10 +8,10 @@ You can deploy the benchmark with the following command:
 poetry run multi_x_serverless deploy
 ```
 
-And then run the benchmark with the following command:
+And then run the benchmark with the following command (example):
 
 ```bash
-poetry run multi_x_serverless run map_reduce-version_number -a '{"input_file": "text_file_name"}'
+poetry run multi_x_serverless run map_reduce-0.0.1 -a '{"input_base_dir": "subset_256MB", "number_shards": 120, "input_file_size": 268435456}'
 ```
 
 To remove the benchmark, you can use the following command:
