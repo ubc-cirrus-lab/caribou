@@ -11,7 +11,7 @@ poetry run multi_x_serverless deploy
 And then run the benchmark with the following command:
 
 ```bash
-poetry run multi_x_serverless run text_2_speech_censoring-version_number -a '{"message": "Some text with profanity, for example shit."}'
+poetry run multi_x_serverless run text_2_speech_censoring-version_number -a '{"input_file": "input_file.txt"}'
 ```
 
 To remove the benchmark, you can use the following command:

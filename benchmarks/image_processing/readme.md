@@ -11,7 +11,7 @@ poetry run multi_x_serverless deploy
 And then run the benchmark with the following command:
 
 ```bash
-poetry run multi_x_serverless run image_processing-version_number -a '{"message": "image_name.jpeg"}'
+poetry run multi_x_serverless run image_processing-version_number -a '{"image_name": "image_name.jpeg"}'
 ```
 
 To remove the benchmark, you can use the following command:
