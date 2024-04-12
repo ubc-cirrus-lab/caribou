@@ -11,11 +11,8 @@ import os
 workflow = MultiXServerlessWorkflow(name="dna_visualization", version="0.0.1")
 
 
-@workflow.serverless_function(
-    name="GetInput",
-    entry_point=True,
-)
-def get_input(event: dict[str, Any]) -> dict[str, Any]:
+@workflow.serverless_function(name="Visualize", entry_point=True)
+def visualize(event: dict[str, Any]) -> dict[str, Any]:
     if isinstance(event, str):
         event = json.loads(event)
 
@@ -23,19 +20,6 @@ def get_input(event: dict[str, Any]) -> dict[str, Any]:
         gen_file_name = event["gen_file_name"]
     else:
         raise ValueError("No gen_file_name provided")
-
-    payload = {
-        "gen_file_name": gen_file_name,
-    }
-
-    workflow.invoke_serverless_function(visualize, payload)
-
-    return {"status": 200}
-
-
-@workflow.serverless_function(name="Visualize")
-def visualize(event: dict[str, Any]) -> dict[str, Any]:
-    gen_file_name = event["gen_file_name"]
 
     req_id = uuid.uuid4()
 

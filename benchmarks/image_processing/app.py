@@ -4,8 +4,6 @@ import json
 import boto3
 from tempfile import TemporaryDirectory
 from PIL import Image, ImageFilter
-import uuid
-from io import BytesIO
 
 from multi_x_serverless.deployment.client import MultiXServerlessWorkflow
 
@@ -13,162 +11,169 @@ workflow = MultiXServerlessWorkflow(name="image_processing", version="0.0.1")
 
 
 @workflow.serverless_function(
-    name="GetInput",
+    name="Flip",
     entry_point=True,
 )
-def get_input(event: dict[str, Any]) -> dict[str, Any]:
+def flip(event: dict[str, Any]) -> dict[str, Any]:
     if isinstance(event, str):
         event = json.loads(event)
 
-    if "message" in event:
-        image_name = event["message"]
+    if "image_name" in event:
+        image_name = event["image_name"]
     else:
         raise ValueError("No image name provided")
 
     s3 = boto3.client("s3")
+
     with TemporaryDirectory() as tmp_dir:
-        s3.download_file("multi-x-serverless-image-processing-benchmark", image_name, f"{tmp_dir}/{image_name}")
+        remote_image_name_path = f"input/{image_name}"
+
+        s3.download_file(
+            "multi-x-serverless-image-processing-benchmark", remote_image_name_path, f"{tmp_dir}/{image_name}"
+        )
 
         image = Image.open(f"{tmp_dir}/{image_name}")
 
-        image_stream = BytesIO()
+        img = image.transpose(Image.FLIP_LEFT_RIGHT)
 
-        image.save(image_stream, format='JPEG', quality=50)
+        tmp_result_file = f"{tmp_dir}/result_{image_name}"
 
-        image_bytes = image_stream.getvalue()
+        img.save(tmp_result_file, format="JPEG", quality=100)
 
-        unique_id = str(uuid.uuid4())
+        remote_path = f"flipped_images/{image_name}"
 
-        image_name_without_extension = image_name.split(".")[0]
-
-        new_image_name = f"{image_name_without_extension}-{unique_id}.jpg"
+        s3.upload_file(tmp_result_file, "multi-x-serverless-image-processing-benchmark", remote_path)
 
         payload = {
-            "image": image_bytes,
-            "image_name": new_image_name,
+            "path": remote_path,
         }
 
-        workflow.invoke_serverless_function(flip, payload)
-
-    return {"status": 200}
-
-
-@workflow.serverless_function(name="Flip")
-def flip(event: dict[str, Any]) -> dict[str, Any]:
-    image_bytes = event["image"]
-    image_name = event["image_name"]
-
-    image_stream = BytesIO(image_bytes)
-    image = Image.open(image_stream)
-    img = image.transpose(Image.FLIP_LEFT_RIGHT)
-
-    new_image_name = f"flip-left-right-{image_name}"
-
-    image_stream = BytesIO()
-    img.save(image_stream, format='JPEG', quality=50)
-    new_image_bytes = image_stream.getvalue()
-
-    payload = {
-        "image": new_image_bytes,
-        "image_name": new_image_name,
-    }
-
-    workflow.invoke_serverless_function(rotate, payload)
+        workflow.invoke_serverless_function(rotate, payload)
 
     return {"status": 200}
 
 
 @workflow.serverless_function(name="Rotate")
 def rotate(event: dict[str, Any]) -> dict[str, Any]:
-    image_name = event["image_name"]
-    image_bytes = event["image"]
+    path = event["path"]
 
-    image_stream = BytesIO(image_bytes)
-    image = Image.open(image_stream)
-    img = image.transpose(Image.ROTATE_90)
+    s3 = boto3.client("s3")
 
-    new_image_name = f"rotate-90-{image_name}"
+    with TemporaryDirectory() as tmp_dir:
 
-    image_stream = BytesIO()
-    img.save(image_stream, format='JPEG', quality=50)
-    new_image_bytes = image_stream.getvalue()
+        image_name = path.split("/")[-1]
 
-    payload = {
-        "image": new_image_bytes,
-        "image_name": new_image_name,
-    }
+        s3.download_file("multi-x-serverless-image-processing-benchmark", path, f"{tmp_dir}/{image_name}")
 
-    workflow.invoke_serverless_function(filter_function, payload)
+        image = Image.open(f"{tmp_dir}/{image_name}")
+
+        img = image.transpose(Image.ROTATE_90)
+
+        tmp_result_file = f"{tmp_dir}/result_{image_name}"
+
+        img.save(tmp_result_file, format="JPEG", quality=100)
+
+        remote_path = f"rotated_images/{image_name}"
+
+        s3.upload_file(tmp_result_file, "multi-x-serverless-image-processing-benchmark", remote_path)
+
+        payload = {
+            "path": remote_path,
+        }
+
+        workflow.invoke_serverless_function(filter_function, payload)
 
     return {"status": 200}
 
 
 @workflow.serverless_function(name="Filter")
 def filter_function(event: dict[str, Any]) -> dict[str, Any]:
-    image_name = event["image_name"]
-    image_bytes = event["image"]
+    path = event["path"]
 
-    image_stream = BytesIO(image_bytes)
-    image = Image.open(image_stream)
-    img = image.filter(ImageFilter.BLUR)
+    s3 = boto3.client("s3")
 
-    new_image_name = f"filter-{image_name}"
+    with TemporaryDirectory() as tmp_dir:
 
-    image_stream = BytesIO()
-    img.save(image_stream, format='JPEG', quality=50)
-    new_image_bytes = image_stream.getvalue()
+        image_name = path.split("/")[-1]
 
-    payload = {
-        "image": new_image_bytes,
-        "image_name": new_image_name,
-    }
+        s3.download_file("multi-x-serverless-image-processing-benchmark", path, f"{tmp_dir}/{image_name}")
 
-    workflow.invoke_serverless_function(greyscale, payload)
+        image = Image.open(f"{tmp_dir}/{image_name}")
+
+        img = image.filter(ImageFilter.BLUR)
+
+        tmp_result_file = f"{tmp_dir}/result_{image_name}"
+
+        img.save(tmp_result_file, format="JPEG", quality=100)
+
+        remote_path = f"filtered_images/{image_name}"
+
+        s3.upload_file(tmp_result_file, "multi-x-serverless-image-processing-benchmark", remote_path)
+
+        payload = {
+            "path": remote_path,
+        }
+
+        workflow.invoke_serverless_function(greyscale, payload)
 
     return {"status": 200}
 
 
 @workflow.serverless_function(name="Greyscale")
 def greyscale(event: dict[str, Any]) -> dict[str, Any]:
-    image_name = event["image_name"]
-    image_bytes = event["image"]
+    path = event["path"]
 
-    image_stream = BytesIO(image_bytes)
-    image = Image.open(image_stream)
-    img = image.convert("L")
+    s3 = boto3.client("s3")
 
-    image_stream = BytesIO()
-    img.save(image_stream, format='JPEG', quality=50)
-    new_image_bytes = image_stream.getvalue()
+    with TemporaryDirectory() as tmp_dir:
 
-    new_image_name = f"greyscale-{image_name}"
+        image_name = path.split("/")[-1]
 
-    payload = {
-        "image": new_image_bytes,
-        "image_name": new_image_name,
-    }
+        s3.download_file("multi-x-serverless-image-processing-benchmark", path, f"{tmp_dir}/{image_name}")
 
-    workflow.invoke_serverless_function(resize, payload)
+        image = Image.open(f"{tmp_dir}/{image_name}")
+
+        img = image.convert("L")
+
+        tmp_result_file = f"{tmp_dir}/result_{image_name}"
+
+        img.save(tmp_result_file, format="JPEG", quality=100)
+
+        remote_path = f"greyscale_images/{image_name}"
+
+        s3.upload_file(tmp_result_file, "multi-x-serverless-image-processing-benchmark", remote_path)
+
+        payload = {
+            "path": remote_path,
+        }
+
+        workflow.invoke_serverless_function(resize, payload)
 
     return {"status": 200}
 
 
 @workflow.serverless_function(name="Resize")
 def resize(event: dict[str, Any]) -> dict[str, Any]:
-    image_name = event["image_name"]
-    image_bytes = event["image"]
-
-    image_stream = BytesIO(image_bytes)
-    image = Image.open(image_stream)
-    img = image.resize((128, 128))
-    new_image_name = f"resize-{image_name}"
+    path = event["path"]
 
     s3 = boto3.client("s3")
+
     with TemporaryDirectory() as tmp_dir:
-        img.save(f"{tmp_dir}/{new_image_name}", format='JPEG', quality=50)
 
-        upload_path = f"image_processing/{new_image_name}"
+        image_name = path.split("/")[-1]
 
-        s3.upload_file(f"{tmp_dir}/{new_image_name}", "multi-x-serverless-image-processing-benchmark", upload_path)
+        s3.download_file("multi-x-serverless-image-processing-benchmark", path, f"{tmp_dir}/{image_name}")
+
+        image = Image.open(f"{tmp_dir}/{image_name}")
+
+        img = image.resize((128, 128))
+
+        tmp_result_file = f"{tmp_dir}/resize-{image_name}"
+
+        img.save(tmp_result_file, format="JPEG", quality=100)
+
+        upload_path = f"resized_images/{image_name}"
+
+        s3.upload_file(tmp_result_file, "multi-x-serverless-image-processing-benchmark", upload_path)
 
     return {"status": 200}

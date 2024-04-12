@@ -35,5 +35,5 @@ regions_and_providers:
   providers:
     aws:
       config:
-        timeout: 120
-        memory: 1024
+        timeout: 300
+        memory: 2048
