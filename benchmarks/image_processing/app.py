@@ -4,14 +4,16 @@ import json
 import boto3
 from tempfile import TemporaryDirectory
 from PIL import Image, ImageFilter
-from io import BytesIO
 
 from multi_x_serverless.deployment.client import MultiXServerlessWorkflow
 
 workflow = MultiXServerlessWorkflow(name="image_processing", version="0.0.1")
 
 
-@workflow.serverless_function(name="Flip", entry_point=True,)
+@workflow.serverless_function(
+    name="Flip",
+    entry_point=True,
+)
 def flip(event: dict[str, Any]) -> dict[str, Any]:
     if isinstance(event, str):
         event = json.loads(event)
@@ -26,23 +28,17 @@ def flip(event: dict[str, Any]) -> dict[str, Any]:
     with TemporaryDirectory() as tmp_dir:
         remote_image_name_path = f"input/{image_name}"
 
-        s3.download_file("multi-x-serverless-image-processing-benchmark", remote_image_name_path, f"{tmp_dir}/{image_name}")
+        s3.download_file(
+            "multi-x-serverless-image-processing-benchmark", remote_image_name_path, f"{tmp_dir}/{image_name}"
+        )
 
         image = Image.open(f"{tmp_dir}/{image_name}")
 
-        image_bytes = image.tobytes()
-
-        image_stream = BytesIO(image_bytes)
-        image = Image.open(image_stream)
         img = image.transpose(Image.FLIP_LEFT_RIGHT)
-
-        image_stream = BytesIO()
-        img.save(image_stream, format="JPEG", quality=50)
 
         tmp_result_file = f"{tmp_dir}/result_{image_name}"
 
-        with open(tmp_result_file, "wb") as f:
-            f.write(image_stream.getvalue())
+        img.save(tmp_result_file, format="JPEG", quality=100)
 
         remote_path = f"flipped_images/{image_name}"
 
@@ -73,13 +69,9 @@ def rotate(event: dict[str, Any]) -> dict[str, Any]:
 
         img = image.transpose(Image.ROTATE_90)
 
-        image_stream = BytesIO()
-        img.save(image_stream, format="JPEG", quality=50)
-
         tmp_result_file = f"{tmp_dir}/result_{image_name}"
 
-        with open(tmp_result_file, "wb") as f:
-            f.write(image_stream.getvalue())
+        img.save(tmp_result_file, format="JPEG", quality=100)
 
         remote_path = f"rotated_images/{image_name}"
 
@@ -110,13 +102,9 @@ def filter_function(event: dict[str, Any]) -> dict[str, Any]:
 
         img = image.filter(ImageFilter.BLUR)
 
-        image_stream = BytesIO()
-        img.save(image_stream, format="JPEG", quality=50)
-
         tmp_result_file = f"{tmp_dir}/result_{image_name}"
 
-        with open(tmp_result_file, "wb") as f:
-            f.write(image_stream.getvalue())
+        img.save(tmp_result_file, format="JPEG", quality=100)
 
         remote_path = f"filtered_images/{image_name}"
 
@@ -147,13 +135,9 @@ def greyscale(event: dict[str, Any]) -> dict[str, Any]:
 
         img = image.convert("L")
 
-        image_stream = BytesIO()
-        img.save(image_stream, format="JPEG", quality=50)
-
         tmp_result_file = f"{tmp_dir}/result_{image_name}"
 
-        with open(tmp_result_file, "wb") as f:
-            f.write(image_stream.getvalue())
+        img.save(tmp_result_file, format="JPEG", quality=100)
 
         remote_path = f"greyscale_images/{image_name}"
 
@@ -184,12 +168,12 @@ def resize(event: dict[str, Any]) -> dict[str, Any]:
 
         img = image.resize((128, 128))
 
-        new_image_name = f"resize-{image_name}"
+        tmp_result_file = f"{tmp_dir}/resize-{image_name}"
 
-        img.save(f"{tmp_dir}/{new_image_name}", format="JPEG", quality=50)
+        img.save(tmp_result_file, format="JPEG", quality=100)
 
-        upload_path = f"resized_images/{new_image_name}"
+        upload_path = f"resized_images/{image_name}"
 
-        s3.upload_file(f"{tmp_dir}/{new_image_name}", "multi-x-serverless-image-processing-benchmark", upload_path)
+        s3.upload_file(tmp_result_file, "multi-x-serverless-image-processing-benchmark", upload_path)
 
     return {"status": 200}

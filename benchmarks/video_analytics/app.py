@@ -27,8 +27,8 @@ def get_input(event: dict[str, Any]) -> dict[str, Any]:
     if isinstance(event, str):
         event = json.loads(event)
 
-    if "message" in event:
-        video_name = event["message"]
+    if "video_name" in event:
+        video_name = event["video_name"]
     else:
         raise ValueError("No message provided")
 
@@ -113,6 +113,8 @@ def recognition(event: dict[str, Any]) -> dict[str, Any]:
 def video_analytics_streaming(filename: str, request_id: int) -> str:
     with TemporaryDirectory() as tmp_dir:
         local_filename = os.path.join(tmp_dir, filename)
+
+        filename = f"input/{filename}"
 
         # Make sure the directory exists
         os.makedirs(os.path.dirname(local_filename), exist_ok=True)

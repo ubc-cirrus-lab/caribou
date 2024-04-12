@@ -27,9 +27,11 @@ def get_input(event: dict[str, Any]) -> dict[str, Any]:
         message = event["input_file"]
     else:
         raise ValueError("No message provided")
+    
+    input_file = f"input/{message}"
 
     payload = {
-        "input_file": message,
+        "input_file": input_file,
     }
 
     workflow.invoke_serverless_function(text_2_speech, payload)
