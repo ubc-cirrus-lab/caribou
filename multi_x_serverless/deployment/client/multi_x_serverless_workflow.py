@@ -8,7 +8,6 @@ import logging
 import time
 import uuid
 from datetime import datetime, timezone
-from types import FrameType
 from typing import Any, Callable, Optional
 
 from multi_x_serverless.common.constants import (
@@ -598,12 +597,6 @@ class MultiXServerlessWorkflow:
                         return func()
                     payload = argument
                     
-                    # payload_str = json.dumps(payload, cls=CustomEncoder)
-                    # logger.info(payload_str)
-
-                    # payload_type_str = type(payload)
-                    # logger.info(payload_type_str)
-
                     loaded_input_data = json.loads(payload['input_data'])
                     loaded_input_data['metadata']['first_function_start_time'] = start_time
                     payload = loaded_input_data
