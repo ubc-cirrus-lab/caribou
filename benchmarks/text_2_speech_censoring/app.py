@@ -118,7 +118,7 @@ def profanity(event: dict[str, Any]) -> dict[str, Any]:
         )
 
         payload = {
-            "index_file": extracted_indexes,
+            "index_file": remote_file_name,
         }
 
         workflow.invoke_serverless_function(censor, payload)
