@@ -628,7 +628,7 @@ class MultiXServerlessWorkflow:
                 cpu_model = self.get_cpu_info()
                 self.log_for_retrieval(
                     f"CPU_MODEL: {cpu_model}",
-                    wrapper.workflow_placement_decision["run_id"],  # type: ignore
+                    workflow_placement_decision["run_id"],  # type: ignore
                 )
 
                 # Call the original function with the modified arguments
