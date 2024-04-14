@@ -119,7 +119,6 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
         return self.small_or_large
 
     def get_cpu_utilization(self, instance) -> float:
-        print(self.get_small_or_large())
         if self.get_small_or_large() == "small":
             data = {
                 "dna_visualization-0_0_1-Visualize:entry_point:0": 0.4618928777116529,
