@@ -58,9 +58,6 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
 
         # datacenter loader data
         ## Get the average power consumption of the instance in the given region (kw_compute)
-
-        utilization = self.get_cpu_utilization(instance_name)
-        average_cpu_power = (0.74 + utilization * (3.5 - 0.74)) / 1000
         # average_cpu_power: float = self._datacenter_loader.get_average_cpu_power(region_name)
 
         ## Get the average power consumption of the instance in the given region (kw_GB)
@@ -84,6 +81,9 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
 
         # Covert memory in MB to GB
         memory = memory / 1024
+
+        utilization = self.get_cpu_utilization(instance_name)
+        average_cpu_power = (0.74 + (utilization / vcpu) * (3.5 - 0.74)) / 1000
 
         compute_factor = average_cpu_power * vcpu / 3600
         memory_factor = average_memory_power * memory / 3600
