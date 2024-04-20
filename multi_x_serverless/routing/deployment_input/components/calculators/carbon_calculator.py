@@ -83,7 +83,10 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
         memory = memory / 1024
 
         utilization = self.get_cpu_utilization(instance_name)
-        average_cpu_power = (0.74 + (utilization / vcpu) * (3.5 - 0.74)) / 1000
+        adjusted_utilization = utilization / vcpu
+        if (utilization / vcpu) > 1:
+            adjusted_utilization = 1
+        average_cpu_power = (0.74 + adjusted_utilization * (3.5 - 0.74)) / 1000
 
         compute_factor = average_cpu_power * vcpu / 3600
         memory_factor = average_memory_power * memory / 3600
