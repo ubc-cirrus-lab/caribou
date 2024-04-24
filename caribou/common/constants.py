@@ -4,11 +4,8 @@ import pytz
 WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE = "workflow_placement_solver_staging_area_table"
 WORKFLOW_PLACEMENT_DECISION_TABLE = "workflow_placement_decision_table"
 
-# Solver Tables
-DEPLOYMENT_OPTIMIZATION_MONITOR_RESOURCE_TABLE = "deployment_optimization_monitor_resource_table"
-
 # Solver Update Checker Tables
-DEPLOYMENT_OPTIMIZATION_MONITOR_WORKFLOW_INFO_TABLE = "deployment_optimization_monitor_workflow_info_table"
+DEPLOYMENT_MANAGER_WORKFLOW_INFO_TABLE = "deployment_manager_workflow_info_table"
 
 # Deployment Manager Tables
 DEPLOYMENT_MANAGER_RESOURCE_TABLE = "deployment_manager_resources_table"

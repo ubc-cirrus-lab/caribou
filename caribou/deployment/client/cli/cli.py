@@ -14,8 +14,8 @@ from caribou.deployment.common.config.config import Config
 from caribou.deployment.common.deploy.deployer import Deployer
 from caribou.deployment.common.factories.deployer_factory import DeployerFactory
 from caribou.endpoint.client import Client
+from caribou.monitors.deployment_manager import DeploymentManager
 from caribou.monitors.deployment_migrator import DeploymentMigrator
-from caribou.monitors.deployment_optimization_monitor import DeploymentOptimizationMonitor
 from caribou.syncers.log_syncer import LogSyncer
 
 
@@ -96,8 +96,8 @@ def log_sync() -> None:
 
 @cli.command("monitor_deployment_optimization", help="Check if the deployment algorithm should be run.")
 def monitor_deployment_optimization() -> None:
-    deployment_optimization_monitor = DeploymentOptimizationMonitor()
-    deployment_optimization_monitor.check()
+    deployment_manager = DeploymentManager()
+    deployment_manager.check()
 
 
 @cli.command("run_deployment_migrator", help="Check if the deployment of a function should be updated.")

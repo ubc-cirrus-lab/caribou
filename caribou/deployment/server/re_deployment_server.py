@@ -4,7 +4,6 @@ from typing import Any
 
 from caribou.common.constants import (
     DEPLOYMENT_MANAGER_RESOURCE_TABLE,
-    DEPLOYMENT_OPTIMIZATION_MONITOR_RESOURCE_TABLE,
     WORKFLOW_PLACEMENT_DECISION_TABLE,
     WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE,
 )
@@ -50,7 +49,7 @@ class ReDeploymentServer:
         if not isinstance(workflow_function_descriptions, list):
             raise ValueError("Workflow function description is not a list")
 
-        staging_area_data_raw = self._endpoints.get_deployment_optimization_monitor_client().get_value_from_table(
+        staging_area_data_raw = self._endpoints.get_deployment_manager_client().get_value_from_table(
             WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE, self._workflow_id
         )
 
@@ -96,10 +95,8 @@ class ReDeploymentServer:
         self,
         expiry_time: str,
     ) -> None:
-        previous_workflow_placement_decision_raw = (
-            self._endpoints.get_deployment_optimization_monitor_client().get_value_from_table(
-                WORKFLOW_PLACEMENT_DECISION_TABLE, self._workflow_id
-            )
+        previous_workflow_placement_decision_raw = self._endpoints.get_deployment_manager_client().get_value_from_table(
+            WORKFLOW_PLACEMENT_DECISION_TABLE, self._workflow_id
         )
 
         if previous_workflow_placement_decision_raw is None:
@@ -113,11 +110,11 @@ class ReDeploymentServer:
             "instances": self._time_keys_to_instances,
         }
 
-        self._endpoints.get_deployment_optimization_monitor_client().set_value_in_table(
+        self._endpoints.get_deployment_manager_client().set_value_in_table(
             WORKFLOW_PLACEMENT_DECISION_TABLE, self._workflow_id, json.dumps(previous_workflow_placement_decision)
         )
 
-        self._endpoints.get_deployment_optimization_monitor_client().remove_key(
+        self._endpoints.get_deployment_manager_client().remove_key(
             WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE, self._workflow_id
         )
 
@@ -130,8 +127,8 @@ class ReDeploymentServer:
         )
 
     def _check_workflow_already_deployed(self) -> None:
-        deployed = self._endpoints.get_deployment_optimization_monitor_client().get_key_present_in_table(
-            DEPLOYMENT_OPTIMIZATION_MONITOR_RESOURCE_TABLE, self._workflow_id
+        deployed = self._endpoints.get_deployment_manager_client().get_key_present_in_table(
+            DEPLOYMENT_MANAGER_RESOURCE_TABLE, self._workflow_id
         )
         if not deployed:
             raise RuntimeError("Workflow is not deployed")

@@ -9,7 +9,6 @@ import botocore.exceptions
 from caribou.common.constants import (
     CARIBOU_WORKFLOW_IMAGES_TABLE,
     DEPLOYMENT_MANAGER_RESOURCE_TABLE,
-    DEPLOYMENT_OPTIMIZATION_MONITOR_RESOURCE_TABLE,
     GLOBAL_TIME_ZONE,
     TIME_FORMAT,
     WORKFLOW_INSTANCE_TABLE,
@@ -129,9 +128,7 @@ class Client:
         return key
 
     def list_workflows(self) -> None:
-        deployed_workflows = self._endpoints.get_deployment_optimization_monitor_client().get_keys(
-            DEPLOYMENT_OPTIMIZATION_MONITOR_RESOURCE_TABLE
-        )
+        deployed_workflows = self._endpoints.get_deployment_manager_client().get_keys(DEPLOYMENT_MANAGER_RESOURCE_TABLE)
 
         if deployed_workflows is None:
             print("No workflows deployed")
@@ -147,12 +144,10 @@ class Client:
         self._endpoints.get_deployment_algorithm_workflow_placement_decision_client().remove_key(
             WORKFLOW_PLACEMENT_DECISION_TABLE, self._workflow_id
         )
-        self._endpoints.get_deployment_optimization_monitor_client().remove_key(
+        self._endpoints.get_deployment_manager_client().remove_key(
             WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE, self._workflow_id
         )
-        self._endpoints.get_deployment_optimization_monitor_client().remove_key(
-            DEPLOYMENT_OPTIMIZATION_MONITOR_RESOURCE_TABLE, self._workflow_id
-        )
+        self._endpoints.get_deployment_manager_client().remove_key(DEPLOYMENT_MANAGER_RESOURCE_TABLE, self._workflow_id)
 
         currently_deployed_workflows = self._endpoints.get_deployment_manager_client().get_all_values_from_table(
             DEPLOYMENT_MANAGER_RESOURCE_TABLE

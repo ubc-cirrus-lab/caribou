@@ -25,7 +25,7 @@ class Endpoints:  # pylint: disable=too-many-instance-attributes
         )
 
         self._deployment_optimizaion_monitor_region = global_system_region
-        self._deployment_optimization_monitor_client = RemoteClientFactory.get_remote_client(
+        self._deployment_manager_client = RemoteClientFactory.get_remote_client(
             provider, self._deployment_optimizaion_monitor_region
         )
 
@@ -42,9 +42,6 @@ class Endpoints:  # pylint: disable=too-many-instance-attributes
 
     def get_deployment_manager_client(self) -> RemoteClient:
         return self._deployment_manager_client
-
-    def get_deployment_optimization_monitor_client(self) -> RemoteClient:
-        return self._deployment_optimization_monitor_client
 
     def get_deployment_algorithm_workflow_placement_decision_client(self) -> RemoteClient:
         return self._deployment_algorithm_workflow_placement_decision_client
