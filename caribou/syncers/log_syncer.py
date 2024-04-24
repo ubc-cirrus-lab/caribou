@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from caribou.common.constants import (
-    DEPLOYMENT_MANAGER_RESOURCE_TABLE,
+    DEPLOYMENT_RESOURCES_TABLE,
     FORGETTING_TIME_DAYS,
     GLOBAL_TIME_ZONE,
     TIME_FORMAT,
@@ -21,12 +21,12 @@ class LogSyncer:
     def __init__(self) -> None:
         self.endpoints = Endpoints()
         self._workflow_summary_client = self.endpoints.get_datastore_client()
-        self._deployment_manager_client = self.endpoints.get_deployment_manager_client()
+        self._deployment_manager_client = self.endpoints.get_deployment_resources_client()
         self._region_clients: dict[tuple[str, str], RemoteClient] = {}
 
     def sync(self) -> None:
         currently_deployed_workflows = self._deployment_manager_client.get_all_values_from_table(
-            DEPLOYMENT_MANAGER_RESOURCE_TABLE
+            DEPLOYMENT_RESOURCES_TABLE
         )
 
         for workflow_id, deployment_manager_config_str in currently_deployed_workflows.items():
