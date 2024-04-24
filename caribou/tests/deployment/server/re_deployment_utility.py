@@ -1,7 +1,7 @@
 import unittest
 import json
 from unittest.mock import patch, MagicMock
-from caribou.deployment.server.re_deployment_server import ReDeploymentServer
+from caribou.deployment.server.re_deployment_utility import ReDeploymentUtility
 from caribou.common.constants import (
     DEPLOYMENT_MANAGER_RESOURCE_TABLE,
     WORKFLOW_PLACEMENT_DECISION_TABLE,
@@ -10,8 +10,8 @@ from caribou.common.constants import (
 )
 
 
-class TestReDeploymentServer(unittest.TestCase):
-    @patch("caribou.deployment.server.re_deployment_server.Endpoints")
+class TestReDeploymentUtility(unittest.TestCase):
+    @patch("caribou.deployment.server.re_deployment_utility.Endpoints")
     def setUp(self, mock_endpoints):
         # Set up the mock
         mock_client = MagicMock()
@@ -21,11 +21,11 @@ class TestReDeploymentServer(unittest.TestCase):
         self.mock_endpoints = mock_endpoints
 
         # Call the method
-        self.re_deployment_server = ReDeploymentServer("workflow_id")
+        self.re_deployment_utility = ReDeploymentUtility("workflow_id")
 
     def test_init(self):
         # Check that the _workflow_data attribute was initialized correctly
-        self.assertEqual(self.re_deployment_server._workflow_data, {"key": "value"})
+        self.assertEqual(self.re_deployment_utility._workflow_data, {"key": "value"})
 
         # Check that the mock was called with the correct arguments
         self.mock_endpoints.return_value.get_deployment_manager_client.return_value.get_value_from_table.assert_called_once_with(
@@ -39,7 +39,7 @@ class TestReDeploymentServer(unittest.TestCase):
         mock_client.get_value_from_table.return_value = json.dumps({"key": "value"})
 
         # Call the method
-        result = self.re_deployment_server._load_workflow_data()
+        result = self.re_deployment_utility._load_workflow_data()
 
         # Check that the result is correct
         self.assertEqual(result, {"key": "value"})
@@ -47,8 +47,8 @@ class TestReDeploymentServer(unittest.TestCase):
         # Check that the mock was called with the correct arguments
         mock_client.get_value_from_table.assert_called_once_with(DEPLOYMENT_MANAGER_RESOURCE_TABLE, "workflow_id")
 
-    @patch.object(ReDeploymentServer, "_run_deployer")
-    @patch.object(ReDeploymentServer, "_update_workflow_placement_decision")
+    @patch.object(ReDeploymentUtility, "_run_deployer")
+    @patch.object(ReDeploymentUtility, "_update_workflow_placement_decision")
     def test_run(self, mock_update_workflow_placement_decision, mock_run_deployer):
         # Set up the mock
         mock_client = MagicMock()
@@ -63,14 +63,14 @@ class TestReDeploymentServer(unittest.TestCase):
         )
         self.mock_endpoints.return_value.get_deployment_manager_client.return_value = mock_client
 
-        self.re_deployment_server._workflow_data = {
+        self.re_deployment_utility._workflow_data = {
             "workflow_function_descriptions": json.dumps(["description1", "description2"]),
             "deployment_config": json.dumps({"key": "value"}),
             "deployed_regions": json.dumps({"region1": "deployed1", "region2": "deployed2"}),
         }
 
         # Call the method
-        self.re_deployment_server.run()
+        self.re_deployment_utility.run()
 
         # Check that the mocks were called with the correct arguments
         mock_run_deployer.assert_any_call(
@@ -89,8 +89,8 @@ class TestReDeploymentServer(unittest.TestCase):
         )
         mock_update_workflow_placement_decision.assert_called_once_with("expiry_time")
 
-    @patch("caribou.deployment.server.re_deployment_server.create_default_deployer")
-    @patch("caribou.deployment.server.re_deployment_server.DeployerFactory")
+    @patch("caribou.deployment.server.re_deployment_utility.create_default_deployer")
+    @patch("caribou.deployment.server.re_deployment_utility.DeployerFactory")
     def test_run_deployer(self, mock_deployer_factory, mock_create_default_deployer):
         # Set up the mocks
         mock_deployer = MagicMock()
@@ -101,7 +101,7 @@ class TestReDeploymentServer(unittest.TestCase):
         mock_deployer_factory.return_value.create_config_obj_from_dict.return_value = mock_config
 
         # Call the method
-        self.re_deployment_server._run_deployer(
+        self.re_deployment_utility._run_deployer(
             deployment_config={"key": "value"},
             workflow_function_descriptions=["description1", "description2"],
             deployed_regions={"region1": "deployed1", "region2": "deployed2"},
@@ -121,7 +121,7 @@ class TestReDeploymentServer(unittest.TestCase):
         )
 
         # Check that the _time_keys_to_instances attribute was updated correctly
-        self.assertEqual(self.re_deployment_server._time_keys_to_instances, {"time_key": "new_deployment_instances"})
+        self.assertEqual(self.re_deployment_utility._time_keys_to_instances, {"time_key": "new_deployment_instances"})
 
     def test_update_workflow_placement_decision(self):
         # Set up the mock
@@ -129,10 +129,10 @@ class TestReDeploymentServer(unittest.TestCase):
         mock_client.get_value_from_table.return_value = json.dumps({"workflow_placement": {}})
         self.mock_endpoints.return_value.get_deployment_manager_client.return_value = mock_client
 
-        self.re_deployment_server._time_keys_to_instances = {"time_key": "instance"}
+        self.re_deployment_utility._time_keys_to_instances = {"time_key": "instance"}
 
         # Call the method
-        self.re_deployment_server._update_workflow_placement_decision("expiry_time")
+        self.re_deployment_utility._update_workflow_placement_decision("expiry_time")
 
         # Check that the mocks were called with the correct arguments
         mock_client.get_value_from_table.assert_called_once_with(WORKFLOW_PLACEMENT_DECISION_TABLE, "workflow_id")
@@ -158,10 +158,10 @@ class TestReDeploymentServer(unittest.TestCase):
         mock_client = MagicMock()
         self.mock_endpoints.return_value.get_deployment_manager_client.return_value = mock_client
 
-        self.re_deployment_server._workflow_data = {"key": "value"}
+        self.re_deployment_utility._workflow_data = {"key": "value"}
 
         # Call the method
-        self.re_deployment_server._upload_new_deployed_regions({"region1": "deployed1", "region2": "deployed2"})
+        self.re_deployment_utility._upload_new_deployed_regions({"region1": "deployed1", "region2": "deployed2"})
 
         # Check that the mock was called with the correct arguments
         mock_client.set_value_in_table.assert_called_once_with(
@@ -182,7 +182,7 @@ class TestReDeploymentServer(unittest.TestCase):
         self.mock_endpoints.return_value.get_deployment_manager_client.return_value = mock_client
 
         # Call the method and check that it does not raise an exception
-        self.re_deployment_server._check_workflow_already_deployed()
+        self.re_deployment_utility._check_workflow_already_deployed()
 
         # Check that the mock was called with the correct arguments
         mock_client.get_key_present_in_table.assert_called_once_with(DEPLOYMENT_MANAGER_RESOURCE_TABLE, "workflow_id")
@@ -192,7 +192,7 @@ class TestReDeploymentServer(unittest.TestCase):
 
         # Call the method and check that it raises an exception
         with self.assertRaises(RuntimeError):
-            self.re_deployment_server._check_workflow_already_deployed()
+            self.re_deployment_utility._check_workflow_already_deployed()
 
 
 if __name__ == "__main__":

@@ -15,7 +15,7 @@ from caribou.deployment.common.factories.deployer_factory import DeployerFactory
 logger = logging.getLogger(__name__)
 
 
-class ReDeploymentServer:
+class ReDeploymentUtility:
     def __init__(self, input_workflow_id: str) -> None:
         self._workflow_id = input_workflow_id
         self._endpoints = Endpoints()
