@@ -1,11 +1,11 @@
 from typing import Any
 
-from multi_x_serverless.deployment.client import MultiXServerlessWorkflow
+from caribou.deployment.client import CaribouWorkflow
 import pip_install_test
 
 from src.fifth import fifth
 
-workflow = MultiXServerlessWorkflow(name="integration_test_workflow", version="0.0.1")
+workflow = CaribouWorkflow(name="integration_test_workflow", version="0.0.1")
 
 
 @workflow.serverless_function(

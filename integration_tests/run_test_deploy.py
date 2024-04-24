@@ -1,7 +1,7 @@
-from multi_x_serverless.deployment.common.config.config import Config
-from multi_x_serverless.deployment.common.deploy.deployer import Deployer
-from multi_x_serverless.deployment.common.factories.deployer_factory import DeployerFactory
-from multi_x_serverless.common.models.remote_client.integration_test_remote_client import IntegrationTestRemoteClient
+from caribou.deployment.common.config.config import Config
+from caribou.deployment.common.deploy.deployer import Deployer
+from caribou.deployment.common.factories.deployer_factory import DeployerFactory
+from caribou.common.models.remote_client.integration_test_remote_client import IntegrationTestRemoteClient
 
 
 def test_deploy(workflow_dir: str):

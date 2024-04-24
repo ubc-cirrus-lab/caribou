@@ -24,7 +24,7 @@ def main(workflow_dir: str):
         os.environ.pop("MULTI_X_SERVERLESS_INTEGRATION_TEST_DB_PATH")
         os.environ.pop("INTEGRATIONTEST_ON")
 
-        deployment_package_folder = os.path.join(workflow_dir, ".multi_x_serverless", "deployment_package")
+        deployment_package_folder = os.path.join(workflow_dir, ".caribou", "deployment_package")
         if os.path.exists(deployment_package_folder):
             shutil.rmtree(deployment_package_folder)
 

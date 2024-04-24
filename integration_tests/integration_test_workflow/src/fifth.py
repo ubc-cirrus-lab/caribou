@@ -1,8 +1,8 @@
-from multi_x_serverless.deployment.client import MultiXServerlessWorkflow
+from caribou.deployment.client import CaribouWorkflow
 from typing import Any
 
 
-def fifth(workflow: MultiXServerlessWorkflow, event: dict[str, Any], seventh_function: Any) -> dict[str, Any]:
+def fifth(workflow: CaribouWorkflow, event: dict[str, Any], seventh_function: Any) -> dict[str, Any]:
     print("Hello from fifth function")
     responses: list[dict[str, Any]] = workflow.get_predecessor_data()
 

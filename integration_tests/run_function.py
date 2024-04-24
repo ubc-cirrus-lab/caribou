@@ -1,4 +1,4 @@
-from multi_x_serverless.common.models.remote_client.integration_test_remote_client import IntegrationTestRemoteClient
+from caribou.common.models.remote_client.integration_test_remote_client import IntegrationTestRemoteClient
 import shutil
 import os
 

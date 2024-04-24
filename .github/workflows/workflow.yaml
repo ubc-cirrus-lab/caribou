@@ -25,7 +25,7 @@ jobs:
       - name: Run black
         run: |
           poetry run black --version
-          poetry run black --check multi_x_serverless --verbose
+          poetry run black --check caribou --verbose
 
   pylint:
     runs-on: ubuntu-latest
@@ -38,7 +38,7 @@ jobs:
       - name: Run pylint
         run: |
           poetry run pylint --version
-          poetry run pylint multi_x_serverless
+          poetry run pylint caribou
 
   pytest:
     runs-on: ubuntu-latest
@@ -51,8 +51,8 @@ jobs:
       - name: Run tests
         run: |
           set -e
-          poetry run pytest --cache-clear --cov=multi_x_serverless/ --cov-fail-under=90
-          poetry run pytest --junitxml=pytest.xml --cov-report=term-missing:skip-covered --cov-fail-under=90 --cov=multi_x_serverless multi_x_serverless/tests | tee pytest-coverage.txt
+          poetry run pytest --cache-clear --cov=caribou/ --cov-fail-under=90
+          poetry run pytest --junitxml=pytest.xml --cov-report=term-missing:skip-covered --cov-fail-under=90 --cov=caribou caribou/tests | tee pytest-coverage.txt
       - name: Pytest coverage comment
         uses: MishaKav/pytest-coverage-comment@main
         with:
@@ -70,7 +70,7 @@ jobs:
       - name: Run mypy
         run: |
           poetry run mypy --version
-          poetry run mypy multi_x_serverless
+          poetry run mypy caribou
 
   isort:
     runs-on: ubuntu-latest
@@ -83,7 +83,7 @@ jobs:
       - name: Run isort
         run: |
           poetry run isort --version
-          poetry run isort multi_x_serverless --check --diff
+          poetry run isort caribou --check --diff
 
   integration-tests:
     runs-on: ubuntu-latest

@@ -3,7 +3,7 @@ import subprocess
 import sys
 import boto3
 
-from multi_x_serverless.common.constants import GLOBAL_SYSTEM_REGION
+from caribou.common.constants import GLOBAL_SYSTEM_REGION
 
 
 def generate_dockerfile(handler: str, runtime: str) -> str:
@@ -11,10 +11,10 @@ def generate_dockerfile(handler: str, runtime: str) -> str:
 RUN pip3 install poetry
 COPY pyproject.toml ./
 COPY poetry.lock ./
-COPY multi_x_serverless ./multi_x_serverless
+COPY caribou ./caribou
 
 RUN poetry install --no-dev
-CMD ["multi_x_serverless/deployment/client/cli/cli.py", "{handler}"]
+CMD ["caribou/deployment/client/cli/cli.py", "{handler}"]
 """
 
 
@@ -23,11 +23,11 @@ def generate_deployment_dockerfile(handler: str, runtime: str) -> str:
 RUN pip3 install poetry
 COPY pyproject.toml ./
 COPY poetry.lock ./
-COPY multi_x_serverless ./multi_x_serverless
+COPY caribou ./caribou
 RUN yum install -y go && go install github.com/google/go-containerregistry/cmd/crane@latest
 
 RUN poetry install --no-dev
-CMD ["multi_x_serverless/deployment/client/cli/cli.py", "{handler}"]
+CMD ["caribou/deployment/client/cli/cli.py", "{handler}"]
 """
 
 
@@ -85,7 +85,7 @@ def create_lambda_function(handler: str, image_uri: str, role: str, timeout: int
 
     try:
         lambda_client.create_function(
-            FunctionName=f"multi_x_serverless_{handler}",
+            FunctionName=f"caribou_{handler}",
             Role=role,
             Code={"ImageUri": image_uri},
             PackageType="Image",
@@ -110,7 +110,7 @@ def deploy_to_aws(
     print(dockerfile_path.read_text())
     print("Deploying to AWS")
 
-    image_name = f"multi_x_serverless_{handler}:{runtime.replace(':', '-')}"
+    image_name = f"caribou_{handler}:{runtime.replace(':', '-')}"
     build_docker_image(image_name)
 
     image_uri = upload_image_to_ecr(image_name)
@@ -119,7 +119,7 @@ def deploy_to_aws(
 
     create_lambda_function(handler, image_uri, role_arn, timeout, memory_size)
 
-    print(f"Created Lambda function multi_x_serverless_{handler}")
+    print(f"Created Lambda function caribou_{handler}")
 
 
 if __name__ == "__main__":

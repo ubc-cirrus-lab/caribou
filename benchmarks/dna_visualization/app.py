@@ -1,6 +1,6 @@
 from typing import Any
 
-from multi_x_serverless.deployment.client import MultiXServerlessWorkflow
+from caribou.deployment.client import CaribouWorkflow
 import json
 from dna_features_viewer import BiopythonTranslator
 import uuid
@@ -8,7 +8,7 @@ import boto3
 import os
 
 
-workflow = MultiXServerlessWorkflow(name="dna_visualization", version="0.0.1")
+workflow = CaribouWorkflow(name="dna_visualization", version="0.0.1")
 
 
 @workflow.serverless_function(name="Visualize", entry_point=True)
@@ -28,7 +28,7 @@ def visualize(event: dict[str, Any]) -> dict[str, Any]:
 
     s3 = boto3.client("s3")
     s3.download_file(
-        "multi-x-serverless-dna-visualization",
+        "caribou-dna-visualization",
         f"genbank/{gen_file_name}",
         local_gen_filename,
     )
@@ -40,7 +40,7 @@ def visualize(event: dict[str, Any]) -> dict[str, Any]:
 
     s3.upload_file(
         local_result_filename,
-        "multi-x-serverless-dna-visualization",
+        "caribou-dna-visualization",
         f"result/{gen_file_name}.png",
     )
 
