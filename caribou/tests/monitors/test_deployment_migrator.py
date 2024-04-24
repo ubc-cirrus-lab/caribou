@@ -11,7 +11,7 @@ class TestDeploymentMigrator(unittest.TestCase):
         self.mock_endpoints = MagicMock()
         self.function_deployment_monitor._endpoints = self.mock_endpoints
 
-    @patch("caribou.monitors.function_deployment_monitor.ReDeploymentServer")
+    @patch("caribou.monitors.deployment_migrator.ReDeploymentServer")
     def test_check(self, mock_re_deployment_server):
         # Arrange
         mock_client = MagicMock()

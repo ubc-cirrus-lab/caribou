@@ -27,6 +27,7 @@ class MockFrame:
 class TestCaribouWorkflow(unittest.TestCase):
     def setUp(self):
         self.workflow = CaribouWorkflow(name="test-workflow", version="0.0.1")
+        self.workflow.get_cpu_info = Mock(return_value="test_cpu_info")
 
     def test_serverless_function(self):
         self.workflow.register_function = Mock()
