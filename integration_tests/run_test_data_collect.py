@@ -1,13 +1,13 @@
-from multi_x_serverless.data_collector.components.carbon.carbon_collector import CarbonCollector
-from multi_x_serverless.data_collector.components.provider.provider_collector import ProviderCollector
-from multi_x_serverless.data_collector.components.performance.performance_collector import PerformanceCollector
-from multi_x_serverless.common.constants import (
+from caribou.data_collector.components.carbon.carbon_collector import CarbonCollector
+from caribou.data_collector.components.provider.provider_collector import ProviderCollector
+from caribou.data_collector.components.performance.performance_collector import PerformanceCollector
+from caribou.common.constants import (
     AVAILABLE_REGIONS_TABLE,
     PROVIDER_REGION_TABLE,
     CARBON_REGION_TABLE,
     PERFORMANCE_REGION_TABLE,
 )
-from multi_x_serverless.common.models.remote_client.integration_test_remote_client import IntegrationTestRemoteClient
+from caribou.common.models.remote_client.integration_test_remote_client import IntegrationTestRemoteClient
 
 
 def test_data_collect():

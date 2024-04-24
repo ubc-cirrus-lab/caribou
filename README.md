@@ -1,8 +1,8 @@
-# Multi-X-Serverless
+# Caribou
 
-Multi-X-Serverless is a serverless framework for running and deploying complex workflows on AWS over multiple regions.
+Caribou is a framework for running and deploying complex workflows multi-constraint and multi-objective aware on AWS over multiple regions.
 The framework is designed to be self-adapting and self-optimizing with regards to the carbon footprint, cost, and performance of the workflows.
-A workflow that is developed and deployed using Multi-X-Serverless can be run and solved by the framework, which will then automatically, depending on constraints and objectives, adapt the workflow deployment to optimize the workflow's performance, cost, and carbon footprint.
+A workflow that is developed and deployed using Caribou can be run and solved by the framework, which will then automatically, depending on constraints and objectives, adapt the workflow deployment to optimize the workflow's performance, cost, and carbon footprint.
 Optimization is done, when warranted by the type of application and frequency of its invocation, by using a suitable deployment algorithm that solves for new multi-region deployment configurations.
 The overhead of the system plays a crucial role in the optimization process and sets the frequency as well as the granularity of the optimization process.
 For more information, see the [design documentation](docs/design.md).
@@ -62,7 +62,7 @@ For more information, see the [poetry documentation](https://python-poetry.org/d
 To setup the required tables and buckets in AWS, you can use the following command:
 
 ```bash
-poetry run multi_x_serverless setup_tables
+poetry run caribou setup_tables
 ```
 
 ### Setup a new workflow
@@ -70,22 +70,22 @@ poetry run multi_x_serverless setup_tables
 To setup a new workflow, you need to be in a location where you want to create the new workflow and run:
 
 ```bash
-poetry run multi_x_serverless new_workflow <workflow_name>
+poetry run caribou new_workflow <workflow_name>
 ```
 
 Where `<workflow_name>` is the name of the new workflow.
 
-### Deployment Client
+### Deployment Utility
 
-The deployment client has an additional dependency on `docker`. To install it, follow the instructions on the [docker website](https://docs.docker.com/engine/install/).
+The deployment utility has an additional dependency on `docker`. To install it, follow the instructions on the [docker website](https://docs.docker.com/engine/install/).
 
-The deployment client can be found in `multi_x_serverless/deployment/client` and can be run with (needs to be run in the same directory as the workflow you want to deploy):
+The deployment utility can be found in `caribou/deployment/client` and can be run with (needs to be run in the same directory as the workflow you want to deploy):
 
 ```bash
-poetry run multi_x_serverless deploy
+poetry run caribou deploy
 ```
 
-This will deploy the workflow to the correct defined home region. To change the home region you need to adjust the config in `.multi-x-serverless/config.yml` and set the `home_region` to the desired region.
+This will deploy the workflow to the correct defined home region. To change the home region you need to adjust the config in `.caribou/config.yml` and set the `home_region` to the desired region.
 
 This will also print the unique workflow id.
 
@@ -94,7 +94,7 @@ This will also print the unique workflow id.
 To run a workflow, you can use the following command:
 
 ```bash
-poetry run multi_x_serverless run <workflow_id> -a '{"message": "Hello World!"}'
+poetry run caribou run <workflow_id> -a '{"message": "Hello World!"}'
 ```
 
 Where `<workflow_id>` is the id of the workflow you want to run.
@@ -106,7 +106,7 @@ The `-a` flag is used to pass arguments to the workflow. The arguments can be pa
 To list all workflows, you can use the following command:
 
 ```bash
-poetry run multi_x_serverless list
+poetry run caribou list
 ```
 
 ###  Remove a workflow
@@ -114,7 +114,7 @@ poetry run multi_x_serverless list
 To remove a workflow, you can use the following command:
 
 ```bash
-poetry run multi_x_serverless remove <workflow_id>
+poetry run caribou remove <workflow_id>
 ```
 
 Where `<workflow_id>` is the id of the workflow you want to remove.
@@ -124,15 +124,15 @@ Where `<workflow_id>` is the id of the workflow you want to remove.
 To sync the logs from all the workflows to the global table, you can use the following command:
 
 ```bash
-poetry run multi_x_serverless log_sync
+poetry run caribou log_sync
 ```
 
 ### Data Collecting
 
-The data collecting can be found in `multi_x_serverless/data_collector` and can be run individually with:
+The data collecting can be found in `caribou/data_collector` and can be run individually with:
 
 ```bash
-poetry run multi_x_serverless data_collect <collector>
+poetry run caribou data_collect <collector>
 ```
 
 Where `<collector>` is the name of the collector you want to run. The available collectors are:
@@ -161,22 +161,30 @@ export GOOGLE_API_KEY=<your_key>
 Use the monitor to solve for all workflows that have a check outstanding:
 
 ```bash
-poetry run multi_x_serverless monitor_deployment_optimization
+poetry run caribou monitor_deployment_optimization
 ```
 
-### Re-Deploy
+### Run Deployment Migrator
 
 Since we are restricted by the AWS lambda environment to not use docker, we have to use [crane](https://github.com/google/go-containerregistry/tree/main/cmd/crane) to deploy the workflows. For the following step to work please install crane as described in the [crane documentation](https://github.com/google/go-containerregistry/blob/main/cmd/crane/README.md).
 
 Once a new deployment has been found for a workflow, you can use the following command to deploy the new workflow:
 
 ```bash
-poetry run multi_x_serverless monitor_function_deployment
+poetry run caribou run_deployment_migrator
 ```
 
-Which will check if a new deployment is required for any workflow and if so, deploy the new workflow.
+Which will check if a new deployment is required for any workflow and if so, migrate the functions according to this new deployment.
 
 ### Testing
+
+### Compliance
+
+To check for compliance with the code style as well as run the unit tests, you can use the following command:
+
+```bash
+poetry run ./scripts/compliance.sh
+```
 
 #### Unit Tests
 
@@ -200,37 +208,16 @@ Currently we have the following workflows for benchmarking:
 
 - `benchmarks/dna_visualization`
 - `benchmarks/image_processing`
-- `benchmarks/image_processing_light`
-- `benchmarks/regression_tuning`
+- `benchmarks/map_reduce`
 - `benchmarks/small_sync_example`
 - `benchmarks/text_2_speech_censoring`
 - `benchmarks/video_analytics`
 
 Information on how to run each of these are in the respective workflow's README.
 
-#### Solver Benchmarks
-
-For the solver benchmarks, we have the following scenarios:
-
-To run the solver benchmarks, use the following commands:
-
-```bash
-poetry run python benchmarks/solver_benchmarks/run_solver_benchmarks_multiprocess.py
-```
-
-This will generate a JSON in `benchmarks/solver_benchmarks/results/results.json` with the results.
-
-To plot the results, use:
-
-```bash
-poetry run python plotting/solver_benchmark_plotting.py benchmarks/solver_benchmarks/results/results.json
-```
-
-This will generate a plot in `plotting/plots/`.
-
 ## Architecture
 
-For the architecture, see the current [draw.io](https://app.diagrams.net/#G1rql5LiXzNiWIzN1-zJmqYMQYyUwjmrOq) diagram.
+The framework architecture can be found  [here](docs/img/system_components.pdf).
 
 ##  Documentation
 
@@ -242,6 +229,6 @@ The documentation can be found in `docs/` and contains the following:
 
 ## About
 
-##  License
+## License
 
 Apache License 2.0

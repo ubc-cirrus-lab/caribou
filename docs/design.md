@@ -124,7 +124,7 @@ Currently, we support the following annotations:
 - At the beginning of the workflow the user has to register the workflow with the following annotation:
 
 ```python
-workflow = MultiXServerlessWorkflow("workflow_name")
+workflow = CaribouWorkflow("workflow_name")
 ```
 
 - At the beginning of each function the user has to register the function with the following annotation:

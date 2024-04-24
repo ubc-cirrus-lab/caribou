@@ -9,14 +9,14 @@ from torchvision import transforms
 from PIL import Image
 import torch
 import torchvision.models as models
-from multi_x_serverless.deployment.client import MultiXServerlessWorkflow
+from caribou.deployment.client import CaribouWorkflow
 import io
 import torch
 from torchvision import models
 
 FANOUT_NUM = 4
 
-workflow = MultiXServerlessWorkflow(name="video_analytics", version="0.0.1")
+workflow = CaribouWorkflow(name="video_analytics", version="0.0.1")
 
 
 @workflow.serverless_function(
@@ -97,7 +97,7 @@ def recognition(event: dict[str, Any]) -> dict[str, Any]:
     print(f"Recognizing video: {decoded_filename}")
 
     s3 = boto3.client("s3")
-    response = s3.get_object(Bucket="multi-x-serverless-video-analytics", Key=decoded_filename)
+    response = s3.get_object(Bucket="caribou-video-analytics", Key=decoded_filename)
     image_bytes = response["Body"].read()
 
     # Perform inference
@@ -105,7 +105,7 @@ def recognition(event: dict[str, Any]) -> dict[str, Any]:
 
     # Upload the result to S3
     result_key = f"output/{request_id}-{decoded_filename}-result.txt"
-    s3.put_object(Bucket="multi-x-serverless-video-analytics", Key=result_key, Body=result.encode("utf-8"))
+    s3.put_object(Bucket="caribou-video-analytics", Key=result_key, Body=result.encode("utf-8"))
 
     return {"status": 200, "result_key": result_key}
 
@@ -121,13 +121,13 @@ def video_analytics_streaming(filename: str, request_id: int) -> str:
 
         s3 = boto3.client("s3")
 
-        s3.download_file("multi-x-serverless-video-analytics", filename, local_filename)
+        s3.download_file("caribou-video-analytics", filename, local_filename)
 
         resized_local_filename = resize_and_store(local_filename, tmp_dir)
 
         streaming_filename = f"output/streaming-{request_id}-{filename}"
 
-        s3.upload_file(resized_local_filename, "multi-x-serverless-video-analytics", streaming_filename)
+        s3.upload_file(resized_local_filename, "caribou-video-analytics", streaming_filename)
 
         return streaming_filename
 
@@ -158,7 +158,7 @@ def video_analytics_decode(filename: str, request_id: int) -> str:
         s3 = boto3.client("s3")
 
         # Download the video file from S3
-        s3.download_file("multi-x-serverless-video-analytics", filename, local_filename)
+        s3.download_file("caribou-video-analytics", filename, local_filename)
 
         # Open the video file
         cap = cv2.VideoCapture(local_filename)
@@ -194,7 +194,7 @@ def video_analytics_decode(filename: str, request_id: int) -> str:
             cv2.imwrite(decoded_local_path, image)
 
             # Upload the frame to S3
-            s3.upload_file(decoded_local_path, "multi-x-serverless-video-analytics", decoded_filename)
+            s3.upload_file(decoded_local_path, "caribou-video-analytics", decoded_filename)
 
         # Return the name of the last uploaded frame as an example
         return decoded_filename
@@ -228,7 +228,7 @@ def preprocess_image(image_bytes):
 def infer(image_bytes):
     # Load model labels
     s3 = boto3.client("s3")
-    response = s3.get_object(Bucket="multi-x-serverless-video-analytics", Key="imagenet_labels.txt")
+    response = s3.get_object(Bucket="caribou-video-analytics", Key="imagenet_labels.txt")
     labels = response["Body"].read().decode("utf-8").splitlines()
 
     with TemporaryDirectory() as tmp_dir:

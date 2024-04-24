@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "multi-x-serverless"
+name = "caribou"
 version = "0.1.0"
 description = ""
 license = "Apache-2.0"
@@ -9,10 +9,10 @@ authors = [
     "Mohammad Shahrad <mohammad.shahrad@ubc.ca>",
 ]
 readme = "README.md"
-repository = "https://github.com/ubc-cirrus-lab/multi-x-serverless"
+repository = "https://github.com/ubc-cirrus-lab/caribou"
 
 [tool.poetry.scripts]
-multi_x_serverless = "multi_x_serverless.deployment.client.multi_x_serverless:main"
+caribou = "caribou.deployment.client.caribou:main"
 
 [tool.poetry.dependencies]
 python = "^3.12"
@@ -81,16 +81,16 @@ directory = "coverage_html_report"
 
 [tool.mypy]
 python_version = "3.10"
-mypy_path = "multi_x_serverless"
+mypy_path = "caribou"
 check_untyped_defs = true
 disallow_untyped_defs = true
 follow_imports = "skip"
 ignore_missing_imports = true
 pretty = true
 exclude = [
-    "multi_x_serverless/tests",
-    "multi_x_serverless/common/setup",
-    "multi_x_serverless/common/models/remote_client/mock_remote_client.py",
+    "caribou/tests",
+    "caribou/common/setup",
+    "caribou/common/models/remote_client/mock_remote_client.py",
     ]
 
 [tool.isort]
@@ -120,7 +120,7 @@ exclude = '''
   | buck-out
   | build
   | dist
-  | ./multi_x_serverless/deployment/client/cli/template/app.py
+  | ./caribou/deployment/client/cli/template/app.py
 )/
 '''
 
@@ -139,12 +139,12 @@ disable = [
     ]
 ignore = [
     "tests",
-    "multi_x_serverless/deployment/client/cli/template"
+    "caribou/deployment/client/cli/template"
     ]
 
 [tool.pytest.ini_options]
-testpaths = ["multi_x_serverless/tests"]
+testpaths = ["caribou/tests"]
 addopts = [
-      "--cov=multi_x_serverless",
+      "--cov=caribou",
       "--cov-report=html",
     ]

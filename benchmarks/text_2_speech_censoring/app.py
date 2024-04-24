@@ -1,7 +1,7 @@
 from typing import Any
 import os
 
-from multi_x_serverless.deployment.client import MultiXServerlessWorkflow
+from caribou.deployment.client import CaribouWorkflow
 import json
 from gtts import gTTS
 from io import BytesIO
@@ -12,7 +12,7 @@ from pydub import AudioSegment
 
 from tempfile import TemporaryDirectory
 
-workflow = MultiXServerlessWorkflow(name="text_2_speech_censoring", version="0.0.1")
+workflow = CaribouWorkflow(name="text_2_speech_censoring", version="0.0.1")
 
 
 @workflow.serverless_function(
@@ -50,7 +50,7 @@ def text_2_speech(event: dict[str, Any]) -> dict[str, Any]:
 
         local_name = f"{tmp_dir}/input.txt"
 
-        s3.download_file("multi-x-serverless-text-2-speech-censoring", input_file, local_name)
+        s3.download_file("caribou-text-2-speech-censoring", input_file, local_name)
 
         with open(local_name, "r") as f:
             message = f.read()
@@ -72,7 +72,7 @@ def text_2_speech(event: dict[str, Any]) -> dict[str, Any]:
 
         s3.upload_file(
             local_name,
-            "multi-x-serverless-text-2-speech-censoring",
+            "caribou-text-2-speech-censoring",
             remote_name,
         )
 
@@ -94,7 +94,7 @@ def profanity(event: dict[str, Any]) -> dict[str, Any]:
 
         local_name = f"{tmp_dir}/input.txt"
 
-        s3.download_file("multi-x-serverless-text-2-speech-censoring", input_file, local_name)
+        s3.download_file("caribou-text-2-speech-censoring", input_file, local_name)
 
         with open(local_name, "r") as f:
             message = f.read()
@@ -113,7 +113,7 @@ def profanity(event: dict[str, Any]) -> dict[str, Any]:
 
         s3.upload_file(
             local_file_name,
-            "multi-x-serverless-text-2-speech-censoring",
+            "caribou-text-2-speech-censoring",
             remote_file_name,
         )
 
@@ -152,7 +152,7 @@ def conversion(event: dict[str, Any]) -> dict[str, Any]:
 
         local_name = f"{tmp_dir}/input.txt"
 
-        s3.download_file("multi-x-serverless-text-2-speech-censoring", file_name, local_name)
+        s3.download_file("caribou-text-2-speech-censoring", file_name, local_name)
 
         dlFile = open(local_name, "rb").read()
         input = BytesIO(dlFile)
@@ -172,7 +172,7 @@ def conversion(event: dict[str, Any]) -> dict[str, Any]:
 
         s3.upload_file(
             local_file_name,
-            "multi-x-serverless-text-2-speech-censoring",
+            "caribou-text-2-speech-censoring",
             remote_file_name,
         )
 
@@ -192,7 +192,7 @@ def compression(event: dict[str, Any]) -> dict[str, Any]:
     s3 = boto3.client("s3")
     with TemporaryDirectory() as tmp_dir:
         local_name = f"{tmp_dir}/input.wav"
-        s3.download_file("multi-x-serverless-text-2-speech-censoring", file_name, local_name)
+        s3.download_file("caribou-text-2-speech-censoring", file_name, local_name)
 
         dlFile = open(local_name, "rb").read()
         dlFile = BytesIO(dlFile)
@@ -216,7 +216,7 @@ def compression(event: dict[str, Any]) -> dict[str, Any]:
 
         s3.upload_file(
             local_file_name,
-            "multi-x-serverless-text-2-speech-censoring",
+            "caribou-text-2-speech-censoring",
             remote_file_name,
         )
 
@@ -246,10 +246,10 @@ def censor(event: dict[str, Any]) -> dict[str, Any]:
     s3 = boto3.client("s3")
     with TemporaryDirectory() as tmp_dir:
         local_index_name = f"{tmp_dir}/indexes.json"
-        s3.download_file("multi-x-serverless-text-2-speech-censoring", index_file, local_index_name)
+        s3.download_file("caribou-text-2-speech-censoring", index_file, local_index_name)
 
         local_wav_name = f"{tmp_dir}/speech.wav"
-        s3.download_file("multi-x-serverless-text-2-speech-censoring", file_name, local_wav_name)
+        s3.download_file("caribou-text-2-speech-censoring", file_name, local_wav_name)
 
         dlFile = open(local_wav_name, "rb").read()
         dlFile = BytesIO(dlFile)
@@ -283,7 +283,7 @@ def censor(event: dict[str, Any]) -> dict[str, Any]:
 
         s3.upload_file(
             os.path.join(tmp_dir, file_name),
-            "multi-x-serverless-text-2-speech-censoring",
+            "caribou-text-2-speech-censoring",
             f"text_2_speech_censoring/{file_name}",
         )
 
