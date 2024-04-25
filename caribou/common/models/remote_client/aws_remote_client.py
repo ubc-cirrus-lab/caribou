@@ -16,6 +16,7 @@ from caribou.common.constants import (
     GLOBAL_SYSTEM_REGION,
     SYNC_MESSAGES_TABLE,
     SYNC_PREDECESSOR_COUNTER_TABLE,
+    FRAMEWORK_RESOURCES_BUCKET,
 )
 from caribou.common.models.remote_client.remote_client import RemoteClient
 from caribou.deployment.common.deploy.models.resource import Resource
@@ -595,11 +596,21 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
 
     def upload_resource(self, key: str, resource: bytes) -> None:
         client = self._client("s3")
-        client.put_object(Body=resource, Bucket="caribou-resources", Key=key)
+        try:
+            client.put_object(Body=resource, Bucket=FRAMEWORK_RESOURCES_BUCKET, Key=key)
+        except ClientError as e:
+            raise RuntimeError(
+                f"Could not upload resource {key} to S3, does the bucket {FRAMEWORK_RESOURCES_BUCKET} exist and do you have permission to access it: {str(e)}"
+            ) from e
 
     def download_resource(self, key: str) -> bytes:
         client = self._client("s3")
-        response = client.get_object(Bucket="caribou-resources", Key=key)
+        try:
+            response = client.get_object(Bucket=FRAMEWORK_RESOURCES_BUCKET, Key=key)
+        except ClientError as e:
+            raise RuntimeError(
+                f"Could not upload resource {key} to S3, does the bucket {FRAMEWORK_RESOURCES_BUCKET} exist and do you have permission to access it: {str(e)}"
+            ) from e
         return response["Body"].read()
 
     def get_keys(self, table_name: str) -> list[str]:
@@ -720,7 +731,12 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
 
     def remove_resource(self, key: str) -> None:
         client = self._client("s3")
-        client.delete_object(Bucket="caribou-resources", Key=key)
+        try:
+            client.delete_object(Bucket=FRAMEWORK_RESOURCES_BUCKET, Key=key)
+        except ClientError as e:
+            raise RuntimeError(
+                f"Could not upload resource {key} to S3, does the bucket {FRAMEWORK_RESOURCES_BUCKET} exist and do you have permission to access it: {str(e)}"
+            ) from e
 
     def remove_ecr_repository(self, repository_name: str) -> None:
         repository_name = repository_name.lower()
