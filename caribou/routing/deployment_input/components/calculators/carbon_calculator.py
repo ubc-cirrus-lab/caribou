@@ -199,4 +199,4 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
                 "video_analytics-0_0_1-Recognition:video_analytics-0_0_1-Decode_7_0:11": 0.5896474375591176,
                 "video_analytics-0_0_1-Recognition:video_analytics-0_0_1-Decode_8_0:12": 0.5896474375591176,
             }
-        return data[instance]
+        return data[instance] if instance in data else 0.5
