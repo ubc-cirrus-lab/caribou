@@ -1,7 +1,7 @@
 from unittest.mock import patch, MagicMock
 from caribou.syncers.log_syncer import LogSyncer
 from caribou.common.constants import (
-    DEPLOYMENT_MANAGER_RESOURCE_TABLE,
+    DEPLOYMENT_RESOURCES_TABLE,
     WORKFLOW_SUMMARY_TABLE,
     FORGETTING_TIME_DAYS,
     GLOBAL_TIME_ZONE,
@@ -35,13 +35,13 @@ class TestLogSyncer(unittest.TestCase):
     @patch("caribou.syncers.log_syncer.LogSyncer._get_time_intervals_to_sync", return_value=["interval1"])
     def test_sync(self, mock_get_time_intervals_to_sync, mock_log_sync_workflow, mock_endpoints):
         # Set up the mocks
-        mock_deployment_manager_client = MagicMock()
-        mock_deployment_manager_client.get_all_values_from_table.return_value = {"workflow1": "config1"}
+        mock_deployment_resources_client = MagicMock()
+        mock_deployment_resources_client.get_all_values_from_table.return_value = {"workflow1": "config1"}
         mock_workflow_summary_client = MagicMock()
         mock_workflow_summary_client.get_value_from_table.return_value = '{"last_sync_time": "time1"}'
 
         # Configure the mock_endpoints
-        mock_endpoints.return_value.get_deployment_manager_client.return_value = mock_deployment_manager_client
+        mock_endpoints.return_value.get_deployment_resources_client.return_value = mock_deployment_resources_client
         mock_endpoints.return_value.get_datastore_client.return_value = mock_workflow_summary_client
 
         # Create a LogSyncer instance
@@ -51,7 +51,7 @@ class TestLogSyncer(unittest.TestCase):
         log_syncer.sync()
 
         # Check that the mocks were called as expected
-        mock_deployment_manager_client.get_all_values_from_table.assert_called_once()
+        mock_deployment_resources_client.get_all_values_from_table.assert_called_once()
         mock_workflow_summary_client.get_value_from_table.assert_called_once()
         mock_get_time_intervals_to_sync.assert_called_once()
         mock_log_sync_workflow.assert_called_once_with(

@@ -6,7 +6,7 @@ import botocore.exceptions
 
 from caribou.common.constants import (
     DEPLOYMENT_MANAGER_RESOURCE_TABLE,
-    DEPLOYMENT_OPTIMIZATION_MONITOR_RESOURCE_TABLE,
+    DEPLOYMENT_RESOURCES_TABLE,
     WORKFLOW_PLACEMENT_DECISION_TABLE,
 )
 from caribou.common.models.endpoints import Endpoints
@@ -57,7 +57,7 @@ class Deployer:
             )
 
         # Upload the workflow to the solver
-        self._upload_workflow_to_deployment_optimization_monitor()
+        self._upload_workflow_to_deployment_manager()
 
         # Build the workflow resources, e.g. deployment packages, iam roles, etc.
         logger.info("Building deployment package")
@@ -113,7 +113,7 @@ class Deployer:
             self._config, filtered_function_to_deployment_regions, workflow_function_descriptions, deployed_regions
         )
 
-        self._deployment_packager.re_build(self._workflow, self._endpoints.get_deployment_manager_client())
+        self._deployment_packager.re_build(self._workflow, self._endpoints.get_deployment_resources_client())
 
         deployment_plan = DeploymentPlan(self._workflow.get_deployment_instructions())
 
@@ -157,7 +157,7 @@ class Deployer:
         workflow_id = f"{self._workflow.name}-{self._workflow.version}"
         self._config.set_workflow_id(workflow_id)
 
-    def _upload_workflow_to_deployment_optimization_monitor(self) -> None:
+    def _upload_workflow_to_deployment_manager(self) -> None:
         assert self._workflow is not None, "Workflow is None, this should not happen"
         workflow_config = self._workflow.get_workflow_config().to_json()
 
@@ -168,13 +168,13 @@ class Deployer:
 
         payload_json = json.dumps(payload)
 
-        self._endpoints.get_deployment_optimization_monitor_client().set_value_in_table(
-            DEPLOYMENT_OPTIMIZATION_MONITOR_RESOURCE_TABLE, self._config.workflow_id, payload_json
+        self._endpoints.get_deployment_manager_client().set_value_in_table(
+            DEPLOYMENT_MANAGER_RESOURCE_TABLE, self._config.workflow_id, payload_json
         )
 
     def _get_workflow_already_deployed(self) -> bool:
-        return self._endpoints.get_deployment_optimization_monitor_client().get_key_present_in_table(
-            DEPLOYMENT_OPTIMIZATION_MONITOR_RESOURCE_TABLE, self._config.workflow_id
+        return self._endpoints.get_deployment_manager_client().get_key_present_in_table(
+            DEPLOYMENT_MANAGER_RESOURCE_TABLE, self._config.workflow_id
         )
 
     def _get_new_deployment_instances(self, staging_area_data: dict) -> dict[str, dict[str, Any]]:
@@ -193,7 +193,7 @@ class Deployer:
         workflow_placement_decision = self._workflow.get_workflow_placement_decision_initial_deployment()
         workflow_placement_decision_json = json.dumps(workflow_placement_decision)
 
-        self._endpoints.get_deployment_optimization_monitor_client().set_value_in_table(
+        self._endpoints.get_deployment_manager_client().set_value_in_table(
             WORKFLOW_PLACEMENT_DECISION_TABLE, self._config.workflow_id, workflow_placement_decision_json
         )
 
@@ -215,8 +215,8 @@ class Deployer:
 
         payload_json = json.dumps(payload)
 
-        self._endpoints.get_deployment_manager_client().set_value_in_table(
-            DEPLOYMENT_MANAGER_RESOURCE_TABLE, self._config.workflow_id, payload_json
+        self._endpoints.get_deployment_resources_client().set_value_in_table(
+            DEPLOYMENT_RESOURCES_TABLE, self._config.workflow_id, payload_json
         )
 
         self._workflow.set_deployed_regions(deployed_regions)
@@ -243,7 +243,7 @@ class Deployer:
         with open(deployment_packege_filename, "rb") as deployment_package_file:
             deployment_package = deployment_package_file.read()
 
-        self._endpoints.get_deployment_manager_client().upload_resource(
+        self._endpoints.get_deployment_resources_client().upload_resource(
             f"deployment_package_{self._config.workflow_id}", deployment_package
         )
 

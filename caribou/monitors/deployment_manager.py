@@ -10,8 +10,8 @@ from caribou.common.constants import (
     CARBON_REGION_TABLE,
     COARSE_GRAINED_DEPLOYMENT_ALGORITHM_CARBON_PER_INSTANCE_INVOCATION_ESTIMATE,
     DEFAULT_MONITOR_COOLDOWN,
-    DEPLOYMENT_OPTIMIZATION_MONITOR_RESOURCE_TABLE,
-    DEPLOYMENT_OPTIMIZATION_MONITOR_WORKFLOW_INFO_TABLE,
+    DEPLOYMENT_MANAGER_RESOURCE_TABLE,
+    DEPLOYMENT_MANAGER_WORKFLOW_INFO_TABLE,
     DISTANCE_FOR_POTENTIAL_MIGRATION,
     FORGETTING_TIME_DAYS,
     GLOBAL_SYSTEM_REGION,
@@ -41,19 +41,19 @@ deployment_algorithm_mapping = {
 }
 
 
-class DeploymentOptimizationMonitor(Monitor):
+class DeploymentManager(Monitor):
     def __init__(self) -> None:
         super().__init__()
         self.workflow_collector = WorkflowCollector()
 
     def check(self) -> None:
-        deployment_optimization_monitor_client = self._endpoints.get_deployment_optimization_monitor_client()
-        workflow_ids = deployment_optimization_monitor_client.get_keys(DEPLOYMENT_OPTIMIZATION_MONITOR_RESOURCE_TABLE)
+        deployment_manager_client = self._endpoints.get_deployment_manager_client()
+        workflow_ids = deployment_manager_client.get_keys(DEPLOYMENT_MANAGER_RESOURCE_TABLE)
         data_collector_client = self._endpoints.get_data_collector_client()
 
         for workflow_id in workflow_ids:
-            workflow_info_raw = deployment_optimization_monitor_client.get_value_from_table(
-                DEPLOYMENT_OPTIMIZATION_MONITOR_WORKFLOW_INFO_TABLE, workflow_id
+            workflow_info_raw = deployment_manager_client.get_value_from_table(
+                DEPLOYMENT_MANAGER_WORKFLOW_INFO_TABLE, workflow_id
             )
 
             if workflow_info_raw is None:
@@ -68,7 +68,7 @@ class DeploymentOptimizationMonitor(Monitor):
             self.workflow_collector.run_on_workflow(workflow_id)
 
             workflow_config_from_table = data_collector_client.get_value_from_table(
-                DEPLOYMENT_OPTIMIZATION_MONITOR_RESOURCE_TABLE, workflow_id
+                DEPLOYMENT_MANAGER_RESOURCE_TABLE, workflow_id
             )
 
             workflow_json = json.loads(workflow_config_from_table)
@@ -131,8 +131,8 @@ class DeploymentOptimizationMonitor(Monitor):
             ).strftime(TIME_FORMAT)
         }
 
-        self._endpoints.get_deployment_optimization_monitor_client().set_value_in_table(
-            DEPLOYMENT_OPTIMIZATION_MONITOR_WORKFLOW_INFO_TABLE, workflow_id, json.dumps(new_workflow_info)
+        self._endpoints.get_deployment_manager_client().set_value_in_table(
+            DEPLOYMENT_MANAGER_WORKFLOW_INFO_TABLE, workflow_id, json.dumps(new_workflow_info)
         )
 
     def _upload_new_workflow_info(self, tokens_left: int, workflow_id: str) -> int:
@@ -144,8 +144,8 @@ class DeploymentOptimizationMonitor(Monitor):
             "next_check": (datetime.now(GLOBAL_TIME_ZONE) + timedelta(seconds=next_solve_delta)).strftime(TIME_FORMAT),
         }
 
-        self._endpoints.get_deployment_optimization_monitor_client().set_value_in_table(
-            DEPLOYMENT_OPTIMIZATION_MONITOR_WORKFLOW_INFO_TABLE, workflow_id, json.dumps(new_workflow_info)
+        self._endpoints.get_deployment_manager_client().set_value_in_table(
+            DEPLOYMENT_MANAGER_WORKFLOW_INFO_TABLE, workflow_id, json.dumps(new_workflow_info)
         )
 
         return next_solve_delta
@@ -196,7 +196,7 @@ class DeploymentOptimizationMonitor(Monitor):
         )
 
     def _get_potential_carbon_savings_per_invocation_s(self, home_region: str) -> float:
-        home_region_carbon_info_raw = self._endpoints.get_deployment_optimization_monitor_client().get_value_from_table(
+        home_region_carbon_info_raw = self._endpoints.get_deployment_manager_client().get_value_from_table(
             CARBON_REGION_TABLE, home_region
         )
         if home_region_carbon_info_raw is None:
@@ -211,7 +211,7 @@ class DeploymentOptimizationMonitor(Monitor):
 
         carbon_intensities = []
         for region in potential_offloading_regions:
-            region_carbon_raw = self._endpoints.get_deployment_optimization_monitor_client().get_value_from_table(
+            region_carbon_raw = self._endpoints.get_deployment_manager_client().get_value_from_table(
                 CARBON_REGION_TABLE, region
             )
             if region_carbon_raw is None:
@@ -267,7 +267,7 @@ class DeploymentOptimizationMonitor(Monitor):
         )
 
     def _get_carbon_intensity_system(self) -> float:
-        region_carbon_raw = self._endpoints.get_deployment_optimization_monitor_client().get_value_from_table(
+        region_carbon_raw = self._endpoints.get_deployment_manager_client().get_value_from_table(
             CARBON_REGION_TABLE, GLOBAL_SYSTEM_REGION
         )
 
