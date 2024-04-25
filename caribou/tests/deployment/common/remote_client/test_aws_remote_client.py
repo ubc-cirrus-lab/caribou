@@ -17,6 +17,7 @@ from caribou.common.constants import (
     SYNC_MESSAGES_TABLE,
     CARIBOU_WORKFLOW_IMAGES_TABLE,
     GLOBAL_TIME_ZONE,
+    DEPLOYMENT_RESOURCES_BUCKET,
 )
 
 
@@ -478,7 +479,9 @@ class TestAWSRemoteClient(unittest.TestCase):
         resource = b"test_resource"
         self.aws_client.upload_resource(key, resource)
         mock_client.assert_called_with("s3")
-        mock_client.return_value.put_object.assert_called_once_with(Body=resource, Bucket="caribou-resources", Key=key)
+        mock_client.return_value.put_object.assert_called_once_with(
+            Body=resource, Bucket=DEPLOYMENT_RESOURCES_BUCKET, Key=key
+        )
 
     @patch.object(AWSRemoteClient, "_client")
     def test_download_resource(self, mock_client):
