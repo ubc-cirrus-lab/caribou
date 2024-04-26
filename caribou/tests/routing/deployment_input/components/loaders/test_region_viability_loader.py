@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import MagicMock
-from caribou.routing.deployment_input.components.loaders.region_viability_loader import RegionViabilityLoader
+from caribou.deployment_solver.deployment_input.components.loaders.region_viability_loader import RegionViabilityLoader
 
 
 class TestRegionViabilityLoader(unittest.TestCase):

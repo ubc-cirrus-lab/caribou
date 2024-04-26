@@ -1,5 +1,5 @@
 import unittest
-from caribou.routing.deployment_input.components.calculator import InputCalculator
+from caribou.deployment_solver.deployment_input.components.calculator import InputCalculator
 
 
 class TestInputCalculator(unittest.TestCase):

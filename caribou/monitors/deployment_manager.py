@@ -25,14 +25,18 @@ from caribou.common.constants import (
     WORKFLOW_INSTANCE_TABLE,
 )
 from caribou.data_collector.components.workflow.workflow_collector import WorkflowCollector
-from caribou.monitors.monitor import Monitor
-from caribou.routing.deployment_algorithms.coarse_grained_deployment_algorithm import CoarseGrainedDeploymentAlgorithm
-from caribou.routing.deployment_algorithms.deployment_algorithm import DeploymentAlgorithm
-from caribou.routing.deployment_algorithms.fine_grained_deployment_algorithm import FineGrainedDeploymentAlgorithm
-from caribou.routing.deployment_algorithms.stochastic_heuristic_deployment_algorithm import (
+from caribou.deployment_solver.deployment_algorithms.coarse_grained_deployment_algorithm import (
+    CoarseGrainedDeploymentAlgorithm,
+)
+from caribou.deployment_solver.deployment_algorithms.deployment_algorithm import DeploymentAlgorithm
+from caribou.deployment_solver.deployment_algorithms.fine_grained_deployment_algorithm import (
+    FineGrainedDeploymentAlgorithm,
+)
+from caribou.deployment_solver.deployment_algorithms.stochastic_heuristic_deployment_algorithm import (
     StochasticHeuristicDeploymentAlgorithm,
 )
-from caribou.routing.workflow_config import WorkflowConfig
+from caribou.deployment_solver.workflow_config import WorkflowConfig
+from caribou.monitors.monitor import Monitor
 
 deployment_algorithm_mapping = {
     "coarse_grained_deployment_algorithm": CoarseGrainedDeploymentAlgorithm,

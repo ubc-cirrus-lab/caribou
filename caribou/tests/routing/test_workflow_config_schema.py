@@ -1,4 +1,4 @@
-from caribou.routing.workflow_config_schema import Instance, WorkflowConfigSchema
+from caribou.deployment_solver.workflow_config_schema import Instance, WorkflowConfigSchema
 
 import unittest
 

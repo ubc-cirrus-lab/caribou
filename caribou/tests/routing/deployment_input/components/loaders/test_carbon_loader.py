@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import Mock, patch
-from caribou.routing.deployment_input.components.loaders.carbon_loader import CarbonLoader
+from caribou.deployment_solver.deployment_input.components.loaders.carbon_loader import CarbonLoader
 
 
 class TestCarbonLoader(unittest.TestCase):

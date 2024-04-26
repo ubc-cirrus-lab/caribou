@@ -3,9 +3,9 @@ from typing import Optional
 
 import numpy as np
 
-from caribou.routing.deployment_input.components.calculator import InputCalculator
-from caribou.routing.deployment_input.components.loaders.performance_loader import PerformanceLoader
-from caribou.routing.deployment_input.components.loaders.workflow_loader import WorkflowLoader
+from caribou.deployment_solver.deployment_input.components.calculator import InputCalculator
+from caribou.deployment_solver.deployment_input.components.loaders.performance_loader import PerformanceLoader
+from caribou.deployment_solver.deployment_input.components.loaders.workflow_loader import WorkflowLoader
 
 
 class RuntimeCalculator(InputCalculator):

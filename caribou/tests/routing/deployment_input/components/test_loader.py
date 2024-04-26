@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import Mock, patch
-from caribou.routing.deployment_input.components.loader import InputLoader
+from caribou.deployment_solver.deployment_input.components.loader import InputLoader
 
 
 class TestInputLoader(unittest.TestCase):

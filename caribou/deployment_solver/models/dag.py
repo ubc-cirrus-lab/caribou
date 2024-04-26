@@ -2,7 +2,7 @@ from collections import deque
 
 import numpy as np
 
-from caribou.routing.models.instance_indexer import InstanceIndexer
+from caribou.deployment_solver.models.instance_indexer import InstanceIndexer
 
 
 class DAG:

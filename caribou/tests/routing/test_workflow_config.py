@@ -4,7 +4,7 @@ import json
 
 from unittest.mock import MagicMock
 
-from caribou.routing.workflow_config import WorkflowConfig
+from caribou.deployment_solver.workflow_config import WorkflowConfig
 
 
 class TestWorkflowConfig(unittest.TestCase):

@@ -1,6 +1,6 @@
 from typing import Optional
 
-from caribou.routing.workflow_config import WorkflowConfig
+from caribou.deployment_solver.workflow_config import WorkflowConfig
 
 
 class Ranker:

@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import Mock, patch
 
-from caribou.routing.deployment_input.components.calculators.carbon_calculator import CarbonCalculator
+from caribou.deployment_solver.deployment_input.components.calculators.carbon_calculator import CarbonCalculator
 
 
 class TestCarbonCalculator(unittest.TestCase):

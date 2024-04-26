@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch, MagicMock
-from caribou.routing.deployment_algorithms.deployment_algorithm import DeploymentAlgorithm
-from caribou.routing.workflow_config import WorkflowConfig
+from caribou.deployment_solver.deployment_algorithms.deployment_algorithm import DeploymentAlgorithm
+from caribou.deployment_solver.workflow_config import WorkflowConfig
 
 
 class ConcreteDeploymentAlgorithm(DeploymentAlgorithm):
@@ -24,7 +24,7 @@ class ConcreteDeploymentAlgorithmCallingSuper(DeploymentAlgorithm):
 
 
 class TestDeploymentAlgorithm(unittest.TestCase):
-    @patch("caribou.routing.deployment_algorithms.deployment_algorithm.InputManager")
+    @patch("caribou.deployment_solver.deployment_algorithms.deployment_algorithm.InputManager")
     def setUp(self, mock_input_manager):
         mock_input_manager_instance = MagicMock()
         mock_input_manager.return_value = mock_input_manager_instance
@@ -32,13 +32,13 @@ class TestDeploymentAlgorithm(unittest.TestCase):
         self.workflow_config_mock.home_region = "r1:p1"
         self.deployment_algorithm = ConcreteDeploymentAlgorithm(self.workflow_config_mock)
 
-    @patch("caribou.routing.deployment_algorithms.deployment_algorithm.InputManager")
-    @patch("caribou.routing.deployment_algorithms.deployment_algorithm.RegionIndexer")
-    @patch("caribou.routing.deployment_algorithms.deployment_algorithm.InstanceIndexer")
-    @patch("caribou.routing.deployment_algorithms.deployment_algorithm.SimpleDeploymentMetricsCalculator")
-    @patch("caribou.routing.deployment_algorithms.deployment_algorithm.Ranker")
-    @patch("caribou.routing.deployment_algorithms.deployment_algorithm.Formatter")
-    @patch("caribou.routing.deployment_algorithms.deployment_algorithm.Endpoints")
+    @patch("caribou.deployment_solver.deployment_algorithms.deployment_algorithm.InputManager")
+    @patch("caribou.deployment_solver.deployment_algorithms.deployment_algorithm.RegionIndexer")
+    @patch("caribou.deployment_solver.deployment_algorithms.deployment_algorithm.InstanceIndexer")
+    @patch("caribou.deployment_solver.deployment_algorithms.deployment_algorithm.SimpleDeploymentMetricsCalculator")
+    @patch("caribou.deployment_solver.deployment_algorithms.deployment_algorithm.Ranker")
+    @patch("caribou.deployment_solver.deployment_algorithms.deployment_algorithm.Formatter")
+    @patch("caribou.deployment_solver.deployment_algorithms.deployment_algorithm.Endpoints")
     def test_init(
         self,
         mock_endpoints,
@@ -95,7 +95,7 @@ class TestDeploymentAlgorithm(unittest.TestCase):
         self.deployment_algorithm._formatter.format.assert_called_once()
         self.deployment_algorithm._upload_result.assert_called_once()
 
-    @patch("caribou.routing.deployment_algorithms.deployment_algorithm.InputManager.get_all_regions")
+    @patch("caribou.deployment_solver.deployment_algorithms.deployment_algorithm.InputManager.get_all_regions")
     def test_get_workflow_level_permitted_regions(self, mock_get_all_regions):
         mock_get_all_regions.return_value = ["r1:p1", "r2:p1", "r3:p1"]
         self.workflow_config_mock.regions_and_providers = {
@@ -170,7 +170,7 @@ class TestDeploymentAlgorithm(unittest.TestCase):
 
         self.assertEqual(actual_regions, expected_regions)
 
-    @patch("caribou.routing.deployment_algorithms.deployment_algorithm.Endpoints")
+    @patch("caribou.deployment_solver.deployment_algorithms.deployment_algorithm.Endpoints")
     def test_upload_result(self, mock_endpoints):
         mock_client = MagicMock()
         mock_endpoints.get_deployment_algorithm_workflow_placement_decision_client.return_value = mock_client
@@ -190,7 +190,7 @@ class TestDeploymentAlgorithm(unittest.TestCase):
         self.assertEqual(selected_deployment, mock_deployments[0])
 
     @patch(
-        "caribou.routing.deployment_algorithms.deployment_algorithm.SimpleDeploymentMetricsCalculator.calculate_deployment_metrics"
+        "caribou.deployment_solver.deployment_algorithms.deployment_algorithm.SimpleDeploymentMetricsCalculator.calculate_deployment_metrics"
     )
     def test_initialise_home_deployment(self, mock_calculate_deployment_metrics):
         mock_calculate_deployment_metrics.return_value = {"cost": 100}

@@ -1,4 +1,4 @@
-from caribou.routing.models.indexer import Indexer
+from caribou.deployment_solver.models.indexer import Indexer
 
 
 class InstanceIndexer(Indexer):

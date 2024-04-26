@@ -3,7 +3,9 @@ import statistics
 import numpy as np
 import scipy.stats as st
 
-from caribou.routing.deployment_metrics_calculator.deployment_metrics_calculator import DeploymentMetricsCalculator
+from caribou.deployment_solver.deployment_metrics_calculator.deployment_metrics_calculator import (
+    DeploymentMetricsCalculator,
+)
 
 
 class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
