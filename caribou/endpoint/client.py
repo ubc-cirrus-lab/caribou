@@ -9,7 +9,7 @@ import botocore.exceptions
 from caribou.common.constants import (
     CARIBOU_WORKFLOW_IMAGES_TABLE,
     DEPLOYMENT_MANAGER_RESOURCE_TABLE,
-    DEPLOYMENT_OPTIMIZATION_MONITOR_RESOURCE_TABLE,
+    DEPLOYMENT_RESOURCES_TABLE,
     GLOBAL_TIME_ZONE,
     TIME_FORMAT,
     WORKFLOW_INSTANCE_TABLE,
@@ -129,9 +129,7 @@ class Client:
         return key
 
     def list_workflows(self) -> None:
-        deployed_workflows = self._endpoints.get_deployment_optimization_monitor_client().get_keys(
-            DEPLOYMENT_OPTIMIZATION_MONITOR_RESOURCE_TABLE
-        )
+        deployed_workflows = self._endpoints.get_deployment_manager_client().get_keys(DEPLOYMENT_MANAGER_RESOURCE_TABLE)
 
         if deployed_workflows is None:
             print("No workflows deployed")
@@ -147,15 +145,13 @@ class Client:
         self._endpoints.get_deployment_algorithm_workflow_placement_decision_client().remove_key(
             WORKFLOW_PLACEMENT_DECISION_TABLE, self._workflow_id
         )
-        self._endpoints.get_deployment_optimization_monitor_client().remove_key(
+        self._endpoints.get_deployment_manager_client().remove_key(
             WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE, self._workflow_id
         )
-        self._endpoints.get_deployment_optimization_monitor_client().remove_key(
-            DEPLOYMENT_OPTIMIZATION_MONITOR_RESOURCE_TABLE, self._workflow_id
-        )
+        self._endpoints.get_deployment_manager_client().remove_key(DEPLOYMENT_MANAGER_RESOURCE_TABLE, self._workflow_id)
 
-        currently_deployed_workflows = self._endpoints.get_deployment_manager_client().get_all_values_from_table(
-            DEPLOYMENT_MANAGER_RESOURCE_TABLE
+        currently_deployed_workflows = self._endpoints.get_deployment_resources_client().get_all_values_from_table(
+            DEPLOYMENT_RESOURCES_TABLE
         )
 
         for workflow_id, deployment_manager_config_json in currently_deployed_workflows.items():
@@ -167,15 +163,15 @@ class Client:
                 )
             self._remove_workflow(deployment_manager_config_json)
 
-        self._endpoints.get_deployment_manager_client().remove_resource(f"deployment_package_{self._workflow_id}")
+        self._endpoints.get_deployment_resources_client().remove_resource(f"deployment_package_{self._workflow_id}")
 
-        self._endpoints.get_deployment_manager_client().remove_key(DEPLOYMENT_MANAGER_RESOURCE_TABLE, self._workflow_id)
+        self._endpoints.get_deployment_resources_client().remove_key(DEPLOYMENT_RESOURCES_TABLE, self._workflow_id)
 
         self._endpoints.get_data_collector_client().remove_key(WORKFLOW_INSTANCE_TABLE, self._workflow_id)
 
         self._endpoints.get_datastore_client().remove_key(WORKFLOW_SUMMARY_TABLE, self._workflow_id)
 
-        self._endpoints.get_deployment_manager_client().remove_key(
+        self._endpoints.get_deployment_resources_client().remove_key(
             CARIBOU_WORKFLOW_IMAGES_TABLE, self._workflow_id.replace(".", "_")
         )
 

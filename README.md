@@ -147,7 +147,7 @@ The `all` and `workflow` collectors need a workflow id to be passed as an argume
 
 This manual data collecting is only necessary if you want to collect data for a specific workflow for testing purposes. The first three collectors are automatically run periodically.
 
-The workflow collector is invoked by the monitor and is used to collect data for the workflows that are currently being solved.
+The workflow collector is invoked by the manager and is used to collect data for the workflows that are currently being solved.
 
 Important: For the data collectors to work locally, you need to set some environment variables.
 
@@ -158,10 +158,10 @@ export GOOGLE_API_KEY=<your_key>
 
 ### Find new (optimal) Deployment
 
-Use the monitor to solve for all workflows that have a check outstanding:
+Use the manager to solve for all workflows that have a check outstanding:
 
 ```bash
-poetry run caribou monitor_deployment_optimization
+poetry run caribou manage_deployments
 ```
 
 ### Run Deployment Migrator
