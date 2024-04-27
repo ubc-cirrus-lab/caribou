@@ -23,7 +23,7 @@ class WorkflowRetriever(DataRetriever):
         return self._transform_workflow_summary(workflow_summarized)
 
     def _transform_workflow_summary(self, workflow_summarized: str) -> dict[str, Any]:
-        if workflow_summarized == '':
+        if workflow_summarized == "":
             return {}
         summarized_workflow = json.loads(workflow_summarized)
 

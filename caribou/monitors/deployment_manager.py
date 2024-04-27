@@ -56,7 +56,7 @@ class DeploymentManager(Monitor):
                 DEPLOYMENT_MANAGER_WORKFLOW_INFO_TABLE, workflow_id
             )
 
-            if workflow_info_raw is None or workflow_info_raw == '':
+            if workflow_info_raw is None or workflow_info_raw == "":
                 workflow_info = None
             else:
                 workflow_info = json.loads(workflow_info_raw)
@@ -234,8 +234,12 @@ class DeploymentManager(Monitor):
         self, number_of_instances: int, token_budget: int
     ) -> Optional[dict]:
         algorithm_estimates = {
-            "coarse_grained_deployment_algorithm": COARSE_GRAINED_DEPLOYMENT_ALGORITHM_CARBON_PER_INSTANCE_INVOCATION_ESTIMATE,
-            "stochastic_heuristic_deployment_algorithm": STOCHASTIC_HEURISTIC_DEPLOYMENT_ALGORITHM_CARBON_PER_INSTANCE_INVOCATION_ESTIMATE,
+            "coarse_grained_deployment_algorithm": (
+                COARSE_GRAINED_DEPLOYMENT_ALGORITHM_CARBON_PER_INSTANCE_INVOCATION_ESTIMATE
+            ),
+            "stochastic_heuristic_deployment_algorithm": (
+                STOCHASTIC_HEURISTIC_DEPLOYMENT_ALGORITHM_CARBON_PER_INSTANCE_INVOCATION_ESTIMATE
+            ),
         }
 
         current_best_affordable_deployment_algorithm_run = None
