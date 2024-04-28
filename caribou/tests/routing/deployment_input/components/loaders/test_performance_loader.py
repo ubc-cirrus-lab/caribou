@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import Mock, patch
-from caribou.routing.deployment_input.components.loaders.performance_loader import PerformanceLoader
+from caribou.deployment_solver.deployment_input.components.loaders.performance_loader import PerformanceLoader
 
 
 class TestPerformanceLoader(unittest.TestCase):

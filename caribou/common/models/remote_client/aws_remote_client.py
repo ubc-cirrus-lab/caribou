@@ -13,6 +13,7 @@ from botocore.exceptions import ClientError
 
 from caribou.common.constants import (
     CARIBOU_WORKFLOW_IMAGES_TABLE,
+    DEPLOYMENT_RESOURCES_BUCKET,
     GLOBAL_SYSTEM_REGION,
     SYNC_MESSAGES_TABLE,
     SYNC_PREDECESSOR_COUNTER_TABLE,
@@ -595,11 +596,21 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
 
     def upload_resource(self, key: str, resource: bytes) -> None:
         client = self._client("s3")
-        client.put_object(Body=resource, Bucket="caribou-resources", Key=key)
+        try:
+            client.put_object(Body=resource, Bucket=DEPLOYMENT_RESOURCES_BUCKET, Key=key)
+        except ClientError as e:
+            raise RuntimeError(
+                f"Could not upload resource {key} to S3, does the bucket {DEPLOYMENT_RESOURCES_BUCKET} exist and do you have permission to access it: {str(e)}"  # pylint: disable=line-too-long
+            ) from e
 
     def download_resource(self, key: str) -> bytes:
         client = self._client("s3")
-        response = client.get_object(Bucket="caribou-resources", Key=key)
+        try:
+            response = client.get_object(Bucket=DEPLOYMENT_RESOURCES_BUCKET, Key=key)
+        except ClientError as e:
+            raise RuntimeError(
+                f"Could not upload resource {key} to S3, does the bucket {DEPLOYMENT_RESOURCES_BUCKET} exist and do you have permission to access it: {str(e)}"  # pylint: disable=line-too-long
+            ) from e
         return response["Body"].read()
 
     def get_keys(self, table_name: str) -> list[str]:
@@ -720,7 +731,12 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
 
     def remove_resource(self, key: str) -> None:
         client = self._client("s3")
-        client.delete_object(Bucket="caribou-resources", Key=key)
+        try:
+            client.delete_object(Bucket=DEPLOYMENT_RESOURCES_BUCKET, Key=key)
+        except ClientError as e:
+            raise RuntimeError(
+                f"Could not upload resource {key} to S3, does the bucket {DEPLOYMENT_RESOURCES_BUCKET} exist and do you have permission to access it: {str(e)}"  # pylint: disable=line-too-long
+            ) from e
 
     def remove_ecr_repository(self, repository_name: str) -> None:
         repository_name = repository_name.lower()

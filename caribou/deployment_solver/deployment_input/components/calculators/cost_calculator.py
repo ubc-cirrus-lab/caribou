@@ -1,7 +1,7 @@
-from caribou.routing.deployment_input.components.calculator import InputCalculator
-from caribou.routing.deployment_input.components.calculators.runtime_calculator import RuntimeCalculator
-from caribou.routing.deployment_input.components.loaders.datacenter_loader import DatacenterLoader
-from caribou.routing.deployment_input.components.loaders.workflow_loader import WorkflowLoader
+from caribou.deployment_solver.deployment_input.components.calculator import InputCalculator
+from caribou.deployment_solver.deployment_input.components.calculators.runtime_calculator import RuntimeCalculator
+from caribou.deployment_solver.deployment_input.components.loaders.datacenter_loader import DatacenterLoader
+from caribou.deployment_solver.deployment_input.components.loaders.workflow_loader import WorkflowLoader
 
 
 class CostCalculator(InputCalculator):

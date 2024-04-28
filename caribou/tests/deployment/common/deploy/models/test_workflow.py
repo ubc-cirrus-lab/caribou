@@ -6,7 +6,7 @@ from caribou.deployment.common.deploy.models.function import Function
 from caribou.deployment.common.deploy.models.function_instance import FunctionInstance
 from caribou.deployment.common.deploy.models.instructions import Instruction
 from caribou.deployment.common.deploy.models.workflow import Workflow
-from caribou.routing.workflow_config import WorkflowConfig
+from caribou.deployment_solver.workflow_config import WorkflowConfig
 
 import tempfile
 import shutil

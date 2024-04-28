@@ -3,8 +3,8 @@ from unittest.mock import Mock, patch, MagicMock
 
 import numpy as np
 from caribou.common.models.remote_client.remote_client import RemoteClient
-from caribou.routing.deployment_input.components.loaders.workflow_loader import WorkflowLoader
-from caribou.routing.workflow_config import WorkflowConfig
+from caribou.deployment_solver.deployment_input.components.loaders.workflow_loader import WorkflowLoader
+from caribou.deployment_solver.workflow_config import WorkflowConfig
 
 
 class TestWorkflowLoader(unittest.TestCase):

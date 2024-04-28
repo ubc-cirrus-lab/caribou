@@ -1,9 +1,9 @@
 import unittest
 from unittest.mock import MagicMock, patch
 import numpy as np
-from caribou.routing.deployment_input.components.calculators.runtime_calculator import RuntimeCalculator
-from caribou.routing.deployment_input.components.loaders.performance_loader import PerformanceLoader
-from caribou.routing.deployment_input.components.loaders.workflow_loader import WorkflowLoader
+from caribou.deployment_solver.deployment_input.components.calculators.runtime_calculator import RuntimeCalculator
+from caribou.deployment_solver.deployment_input.components.loaders.performance_loader import PerformanceLoader
+from caribou.deployment_solver.deployment_input.components.loaders.workflow_loader import WorkflowLoader
 
 
 class TestRuntimeCalculator(unittest.TestCase):

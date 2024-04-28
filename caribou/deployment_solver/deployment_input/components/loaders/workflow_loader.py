@@ -9,9 +9,9 @@ from caribou.common.constants import (
 )
 from caribou.common.models.remote_client.remote_client import RemoteClient
 from caribou.common.provider import Provider
-from caribou.routing.deployment_input.components.loader import InputLoader
-from caribou.routing.deployment_input.components.loaders.performance_loader import PerformanceLoader
-from caribou.routing.workflow_config import WorkflowConfig
+from caribou.deployment_solver.deployment_input.components.loader import InputLoader
+from caribou.deployment_solver.deployment_input.components.loaders.performance_loader import PerformanceLoader
+from caribou.deployment_solver.workflow_config import WorkflowConfig
 
 
 class WorkflowLoader(InputLoader):

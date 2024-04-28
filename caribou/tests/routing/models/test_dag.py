@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import MagicMock, patch
-from caribou.routing.models.dag import DAG
-from caribou.routing.models.instance_indexer import InstanceIndexer
+from caribou.deployment_solver.models.dag import DAG
+from caribou.deployment_solver.models.instance_indexer import InstanceIndexer
 import numpy as np
 
 

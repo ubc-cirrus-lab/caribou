@@ -12,7 +12,7 @@ from caribou.common.constants import (
     SOLVER_INPUT_TRANSMISSION_COST_DEFAULT,
 )
 from caribou.common.models.remote_client.remote_client import RemoteClient
-from caribou.routing.deployment_input.components.loader import InputLoader
+from caribou.deployment_solver.deployment_input.components.loader import InputLoader
 
 
 class DatacenterLoader(InputLoader):

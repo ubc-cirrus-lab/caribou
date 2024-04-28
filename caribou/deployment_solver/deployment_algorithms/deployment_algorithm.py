@@ -10,16 +10,18 @@ from caribou.common.constants import (
     WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE,
 )
 from caribou.common.models.endpoints import Endpoints
-from caribou.routing.deployment_input.input_manager import InputManager
-from caribou.routing.deployment_metrics_calculator.deployment_metrics_calculator import DeploymentMetricsCalculator
-from caribou.routing.deployment_metrics_calculator.simple_deployment_metrics_calculator import (
+from caribou.deployment_solver.deployment_input.input_manager import InputManager
+from caribou.deployment_solver.deployment_metrics_calculator.deployment_metrics_calculator import (
+    DeploymentMetricsCalculator,
+)
+from caribou.deployment_solver.deployment_metrics_calculator.simple_deployment_metrics_calculator import (
     SimpleDeploymentMetricsCalculator,
 )
-from caribou.routing.formatter.formatter import Formatter
-from caribou.routing.models.instance_indexer import InstanceIndexer
-from caribou.routing.models.region_indexer import RegionIndexer
-from caribou.routing.ranker.ranker import Ranker
-from caribou.routing.workflow_config import WorkflowConfig
+from caribou.deployment_solver.formatter.formatter import Formatter
+from caribou.deployment_solver.models.instance_indexer import InstanceIndexer
+from caribou.deployment_solver.models.region_indexer import RegionIndexer
+from caribou.deployment_solver.ranker.ranker import Ranker
+from caribou.deployment_solver.workflow_config import WorkflowConfig
 
 
 class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes

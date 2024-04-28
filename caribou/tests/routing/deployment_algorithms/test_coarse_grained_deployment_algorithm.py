@@ -1,13 +1,13 @@
 import unittest
 from unittest.mock import MagicMock, patch
-from caribou.routing.deployment_algorithms.coarse_grained_deployment_algorithm import (
+from caribou.deployment_solver.deployment_algorithms.coarse_grained_deployment_algorithm import (
     CoarseGrainedDeploymentAlgorithm,
 )
 
 
 class TestCoarseGrainedDeploymentAlgorithm(unittest.TestCase):
     @patch(
-        "caribou.routing.deployment_algorithms.coarse_grained_deployment_algorithm.CoarseGrainedDeploymentAlgorithm.__init__",
+        "caribou.deployment_solver.deployment_algorithms.coarse_grained_deployment_algorithm.CoarseGrainedDeploymentAlgorithm.__init__",
         return_value=None,
     )
     def setUp(self, mock_init):
