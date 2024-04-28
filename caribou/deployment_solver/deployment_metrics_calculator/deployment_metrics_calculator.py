@@ -2,11 +2,11 @@ import random
 from abc import ABC, abstractmethod
 
 from caribou.common.constants import TAIL_LATENCY_THRESHOLD
-from caribou.routing.deployment_input.input_manager import InputManager
-from caribou.routing.models.dag import DAG
-from caribou.routing.models.instance_indexer import InstanceIndexer
-from caribou.routing.models.region_indexer import RegionIndexer
-from caribou.routing.workflow_config import WorkflowConfig
+from caribou.deployment_solver.deployment_input.input_manager import InputManager
+from caribou.deployment_solver.models.dag import DAG
+from caribou.deployment_solver.models.instance_indexer import InstanceIndexer
+from caribou.deployment_solver.models.region_indexer import RegionIndexer
+from caribou.deployment_solver.workflow_config import WorkflowConfig
 
 
 class DeploymentMetricsCalculator(ABC):

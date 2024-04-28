@@ -1,10 +1,10 @@
 import unittest
 from unittest.mock import MagicMock, patch, PropertyMock
-from caribou.routing.deployment_algorithms.stochastic_heuristic_deployment_algorithm import (
+from caribou.deployment_solver.deployment_algorithms.stochastic_heuristic_deployment_algorithm import (
     StochasticHeuristicDeploymentAlgorithm,
 )
-from caribou.routing.deployment_algorithms.deployment_algorithm import DeploymentAlgorithm
-from caribou.routing.workflow_config import WorkflowConfig
+from caribou.deployment_solver.deployment_algorithms.deployment_algorithm import DeploymentAlgorithm
+from caribou.deployment_solver.workflow_config import WorkflowConfig
 
 
 class TestStochasticHeuristicDeploymentAlgorithm(unittest.TestCase):

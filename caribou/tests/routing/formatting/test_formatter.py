@@ -1,6 +1,6 @@
 import unittest
 from datetime import datetime, timedelta
-from caribou.routing.formatter.formatter import Formatter
+from caribou.deployment_solver.formatter.formatter import Formatter
 from unittest.mock import patch
 
 

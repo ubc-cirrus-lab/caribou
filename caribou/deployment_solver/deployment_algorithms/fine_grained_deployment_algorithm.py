@@ -1,7 +1,7 @@
 from itertools import product
 from typing import Optional
 
-from caribou.routing.deployment_algorithms.deployment_algorithm import DeploymentAlgorithm
+from caribou.deployment_solver.deployment_algorithms.deployment_algorithm import DeploymentAlgorithm
 
 
 class FineGrainedDeploymentAlgorithm(DeploymentAlgorithm):

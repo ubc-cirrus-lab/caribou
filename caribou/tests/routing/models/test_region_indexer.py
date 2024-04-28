@@ -1,5 +1,5 @@
 import unittest
-from caribou.routing.models.region_indexer import RegionIndexer
+from caribou.deployment_solver.models.region_indexer import RegionIndexer
 
 
 class TestRegionIndexer(unittest.TestCase):

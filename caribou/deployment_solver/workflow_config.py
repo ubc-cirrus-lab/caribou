@@ -3,7 +3,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from caribou.routing.workflow_config_schema import WorkflowConfigSchema
+from caribou.deployment_solver.workflow_config_schema import WorkflowConfigSchema
 
 
 class WorkflowConfig:

@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import Mock, patch
-from caribou.routing.deployment_input.components.loaders.datacenter_loader import DatacenterLoader
+from caribou.deployment_solver.deployment_input.components.loaders.datacenter_loader import DatacenterLoader
 
 
 class TestDatacenterLoader(unittest.TestCase):

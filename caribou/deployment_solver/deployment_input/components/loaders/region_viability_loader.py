@@ -1,6 +1,6 @@
 from caribou.common.constants import AVAILABLE_REGIONS_TABLE
 from caribou.common.models.remote_client.remote_client import RemoteClient
-from caribou.routing.deployment_input.components.loader import InputLoader
+from caribou.deployment_solver.deployment_input.components.loader import InputLoader
 
 
 class RegionViabilityLoader(InputLoader):

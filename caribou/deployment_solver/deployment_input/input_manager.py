@@ -5,17 +5,17 @@ from typing import Optional
 from caribou.common.constants import TAIL_LATENCY_THRESHOLD
 from caribou.common.models.endpoints import Endpoints
 from caribou.common.models.remote_client.remote_client import RemoteClient
-from caribou.routing.deployment_input.components.calculators.carbon_calculator import CarbonCalculator
-from caribou.routing.deployment_input.components.calculators.cost_calculator import CostCalculator
-from caribou.routing.deployment_input.components.calculators.runtime_calculator import RuntimeCalculator
-from caribou.routing.deployment_input.components.loaders.carbon_loader import CarbonLoader
-from caribou.routing.deployment_input.components.loaders.datacenter_loader import DatacenterLoader
-from caribou.routing.deployment_input.components.loaders.performance_loader import PerformanceLoader
-from caribou.routing.deployment_input.components.loaders.region_viability_loader import RegionViabilityLoader
-from caribou.routing.deployment_input.components.loaders.workflow_loader import WorkflowLoader
-from caribou.routing.models.instance_indexer import InstanceIndexer
-from caribou.routing.models.region_indexer import RegionIndexer
-from caribou.routing.workflow_config import WorkflowConfig
+from caribou.deployment_solver.deployment_input.components.calculators.carbon_calculator import CarbonCalculator
+from caribou.deployment_solver.deployment_input.components.calculators.cost_calculator import CostCalculator
+from caribou.deployment_solver.deployment_input.components.calculators.runtime_calculator import RuntimeCalculator
+from caribou.deployment_solver.deployment_input.components.loaders.carbon_loader import CarbonLoader
+from caribou.deployment_solver.deployment_input.components.loaders.datacenter_loader import DatacenterLoader
+from caribou.deployment_solver.deployment_input.components.loaders.performance_loader import PerformanceLoader
+from caribou.deployment_solver.deployment_input.components.loaders.region_viability_loader import RegionViabilityLoader
+from caribou.deployment_solver.deployment_input.components.loaders.workflow_loader import WorkflowLoader
+from caribou.deployment_solver.models.instance_indexer import InstanceIndexer
+from caribou.deployment_solver.models.region_indexer import RegionIndexer
+from caribou.deployment_solver.workflow_config import WorkflowConfig
 
 random.seed(time.time())
 

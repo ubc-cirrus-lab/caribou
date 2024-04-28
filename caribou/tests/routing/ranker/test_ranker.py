@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import MagicMock, patch
-from caribou.routing.workflow_config import WorkflowConfig
-from caribou.routing.ranker.ranker import Ranker
+from caribou.deployment_solver.workflow_config import WorkflowConfig
+from caribou.deployment_solver.ranker.ranker import Ranker
 
 
 class TestRanker(unittest.TestCase):

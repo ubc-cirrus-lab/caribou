@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import MagicMock, patch, Mock
-from caribou.routing.deployment_metrics_calculator.simple_deployment_metrics_calculator import (
+from caribou.deployment_solver.deployment_metrics_calculator.simple_deployment_metrics_calculator import (
     SimpleDeploymentMetricsCalculator,
 )
 

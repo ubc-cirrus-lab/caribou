@@ -3,13 +3,13 @@ from unittest.mock import MagicMock, Mock, patch, call
 
 import numpy as np
 from caribou.common.models.remote_client.remote_client import RemoteClient
-from caribou.routing.deployment_input.components.calculators.carbon_calculator import CarbonCalculator
-from caribou.routing.deployment_input.components.calculators.cost_calculator import CostCalculator
-from caribou.routing.deployment_input.components.calculators.runtime_calculator import RuntimeCalculator
-from caribou.routing.models.instance_indexer import InstanceIndexer
-from caribou.routing.models.region_indexer import RegionIndexer
-from caribou.routing.deployment_input.input_manager import InputManager
-from caribou.routing.workflow_config import WorkflowConfig
+from caribou.deployment_solver.deployment_input.components.calculators.carbon_calculator import CarbonCalculator
+from caribou.deployment_solver.deployment_input.components.calculators.cost_calculator import CostCalculator
+from caribou.deployment_solver.deployment_input.components.calculators.runtime_calculator import RuntimeCalculator
+from caribou.deployment_solver.models.instance_indexer import InstanceIndexer
+from caribou.deployment_solver.models.region_indexer import RegionIndexer
+from caribou.deployment_solver.deployment_input.input_manager import InputManager
+from caribou.deployment_solver.workflow_config import WorkflowConfig
 
 
 class TestInputManager(unittest.TestCase):
