@@ -12,6 +12,7 @@ DEPLOYMENT_MANAGER_WORKFLOW_INFO_TABLE = "deployment_manager_workflow_info_table
 
 # Deployment Manager Tables
 DEPLOYMENT_RESOURCES_TABLE = "deployment_resources_table"
+DEPLOYMENT_RESOURCES_BUCKET = "caribou-deployment-resources"
 
 # Syncronization Node Tables
 SYNC_MESSAGES_TABLE = "sync_messages_table"
