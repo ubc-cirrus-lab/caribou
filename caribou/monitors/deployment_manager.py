@@ -60,14 +60,14 @@ class DeploymentManager(Monitor):
                 DEPLOYMENT_MANAGER_WORKFLOW_INFO_TABLE, workflow_id
             )
 
-            if workflow_info_raw is None:
+            if workflow_info_raw is None or workflow_info_raw == "":
                 workflow_info = None
             else:
                 workflow_info = json.loads(workflow_info_raw)
                 current_time = datetime.now(GLOBAL_TIME_ZONE)
                 next_check = datetime.strptime(workflow_info["next_check"], TIME_FORMAT)
                 if current_time < next_check:
-                    return
+                    continue
 
             self.workflow_collector.run_on_workflow(workflow_id)
 
@@ -97,7 +97,7 @@ class DeploymentManager(Monitor):
             # The solver has never been run before for this workflow, and the workflow has not been invoked enough
             # collect more data and wait
             if total_invocation_counts_since_last_solved < MINIMAL_SOLVE_THRESHOLD and workflow_info is None:
-                return
+                continue
 
             # Income token
             positive_carbon_savings_token = self._calculate_positive_carbon_savings_token(
@@ -117,7 +117,7 @@ class DeploymentManager(Monitor):
                 self._update_workflow_info(
                     carbon_cost - positive_carbon_savings_token - carbon_budget_overflow_last_solved, workflow_id
                 )
-                return
+                continue
 
             expiry_delta_seconds = self._upload_new_workflow_info(
                 affordable_deployment_algorithm_run["leftover_tokens"], workflow_id
@@ -221,7 +221,7 @@ class DeploymentManager(Monitor):
             if region_carbon_raw is None:
                 region_carbon_intensity = SOLVER_INPUT_GRID_CARBON_DEFAULT
             else:
-                region_carbon_intensity = json.loads(region_carbon_raw)["averages"]["overall"]
+                region_carbon_intensity = json.loads(region_carbon_raw)["averages"]["overall"]["carbon_intensity"]
 
             if region_carbon_intensity == SOLVER_INPUT_GRID_CARBON_DEFAULT:
                 # Filter out regions with no carbon intensity data since they skew the std
@@ -238,8 +238,12 @@ class DeploymentManager(Monitor):
         self, number_of_instances: int, token_budget: int
     ) -> Optional[dict]:
         algorithm_estimates = {
-            "coarse_grained_deployment_algorithm": COARSE_GRAINED_DEPLOYMENT_ALGORITHM_CARBON_PER_INSTANCE_INVOCATION_ESTIMATE,
-            "stochastic_heuristic_deployment_algorithm": STOCHASTIC_HEURISTIC_DEPLOYMENT_ALGORITHM_CARBON_PER_INSTANCE_INVOCATION_ESTIMATE,
+            "coarse_grained_deployment_algorithm": (
+                COARSE_GRAINED_DEPLOYMENT_ALGORITHM_CARBON_PER_INSTANCE_INVOCATION_ESTIMATE
+            ),
+            "stochastic_heuristic_deployment_algorithm": (
+                STOCHASTIC_HEURISTIC_DEPLOYMENT_ALGORITHM_CARBON_PER_INSTANCE_INVOCATION_ESTIMATE
+            ),
         }
 
         current_best_affordable_deployment_algorithm_run = None
@@ -272,13 +276,13 @@ class DeploymentManager(Monitor):
 
     def _get_carbon_intensity_system(self) -> float:
         region_carbon_raw = self._endpoints.get_deployment_manager_client().get_value_from_table(
-            CARBON_REGION_TABLE, GLOBAL_SYSTEM_REGION
+            CARBON_REGION_TABLE, f"aws:{GLOBAL_SYSTEM_REGION}"
         )
 
         if region_carbon_raw is None:
             raise ValueError("Invalid system region carbon info")
 
-        region_carbon_intensity = json.loads(region_carbon_raw)["averages"]["overall"]
+        region_carbon_intensity = json.loads(region_carbon_raw)["averages"]["overall"]["carbon_intensity"]
         return region_carbon_intensity
 
     def _get_solve_hours(self, number_of_solves: int) -> list[str]:

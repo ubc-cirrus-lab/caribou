@@ -211,8 +211,8 @@ class TestDeploymentManager(unittest.TestCase):
                     }
                 }
             ),
-            json.dumps({"averages": {"overall": 1}}),
-            json.dumps({"averages": {"overall": 2}}),
+            json.dumps({"averages": {"overall": {"carbon_intensity": 1}}}),
+            json.dumps({"averages": {"overall": {"carbon_intensity": 2}}}),
         ]
 
         # Act
@@ -290,7 +290,7 @@ class TestDeploymentManager(unittest.TestCase):
         # Arrange
         mock_client = MagicMock()
         self.mock_endpoints.get_deployment_manager_client.return_value = mock_client
-        mock_client.get_value_from_table.return_value = json.dumps({"averages": {"overall": 1}})
+        mock_client.get_value_from_table.return_value = json.dumps({"averages": {"overall": {"carbon_intensity": 1}}})
 
         # Act
         result = self.deployment_manager._get_carbon_intensity_system()
@@ -298,7 +298,7 @@ class TestDeploymentManager(unittest.TestCase):
         # Assert
         self.assertEqual(result, 1)  # This is the expected result
         self.mock_endpoints.get_deployment_manager_client.assert_called_once()
-        mock_client.get_value_from_table.assert_called_once_with(CARBON_REGION_TABLE, GLOBAL_SYSTEM_REGION)
+        mock_client.get_value_from_table.assert_called_once_with(CARBON_REGION_TABLE, f"aws:{GLOBAL_SYSTEM_REGION}")
 
     def test_get_solve_hours(self):
         # Arrange
