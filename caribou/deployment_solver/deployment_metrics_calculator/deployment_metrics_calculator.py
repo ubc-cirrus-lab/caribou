@@ -26,6 +26,7 @@ class DeploymentMetricsCalculator(ABC):
         dag: DAG = DAG(list(workflow_config.instances.values()), instance_indexer)
         self._prerequisites_dictionary = dag.get_prerequisites_dict()
         self._successor_dictionary = dag.get_preceeding_dict()
+        self._topological_order = dag.topological_sort()
 
         # Get the home region index -> this is the region that the workflow starts from
         self._home_region_index = region_indexer.get_value_indices()[workflow_config.home_region]
@@ -54,7 +55,8 @@ class DeploymentMetricsCalculator(ABC):
         # Keep track of the runtime of the instances that were invoked in this round.
         cumulative_runtime_of_instances: list[float] = [0.0] * len(deployment)
 
-        for instance_index, region_index in enumerate(deployment):
+        for instance_index in self._topological_order:
+            region_index = deployment[instance_index]
             if instance_index in invoked_instance_set:  # Only care about the invoked instances
                 predecessor_instance_indices = self._prerequisites_dictionary[instance_index]
 

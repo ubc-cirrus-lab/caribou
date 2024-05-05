@@ -86,6 +86,7 @@ class TestDeploymentMetricsCalculator(unittest.TestCase):
 
         # Call the method with a test deployment
         deployment = [0, 1, 2]
+        self.calculator._topological_order = [i for i in range(len(deployment))]
         metrics = self.calculator.calculate_deployment_metrics(deployment)
 
         # Verify the results
@@ -110,6 +111,7 @@ class TestDeploymentMetricsCalculator(unittest.TestCase):
     def test_calculate_workflow_2_nodes(self, mock_is_invoked):
         # Represent a case where the workflow has only 2 instances, deployed in region 0 and 1
         deployment = [0, 1]
+        self.calculator._topological_order = [i for i in range(len(deployment))]
         self.calculator._prerequisites_dictionary = {
             0: [],
             1: [0],
@@ -132,6 +134,7 @@ class TestDeploymentMetricsCalculator(unittest.TestCase):
     def test_calculate_workflow_3_nodes(self, mock_is_invoked):
         # Represent a case where the workflow has only 3 instances, where there are 2 childs
         deployment = [0, 1, 1]
+        self.calculator._topological_order = [i for i in range(len(deployment))]
         self.calculator._prerequisites_dictionary = {
             0: [],
             1: [0],
@@ -158,6 +161,7 @@ class TestDeploymentMetricsCalculator(unittest.TestCase):
     def test_calculate_workflow_5_nodes_base(self, mock_is_invoked):
         # Represent a case where the workflow has 5 instances 1 root with 3 childs, 2 of the childs join to 1 child
         deployment = [0, 0, 0, 0, 0]
+        self.calculator._topological_order = [i for i in range(len(deployment))]
         self.calculator._prerequisites_dictionary = {0: [], 1: [0], 2: [0], 3: [0], 4: [1, 2]}
         self.calculator._successor_dictionary = {
             0: [1, 2, 3],
@@ -196,6 +200,7 @@ class TestDeploymentMetricsCalculator(unittest.TestCase):
             3: [],
             4: [],
         }
+        self.calculator._topological_order = [i for i in range(len(deployment))]
         mock_is_invoked.side_effect = self.is_invoked_replacement
         self.transmission_matrix = [[1]]
         # Case 1 - ALL on
