@@ -1,5 +1,6 @@
 import json
 import math
+import pdb
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -53,6 +54,7 @@ class DeploymentManager(Monitor):
     def check(self) -> None:
         deployment_manager_client = self._endpoints.get_deployment_manager_client()
         workflow_ids = deployment_manager_client.get_keys(DEPLOYMENT_MANAGER_RESOURCE_TABLE)
+        print(workflow_ids)
         data_collector_client = self._endpoints.get_data_collector_client()
 
         for workflow_id in workflow_ids:
@@ -67,7 +69,8 @@ class DeploymentManager(Monitor):
                 current_time = datetime.now(GLOBAL_TIME_ZONE)
                 next_check = datetime.strptime(workflow_info["next_check"], TIME_FORMAT)
                 if current_time < next_check:
-                    continue
+                    pass
+                    # continue
 
             self.workflow_collector.run_on_workflow(workflow_id)
 
@@ -81,6 +84,11 @@ class DeploymentManager(Monitor):
                 raise ValueError("Invalid workflow config")
 
             workflow_config_dict = json.loads(workflow_json["workflow_config"])
+
+            print(f'Workflow name: {workflow_config_dict.get('workflow_name', None)}')
+
+            if workflow_config_dict.get('workflow_name', None) != 'map_reduce':
+                continue
 
             workflow_config = WorkflowConfig(workflow_config_dict)
 
@@ -97,7 +105,8 @@ class DeploymentManager(Monitor):
             # The solver has never been run before for this workflow, and the workflow has not been invoked enough
             # collect more data and wait
             if total_invocation_counts_since_last_solved < MINIMAL_SOLVE_THRESHOLD and workflow_info is None:
-                continue
+                pass
+                # continue
 
             # Income token
             positive_carbon_savings_token = self._calculate_positive_carbon_savings_token(
@@ -113,17 +122,19 @@ class DeploymentManager(Monitor):
             )
 
             if not affordable_deployment_algorithm_run:
-                carbon_cost = self._get_cost(len(workflow_config.instances))
-                self._update_workflow_info(
-                    carbon_cost - positive_carbon_savings_token - carbon_budget_overflow_last_solved, workflow_id
-                )
-                continue
+                pass
+                # carbon_cost = self._get_cost(len(workflow_config.instances))
+                # self._update_workflow_info(
+                #     carbon_cost - positive_carbon_savings_token - carbon_budget_overflow_last_solved, workflow_id
+                # )
+                # continue
 
             expiry_delta_seconds = self._upload_new_workflow_info(
                 affordable_deployment_algorithm_run["leftover_tokens"], workflow_id
             )
 
             solve_hours = self._get_solve_hours(affordable_deployment_algorithm_run["number_of_solves"])
+            pdb.set_trace()
             self._run_deployment_algorithm(workflow_config, solve_hours, expiry_delta_seconds)
 
     def _update_workflow_info(self, token_missing: int, workflow_id: str) -> None:

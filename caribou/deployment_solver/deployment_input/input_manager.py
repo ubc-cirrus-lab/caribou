@@ -201,3 +201,20 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
 
     def get_all_regions(self) -> list[str]:
         return self._region_viability_loader.get_available_regions()
+
+    def get_dict(self):
+        return {
+            'workflow_config': self._workflow_config.get_dict(),
+            'region_indexer': self._region_indexer.get_regions(),
+            'instance_indexer': self._instance_indexer.get_nodes(),
+            'tail_latency_threshold': int(self._tail_latency_threshold),
+        }
+
+    @staticmethod
+    def from_dict(input_manager_dict: dict):
+        workflow_config = WorkflowConfig(input_manager_dict.get('workflow_config'))
+        region_indexer = RegionIndexer(input_manager_dict.get('region_indexer'))
+        instance_indexer = InstanceIndexer(input_manager_dict.get('instance_indexer'))
+        copy_obj = InputManager(workflow_config, input_manager_dict.get('tail_latency_threshold'))
+        copy_obj.setup(region_indexer, instance_indexer)
+        return copy_obj

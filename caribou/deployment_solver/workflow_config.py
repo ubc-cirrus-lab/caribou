@@ -26,6 +26,8 @@ class WorkflowConfig:
             raise ValueError(f"Invalid deployment algorithm: {result}")
         self.deployment_algorithm = result
 
+        self._workflow_config_dict = workflow_config
+
     def _verify(self, workflow_config: dict) -> None:
         try:
             WorkflowConfigSchema(**workflow_config)
@@ -61,6 +63,9 @@ class WorkflowConfig:
             altered_regions_and_providers["disallowed_regions"] = disallowed_regions
 
         return altered_regions_and_providers
+
+    def get_dict(self):
+        return self._workflow_config_dict
 
     @property
     def workflow_name(self) -> str:
