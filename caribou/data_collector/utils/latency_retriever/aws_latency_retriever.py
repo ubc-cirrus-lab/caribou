@@ -10,11 +10,7 @@ from caribou.data_collector.utils.latency_retriever.latency_retriever import Lat
 
 
 class AWSLatencyRetriever(LatencyRetriever):
-    def __init__(self) -> None:
-        super().__init__()
-        # This url returns a table with the latency between all AWS regions
-
-        self._percentile_information = self._get_percentile_information()
+    _percentile_information: dict[str, Any]
 
     def _get_percentile_information(self) -> dict[str, Any]:
         percentiles = ["p_10", "p_25", "p_50", "p_75", "p_90", "p_98", "p_99"]
@@ -57,6 +53,11 @@ class AWSLatencyRetriever(LatencyRetriever):
         return data
 
     def get_latency_distribution(self, region_from: dict[str, Any], region_to: dict[str, Any]) -> list[float]:
+        # Retrieve _percentile_information if not already retrieved
+        if not self._percentile_information:
+            # This url returns a table with the latency between all AWS regions
+            self._percentile_information = self._get_percentile_information()
+
         region_from_code = region_from["code"]
         if region_from["code"] not in self._percentile_information:
             region_from_code = region_from_code[:-1] + "1"

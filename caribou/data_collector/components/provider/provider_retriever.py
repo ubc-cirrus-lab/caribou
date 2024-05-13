@@ -160,8 +160,8 @@ class ProviderRetriever(DataRetriever):
             region_key: {
                 "execution_cost": execution_cost_dict[region_key],
                 "transmission_cost": transmission_cost_dict[region_key],
-                "pue": 1.15,
-                "cfe": 0.9,
+                "pue": 1.11,
+                "cfe": 0.0,
                 "average_memory_power": 0.00000392,
                 "average_cpu_power": (0.74 + 0.5 * (3.5 - 0.74)) / 1000,
                 "available_architectures": self._retrieve_aws_available_architectures(execution_cost_dict[region_key]),
