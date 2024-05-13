@@ -189,5 +189,34 @@ class WorkflowLoader(InputLoader):
             .get("architecture", SOLVER_INPUT_ARCHITECTURE_DEFAULT)
         )  # Default to x86_64
 
+    def get_cache(self):
+        return {
+            'data_transfer_size_cache': self._data_transfer_size_cache,
+            'start_hop_size_cache': self._start_hop_size_cache,
+            'runtime_distribution_cache': self._runtime_distribution_cache,
+            'start_hop_latency_distribution_cache': self._start_hop_latency_distribution_cache
+        }
+
+    def update_cache(self, update_dict: dict):
+        self._data_transfer_size_cache.update(update_dict['data_transfer_size_cache'])
+        self._start_hop_size_cache.update(update_dict['start_hop_size_cache'])
+        self._runtime_distribution_cache.update(update_dict['runtime_distribution_cache'])
+        self._start_hop_latency_distribution_cache.update(update_dict['start_hop_latency_distribution_cache'])
+
+    @staticmethod
+    def sync_caches(caches_list: list[dict]):
+        synced_cache = {
+            'data_transfer_size_cache': {},
+            'start_hop_size_cache': {},
+            'runtime_distribution_cache': {},
+            'start_hop_latency_distribution_cache': {}
+        }
+
+        for cache in caches_list:
+            for cache_key in synced_cache:
+                synced_cache[cache_key].update(cache[cache_key])
+
+        return synced_cache
+
     def _retrieve_workflow_data(self, workflow_id: str) -> dict[str, Any]:
         return self._retrieve_data(self._primary_table, workflow_id)

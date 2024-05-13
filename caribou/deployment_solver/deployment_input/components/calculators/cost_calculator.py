@@ -83,3 +83,26 @@ class CostCalculator(InputCalculator):
         # Add the conversion ratio to the cache
         self._execution_conversion_ratio_cache[key] = (cost_from_compute_s, invocation_cost)
         return self._execution_conversion_ratio_cache[key]
+
+    def get_cache(self):
+        return {
+            'execution_conversion_ratio_cache': self._execution_conversion_ratio_cache,
+            'transmission_conversion_ratio_cache': self._transmission_conversion_ratio_cache
+        }
+
+    def update_cache(self, cache: dict):
+        self._execution_conversion_ratio_cache.update(cache['execution_conversion_ratio_cache'])
+        self._transmission_conversion_ratio_cache.update(cache['transmission_conversion_ratio_cache'])
+
+    @staticmethod
+    def sync_caches(caches_list: list[dict]):
+        synced_cache = {
+            'execution_conversion_ratio_cache': {},
+            'transmission_conversion_ratio_cache': {}
+        }
+
+        for cache in caches_list:
+            for cache_key in synced_cache:
+                synced_cache[cache_key].update(cache[cache_key])
+
+        return synced_cache

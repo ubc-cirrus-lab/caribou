@@ -200,3 +200,26 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
                 "video_analytics-0_0_1-Recognition:video_analytics-0_0_1-Decode_8_0:12": 0.5896474375591176,
             }
         return data[instance] if instance in data else 0.5
+
+    def get_cache(self):
+        return {
+            'execution_conversion_ratio_cache': self._execution_conversion_ratio_cache,
+            'transmission_conversion_ratio_cache': self._transmission_conversion_ratio_cache
+        }
+
+    def update_cache(self, cache):
+        self._execution_conversion_ratio_cache.update(cache['execution_conversion_ratio_cache'])
+        self._transmission_conversion_ratio_cache.update(cache['transmission_conversion_ratio_cache'])
+
+    @staticmethod
+    def sync_caches(caches_list: list[dict]):
+        synced_cache = {
+            'execution_conversion_ratio_cache': {},
+            'transmission_conversion_ratio_cache': {}
+        }
+
+        for cache in caches_list:
+            for cache_key in synced_cache:
+                synced_cache[cache_key].update(cache[cache_key])
+
+        return synced_cache

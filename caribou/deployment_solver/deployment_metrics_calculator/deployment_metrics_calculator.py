@@ -1,18 +1,20 @@
-import multiprocessing
-# import pdb
+import time
+
+import pathos.multiprocessing as multiprocessing
+from pathos.multiprocessing import ProcessingPool as Pool
+import pdb
 import random
 from abc import ABC, abstractmethod
-from multiprocessing import Process
 from typing import List
 
 from caribou.common.constants import TAIL_LATENCY_THRESHOLD
-from caribou.deployment_solver.deployment_input.input_manager import InputManager
+from caribou.deployment_solver.deployment_input.input_manager import InputManager, ConcurrentInputManager
 from caribou.deployment_solver.models.dag import DAG
 from caribou.deployment_solver.models.instance_indexer import InstanceIndexer
 from caribou.deployment_solver.models.region_indexer import RegionIndexer
 from caribou.deployment_solver.workflow_config import WorkflowConfig
 
-N_POOL = multiprocessing.cpu_count() - 1
+N_POOL = 4
 
 
 def get_transmission_cost_carbon_latency_wrapper(
@@ -48,7 +50,7 @@ def get_execution_cost_carbon_latency_wrapper(
 
 def calculate_workflow_task(
         input_manager: InputManager,
-        tasks_list: list[dict]
+        tasks_list: list[dict],
 ):
     results = []
     for task in tasks_list:
@@ -57,6 +59,20 @@ def calculate_workflow_task(
         else:
             results.append(input_manager.get_execution_cost_carbon_latency(**task['input']))
     return results
+
+class ConcurrentMetricsCalculator(ABC):
+    def __init__(
+            self,
+            workflow_config: WorkflowConfig,
+            input_manager: InputManager,
+            region_indexer: RegionIndexer,
+            instance_indexer: InstanceIndexer,
+            tail_latency_threshold: int = TAIL_LATENCY_THRESHOLD,
+            n_jobs: int = N_POOL,
+    ):
+        self.n_jobs = n_jobs
+
+
 
 
 class DeploymentMetricsCalculator(ABC):
@@ -70,9 +86,13 @@ class DeploymentMetricsCalculator(ABC):
     ):
         # Not all variables are relevant for other parts
         self._input_manager: InputManager = input_manager
-        self._input_manager_pool: list[InputManager] = [
-            InputManager.from_dict(input_manager.get_dict()) for _ in range(N_POOL)
-        ]
+        self._concurrent_input_manager: ConcurrentInputManager = ConcurrentInputManager(
+            workflow_config,
+            region_indexer,
+            instance_indexer,
+            tail_latency_threshold,
+        )
+        self._concurrent_input_manager.run_input_manager()
 
         self._tail_latency_threshold: int = tail_latency_threshold
 
@@ -95,31 +115,9 @@ class DeploymentMetricsCalculator(ABC):
         """
         raise NotImplementedError
 
-    def _calculate_workflow_parallel(
-            self,
-            transmission_input: list[tuple[int, int, int, int]],
-            execution_input: list[tuple[int, int]]
-    ):
-        tasks = [
-            {'type': 'transmission', 'input': t_input} for t_input in transmission_input
-        ] + [
-            {'type': 'execution', 'input': e_input} for e_input in execution_input
-        ]
-        pool = []
-        for cpu_index in range(N_POOL):
-            start_index = cpu_index * (len(tasks) // N_POOL)
-            end_index = max(start_index + (len(tasks) // N_POOL), len(tasks))
-            cpu_tasks = tasks[start_index:end_index]
-            p = Process(target=calculate_workflow_task, args=(self._input_manager_pool[cpu_index], cpu_tasks,))
-            pool.append(p)
-            p.start()
-
-        for p in pool:
-            p.join()
-
-
 
     def _calculate_workflow(self, deployment: list[int]) -> dict[str, float]:
+        start_time = time.time()
         total_cost = 0.0
         total_carbon = 0.0
 
@@ -143,10 +141,12 @@ class DeploymentMetricsCalculator(ABC):
                 if len(predecessor_instance_indices) == 0:
                     # This is the first instance, deal with home region transmission cost
                     transmission_cost_carbon_latency_inputs.append(
-                        (
-                            self._input_manager.get_dict(), -1, instance_index, self._home_region_index,
-                            region_index
-                        )
+                        {
+                            'from_instance_index': -1,
+                            'to_instance_index': instance_index,
+                            'from_region_index': self._home_region_index,
+                            'to_region_index': region_index,
+                        }
                     )
                 else:  # This is not the first instance
                     for predecessor_instance_index in predecessor_instance_indices:
@@ -155,17 +155,19 @@ class DeploymentMetricsCalculator(ABC):
 
                             # Calculate transmission cost/carbon/runtime TO current instance
                             transmission_cost_carbon_latency_inputs.append(
-                                (
-                                    self._input_manager.get_dict(),
-                                    predecessor_instance_index,
-                                    instance_index,
-                                    deployment[predecessor_instance_index],
-                                    region_index,
-                                )
+                                {
+                                    'from_instance_index': predecessor_instance_index,
+                                    'to_instance_index': instance_index,
+                                    'from_region_index': deployment[predecessor_instance_index],
+                                    'to_region_index': region_index,
+                                }
                             )
                 # Deal with execution cost/carbon/runtime
                 execution_cost_carbon_latency_inputs.append(
-                    (self._input_manager.get_dict(), instance_index, region_index)
+                    {
+                        'instance_index': instance_index,
+                        'region_index': region_index
+                    }
                 )
 
                 # Determine if the next instances will be invoked
@@ -177,38 +179,13 @@ class DeploymentMetricsCalculator(ABC):
 
                 invoked_child_dictionary[instance_index] = cumulative_invoked_instance_set
 
-
-#         pdb.set_trace()
-        transmission_pool = multiprocessing.Pool(N_POOL)
-        transmission_pool_result = transmission_pool.starmap(
-            get_transmission_cost_carbon_latency_wrapper,
-            transmission_cost_carbon_latency_inputs
-        )
-        transmission_pool.close()
-        transmission_pool.join()
-
-        if len(transmission_pool_result) != len(transmission_cost_carbon_latency_inputs):
-            raise RuntimeError('Failed to Compute transmission_cost_carbon_latency')
-
-        execution_pool = multiprocessing.Pool(N_POOL)
-        execution_pool_result = execution_pool.starmap(
-            get_execution_cost_carbon_latency_wrapper,
+        # pdb.set_trace()
+        transmission_cost_carbon_latency_results, execution_cost_carbon_latency_results = self._concurrent_input_manager.get_transmission_execution_cost_carbon_latency(
+            transmission_cost_carbon_latency_inputs,
             execution_cost_carbon_latency_inputs
         )
-        execution_pool.close()
-        execution_pool.join()
 
-        if len(execution_pool_result) != len(execution_cost_carbon_latency_inputs):
-            raise RuntimeError('Failed to Compute execution_cost_carbon_latency')
-
-        transmission_cost_carbon_latency_results = {
-            input_key: output_value for input_key, output_value in transmission_pool_result
-        }
-        execution_cost_carbon_latency_results = {
-            input_key: output_value for input_key, output_value in execution_pool_result
-        }
-
-#         pdb.set_trace()
+        # pdb.set_trace()
 
         # Collecting results
         for instance_index, region_index in enumerate(deployment):
@@ -281,6 +258,7 @@ class DeploymentMetricsCalculator(ABC):
                 invoked_child_dictionary[instance_index] = cumulative_invoked_instance_set
 
         # At this point we may have 1 or more leaf nodes, we need to get the max runtime from them.
+        print(f'Calculcated Workflow {time.time() - start_time}')
         return {
             "cost": total_cost,
             "runtime": max(cumulative_runtime_of_instances),

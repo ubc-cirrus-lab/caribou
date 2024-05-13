@@ -134,7 +134,7 @@ class DeploymentManager(Monitor):
             )
 
             solve_hours = self._get_solve_hours(affordable_deployment_algorithm_run["number_of_solves"])
-            pdb.set_trace()
+            # pdb.set_trace()
             self._run_deployment_algorithm(workflow_config, solve_hours, expiry_delta_seconds)
 
     def _update_workflow_info(self, token_missing: int, workflow_id: str) -> None:

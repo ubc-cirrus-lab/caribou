@@ -161,3 +161,26 @@ class RuntimeCalculator(InputCalculator):
                 runtime_distribution.append(0.0)
 
         return runtime_distribution
+
+    def get_cache(self):
+        return {
+            'transmission_latency_distribution_cache': self._transmission_latency_distribution_cache,
+            'transmission_size_distribution_cache': self._transmission_size_distribution_cache
+        }
+
+    def update_cache(self, cache: dict):
+        self._transmission_latency_distribution_cache.update(cache['transmission_latency_distribution_cache'])
+        self._transmission_size_distribution_cache.update(cache['transmission_size_distribution_cache'])
+
+    @staticmethod
+    def sync_caches(caches_list: list[dict]):
+        synced_cache = {
+            'transmission_latency_distribution_cache': {},
+            'transmission_size_distribution_cache': {}
+        }
+
+        for cache in caches_list:
+            for cache_key in synced_cache:
+                synced_cache[cache_key].update(cache[cache_key])
+
+        return synced_cache
