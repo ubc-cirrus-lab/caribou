@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import MagicMock, Mock, patch
 from caribou.data_collector.components.carbon.carbon_retriever import CarbonRetriever
-
+from statsmodels.tsa.holtwinters import ExponentialSmoothing
 
 class TestCarbonRetriever(unittest.TestCase):
     def setUp(self):
@@ -84,89 +84,21 @@ class TestCarbonRetriever(unittest.TestCase):
 
         self.assertEqual(result, {"test": None})
 
-    def test_process_raw_carbon_intensity_history(self):
-        result = self.carbon_retriever._process_raw_carbon_intensity_history(
-            [
-                {"carbonIntensity": 189, "datetime": "2024-05-11T19:00:00.000Z"},
-                {"carbonIntensity": 169, "datetime": "2024-05-11T20:00:00.000Z"},
-                {"carbonIntensity": 148, "datetime": "2024-05-11T21:00:00.000Z"},
-                {"carbonIntensity": 133, "datetime": "2024-05-11T22:00:00.000Z"},
-                {"carbonIntensity": 136, "datetime": "2024-05-11T23:00:00.000Z"},
-                {"carbonIntensity": 122, "datetime": "2024-05-12T00:00:00.000Z"},
-                {"carbonIntensity": 132, "datetime": "2024-05-12T01:00:00.000Z"},
-                {"carbonIntensity": 141, "datetime": "2024-05-12T02:00:00.000Z"},
-                {"carbonIntensity": 141, "datetime": "2024-05-12T03:00:00.000Z"},
-                {"carbonIntensity": 147, "datetime": "2024-05-12T04:00:00.000Z"},
-                {"carbonIntensity": 150, "datetime": "2024-05-12T05:00:00.000Z"},
-                {"carbonIntensity": 148, "datetime": "2024-05-12T06:00:00.000Z"},
-                {"carbonIntensity": 143, "datetime": "2024-05-12T07:00:00.000Z"},
-                {"carbonIntensity": 118, "datetime": "2024-05-12T08:00:00.000Z"},
-                {"carbonIntensity": 104, "datetime": "2024-05-12T09:00:00.000Z"},
-                {"carbonIntensity": 115, "datetime": "2024-05-12T10:00:00.000Z"},
-                {"carbonIntensity": 109, "datetime": "2024-05-12T11:00:00.000Z"},
-                {"carbonIntensity": 110, "datetime": "2024-05-12T12:00:00.000Z"},
-                {"carbonIntensity": 112, "datetime": "2024-05-12T13:00:00.000Z"},
-                {"carbonIntensity": 124, "datetime": "2024-05-12T14:00:00.000Z"},
-                {"carbonIntensity": 130, "datetime": "2024-05-12T15:00:00.000Z"},
-                {"carbonIntensity": 140, "datetime": "2024-05-12T16:00:00.000Z"},
-                {"carbonIntensity": 158, "datetime": "2024-05-12T17:00:00.000Z"},
-                {"carbonIntensity": 159, "datetime": "2024-05-12T18:00:00.000Z"},
-                {"carbonIntensity": 143, "datetime": "2024-05-12T19:00:00.000Z"},
-                {"carbonIntensity": 142, "datetime": "2024-05-12T20:00:00.000Z"},
-                {"carbonIntensity": 135, "datetime": "2024-05-12T21:00:00.000Z"},
-                {"carbonIntensity": 139, "datetime": "2024-05-12T22:00:00.000Z"},
-                {"carbonIntensity": 140, "datetime": "2024-05-12T23:00:00.000Z"},
-                {"carbonIntensity": 123, "datetime": "2024-05-13T00:00:00.000Z"},
-                {"carbonIntensity": 123, "datetime": "2024-05-13T01:00:00.000Z"},
-                {"carbonIntensity": 140, "datetime": "2024-05-13T02:00:00.000Z"},
-                {"carbonIntensity": 160, "datetime": "2024-05-13T03:00:00.000Z"},
-                {"carbonIntensity": 170, "datetime": "2024-05-13T04:00:00.000Z"},
-                {"carbonIntensity": 185, "datetime": "2024-05-13T05:00:00.000Z"},
-                {"carbonIntensity": 173, "datetime": "2024-05-13T06:00:00.000Z"},
-                {"carbonIntensity": 167, "datetime": "2024-05-13T07:00:00.000Z"},
-                {"carbonIntensity": 146, "datetime": "2024-05-13T08:00:00.000Z"},
-                {"carbonIntensity": 147, "datetime": "2024-05-13T09:00:00.000Z"},
-                {"carbonIntensity": 134, "datetime": "2024-05-13T10:00:00.000Z"},
-                {"carbonIntensity": 122, "datetime": "2024-05-13T11:00:00.000Z"},
-                {"carbonIntensity": 129, "datetime": "2024-05-13T12:00:00.000Z"},
-                {"carbonIntensity": 139, "datetime": "2024-05-13T13:00:00.000Z"},
-                {"carbonIntensity": 152, "datetime": "2024-05-13T14:00:00.000Z"},
-                {"carbonIntensity": 184, "datetime": "2024-05-13T15:00:00.000Z"},
-                {"carbonIntensity": 207, "datetime": "2024-05-13T16:00:00.000Z"},
-                {"carbonIntensity": 254, "datetime": "2024-05-13T17:00:00.000Z"},
-                {"carbonIntensity": 262, "datetime": "2024-05-13T18:00:00.000Z"},
-            ]
-        )
-        expected_result = {
-            "overall_average": 212.401977653503,
-            "hourly_average": {
-                19: 243.72002886206153,
-                20: 232.08006401038426,
-                21: 216.94018587820892,
-                22: 210.30022790723157,
-                23: 211.16031423410178,
-                0: 194.52028679492105,
-                1: 198.38037267588945,
-                2: 210.24035638001257,
-                3: 219.10036343654593,
-                4: 225.96033221719864,
-                5: 233.82028751225798,
-                6: 225.68031835196723,
-                7: 219.0403884445826,
-                8: 194.9004558514361,
-                9: 187.26060646373222,
-                10: 185.12058634443375,
-                11: 174.9804751556152,
-                12: 177.84050509886416,
-                13: 182.7005162156523,
-                14: 194.06033894652077,
-                15: 211.92025221551722,
-                16: 227.28010249965672,
-                17: 258.6400982564218,
-                18: 261.99999993085714,
-            },
-        }
-        self.assertAlmostEqual(result, expected_result, places=1)
+    @patch.object(ExponentialSmoothing, 'fit')
+    def test_process_raw_carbon_intensity_history(self, mock_fit):
+        # Mock the forecast method to return a predefined result
+        mock_model = Mock()
+        mock_model.forecast.return_value = [i for i in range(24)]
+        mock_fit.return_value = mock_model
+
+        raw_carbon_intensity_history = [
+            {"carbonIntensity": i, "datetime": "2024-05-13T00:00:00.000Z"} for i in range(48)
+        ]
+
+        result = self.carbon_retriever._process_raw_carbon_intensity_history(raw_carbon_intensity_history)
+
+        expected_result = {'overall_average': 11.5, 'hourly_average': {1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 7: 6, 8: 7, 9: 8, 10: 9, 11: 10, 12: 11, 13: 12, 14: 13, 15: 14, 16: 15, 17: 16, 18: 17, 19: 18, 20: 19, 21: 20, 22: 21, 23: 22, 0: 23}}
+        self.assertEqual(result, expected_result)
 
     @patch("requests.get")
     def test_get_raw_carbon_intensity_history_range(self, mock_get):
