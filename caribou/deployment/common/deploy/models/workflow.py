@@ -1,3 +1,4 @@
+import re
 from typing import Any, Optional, Sequence
 
 from caribou.deployment.common.config.config import Config
@@ -283,7 +284,23 @@ class Workflow(Resource):
         # Also put a limit on the length of the function name to be less than or equal to 15 characters
         for function in self._resources:
             function_name = function.name
+
+            # Define the regular expression pattern to match the function name
+            # (Isolate the actual function name from the full function name)
+            # NOTE: This may need to be changed if there are major changes to the
+            # naming convention of the function name in _get_function_name() method
+            # of wokflow_builder.py
+            pattern = r"-(\w+)_"
+
+            # Search for the pattern in the input string
+            match = re.search(pattern, function_name)
+            if match:
+                function_name = match.group(1)
+            else:
+                raise RuntimeError("Unexpected Error in function name:", function_name)
+
             if not function_name.replace("_", "").isalnum():
+                print(function_name)
                 raise RuntimeError("Function name must contain only letters, numbers, or underscores")
 
             if len(function_name) > 15:

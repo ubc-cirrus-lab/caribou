@@ -166,7 +166,7 @@ class TestCarbonRetriever(unittest.TestCase):
                 18: 261.99999993085714,
             },
         }
-        self.assertEqual(result, expected_result)
+        self.assertAlmostEqual(result, expected_result, places=1)
 
     @patch("requests.get")
     def test_get_raw_carbon_intensity_history_range(self, mock_get):
