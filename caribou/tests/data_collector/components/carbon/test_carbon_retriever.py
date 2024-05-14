@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, Mock, patch
 from caribou.data_collector.components.carbon.carbon_retriever import CarbonRetriever
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
 
+
 class TestCarbonRetriever(unittest.TestCase):
     def setUp(self):
         self.mock_client = Mock()
@@ -84,7 +85,7 @@ class TestCarbonRetriever(unittest.TestCase):
 
         self.assertEqual(result, {"test": None})
 
-    @patch.object(ExponentialSmoothing, 'fit')
+    @patch.object(ExponentialSmoothing, "fit")
     def test_process_raw_carbon_intensity_history(self, mock_fit):
         # Mock the forecast method to return a predefined result
         mock_model = Mock()
@@ -97,7 +98,7 @@ class TestCarbonRetriever(unittest.TestCase):
 
         result = self.carbon_retriever._process_raw_carbon_intensity_history(raw_carbon_intensity_history)
 
-        expected_result = {'overall_average': 11.5, 'hourly_average': {1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 7: 6, 8: 7, 9: 8, 10: 9, 11: 10, 12: 11, 13: 12, 14: 13, 15: 14, 16: 15, 17: 16, 18: 17, 19: 18, 20: 19, 21: 20, 22: 21, 23: 22, 0: 23}}
+        expected_result = {"overall_average": 11.5, "hourly_average": {i: (i - 1) % 24 for i in range(24)}}
         self.assertEqual(result, expected_result)
 
     @patch("requests.get")
