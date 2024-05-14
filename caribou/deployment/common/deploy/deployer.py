@@ -56,6 +56,9 @@ class Deployer:
                 f"Workflow {self._config.workflow_name} with version {self._config.workflow_version} already deployed, please use a different version number"  # pylint: disable=line-too-long
             )
 
+        # Check for name and version restrictions (e.g. no spaces, no certain special characters etc.)
+        self._workflow.verify_name_and_version()
+
         # Upload the workflow to the solver
         self._upload_workflow_to_deployment_manager()
 

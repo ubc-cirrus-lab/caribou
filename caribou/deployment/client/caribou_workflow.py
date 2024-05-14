@@ -82,13 +82,6 @@ class CaribouWorkflow:
     def get_run_id(self) -> str:
         return self._current_workflow_placement_decision["run_id"]
 
-    def _verify_name_and_version(self) -> None:
-        # Both colon and minus are not allowed in the name and version
-        if ":" in self.name or "-" in self.name:
-            raise RuntimeError("Name cannot contain colon or minus")
-        if ":" in self.version or "-" in self.version:
-            raise RuntimeError("Version cannot contain colon or minus")
-
     def get_successors(self, function: CaribouFunction) -> list[CaribouFunction]:
         """
         Get the functions that are called by this function.
