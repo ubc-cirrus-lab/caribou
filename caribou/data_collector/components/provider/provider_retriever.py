@@ -54,7 +54,7 @@ class ProviderRetriever(DataRetriever):
                 elif provider in (Provider.TEST_PROVIDER1, Provider.TEST_PROVIDER2):
                     pass
                 elif provider == Provider.INTEGRATION_TEST_PROVIDER:
-                    available_regions.update(self.retrieve_integrationtest_regions())
+                    pass  # Integration test regions are added separately and only IF the integration test is on
                 else:
                     raise NotImplementedError(f"Provider {provider} not implemented")
         self._available_regions = available_regions
