@@ -1,4 +1,4 @@
-workflow_name: "integration_test_workflow"
+workflow_name: "ITW"
 workflow_version: "0.0.1"
 environment_variables:
   - key: "TEST_ENV_VAR_1"

@@ -1,6 +1,7 @@
 from enum import Enum
 
 
+# NOTE: Provider name MUST NOT have _ in it.
 class Provider(Enum):
     AWS = "aws"
     GCP = "gcp"

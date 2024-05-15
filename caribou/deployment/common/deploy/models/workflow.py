@@ -289,12 +289,21 @@ class Workflow(Resource):
         for function in self._resources:
             function_name = function.name
 
+            # First check the overall length of the function name
+            if len(function_name) > 64:
+                raise RuntimeError(
+                    f"AWS Lambda Function name must be less than or equal to 64 characters,"
+                    f"please shorten the workflow name, version, and or function name. \n"
+                    f"Current Caribou Full function name: {function_name} \n"
+                    f"Current length: {len(function_name)} characters"
+                )
+
             # Define the regular expression pattern to match the function name
             # (Isolate the actual function name from the full function name)
             # NOTE: This may need to be changed if there are major changes to the
             # naming convention of the function name in _get_function_name() method
             # of wokflow_builder.py
-            pattern = r"^[^-]+-[^-]+-(.*)_[^-]+-[^-]+$"
+            pattern = r"^[^-]+-[^-]+-(.*)_[^-]+-"
 
             # Search for the pattern in the input string
             match = re.search(pattern, function_name)

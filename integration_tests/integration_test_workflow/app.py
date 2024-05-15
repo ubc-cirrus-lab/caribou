@@ -5,7 +5,7 @@ import pip_install_test
 
 from src.fifth import fifth
 
-workflow = CaribouWorkflow(name="integration_test_workflow", version="0.0.1")
+workflow = CaribouWorkflow(name="ITW", version="0.0.1")
 
 
 @workflow.serverless_function(

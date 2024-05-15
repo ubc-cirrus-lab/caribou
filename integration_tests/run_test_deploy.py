@@ -22,13 +22,13 @@ def test_deploy(workflow_dir: str):
     assert len(deployed_functions) == 7
 
     expected_function_names = [
-        'integration_test_workflow-0_0_1-First_Function_IntegrationTestProvider-rivendell',
-        'integration_test_workflow-0_0_1-Second_Function_IntegrationTestProvider-rivendell',
-        'integration_test_workflow-0_0_1-Third_Function_IntegrationTestProvider-rivendell',
-        'integration_test_workflow-0_0_1-Fourth_Function_IntegrationTestProvider-rivendell',
-        'integration_test_workflow-0_0_1-Fifth_Function_IntegrationTestProvider-rivendell',
-        'integration_test_workflow-0_0_1-Sixth_Function_IntegrationTestProvider-rivendell',
-        'integration_test_workflow-0_0_1-Seventh_Function_IntegrationTestProvider-rivendell'
+        'ITW-0_0_1-First_Function_IntegrationTestProvider-rivendell',
+        'ITW-0_0_1-Second_Function_IntegrationTestProvider-rivendell',
+        'ITW-0_0_1-Third_Function_IntegrationTestProvider-rivendell',
+        'ITW-0_0_1-Fourth_Function_IntegrationTestProvider-rivendell',
+        'ITW-0_0_1-Fifth_Function_IntegrationTestProvider-rivendell',
+        'ITW-0_0_1-Sixth_Function_IntegrationTestProvider-rivendell',
+        'ITW-0_0_1-Seventh_Function_IntegrationTestProvider-rivendell'
     ]
 
     for function in deployed_functions:
@@ -38,20 +38,20 @@ def test_deploy(workflow_dir: str):
 
     assert len(added_resources) == 1
 
-    assert added_resources[0][0] == "deployment_package_integration_test_workflow-0.0.1"
+    assert added_resources[0][0] == "deployment_package_ITW-0.0.1"
 
     deployed_roles = remote_client.select_all_from_table("roles")
 
     assert len(deployed_roles) == 7
 
     expected_role_names = [
-        'integration_test_workflow-0_0_1-First_Function_IntegrationTestProvider-rivendell-role',
-        'integration_test_workflow-0_0_1-Second_Function_IntegrationTestProvider-rivendell-role',
-        'integration_test_workflow-0_0_1-Third_Function_IntegrationTestProvider-rivendell-role',
-        'integration_test_workflow-0_0_1-Fourth_Function_IntegrationTestProvider-rivendell-role',
-        'integration_test_workflow-0_0_1-Fifth_Function_IntegrationTestProvider-rivendell-role',
-        'integration_test_workflow-0_0_1-Sixth_Function_IntegrationTestProvider-rivendell-role',
-        'integration_test_workflow-0_0_1-Seventh_Function_IntegrationTestProvider-rivendell-role'
+        'ITW-0_0_1-First_Function_IntegrationTestProvider-rivendell-role',
+        'ITW-0_0_1-Second_Function_IntegrationTestProvider-rivendell-role',
+        'ITW-0_0_1-Third_Function_IntegrationTestProvider-rivendell-role',
+        'ITW-0_0_1-Fourth_Function_IntegrationTestProvider-rivendell-role',
+        'ITW-0_0_1-Fifth_Function_IntegrationTestProvider-rivendell-role',
+        'ITW-0_0_1-Sixth_Function_IntegrationTestProvider-rivendell-role',
+        'ITW-0_0_1-Seventh_Function_IntegrationTestProvider-rivendell-role'
     ]
 
     for role in deployed_roles:
@@ -60,13 +60,13 @@ def test_deploy(workflow_dir: str):
     deployed_messaging_topics = remote_client.select_all_from_table("messaging_topics")
 
     expected_topic_names = [
-        'integration_test_workflow-0_0_1-First_Function_IntegrationTestProvider-rivendell',
-        'integration_test_workflow-0_0_1-Second_Function_IntegrationTestProvider-rivendell',
-        'integration_test_workflow-0_0_1-Third_Function_IntegrationTestProvider-rivendell',
-        'integration_test_workflow-0_0_1-Fourth_Function_IntegrationTestProvider-rivendell',
-        'integration_test_workflow-0_0_1-Fifth_Function_IntegrationTestProvider-rivendell',
-        'integration_test_workflow-0_0_1-Sixth_Function_IntegrationTestProvider-rivendell',
-        'integration_test_workflow-0_0_1-Seventh_Function_IntegrationTestProvider-rivendell'
+        'ITW-0_0_1-First_Function_IntegrationTestProvider-rivendell',
+        'ITW-0_0_1-Second_Function_IntegrationTestProvider-rivendell',
+        'ITW-0_0_1-Third_Function_IntegrationTestProvider-rivendell',
+        'ITW-0_0_1-Fourth_Function_IntegrationTestProvider-rivendell',
+        'ITW-0_0_1-Fifth_Function_IntegrationTestProvider-rivendell',
+        'ITW-0_0_1-Sixth_Function_IntegrationTestProvider-rivendell',
+        'ITW-0_0_1-Seventh_Function_IntegrationTestProvider-rivendell'
     ]
 
     for topic in deployed_messaging_topics:
