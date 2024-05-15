@@ -30,10 +30,10 @@ def run_data_collection():
     assert len(available_regions) == 4
 
     expected_available_regions = [
-        "integration_test_provider:rivendell",
-        "integration_test_provider:lothlorien",
-        "integration_test_provider:anduin",
-        "integration_test_provider:fangorn",
+        "IntegrationTestProvider:rivendell",
+        "IntegrationTestProvider:lothlorien",
+        "IntegrationTestProvider:anduin",
+        "IntegrationTestProvider:fangorn",
     ]
 
     for region in available_regions:
@@ -45,19 +45,19 @@ def run_data_collection():
 
     expected_provider_region_data = [
         (
-            "integration_test_provider:rivendell",
+            "IntegrationTestProvider:rivendell",
             '{"execution_cost": {"invocation_cost": {"arm64": 2.4e-07, "x86_64": 2.3e-07, "free_tier_invocations": 1000000}, "compute_cost": {"arm64": 1.56138e-05, "x86_64": 1.95172e-05, "free_tier_compute_gb_s": 400000}, "unit": "USD"}, "transmission_cost": {"global_data_transfer": 0.09, "provider_data_transfer": 0.02, "unit": "USD/GB"}, "pue": 1.15, "cfe": 1, "average_memory_power": 0.0003725, "average_cpu_power": 0.00212, "available_architectures": ["arm64", "x86_64"]}',
         ),
         (
-            "integration_test_provider:lothlorien",
+            "IntegrationTestProvider:lothlorien",
             '{"execution_cost": {"invocation_cost": {"arm64": 2.3e-07, "x86_64": 2.2e-07, "free_tier_invocations": 1000000}, "compute_cost": {"arm64": 1.56118e-05, "x86_64": 1.93172e-05, "free_tier_compute_gb_s": 400000}, "unit": "USD"}, "transmission_cost": {"global_data_transfer": 0.04, "provider_data_transfer": 0.09, "unit": "USD/GB"}, "pue": 1.15, "cfe": 1, "average_memory_power": 0.0003725, "average_cpu_power": 0.00212, "available_architectures": ["arm64", "x86_64"]}',
         ),
         (
-            "integration_test_provider:anduin",
+            "IntegrationTestProvider:anduin",
             '{"execution_cost": {"invocation_cost": {"arm64": 2.2e-07, "x86_64": 2.1e-07, "free_tier_invocations": 1000000}, "compute_cost": {"arm64": 1.56128e-05, "x86_64": 1.91172e-05, "free_tier_compute_gb_s": 400000}, "unit": "USD"}, "transmission_cost": {"global_data_transfer": 0.11, "provider_data_transfer": 0.05, "unit": "USD/GB"}, "pue": 1.15, "cfe": 1, "average_memory_power": 0.0003725, "average_cpu_power": 0.00212, "available_architectures": ["arm64", "x86_64"]}',
         ),
         (
-            "integration_test_provider:fangorn",
+            "IntegrationTestProvider:fangorn",
             '{"execution_cost": {"invocation_cost": {"arm64": 2.1e-07, "x86_64": 2e-07, "free_tier_invocations": 1000000}, "compute_cost": {"arm64": 1.56148e-05, "x86_64": 1.89172e-05, "free_tier_compute_gb_s": 400000}, "unit": "USD"}, "transmission_cost": {"global_data_transfer": 0.07, "provider_data_transfer": 0.03, "unit": "USD/GB"}, "pue": 1.15, "cfe": 1, "average_memory_power": 0.0003725, "average_cpu_power": 0.00212, "available_architectures": ["arm64", "x86_64"]}',
         ),
     ]
@@ -73,23 +73,19 @@ def run_data_collection():
 
     expected_carbon_region_data = [
         (
-            "integration_test_provider:rivendell",
-            '{"averages": {"overall": {"carbon_intensity": 51.391773}, "0": {"carbon_intensity": 51.391773}, "1": {"carbon_intensity": 51.391773}, "2": {"carbon_intensity": 51.391773}, "3": {"carbon_intensity": 51.391773}, "4": {"carbon_intensity": 51.391773}, "5": {"carbon_intensity": 51.391773}, "6": {"carbon_intensity": 51.391773}, "7": {"carbon_intensity": 51.391773}, "8": {"carbon_intensity": 51.391773}, "9": {"carbon_intensity": 51.391773}, "10": {"carbon_intensity": 51.391773}, "11": {"carbon_intensity": 51.391773}, "12": {"carbon_intensity": 51.391773}, "13": {"carbon_intensity": 51.391773}, "14": {"carbon_intensity": 51.391773}, "15": {"carbon_intensity": 51.391773}, "16": {"carbon_intensity": 51.391773}, "17": {"carbon_intensity": 51.391773}, "18": {"carbon_intensity": 51.391773}, "19": {"carbon_intensity": 51.391773}, "20": {"carbon_intensity": 51.391773}, "21": {"carbon_intensity": 51.391773}, "22": {"carbon_intensity": 51.391773}, "23": {"carbon_intensity": 51.391773}}, "units": "gCO2eq/kWh", "transmission_distances": {"integration_test_provider:rivendell": 0.0, "integration_test_provider:lothlorien": 83.13919477602013, "integration_test_provider:anduin": 343.4342546548361, "integration_test_provider:fangorn": 356.6428494192109}, "transmission_distances_unit": "km"}',
+            'IntegrationTestProvider:rivendell', '{"averages": {"overall": {"carbon_intensity": 51.391773}, "0": {"carbon_intensity": 51.391773}, "1": {"carbon_intensity": 51.391773}, "2": {"carbon_intensity": 51.391773}, "3": {"carbon_intensity": 51.391773}, "4": {"carbon_intensity": 51.391773}, "5": {"carbon_intensity": 51.391773}, "6": {"carbon_intensity": 51.391773}, "7": {"carbon_intensity": 51.391773}, "8": {"carbon_intensity": 51.391773}, "9": {"carbon_intensity": 51.391773}, "10": {"carbon_intensity": 51.391773}, "11": {"carbon_intensity": 51.391773}, "12": {"carbon_intensity": 51.391773}, "13": {"carbon_intensity": 51.391773}, "14": {"carbon_intensity": 51.391773}, "15": {"carbon_intensity": 51.391773}, "16": {"carbon_intensity": 51.391773}, "17": {"carbon_intensity": 51.391773}, "18": {"carbon_intensity": 51.391773}, "19": {"carbon_intensity": 51.391773}, "20": {"carbon_intensity": 51.391773}, "21": {"carbon_intensity": 51.391773}, "22": {"carbon_intensity": 51.391773}, "23": {"carbon_intensity": 51.391773}}, "units": "gCO2eq/kWh", "transmission_distances": {"IntegrationTestProvider:rivendell": 0.0, "IntegrationTestProvider:lothlorien": 83.13919477602013, "IntegrationTestProvider:anduin": 343.4342546548361, "IntegrationTestProvider:fangorn": 356.6428494192109}, "transmission_distances_unit": "km"}'
         ),
         (
-            "integration_test_provider:lothlorien",
-            '{"averages": {"overall": {"carbon_intensity": 50.494296}, "0": {"carbon_intensity": 50.494296}, "1": {"carbon_intensity": 50.494296}, "2": {"carbon_intensity": 50.494296}, "3": {"carbon_intensity": 50.494296}, "4": {"carbon_intensity": 50.494296}, "5": {"carbon_intensity": 50.494296}, "6": {"carbon_intensity": 50.494296}, "7": {"carbon_intensity": 50.494296}, "8": {"carbon_intensity": 50.494296}, "9": {"carbon_intensity": 50.494296}, "10": {"carbon_intensity": 50.494296}, "11": {"carbon_intensity": 50.494296}, "12": {"carbon_intensity": 50.494296}, "13": {"carbon_intensity": 50.494296}, "14": {"carbon_intensity": 50.494296}, "15": {"carbon_intensity": 50.494296}, "16": {"carbon_intensity": 50.494296}, "17": {"carbon_intensity": 50.494296}, "18": {"carbon_intensity": 50.494296}, "19": {"carbon_intensity": 50.494296}, "20": {"carbon_intensity": 50.494296}, "21": {"carbon_intensity": 50.494296}, "22": {"carbon_intensity": 50.494296}, "23": {"carbon_intensity": 50.494296}}, "units": "gCO2eq/kWh", "transmission_distances": {"integration_test_provider:rivendell": 83.13919477602013, "integration_test_provider:lothlorien": 0.0, "integration_test_provider:anduin": 411.46013910805647, "integration_test_provider:fangorn": 426.0856966065312}, "transmission_distances_unit": "km"}',
+            'IntegrationTestProvider:lothlorien', '{"averages": {"overall": {"carbon_intensity": 50.494296}, "0": {"carbon_intensity": 50.494296}, "1": {"carbon_intensity": 50.494296}, "2": {"carbon_intensity": 50.494296}, "3": {"carbon_intensity": 50.494296}, "4": {"carbon_intensity": 50.494296}, "5": {"carbon_intensity": 50.494296}, "6": {"carbon_intensity": 50.494296}, "7": {"carbon_intensity": 50.494296}, "8": {"carbon_intensity": 50.494296}, "9": {"carbon_intensity": 50.494296}, "10": {"carbon_intensity": 50.494296}, "11": {"carbon_intensity": 50.494296}, "12": {"carbon_intensity": 50.494296}, "13": {"carbon_intensity": 50.494296}, "14": {"carbon_intensity": 50.494296}, "15": {"carbon_intensity": 50.494296}, "16": {"carbon_intensity": 50.494296}, "17": {"carbon_intensity": 50.494296}, "18": {"carbon_intensity": 50.494296}, "19": {"carbon_intensity": 50.494296}, "20": {"carbon_intensity": 50.494296}, "21": {"carbon_intensity": 50.494296}, "22": {"carbon_intensity": 50.494296}, "23": {"carbon_intensity": 50.494296}}, "units": "gCO2eq/kWh", "transmission_distances": {"IntegrationTestProvider:rivendell": 83.13919477602013, "IntegrationTestProvider:lothlorien": 0.0, "IntegrationTestProvider:anduin": 411.46013910805647, "IntegrationTestProvider:fangorn": 426.0856966065312}, "transmission_distances_unit": "km"}'
         ),
         (
-            "integration_test_provider:anduin",
-            '{"averages": {"overall": {"carbon_intensity": 51.208835}, "0": {"carbon_intensity": 51.208835}, "1": {"carbon_intensity": 51.208835}, "2": {"carbon_intensity": 51.208835}, "3": {"carbon_intensity": 51.208835}, "4": {"carbon_intensity": 51.208835}, "5": {"carbon_intensity": 51.208835}, "6": {"carbon_intensity": 51.208835}, "7": {"carbon_intensity": 51.208835}, "8": {"carbon_intensity": 51.208835}, "9": {"carbon_intensity": 51.208835}, "10": {"carbon_intensity": 51.208835}, "11": {"carbon_intensity": 51.208835}, "12": {"carbon_intensity": 51.208835}, "13": {"carbon_intensity": 51.208835}, "14": {"carbon_intensity": 51.208835}, "15": {"carbon_intensity": 51.208835}, "16": {"carbon_intensity": 51.208835}, "17": {"carbon_intensity": 51.208835}, "18": {"carbon_intensity": 51.208835}, "19": {"carbon_intensity": 51.208835}, "20": {"carbon_intensity": 51.208835}, "21": {"carbon_intensity": 51.208835}, "22": {"carbon_intensity": 51.208835}, "23": {"carbon_intensity": 51.208835}}, "units": "gCO2eq/kWh", "transmission_distances": {"integration_test_provider:rivendell": 343.4342546548361, "integration_test_provider:lothlorien": 411.46013910805647, "integration_test_provider:anduin": 0.0, "integration_test_provider:fangorn": 429.85848503575806}, "transmission_distances_unit": "km"}',
-        ),
+            'IntegrationTestProvider:anduin', '{"averages": {"overall": {"carbon_intensity": 51.208835}, "0": {"carbon_intensity": 51.208835}, "1": {"carbon_intensity": 51.208835}, "2": {"carbon_intensity": 51.208835}, "3": {"carbon_intensity": 51.208835}, "4": {"carbon_intensity": 51.208835}, "5": {"carbon_intensity": 51.208835}, "6": {"carbon_intensity": 51.208835}, "7": {"carbon_intensity": 51.208835}, "8": {"carbon_intensity": 51.208835}, "9": {"carbon_intensity": 51.208835}, "10": {"carbon_intensity": 51.208835}, "11": {"carbon_intensity": 51.208835}, "12": {"carbon_intensity": 51.208835}, "13": {"carbon_intensity": 51.208835}, "14": {"carbon_intensity": 51.208835}, "15": {"carbon_intensity": 51.208835}, "16": {"carbon_intensity": 51.208835}, "17": {"carbon_intensity": 51.208835}, "18": {"carbon_intensity": 51.208835}, "19": {"carbon_intensity": 51.208835}, "20": {"carbon_intensity": 51.208835}, "21": {"carbon_intensity": 51.208835}, "22": {"carbon_intensity": 51.208835}, "23": {"carbon_intensity": 51.208835}}, "units": "gCO2eq/kWh", "transmission_distances": {"IntegrationTestProvider:rivendell": 343.4342546548361, "IntegrationTestProvider:lothlorien": 411.46013910805647, "IntegrationTestProvider:anduin": 0.0, "IntegrationTestProvider:fangorn": 429.85848503575806}, "transmission_distances_unit": "km"}'
+        ), 
         (
-            "integration_test_provider:fangorn",
-            '{"averages": {"overall": {"carbon_intensity": 57.265384}, "0": {"carbon_intensity": 57.265384}, "1": {"carbon_intensity": 57.265384}, "2": {"carbon_intensity": 57.265384}, "3": {"carbon_intensity": 57.265384}, "4": {"carbon_intensity": 57.265384}, "5": {"carbon_intensity": 57.265384}, "6": {"carbon_intensity": 57.265384}, "7": {"carbon_intensity": 57.265384}, "8": {"carbon_intensity": 57.265384}, "9": {"carbon_intensity": 57.265384}, "10": {"carbon_intensity": 57.265384}, "11": {"carbon_intensity": 57.265384}, "12": {"carbon_intensity": 57.265384}, "13": {"carbon_intensity": 57.265384}, "14": {"carbon_intensity": 57.265384}, "15": {"carbon_intensity": 57.265384}, "16": {"carbon_intensity": 57.265384}, "17": {"carbon_intensity": 57.265384}, "18": {"carbon_intensity": 57.265384}, "19": {"carbon_intensity": 57.265384}, "20": {"carbon_intensity": 57.265384}, "21": {"carbon_intensity": 57.265384}, "22": {"carbon_intensity": 57.265384}, "23": {"carbon_intensity": 57.265384}}, "units": "gCO2eq/kWh", "transmission_distances": {"integration_test_provider:rivendell": 356.6428494192109, "integration_test_provider:lothlorien": 426.0856966065312, "integration_test_provider:anduin": 429.85848503575806, "integration_test_provider:fangorn": 0.0}, "transmission_distances_unit": "km"}',
-        ),
+            'IntegrationTestProvider:fangorn', '{"averages": {"overall": {"carbon_intensity": 57.265384}, "0": {"carbon_intensity": 57.265384}, "1": {"carbon_intensity": 57.265384}, "2": {"carbon_intensity": 57.265384}, "3": {"carbon_intensity": 57.265384}, "4": {"carbon_intensity": 57.265384}, "5": {"carbon_intensity": 57.265384}, "6": {"carbon_intensity": 57.265384}, "7": {"carbon_intensity": 57.265384}, "8": {"carbon_intensity": 57.265384}, "9": {"carbon_intensity": 57.265384}, "10": {"carbon_intensity": 57.265384}, "11": {"carbon_intensity": 57.265384}, "12": {"carbon_intensity": 57.265384}, "13": {"carbon_intensity": 57.265384}, "14": {"carbon_intensity": 57.265384}, "15": {"carbon_intensity": 57.265384}, "16": {"carbon_intensity": 57.265384}, "17": {"carbon_intensity": 57.265384}, "18": {"carbon_intensity": 57.265384}, "19": {"carbon_intensity": 57.265384}, "20": {"carbon_intensity": 57.265384}, "21": {"carbon_intensity": 57.265384}, "22": {"carbon_intensity": 57.265384}, "23": {"carbon_intensity": 57.265384}}, "units": "gCO2eq/kWh", "transmission_distances": {"IntegrationTestProvider:rivendell": 356.6428494192109, "IntegrationTestProvider:lothlorien": 426.0856966065312, "IntegrationTestProvider:anduin": 429.85848503575806, "IntegrationTestProvider:fangorn": 0.0}, "transmission_distances_unit": "km"}'
+        )
     ]
-
+    
     for region in carbon_region_data:
         assert region in expected_carbon_region_data
 
@@ -101,20 +97,20 @@ def run_data_collection():
 
     expected_performance_region_data = [
         (
-            "integration_test_provider:rivendell",
-            '{"relative_performance": 1, "transmission_latency": {"integration_test_provider:rivendell": {"latency_distribution": [10], "unit": "s"}, "integration_test_provider:lothlorien": {"latency_distribution": [150], "unit": "s"}, "integration_test_provider:anduin": {"latency_distribution": [80], "unit": "s"}, "integration_test_provider:fangorn": {"latency_distribution": [200], "unit": "s"}}}',
+            "IntegrationTestProvider:rivendell",
+            '{"relative_performance": 1, "transmission_latency": {"IntegrationTestProvider:rivendell": {"latency_distribution": [10], "unit": "s"}, "IntegrationTestProvider:lothlorien": {"latency_distribution": [150], "unit": "s"}, "IntegrationTestProvider:anduin": {"latency_distribution": [80], "unit": "s"}, "IntegrationTestProvider:fangorn": {"latency_distribution": [200], "unit": "s"}}}',
         ),
         (
-            "integration_test_provider:lothlorien",
-            '{"relative_performance": 1, "transmission_latency": {"integration_test_provider:rivendell": {"latency_distribution": [150], "unit": "s"}, "integration_test_provider:lothlorien": {"latency_distribution": [10], "unit": "s"}, "integration_test_provider:anduin": {"latency_distribution": [100], "unit": "s"}, "integration_test_provider:fangorn": {"latency_distribution": [250], "unit": "s"}}}',
+            "IntegrationTestProvider:lothlorien",
+            '{"relative_performance": 1, "transmission_latency": {"IntegrationTestProvider:rivendell": {"latency_distribution": [150], "unit": "s"}, "IntegrationTestProvider:lothlorien": {"latency_distribution": [10], "unit": "s"}, "IntegrationTestProvider:anduin": {"latency_distribution": [100], "unit": "s"}, "IntegrationTestProvider:fangorn": {"latency_distribution": [250], "unit": "s"}}}',
         ),
         (
-            "integration_test_provider:anduin",
-            '{"relative_performance": 1, "transmission_latency": {"integration_test_provider:rivendell": {"latency_distribution": [80], "unit": "s"}, "integration_test_provider:lothlorien": {"latency_distribution": [100], "unit": "s"}, "integration_test_provider:anduin": {"latency_distribution": [10], "unit": "s"}, "integration_test_provider:fangorn": {"latency_distribution": [150], "unit": "s"}}}',
+            "IntegrationTestProvider:anduin",
+            '{"relative_performance": 1, "transmission_latency": {"IntegrationTestProvider:rivendell": {"latency_distribution": [80], "unit": "s"}, "IntegrationTestProvider:lothlorien": {"latency_distribution": [100], "unit": "s"}, "IntegrationTestProvider:anduin": {"latency_distribution": [10], "unit": "s"}, "IntegrationTestProvider:fangorn": {"latency_distribution": [150], "unit": "s"}}}',
         ),
         (
-            "integration_test_provider:fangorn",
-            '{"relative_performance": 1, "transmission_latency": {"integration_test_provider:rivendell": {"latency_distribution": [200], "unit": "s"}, "integration_test_provider:lothlorien": {"latency_distribution": [250], "unit": "s"}, "integration_test_provider:anduin": {"latency_distribution": [150], "unit": "s"}, "integration_test_provider:fangorn": {"latency_distribution": [10], "unit": "s"}}}',
+            "IntegrationTestProvider:fangorn",
+            '{"relative_performance": 1, "transmission_latency": {"IntegrationTestProvider:rivendell": {"latency_distribution": [200], "unit": "s"}, "IntegrationTestProvider:lothlorien": {"latency_distribution": [250], "unit": "s"}, "IntegrationTestProvider:anduin": {"latency_distribution": [150], "unit": "s"}, "IntegrationTestProvider:fangorn": {"latency_distribution": [10], "unit": "s"}}}',
         ),
     ]
 

@@ -5,7 +5,7 @@ environment_variables:
     value: "test_value_1"
 iam_policy_file: "iam_policy.json"
 home_region:
-  provider: "integration_test_provider"
+  provider: "IntegrationTestProvider"
   region: "rivendell"
 estimated_invocations_per_month: 1000000
 constraints:
@@ -33,17 +33,17 @@ constraints:
     - carbon
 regions_and_providers: # Either the user specify only allowed regions (which will override everything else)
   allowed_regions:
-    - provider: "integration_test_provider"
+    - provider: "IntegrationTestProvider"
       region: "rivendell"
-    - provider: "integration_test_provider"
+    - provider: "IntegrationTestProvider"
       region: "lothlorien"
-    - provider: "integration_test_provider"
+    - provider: "IntegrationTestProvider"
       region: "anduin"
   disallowed_regions:
-    - provider: "integration_test_provider"
+    - provider: "IntegrationTestProvider"
       region: "fangorn"
   providers:
-    integration_test_provider:
+    IntegrationTestProvider:
       config:
         timeout: 60
         memory: 128

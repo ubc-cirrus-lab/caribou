@@ -216,6 +216,7 @@ class WorkflowBuilder:
         # A function name is of the form <workflow_name>-<workflow_version>-<function_name>_<provider>-<region>
         # This is used to uniquely identify a function with respect to a workflow,
         # its version, the provider and the region
+        # Note: If this is altered, also alter verify_name_and_version() in workflow.py
         name = (
             f"{config.workflow_name}-{config.workflow_version}-{function.name}_{region['provider']}-{region['region']}"
         )

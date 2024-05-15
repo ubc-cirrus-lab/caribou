@@ -6,7 +6,7 @@ from functools import partial
 from typing import Any, Callable, Optional
 
 import requests
-import statsmodels.tsa.holtwinters as ets
+from statsmodels.tsa.holtwinters import ExponentialSmoothing
 
 from caribou.common.constants import GLOBAL_TIME_ZONE
 from caribou.common.models.remote_client.remote_client import RemoteClient
@@ -186,7 +186,7 @@ class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attri
             hours=1
         )
 
-        model = ets.ExponentialSmoothing(carbon_values, trend=None, seasonal="additive", seasonal_periods=24).fit()
+        model = ExponentialSmoothing(carbon_values, trend=None, seasonal="additive", seasonal_periods=24).fit()
 
         y_pred = model.forecast(24)
 

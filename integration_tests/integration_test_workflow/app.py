@@ -14,22 +14,22 @@ workflow = CaribouWorkflow(name="integration_test_workflow", version="0.0.1")
     regions_and_providers={
         "allowed_regions": [
             {
-                "provider": "integration_test_provider",
+                "provider": "IntegrationTestProvider",
                 "region": "rivendell",
             },
             {
-                "provider": "integration_test_provider",
+                "provider": "IntegrationTestProvider",
                 "region": "lothlorien",
             },
         ],
         "disallowed_regions": [
             {
-                "provider": "integration_test_provider",
+                "provider": "IntegrationTestProvider",
                 "region": "anduin",
             }
         ],
         "providers": {
-            "integration_test_provider": {
+            "IntegrationTestProvider": {
                 "config": {
                     "timeout": 90,
                     "memory": 256,

@@ -272,6 +272,10 @@ class Workflow(Resource):
         if not version_name.replace(".", "").isdigit():
             raise RuntimeError("Workflow version must contain only numbers or dots")
 
+        # Version name should also be less than or equal to 10 characters
+        if len(version_name) > 10:
+            raise RuntimeError("Workflow version must be less than or equal to 10 characters")
+
         # Ensure that the workflow name must contain only letters, numbers, or underscores
         if not self.name.replace("_", "").isalnum():
             raise RuntimeError("Workflow name must contain only letters, numbers, or underscores")
@@ -290,7 +294,7 @@ class Workflow(Resource):
             # NOTE: This may need to be changed if there are major changes to the
             # naming convention of the function name in _get_function_name() method
             # of wokflow_builder.py
-            pattern = r"-(\w+)_"
+            pattern = r"^[^-]+-[^-]+-(.*)_[^-]+-[^-]+$"
 
             # Search for the pattern in the input string
             match = re.search(pattern, function_name)
@@ -303,5 +307,5 @@ class Workflow(Resource):
                 print(function_name)
                 raise RuntimeError("Function name must contain only letters, numbers, or underscores")
 
-            if len(function_name) > 15:
-                raise RuntimeError("Function name must be less than or equal to 15 characters")
+            if len(function_name) > 20:
+                raise RuntimeError("Function name must be less than or equal to 20 characters")
