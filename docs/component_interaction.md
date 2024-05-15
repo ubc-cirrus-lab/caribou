@@ -217,7 +217,6 @@ An example of the structure of the workflow config is as follows:
     "providers": { "aws": { "config": { "timeout": 60, "memory": 128 } } }
   },
   "num_calls_in_one_month": 0,
-  "solver": ""
 }
 ```
 
