@@ -268,21 +268,21 @@ class Workflow(Resource):
         if version_name is None:
             raise RuntimeError("Workflow version is not set")
 
+        # Version name should also be less than or equal to 10 characters and not empty
+        if len(version_name) > 10 or len(version_name) == 0:
+            raise RuntimeError("Workflow version must be greater than 0 and less than or equal to 10 characters")
+
         # Ensure that version name must only contains numbers or dots
         if not version_name.replace(".", "").isdigit():
             raise RuntimeError("Workflow version must contain only numbers or dots")
 
-        # Version name should also be less than or equal to 10 characters
-        if len(version_name) > 10:
-            raise RuntimeError("Workflow version must be less than or equal to 10 characters")
+        # Ensure the length of the workflow name is less than or equal to 25 characters and not empty
+        if len(self.name) > 25 or len(self.name) == 0:
+            raise RuntimeError("Workflow name must be greater than 0 and less than or equal to 25 characters")
 
         # Ensure that the workflow name must contain only letters, numbers, or underscores
         if not self.name.replace("_", "").isalnum():
             raise RuntimeError("Workflow name must contain only letters, numbers, or underscores")
-
-        # Ensure the length of the workflow name is less than or equal to 25 characters
-        if len(self.name) > 25:
-            raise RuntimeError("Workflow name must be less than or equal to 25 characters")
 
         # Ensure the name of the function must contain only letters, numbers, or underscores
         # Also put a limit on the length of the function name to be less than or equal to 15 characters
@@ -312,9 +312,8 @@ class Workflow(Resource):
             else:
                 raise RuntimeError("Unexpected Error in function name:", function_name)
 
-            if not function_name.replace("_", "").isalnum():
-                print(function_name)
-                raise RuntimeError("Function name must contain only letters, numbers, or underscores")
+            if len(function_name) > 20 or len(function_name) == 0:
+                raise RuntimeError("Function name must be greater than 0 and less than or equal to 20 characters")
 
-            if len(function_name) > 20:
-                raise RuntimeError("Function name must be less than or equal to 20 characters")
+            if not function_name.replace("_", "").isalnum():
+                raise RuntimeError("Function name must contain only letters, numbers, or underscores")
