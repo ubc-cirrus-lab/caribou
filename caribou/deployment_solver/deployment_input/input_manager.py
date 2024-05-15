@@ -31,36 +31,45 @@ def _run_input_manager(
         instance_indexer: InstanceIndexer,
         input_queue: Queue,
         output_queue: Queue,
-        pv_queue: Queue,
+        cache_send_queue: Queue,
+        cache_recv_queue: Queue,
 ):
     input_manager: InputManager = InputManager(workflow_config, tail_latency_threshold)
     input_manager.setup(region_indexer, instance_indexer)
     while True:
+        task = None
         try:
-            task = input_queue.get(timeout=3)
+            task = input_queue.get(timeout=0.01)
+            # print(f'Read Task from input Q {task}')
         except:
-            continue
-        if task['type'] == 'transmission':
-            key = (
-                task['input']['from_instance_index'],
-                task['input']['to_instance_index'],
-                task['input']['from_region_index'],
-                task['input']['to_region_index'],
-            )
-            result = input_manager.get_transmission_cost_carbon_latency(**task['input'])
-        else:
-            key = (
-                task['input']['instance_index'],
-                task['input']['region_index']
-            )
-            result = input_manager.get_execution_cost_carbon_latency(**task['input'])
-        output_queue.put((key, result))
+            pass
+        if task is not None:
+            if task['type'] == 'transmission':
+                key = (
+                    task['input']['from_instance_index'],
+                    task['input']['to_instance_index'],
+                    task['input']['from_region_index'],
+                    task['input']['to_region_index'],
+                )
+                result = input_manager.get_transmission_cost_carbon_latency(**task['input'])
+            else:
+                key = (
+                    task['input']['instance_index'],
+                    task['input']['region_index']
+                )
+                result = input_manager.get_execution_cost_carbon_latency(**task['input'])
+            output_queue.put((key, result))
+#             print(f'Put task into output Q {(key, result)}')
 
-        pv_queue.put(input_manager.get_cache())
-        # print('Put in Cache')
-        cache_sync = pv_queue.get()
-#         print('Read from Cache')
-        input_manager.update_cache(cache_sync)
+            cache = input_manager.get_cache()
+            cache_send_queue.put(cache)
+#             print(f'Put in Cache {cache}')
+
+        if input_queue.empty():
+            while not cache_recv_queue.empty():
+                cache_sync = cache_recv_queue.get()
+#                 print(f'Read from Cache {cache_sync}')
+                input_manager.update_cache(cache_sync)
 
 
 class ConcurrentInputManager:
@@ -70,7 +79,7 @@ class ConcurrentInputManager:
             region_indexer: RegionIndexer,
             instance_indexer: InstanceIndexer,
             tail_latency_threshold: int = TAIL_LATENCY_THRESHOLD,
-            n_workers: int = 4,
+            n_workers: int = 6,
     ):
         self.n_workers = n_workers
         self._workflow_config = workflow_config
@@ -90,9 +99,11 @@ class ConcurrentInputManager:
                     self._instance_indexer,
                     self._input_queue,
                     self._output_queue,
-                    self._pv_queue_list[i],
+                    self._cache_queue_list[i][0],
+                    self._cache_queue_list[i][1],
                 )
             )
+#             print('Process started')
             p.start()
             self._pool.append(p)
 
@@ -101,13 +112,16 @@ class ConcurrentInputManager:
         self._task_manager = Manager()
         self._input_queue = self._task_manager.Queue()
         self._output_queue = self._task_manager.Queue()
-        self._pv_queue_list = [self._task_manager.Queue() for _ in range(self.n_workers)]
+        # Send and Recv Queues
+        self._cache_queue_list = [(self._task_manager.Queue(), self._task_manager.Queue()) for _ in
+                                  range(self.n_workers)]
 
     def _sync_cache(self):
-        pdb.set_trace()
+        # pdb.set_trace()
         caches_list = []
         for i in range(self.n_workers):
-            caches_list.append(self._pv_queue_list[i].get())
+            while not self._cache_queue_list[i][0].empty():
+                caches_list.append(self._cache_queue_list[i][0].get())
 
         cache = {
             'execution_latency_distribution_cache': dict(
@@ -135,7 +149,7 @@ class ConcurrentInputManager:
         }
 
         for i in range(self.n_workers):
-            self._pv_queue_list[i].put(cache)
+            self._cache_queue_list[i][1].put(cache)
 
     def get_transmission_execution_cost_carbon_latency(
             self,
@@ -143,12 +157,13 @@ class ConcurrentInputManager:
             execution_input: list[dict]
     ):
         tasks = [
-            {'type': 'transmission', 'input': t_input} for t_input in transmission_input
-        ] + [
-            {'type': 'execution', 'input': e_input} for e_input in execution_input
-        ]
+                    {'type': 'transmission', 'input': t_input} for t_input in transmission_input
+                ] + [
+                    {'type': 'execution', 'input': e_input} for e_input in execution_input
+                ]
 
         for task in tasks:
+#             print(f'[PARENT] put in input Q -> {task}')
             self._input_queue.put(task)
 
         tasks_result = []
@@ -159,21 +174,11 @@ class ConcurrentInputManager:
 
         transmission_result = {}
         execution_result = {}
-        for i, task in enumerate(tasks):
-            if task['type'] == 'transmission':
-                key = (
-                    task['input']['from_instance_index'],
-                    task['input']['to_instance_index'],
-                    task['input']['from_region_index'],
-                    task['input']['to_region_index'],
-                )
-                transmission_result[key] = tasks_result[i]
+        for task_key, task_result in tasks_result:
+            if len(task_key) == 4:  #transmission
+                transmission_result[task_key] = task_result
             else:
-                key = (
-                    task['input']['instance_index'],
-                    task['input']['region_index']
-                )
-                execution_result[key] = tasks_result[i]
+                execution_result[task_key] = task_result
         return transmission_result, execution_result
 
     def __del__(self):
@@ -274,11 +279,11 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         return (cost, carbon, execution_latency)
 
     def get_transmission_cost_carbon_latency(
-        self,
-        from_instance_index: int,
-        to_instance_index: int,
-        from_region_index: int,
-        to_region_index: int,
+            self,
+            from_instance_index: int,
+            to_instance_index: int,
+            from_region_index: int,
+            to_region_index: int,
     ) -> tuple[float, float, float]:
         # Convert the instance and region indices to their names
         from_instance_name: Optional[str] = None
@@ -311,7 +316,7 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         ]
 
         if (
-            transmission_size is None
+                transmission_size is None
         ):  # At this point we can assume that the transmission size is 0 for any missing data
             transmission_size = 0.0
 

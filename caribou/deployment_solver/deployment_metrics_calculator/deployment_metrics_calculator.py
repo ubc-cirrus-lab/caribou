@@ -60,20 +60,6 @@ def calculate_workflow_task(
             results.append(input_manager.get_execution_cost_carbon_latency(**task['input']))
     return results
 
-class ConcurrentMetricsCalculator(ABC):
-    def __init__(
-            self,
-            workflow_config: WorkflowConfig,
-            input_manager: InputManager,
-            region_indexer: RegionIndexer,
-            instance_indexer: InstanceIndexer,
-            tail_latency_threshold: int = TAIL_LATENCY_THRESHOLD,
-            n_jobs: int = N_POOL,
-    ):
-        self.n_jobs = n_jobs
-
-
-
 
 class DeploymentMetricsCalculator(ABC):
     def __init__(
@@ -258,7 +244,7 @@ class DeploymentMetricsCalculator(ABC):
                 invoked_child_dictionary[instance_index] = cumulative_invoked_instance_set
 
         # At this point we may have 1 or more leaf nodes, we need to get the max runtime from them.
-        print(f'Calculcated Workflow {time.time() - start_time}')
+        # print(f'Calculcated Workflow {time.time() - start_time}')
         return {
             "cost": total_cost,
             "runtime": max(cumulative_runtime_of_instances),

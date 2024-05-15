@@ -1,4 +1,5 @@
 import statistics
+import time
 
 import numpy as np
 import scipy.stats as st
@@ -25,7 +26,9 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
 
         while number_of_iterations < max_number_of_iterations:
             for _ in range(batch_size):
+                start_time = time.time()
                 results = self._calculate_workflow(deployment)
+                print('Calculate workflow time: {:.2f}s'.format(time.time() - start_time))
                 costs_distribution_list.append(results["cost"])
                 runtimes_distribution_list.append(results["runtime"])
                 carbons_distribution_list.append(results["carbon"])
