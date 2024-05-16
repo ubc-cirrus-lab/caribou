@@ -33,6 +33,11 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         self._client_cache: dict[str, Any] = {}
         self._workflow_image_cache: dict[str, dict[str, str]] = {}
 
+        # Allow for override of the deployment resources bucket (Due to S3 bucket name restrictions)
+        self._deployment_resource_bucket: str = os.environ.get(
+            "CARIBOU_OVERRIDE_DEPLOYMENT_RESOURCES_BUCKET", DEPLOYMENT_RESOURCES_BUCKET
+        )
+
     def get_current_provider_region(self) -> str:
         return f"aws_{self._session.region_name}"
 
@@ -323,9 +328,19 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
             run_command += " && ".join(additional_docker_commands)
         if len(run_command) > 0:
             run_command = f"RUN {run_command}"
+
+        # For AWS lambda insights for CPU and IO logging
+        # https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Lambda-Insights-Getting-Started-docker.html
+        lambda_insight_command = (
+            """RUN curl -O https://lambda-insights-extension.s3-ap-northeast-1.amazonaws.com/amazon_linux/lambda-insights-extension.rpm && """  # pylint: disable=line-too-long
+            """rpm -U lambda-insights-extension.rpm && """
+            """rm -f lambda-insights-extension.rpm"""
+        )
+
         return f"""
         FROM public.ecr.aws/lambda/{runtime.replace("python", "python:")}
         COPY requirements.txt ./
+        {lambda_insight_command}
         {run_command}
         RUN pip3 install --no-cache-dir -r requirements.txt
         COPY app.py ./
@@ -597,19 +612,19 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
     def upload_resource(self, key: str, resource: bytes) -> None:
         client = self._client("s3")
         try:
-            client.put_object(Body=resource, Bucket=DEPLOYMENT_RESOURCES_BUCKET, Key=key)
+            client.put_object(Body=resource, Bucket=self._deployment_resource_bucket, Key=key)
         except ClientError as e:
             raise RuntimeError(
-                f"Could not upload resource {key} to S3, does the bucket {DEPLOYMENT_RESOURCES_BUCKET} exist and do you have permission to access it: {str(e)}"  # pylint: disable=line-too-long
+                f"Could not upload resource {key} to S3, does the bucket {self._deployment_resource_bucket} exist and do you have permission to access it: {str(e)}"  # pylint: disable=line-too-long
             ) from e
 
     def download_resource(self, key: str) -> bytes:
         client = self._client("s3")
         try:
-            response = client.get_object(Bucket=DEPLOYMENT_RESOURCES_BUCKET, Key=key)
+            response = client.get_object(Bucket=self._deployment_resource_bucket, Key=key)
         except ClientError as e:
             raise RuntimeError(
-                f"Could not upload resource {key} to S3, does the bucket {DEPLOYMENT_RESOURCES_BUCKET} exist and do you have permission to access it: {str(e)}"  # pylint: disable=line-too-long
+                f"Could not upload resource {key} to S3, does the bucket {self._deployment_resource_bucket} exist and do you have permission to access it: {str(e)}"  # pylint: disable=line-too-long
             ) from e
         return response["Body"].read()
 
@@ -710,21 +725,6 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
 
     def remove_messaging_topic(self, topic_identifier: str) -> None:
         client = self._client("sns")
-
-        # Get all subscriptions for the topic
-        response = client.list_subscriptions_by_topic(TopicArn=topic_identifier)
-        subscriptions = response.get("Subscriptions", [])
-
-        # Handle pagination if there are more subscriptions
-        while "NextToken" in response:
-            response = client.list_subscriptions_by_topic(TopicArn=topic_identifier, NextToken=response["NextToken"])
-            subscriptions.extend(response.get("Subscriptions", []))
-
-        # Unsubscribe each subscription
-        for subscription in subscriptions:
-            client.unsubscribe(SubscriptionArn=subscription["SubscriptionArn"])
-
-        # Delete the topic after unsubscribing all its subscriptions
         client.delete_topic(TopicArn=topic_identifier)
 
     def get_topic_identifier(self, topic_name: str) -> str:
@@ -747,10 +747,10 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
     def remove_resource(self, key: str) -> None:
         client = self._client("s3")
         try:
-            client.delete_object(Bucket=DEPLOYMENT_RESOURCES_BUCKET, Key=key)
+            client.delete_object(Bucket=self._deployment_resource_bucket, Key=key)
         except ClientError as e:
             raise RuntimeError(
-                f"Could not upload resource {key} to S3, does the bucket {DEPLOYMENT_RESOURCES_BUCKET} exist and do you have permission to access it: {str(e)}"  # pylint: disable=line-too-long
+                f"Could not upload resource {key} to S3, does the bucket {self._deployment_resource_bucket} exist and do you have permission to access it: {str(e)}"  # pylint: disable=line-too-long
             ) from e
 
     def remove_ecr_repository(self, repository_name: str) -> None:
