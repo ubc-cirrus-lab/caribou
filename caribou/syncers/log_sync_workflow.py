@@ -256,6 +256,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
             raise ValueError(f"Invalid callee_function: {callee_function}")
 
         data_transfer_size = self._extract_from_string(log_entry, r"PAYLOAD_SIZE \((.*?)\)")
+        transmission_size = 0.0
         if data_transfer_size:
             transmission_size = float(data_transfer_size)
         if not isinstance(transmission_size, float):

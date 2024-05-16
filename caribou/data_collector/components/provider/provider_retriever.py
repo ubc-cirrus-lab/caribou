@@ -338,6 +338,7 @@ class ProviderRetriever(DataRetriever):
                 free_duration_item["priceDimensions"][list(free_duration_item["priceDimensions"].keys())[0]]["endRange"]
             )  # in seconds
 
+            invocation_cost_arm64 = 0.0
             if len(invocation_call_sku_arm64) > 0:
                 invocation_cost_item_arm64 = price_list_file_json["terms"]["OnDemand"][invocation_call_sku_arm64][
                     list(price_list_file_json["terms"]["OnDemand"][invocation_call_sku_arm64].keys())[0]
