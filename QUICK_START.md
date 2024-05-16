@@ -2,6 +2,12 @@
 
 The following guide will help you get started with the Caribou framework.
 
+##  Permissions
+
+To use the Caribou framework, you need to have the necessary permissions to deploy and run workflows. Additionally, the workflows themselves need permissions to interact with the AWS services.
+
+More information on the required permissions can be found in the [IAM Policies](docs/iam_policies.md) document.
+
 ## Setup a new workflow
 
 To set up a new workflow, in your command line, navigate to the directory where you want to create the new workflow and run:
