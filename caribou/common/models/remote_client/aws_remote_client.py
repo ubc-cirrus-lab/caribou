@@ -733,6 +733,21 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
 
     def remove_messaging_topic(self, topic_identifier: str) -> None:
         client = self._client("sns")
+
+        # Get all subscriptions for the topic
+        response = client.list_subscriptions_by_topic(TopicArn=topic_identifier)
+        subscriptions = response.get("Subscriptions", [])
+
+        # Handle pagination if there are more subscriptions
+        while "NextToken" in response:
+            response = client.list_subscriptions_by_topic(TopicArn=topic_identifier, NextToken=response["NextToken"])
+            subscriptions.extend(response.get("Subscriptions", []))
+
+        # Unsubscribe each subscription
+        for subscription in subscriptions:
+            client.unsubscribe(SubscriptionArn=subscription["SubscriptionArn"])
+
+        # Delete the topic after unsubscribing all its subscriptions
         client.delete_topic(TopicArn=topic_identifier)
 
     def get_topic_identifier(self, topic_name: str) -> str:
