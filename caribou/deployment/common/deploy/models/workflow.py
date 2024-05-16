@@ -95,6 +95,8 @@ class Workflow(Resource):
         if self._config is None:
             raise RuntimeError("Error in workflow config creation, given config is None, this should not happen")
 
+        function_resource_to_messaging_identifier = None
+        function_resource_to_function_identifier = None
         if "messaging_topic" in resource_values and "function" in resource_values:
             function_resource_to_messaging_identifier = self._get_function_resource_to_identifier(
                 resource_values["messaging_topic"], "topic_identifier"
@@ -105,11 +107,14 @@ class Workflow(Resource):
 
         for function in self._resources:
             if function.name not in deployed_regions:
-                deployed_regions[function.name] = {
-                    "deploy_region": function.deploy_region,
-                    "message_topic": function_resource_to_messaging_identifier[function.name],
-                    "function_identifier": function_resource_to_function_identifier[function.name],
-                }
+                if function_resource_to_messaging_identifier and function_resource_to_function_identifier:
+                    deployed_regions[function.name] = {
+                        "deploy_region": function.deploy_region,
+                        "message_topic": function_resource_to_messaging_identifier[function.name],
+                        "function_identifier": function_resource_to_function_identifier[function.name],
+                    }
+                else:
+                    raise RuntimeError("Error in workflow config creation, this should not happen")
         self._deployed_regions = deployed_regions
 
     def get_workflow_config(self) -> WorkflowConfig:
