@@ -75,7 +75,7 @@ The minimal AWS IAM policy required for a developer to deploy a workflow is as f
     "s3:GetObject",
     "s3:PutObject"
    ],
-   "Resource": "arn:aws:s3:::caribou-map-reduce/*",
+   "Resource": "arn:aws:s3:::*",
    "Effect": "Allow"
   },
   {
