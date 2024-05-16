@@ -704,7 +704,15 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
 
     def remove_key(self, table_name: str, key: str) -> None:
         client = self._client("dynamodb")
-        client.delete_item(TableName=table_name, Key={"key": {"S": key}})
+
+        try:
+            client.delete_item(TableName=table_name, Key={"key": {"S": key}})
+        except ClientError as e:
+            if e.response["Error"]["Code"] == "ValidationException":
+                print(f"Table '{table_name}' Remove Key '{key}' Error.")
+                print(f"{e.response['Error']['Code']}: {e.response['Error']['Message']}")
+            else:
+                raise
 
     def remove_function(self, function_name: str) -> None:
         client = self._client("lambda")

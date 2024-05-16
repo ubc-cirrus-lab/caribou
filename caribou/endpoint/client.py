@@ -169,11 +169,11 @@ class Client:
 
         self._endpoints.get_data_collector_client().remove_key(WORKFLOW_INSTANCE_TABLE, self._workflow_id)
 
-        self._endpoints.get_datastore_client().remove_key(WORKFLOW_SUMMARY_TABLE, self._workflow_id)
-
         self._endpoints.get_deployment_resources_client().remove_key(
             CARIBOU_WORKFLOW_IMAGES_TABLE, self._workflow_id.replace(".", "_")
         )
+
+        self._endpoints.get_datastore_client().remove_key(WORKFLOW_SUMMARY_TABLE, self._workflow_id)
 
         print(f"Removed workflow {self._workflow_id}")
 
