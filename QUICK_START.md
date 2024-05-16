@@ -117,7 +117,8 @@ poetry run caribou manage_deployments
 
 ## Run Deployment Migrator
 
-Since the AWS lambda environment restricts us from using Docker, we have to deploy the workflows using [crane](https://github.com/google/go-containerregistry/tree/main/cmd/crane). For the following step to work, please install the crane as described in the [crane documentation](https://github.com/google/go-containerregistry/blob/main/cmd/crane/README.md).
+Make sure that you have the crane dependency installed.
+See the [Installation](INSTALL.md) guide for more information.
 
 Once a new deployment has been found for a workflow, you can use the following command to deploy the new workflow:
 
@@ -126,3 +127,10 @@ poetry run caribou run_deployment_migrator
 ```
 
 This will check if a new deployment is required for any workflow, and, if so, migrate the functions according to this new deployment.
+
+##  Deploying the framework components to AWS
+
+**TODO:** We currently have the scripts for packaging the framework components into a container in `scripts/deploy_to_aws.py`.
+This script works for simple deployments, but for example the crane dependency is not taken care of.
+We need to extend the script to deploy all the data collectors, log syncer, deployment manager, and deployment migrator to AWS.
+Potentially we also want to decouple the deployment manager and deployment solver in a future version.

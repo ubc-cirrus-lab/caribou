@@ -66,3 +66,7 @@ caribou setup_tables
 **Note:** The bucket that Caribou uses to store the resources (a feature for future provider compatibility) needs to be manually created.
 Since AWS bucket names need to be unique, the currently configured bucket might already exist and be used by another version of the framework deployed somewhere else.
 In this case, adapt the bucket name for the variable `DEPLOYMENT_RESOURCES_BUCKET` in the `caribou/common/constants.py` file.
+
+##  Installing dependencies for the framework components
+
+Since the AWS lambda environment restricts us from using Docker, we have to deploy the workflows using [crane](https://github.com/google/go-containerregistry/tree/main/cmd/crane). For the following step to work, please install the crane as described in the [crane documentation](https://github.com/google/go-containerregistry/blob/main/cmd/crane/README.md).
