@@ -54,7 +54,7 @@ class ProviderRetriever(DataRetriever):
                 elif provider in (Provider.TEST_PROVIDER1, Provider.TEST_PROVIDER2):
                     pass
                 elif provider == Provider.INTEGRATION_TEST_PROVIDER:
-                    available_regions.update(self.retrieve_integrationtest_regions())
+                    pass  # Integration test regions are added separately and only IF the integration test is on
                 else:
                     raise NotImplementedError(f"Provider {provider} not implemented")
         self._available_regions = available_regions
@@ -160,8 +160,8 @@ class ProviderRetriever(DataRetriever):
             region_key: {
                 "execution_cost": execution_cost_dict[region_key],
                 "transmission_cost": transmission_cost_dict[region_key],
-                "pue": 1.15,
-                "cfe": 0.9,
+                "pue": 1.11,
+                "cfe": 0.0,
                 "average_memory_power": 0.00000392,
                 "average_cpu_power": (0.74 + 0.5 * (3.5 - 0.74)) / 1000,
                 "available_architectures": self._retrieve_aws_available_architectures(execution_cost_dict[region_key]),

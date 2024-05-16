@@ -397,6 +397,39 @@ class TestWorkflow(unittest.TestCase):
         # Assert that the result matches the expected result
         self.assertEqual(result, expected_result)
 
+    def test_verify_name_and_version(self):
+        # Test when version is None
+        self.workflow.version = None
+        with self.assertRaises(RuntimeError):
+            self.workflow.verify_name_and_version()
+
+        # Test when version contains non-numeric and non-dot characters
+        self.workflow.version = "1.0a"
+        with self.assertRaises(RuntimeError):
+            self.workflow.verify_name_and_version()
+
+        # Test when name contains non-alphanumeric and non-underscore characters
+        self.workflow.name = "workflow#1"
+        with self.assertRaises(RuntimeError):
+            self.workflow.verify_name_and_version()
+
+        # Test when name length is more than 25 characters
+        self.workflow.name = "a" * 26
+        with self.assertRaises(RuntimeError):
+            self.workflow.verify_name_and_version()
+
+        # Test when function name contains non-alphanumeric and non-underscore characters
+        function = Mock(name="function#1")
+        self.workflow._resources = [function]
+        with self.assertRaises(RuntimeError):
+            self.workflow.verify_name_and_version()
+
+        # Test when function name length is more than 15 characters
+        function = Mock(name="a" * 16)
+        self.workflow._resources = [function]
+        with self.assertRaises(RuntimeError):
+            self.workflow.verify_name_and_version()
+
 
 if __name__ == "__main__":
     unittest.main()

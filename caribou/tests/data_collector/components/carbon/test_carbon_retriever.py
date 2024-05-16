@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import MagicMock, Mock, patch
 from caribou.data_collector.components.carbon.carbon_retriever import CarbonRetriever
+from statsmodels.tsa.holtwinters import ExponentialSmoothing
 
 
 class TestCarbonRetriever(unittest.TestCase):
@@ -74,7 +75,7 @@ class TestCarbonRetriever(unittest.TestCase):
         self.assertEqual(result, 2)
 
     def test_get_carbon_intensity_information(self):
-        self.carbon_retriever._get_raw_carbon_intensity_history_range = MagicMock(return_value={})
+        self.carbon_retriever._get_raw_carbon_intensity_history_range = MagicMock(return_value=[None])
         self.carbon_retriever._process_raw_carbon_intensity_history = MagicMock(return_value={"test": None})
         result = self.carbon_retriever._get_carbon_intensity_information(0, 0)
 
@@ -84,22 +85,20 @@ class TestCarbonRetriever(unittest.TestCase):
 
         self.assertEqual(result, {"test": None})
 
-    def test_process_raw_carbon_intensity_history(self):
-        result = self.carbon_retriever._process_raw_carbon_intensity_history([])
-        expected_result = {
-            "overall_average": 475.0,
-            "hourly_average": {hour: 475.0 for hour in range(24)},
-        }
-        self.assertEqual(result, expected_result)
+    @patch.object(ExponentialSmoothing, "fit")
+    def test_process_raw_carbon_intensity_history(self, mock_fit):
+        # Mock the forecast method to return a predefined result
+        mock_model = Mock()
+        mock_model.forecast.return_value = [i for i in range(24)]
+        mock_fit.return_value = mock_model
 
-        result = self.carbon_retriever._process_raw_carbon_intensity_history(
-            [
-                {"carbonIntensity": 100, "datetime": "2021-01-01T00:00:00Z"},
-                {"carbonIntensity": 200, "datetime": "2021-02-01T00:00:00Z"},
-                {"carbonIntensity": 175, "datetime": "2021-02-01T01:00:00Z"},
-            ]
-        )
-        expected_result = {"overall_average": 158.33333333333334, "hourly_average": {0: 150.0, 1: 175.0}}
+        raw_carbon_intensity_history = [
+            {"carbonIntensity": i, "datetime": "2024-05-13T00:00:00.000Z"} for i in range(48)
+        ]
+
+        result = self.carbon_retriever._process_raw_carbon_intensity_history(raw_carbon_intensity_history)
+
+        expected_result = {"overall_average": 11.5, "hourly_average": {i: (i - 1) % 24 for i in range(24)}}
         self.assertEqual(result, expected_result)
 
     @patch("requests.get")

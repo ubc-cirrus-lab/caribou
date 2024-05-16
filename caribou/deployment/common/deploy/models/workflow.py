@@ -1,3 +1,4 @@
+import re
 from typing import Any, Optional, Sequence
 
 from caribou.deployment.common.config.config import Config
@@ -261,3 +262,58 @@ class Workflow(Resource):
             if "instance_name" in instance and instance["instance_name"].split(":")[1] == "entry_point":
                 return instance["instance_name"]
         raise RuntimeError("No entry point instance found, this should not happen")
+
+    def verify_name_and_version(self) -> None:
+        version_name = self.version
+        if version_name is None:
+            raise RuntimeError("Workflow version is not set")
+
+        # Version name should also be less than or equal to 10 characters and not empty
+        if len(version_name) > 10 or len(version_name) == 0:
+            raise RuntimeError("Workflow version must be greater than 0 and less than or equal to 10 characters")
+
+        # Ensure that version name must only contains numbers or dots
+        if not version_name.replace(".", "").isdigit():
+            raise RuntimeError("Workflow version must contain only numbers or dots")
+
+        # Ensure the length of the workflow name is less than or equal to 25 characters and not empty
+        if len(self.name) > 25 or len(self.name) == 0:
+            raise RuntimeError("Workflow name must be greater than 0 and less than or equal to 25 characters")
+
+        # Ensure that the workflow name must contain only letters, numbers, or underscores
+        if not self.name.replace("_", "").isalnum():
+            raise RuntimeError("Workflow name must contain only letters, numbers, or underscores")
+
+        # Ensure the name of the function must contain only letters, numbers, or underscores
+        # Also put a limit on the length of the function name to be less than or equal to 15 characters
+        for function in self._resources:
+            function_name = function.name
+
+            # First check the overall length of the function name
+            if len(function_name) > 64:
+                raise RuntimeError(
+                    f"AWS Lambda Function name must be less than or equal to 64 characters,"
+                    f"please shorten the workflow name, version, and or function name. \n"
+                    f"Current Caribou Full function name: {function_name} \n"
+                    f"Current length: {len(function_name)} characters"
+                )
+
+            # Define the regular expression pattern to match the function name
+            # (Isolate the actual function name from the full function name)
+            # NOTE: This may need to be changed if there are major changes to the
+            # naming convention of the function name in _get_function_name() method
+            # of wokflow_builder.py
+            pattern = r"^[^-]+-[^-]+-(.*)_[^-]+-"
+
+            # Search for the pattern in the input string
+            match = re.search(pattern, function_name)
+            if match:
+                function_name = match.group(1)
+            else:
+                raise RuntimeError("Unexpected Error in function name:", function_name)
+
+            if len(function_name) > 20 or len(function_name) == 0:
+                raise RuntimeError("Function name must be greater than 0 and less than or equal to 20 characters")
+
+            if not function_name.replace("_", "").isalnum():
+                raise RuntimeError("Function name must contain only letters, numbers, or underscores")

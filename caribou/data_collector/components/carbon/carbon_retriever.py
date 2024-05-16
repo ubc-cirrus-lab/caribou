@@ -3,9 +3,10 @@ import os
 import time
 from datetime import datetime, timedelta
 from functools import partial
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 import requests
+from statsmodels.tsa.holtwinters import ExponentialSmoothing
 
 from caribou.common.constants import GLOBAL_TIME_ZONE
 from caribou.common.models.remote_client.remote_client import RemoteClient
@@ -38,7 +39,7 @@ class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attri
             datetime.now(GLOBAL_TIME_ZONE).replace(minute=0, second=0, microsecond=0).isoformat().replace("+00:00", "Z")
         )
 
-        self._carbon_intensity_history_cache: dict[tuple[float, float], dict[str, Any]] = {}
+        self._carbon_intensity_history_cache: dict[tuple[float, float], Optional[dict[str, Any]]] = {}
 
         self._carbon_intensity_cache: dict[tuple[float, float], float] = {}
 
@@ -54,13 +55,19 @@ class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attri
                 available_region, self._get_overall_average_carbon_intensity
             )
 
+            if overall_average_data is None:
+                continue
+
             ## Hourly average carbon intensity
             # For this we need a 24 hour loop
             hourly_average_data: dict[str, dict[str, Any]] = {}
             for hour in range(24):
-                hourly_average_data[str(hour)] = self._get_execution_carbon_intensity(
+                carbon_intensity = self._get_execution_carbon_intensity(
                     available_region, partial(self._get_hour_average_carbon_intensity, hour=hour)
                 )
+
+                if carbon_intensity is not None:
+                    hourly_average_data[str(hour)] = carbon_intensity
 
             averages = {"overall": overall_average_data, **hourly_average_data}
 
@@ -76,11 +83,14 @@ class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attri
 
     def _get_execution_carbon_intensity(
         self, available_region: dict[str, Any], get_carbon_intensity_from_coordinates: Callable
-    ) -> dict[str, Any]:
+    ) -> Optional[dict[str, Any]]:
         latitude = available_region["latitude"]
         longitude = available_region["longitude"]
 
         carbon_intensity = get_carbon_intensity_from_coordinates(latitude, longitude)
+
+        if carbon_intensity is None:
+            return None
 
         return {
             "carbon_intensity": carbon_intensity,
@@ -121,21 +131,30 @@ class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attri
 
         return distance
 
-    def _get_hour_average_carbon_intensity(self, latitude: float, longitude: float, hour: int) -> float:
+    def _get_hour_average_carbon_intensity(self, latitude: float, longitude: float, hour: int) -> Optional[float]:
         if self._integration_test_on:
-            return latitude + longitude
+            # Return the absolute value of the sum of the latitude and longitude
+            return abs(latitude + longitude)
 
-        return self._get_carbon_intensity_information(latitude, longitude)["hourly_average"].get(
-            hour, self._global_average_worst_case_carbon_intensity
-        )
+        carbon_information = self._get_carbon_intensity_information(latitude, longitude)
 
-    def _get_overall_average_carbon_intensity(self, latitude: float, longitude: float) -> float:
+        if carbon_information is None:
+            return None
+
+        return carbon_information["hourly_average"].get(hour, self._global_average_worst_case_carbon_intensity)
+
+    def _get_overall_average_carbon_intensity(self, latitude: float, longitude: float) -> Optional[float]:
         if self._integration_test_on:
-            return latitude + longitude
+            return abs(latitude + longitude)
 
-        return self._get_carbon_intensity_information(latitude, longitude)["overall_average"]
+        carbon_information = self._get_carbon_intensity_information(latitude, longitude)
 
-    def _get_carbon_intensity_information(self, latitude: float, longitude: float) -> dict[str, Any]:
+        if carbon_information is None:
+            return None
+
+        return carbon_information["overall_average"]
+
+    def _get_carbon_intensity_information(self, latitude: float, longitude: float) -> Optional[dict[str, Any]]:
         # Check cache if the carbon intensity is already there
         if (latitude, longitude) in self._carbon_intensity_history_cache:
             return self._carbon_intensity_history_cache[(latitude, longitude)]
@@ -144,6 +163,11 @@ class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attri
         raw_carbon_intensity_history = self._get_raw_carbon_intensity_history_range(
             latitude, longitude, self._start_timestamp, self._end_timestamp
         )
+
+        if len(raw_carbon_intensity_history) == 0:
+            self._carbon_intensity_history_cache[(latitude, longitude)] = None
+            return None
+
         processed_carbon_intensity = self._process_raw_carbon_intensity_history(raw_carbon_intensity_history)
         self._carbon_intensity_history_cache[(latitude, longitude)] = processed_carbon_intensity
 
@@ -152,47 +176,31 @@ class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attri
     def _process_raw_carbon_intensity_history(
         self, raw_carbon_intensity_history: list[dict[str, str]]
     ) -> dict[str, Any]:
-        if (len(raw_carbon_intensity_history)) == 0:
-            return {
-                "overall_average": self._global_average_worst_case_carbon_intensity,
-                "hourly_average": {hour: self._global_average_worst_case_carbon_intensity for hour in range(24)},
-            }
-        # We must process the raw information to aquire the necessary plans
-        # One of the plan is to get the hourly carbon intenity
-        # Another one is just overall average of the carbon intensity
+        # Sorting the data by datetime to ensure chronological order
+        sorted_data = sorted(raw_carbon_intensity_history, key=lambda x: x["datetime"])
 
-        # First convert to ordered history
-        total_carbon_intensity = 0.0
-        ordered_history: dict[int, list[float]] = {}
-        for time_slot in raw_carbon_intensity_history:
-            # Parse the datetime string into a datetime object
-            datetime_obj = datetime.fromisoformat(
-                time_slot["datetime"].replace("Z", "")
-            )  # For fromisoformat doesn't handle 'Z'.
+        # Extracting just the carbon intensity values for time series forecasting
+        carbon_values = [entry["carbonIntensity"] for entry in sorted_data]
 
-            # Retrieve the hour section
-            hour = datetime_obj.hour
+        first_prediction_hour = datetime.fromisoformat(sorted_data[-1]["datetime"].replace("Z", "")) + timedelta(
+            hours=1
+        )
 
-            # Create entry on carbon history if needed
-            if hour not in ordered_history:
-                ordered_history[hour] = []
+        model = ExponentialSmoothing(carbon_values, trend=None, seasonal="additive", seasonal_periods=24).fit()
 
-            # For carbon information
-            carbon_intensity = float(time_slot["carbonIntensity"])
-            total_carbon_intensity += carbon_intensity
+        y_pred = model.forecast(24)
 
-            ordered_history[hour].append(carbon_intensity)
+        # For loop from 0 to 23, just a loop in python
+        hourly_avg = {}
+        for i in range(24):
+            future_time = first_prediction_hour + timedelta(hours=i)
+            hourly_avg[future_time.hour] = y_pred[i]
 
-        # For for each hour we want to get the average carbon intensity
-        hourly_average_carbon_intensity: dict[int, float] = {}
-        for hour, carbon_intensity_list in ordered_history.items():
-            hourly_average_carbon_intensity[hour] = sum(carbon_intensity_list) / len(carbon_intensity_list)
-
-        average_carbon_intensity = total_carbon_intensity / len(raw_carbon_intensity_history)
+        average_pred_carbon_intensity = sum(y_pred) / len(y_pred)
 
         return {
-            "overall_average": average_carbon_intensity,
-            "hourly_average": hourly_average_carbon_intensity,
+            "overall_average": average_pred_carbon_intensity,
+            "hourly_average": hourly_avg,
         }
 
     def _get_raw_carbon_intensity_history_range(
