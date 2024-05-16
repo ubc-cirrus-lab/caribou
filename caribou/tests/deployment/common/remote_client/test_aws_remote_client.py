@@ -1,3 +1,4 @@
+import os
 import unittest
 from unittest.mock import patch
 from unittest.mock import MagicMock
@@ -479,8 +480,13 @@ class TestAWSRemoteClient(unittest.TestCase):
         resource = b"test_resource"
         self.aws_client.upload_resource(key, resource)
         mock_client.assert_called_with("s3")
+
+        deployment_resource_bucket: str = os.environ.get(
+            "CARIBOU_OVERRIDE_DEPLOYMENT_RESOURCES_BUCKET", DEPLOYMENT_RESOURCES_BUCKET
+        )
+
         mock_client.return_value.put_object.assert_called_once_with(
-            Body=resource, Bucket=DEPLOYMENT_RESOURCES_BUCKET, Key=key
+            Body=resource, Bucket=deployment_resource_bucket, Key=key
         )
 
     @patch.object(AWSRemoteClient, "_client")
@@ -596,6 +602,7 @@ class TestAWSRemoteClient(unittest.TestCase):
         expected_result = """
         FROM public.ecr.aws/lambda/python:
         COPY requirements.txt ./
+        RUN curl -O https://lambda-insights-extension.s3-ap-northeast-1.amazonaws.com/amazon_linux/lambda-insights-extension.rpm && rpm -U lambda-insights-extension.rpm && rm -f lambda-insights-extension.rpm
         
         RUN pip3 install --no-cache-dir -r requirements.txt
         COPY app.py ./
@@ -609,6 +616,7 @@ class TestAWSRemoteClient(unittest.TestCase):
         expected_result = """
         FROM public.ecr.aws/lambda/python:
         COPY requirements.txt ./
+        RUN curl -O https://lambda-insights-extension.s3-ap-northeast-1.amazonaws.com/amazon_linux/lambda-insights-extension.rpm && rpm -U lambda-insights-extension.rpm && rm -f lambda-insights-extension.rpm
         RUN command1 && command2
         RUN pip3 install --no-cache-dir -r requirements.txt
         COPY app.py ./

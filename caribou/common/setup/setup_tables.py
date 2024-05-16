@@ -1,4 +1,5 @@
 import logging
+import os
 
 import boto3
 
@@ -52,7 +53,8 @@ def main():
             create_table(dynamodb, table_name)
         # If the attribute name ends with '_BUCKET', create an S3 bucket
         elif attr.endswith("_BUCKET"):
-            bucket_name = getattr(constants, attr)
+            # Allow for the bucket name to be overridden by an environment variable
+            bucket_name = os.environ.get(f"CARIBOU_OVERRIDE_{attr}", getattr(constants, attr))
             logger.info("Creating bucket: %s", bucket_name)
             create_bucket(s3, bucket_name)
 
