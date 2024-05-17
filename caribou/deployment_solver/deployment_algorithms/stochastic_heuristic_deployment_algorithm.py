@@ -35,7 +35,6 @@ class StochasticHeuristicDeploymentAlgorithm(DeploymentAlgorithm):
         if len(deployments) == 0:
             deployments.append((self._home_deployment, self._home_deployment_metrics))
         self._generate_stochastic_heuristic_deployments(deployments)
-        print(deployments)
         return deployments
 
     def _generate_stochastic_heuristic_deployments(self, deployments: list[tuple[list[int], dict[str, float]]]) -> None:

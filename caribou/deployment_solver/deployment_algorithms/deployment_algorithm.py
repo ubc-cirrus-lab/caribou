@@ -1,4 +1,5 @@
 import json
+import time
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from typing import Any, Optional
@@ -70,14 +71,18 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
             hours_to_run = [None]  # type: ignore
         for hour_to_run in hours_to_run:
             self._update_data_for_new_hour(hour_to_run)
+            start_time = time.time()
             deployments = self._run_algorithm()
             ranked_deployments = self._ranker.rank(deployments)
             selected_deployment = self._select_deployment(ranked_deployments)
+            print(f"Solve Time: {time.time() - start_time}")
             formatted_deployment = self._formatter.format(
                 selected_deployment,
                 self._instance_indexer.indicies_to_values(),
                 self._region_indexer.indicies_to_values(),
             )
+            print(selected_deployment)
+            print("------")
             if hour_to_run is None:
                 # If the hour_to_run is None, we have used the daily average and thus only have one result
                 # For this result to be selected at all times, we set the key to "0"
