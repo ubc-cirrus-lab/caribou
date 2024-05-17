@@ -67,7 +67,7 @@ class DeploymentManager(Monitor):
                 current_time = datetime.now(GLOBAL_TIME_ZONE)
                 next_check = datetime.strptime(workflow_info["next_check"], TIME_FORMAT)
                 if current_time < next_check:
-                    continue
+                    pass
 
             self.workflow_collector.run_on_workflow(workflow_id)
 
@@ -81,6 +81,9 @@ class DeploymentManager(Monitor):
                 raise ValueError("Invalid workflow config")
 
             workflow_config_dict = json.loads(workflow_json["workflow_config"])
+
+            if workflow_config_dict.get('workflow_name', None) != 'map_reduce':
+                continue
 
             workflow_config = WorkflowConfig(workflow_config_dict)
 
@@ -97,7 +100,7 @@ class DeploymentManager(Monitor):
             # The solver has never been run before for this workflow, and the workflow has not been invoked enough
             # collect more data and wait
             if total_invocation_counts_since_last_solved < MINIMAL_SOLVE_THRESHOLD and workflow_info is None:
-                continue
+                pass
 
             # Income token
             positive_carbon_savings_token = self._calculate_positive_carbon_savings_token(
@@ -117,7 +120,7 @@ class DeploymentManager(Monitor):
                 self._update_workflow_info(
                     carbon_cost - positive_carbon_savings_token - carbon_budget_overflow_last_solved, workflow_id
                 )
-                continue
+                pass
 
             expiry_delta_seconds = self._upload_new_workflow_info(
                 affordable_deployment_algorithm_run["leftover_tokens"], workflow_id

@@ -113,11 +113,11 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         return (cost, carbon, execution_latency)
 
     def get_transmission_cost_carbon_latency(
-        self,
-        from_instance_index: int,
-        to_instance_index: int,
-        from_region_index: int,
-        to_region_index: int,
+            self,
+            from_instance_index: int,
+            to_instance_index: int,
+            from_region_index: int,
+            to_region_index: int,
     ) -> tuple[float, float, float]:
         # Convert the instance and region indices to their names
         from_instance_name: Optional[str] = None
@@ -150,7 +150,7 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         ]
 
         if (
-            transmission_size is None
+                transmission_size is None
         ):  # At this point we can assume that the transmission size is 0 for any missing data
             transmission_size = 0.0
 
