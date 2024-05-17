@@ -1,6 +1,7 @@
 import random
 from copy import deepcopy
 from typing import Optional
+from memory_profiler import profile
 
 from caribou.deployment_solver.deployment_algorithms.deployment_algorithm import DeploymentAlgorithm
 from caribou.deployment_solver.workflow_config import WorkflowConfig
@@ -27,6 +28,7 @@ class StochasticHeuristicDeploymentAlgorithm(DeploymentAlgorithm):
         for instance in range(self._number_of_instances):
             self._max_number_combinations *= len(self._per_instance_permitted_regions[instance])
 
+    @profile
     def _run_algorithm(self) -> list[tuple[list[int], dict[str, float]]]:
         self._best_deployment_metrics = deepcopy(  # pylint: disable=attribute-defined-outside-init
             self._home_deployment_metrics

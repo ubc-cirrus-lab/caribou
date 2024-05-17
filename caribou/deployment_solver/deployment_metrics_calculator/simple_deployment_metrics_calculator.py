@@ -14,7 +14,7 @@ from caribou.deployment_solver.deployment_metrics_calculator.deployment_metrics_
 from caribou.deployment_solver.models.instance_indexer import InstanceIndexer
 from caribou.deployment_solver.models.region_indexer import RegionIndexer
 from caribou.deployment_solver.workflow_config import WorkflowConfig
-
+from memory_profiler import profile
 
 def _simulation_worker(
         workflow_config: WorkflowConfig,
