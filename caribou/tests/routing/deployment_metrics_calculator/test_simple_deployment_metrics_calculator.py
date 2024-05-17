@@ -7,11 +7,11 @@ from caribou.deployment_solver.deployment_metrics_calculator.simple_deployment_m
 
 class TestSimpleDeploymentMetricsCalculator(unittest.TestCase):
     def setUp(self):
-        self.calculator = SimpleDeploymentMetricsCalculator(MagicMock(), MagicMock(), MagicMock(), MagicMock())
+        self.calculator = SimpleDeploymentMetricsCalculator(MagicMock(), MagicMock(), MagicMock(), MagicMock(), n_processes=1)
 
     @patch.object(
         SimpleDeploymentMetricsCalculator,
-        "_calculate_workflow",
+        "calculate_workflow",
         return_value={"cost": 1.0, "runtime": 1.0, "carbon": 1.0},
     )
     def test_perform_monte_carlo_simulation(self, mock_calculate_workflow):

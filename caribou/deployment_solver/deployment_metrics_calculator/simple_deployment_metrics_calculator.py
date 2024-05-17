@@ -68,10 +68,30 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
             tail_latency_threshold,
         )
         self.n_processes = n_processes
+        self.batch_size = 200
+        if n_processes > 1:
+            self._setup(
+                workflow_config,
+                input_manager,
+                region_indexer,
+                instance_indexer,
+                tail_latency_threshold,
+                n_processes,
+            )
+
+    def _setup(
+            self,
+            workflow_config: WorkflowConfig,
+            input_manager: InputManager,
+            region_indexer: RegionIndexer,
+            instance_indexer: InstanceIndexer,
+            tail_latency_threshold: int,
+            n_processes: int,
+    ):
         self._manager = Manager()
         self._input_queue = self._manager.Queue()
         self._output_queue = self._manager.Queue()
-        n_iterations = 200 // n_processes
+        n_iterations = self.batch_size // n_processes
         self._pool = []
         for _ in range(n_processes):
             p = Process(
@@ -91,16 +111,24 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
             self._pool.append(p)
 
     def calculate_workflow_loop(self, deployment):
-        for _ in range(self.n_processes):
-            self._input_queue.put(deployment)
         costs_distribution_list: list[float] = []
         runtimes_distribution_list: list[float] = []
         carbons_distribution_list: list[float] = []
-        for _ in range(self.n_processes):
-            result = self._output_queue.get()
-            costs_distribution_list.extend(result[0])
-            runtimes_distribution_list.extend(result[1])
-            carbons_distribution_list.extend(result[2])
+        if self.n_processes > 1:
+            for _ in range(self.n_processes):
+                self._input_queue.put(deployment)
+            for _ in range(self.n_processes):
+                result = self._output_queue.get()
+                costs_distribution_list.extend(result[0])
+                runtimes_distribution_list.extend(result[1])
+                carbons_distribution_list.extend(result[2])
+        else:
+            for _ in range(self.batch_size):
+                results = self.calculate_workflow(deployment)
+                costs_distribution_list.append(results["cost"])
+                runtimes_distribution_list.append(results["runtime"])
+                carbons_distribution_list.append(results["carbon"])
+
         return costs_distribution_list, runtimes_distribution_list, carbons_distribution_list
 
     def _perform_monte_carlo_simulation(self, deployment: list[int]) -> dict[str, float]:
@@ -116,7 +144,6 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
         max_number_of_iterations = 2000
         number_of_iterations = 0
         threshold = 0.05
-        batch_size = 200
         # pdb.set_trace()
         while number_of_iterations < max_number_of_iterations:
             results = self.calculate_workflow_loop(deployment)
@@ -124,7 +151,7 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
             runtimes_distribution_list.extend(results[1])
             carbons_distribution_list.extend(results[2])
 
-            number_of_iterations += batch_size
+            number_of_iterations += self.batch_size
 
             all_within_threshold = True
 
@@ -155,5 +182,6 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
         return result
 
     def __del__(self):
-        for p in self._pool:
-            p.kill()
+        if self.n_processes > 1:
+            for p in self._pool:
+                p.kill()
