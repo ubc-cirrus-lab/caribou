@@ -28,7 +28,6 @@ class StochasticHeuristicDeploymentAlgorithm(DeploymentAlgorithm):
         for instance in range(self._number_of_instances):
             self._max_number_combinations *= len(self._per_instance_permitted_regions[instance])
 
-    @profile
     def _run_algorithm(self) -> list[tuple[list[int], dict[str, float]]]:
         self._best_deployment_metrics = deepcopy(  # pylint: disable=attribute-defined-outside-init
             self._home_deployment_metrics
