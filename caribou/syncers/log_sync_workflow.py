@@ -40,6 +40,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         self._previous_data = previous_data
         self._deployed_regions: dict[str, dict[str, Any]] = {}
         self._load_information(deployment_manager_config_str)
+        self._insights_logs: dict[str, Any] = {}
 
         self._existing_data: dict[str, Any] = {
             "execution_instance_region": {},
@@ -89,8 +90,34 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         logs = remote_client.get_logs_between(functions_instance, time_from, time_to)
         if len(logs) == 0:
             return
+
+        # Lambda insight logs may not available at the same time as the lambda logs
+        # so we need to fetch logs from a wider time range (30 minutes before and after the lambda logs,
+        # could be recalibrated if needed)
+        lambda_insights_logs = remote_client.get_insights_logs_between(
+            functions_instance, time_from - timedelta(minutes=30), time_to + timedelta(minutes=30)
+        )
+        self._process_lambda_insights(lambda_insights_logs)
+
         for log in logs:
             self._process_log_entry(log, provider_region)
+
+    def _process_lambda_insights(self, logs: list[str]) -> None:
+        # Clear the lambda insights logs
+        self._insights_logs = {}
+
+        # Process the lambda insights logs
+        for log in logs:
+            log_dict = json.loads(log)
+
+            request_id = log_dict.get("request_id", None)
+            if request_id:
+                important_entries = ["duration", "cold_start", "memory_utilization", "total_network", "cpu_total_time"]
+                for entry in important_entries:
+                    if entry in log_dict:
+                        if request_id not in self._insights_logs:
+                            self._insights_logs[request_id] = {}
+                        self._insights_logs[request_id][entry] = log_dict[entry]
 
     def _process_log_entry(self, log_entry: str, provider_region: dict[str, str]) -> None:
         # If this log entry contains an init duration, then this run has incurred a cold start.
@@ -130,6 +157,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
             if self._forgetting or run_id in self._blacklisted_run_ids:
                 return
             self._collected_logs[run_id] = WorkflowRunSample(run_id)
+
         workflow_run_sample = self._collected_logs[run_id]
         workflow_run_sample.update_log_end_time(log_time_dt)
 
@@ -137,6 +165,9 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         parts = log_entry.split("\t")
         request_id = parts[2]
         workflow_run_sample.request_ids.add(request_id)
+
+        # Add the insights logs to the workflow run sample
+        workflow_run_sample.insights = self._insights_logs.get(request_id, {})
 
         # Process the log entry
         self._handle_system_log_messages(log_entry, workflow_run_sample, provider_region, log_time_dt)

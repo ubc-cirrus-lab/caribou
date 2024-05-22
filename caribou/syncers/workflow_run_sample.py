@@ -9,6 +9,7 @@ class WorkflowRunSample:  # pylint: disable=too-many-instance-attributes
     def __init__(self, run_id: str) -> None:
         self.run_id: str = run_id
         self.request_ids: set[str] = set()
+        self.insights: dict[str, Any] = {}
         self.log_start_time: Optional[datetime] = None
         self.log_end_time: Optional[datetime] = None
         self.execution_latencies: dict[str, dict[str, Any]] = {}
@@ -52,6 +53,7 @@ class WorkflowRunSample:  # pylint: disable=too-many-instance-attributes
             self.log_start_time,
             {
                 "run_id": self.run_id,
+                "insights": self.insights,
                 "runtime": self.duration.total_seconds(),
                 "start_time": self.log_start_time.strftime(TIME_FORMAT),
                 "execution_latencies": self.execution_latencies,

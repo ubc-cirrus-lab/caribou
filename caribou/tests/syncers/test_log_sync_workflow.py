@@ -118,7 +118,10 @@ class TestLogSyncWorkflow(unittest.TestCase):
 
     @patch.object(LogSyncWorkflow, "_get_remote_client")
     @patch.object(LogSyncWorkflow, "_process_log_entry")
-    def test_process_logs_for_instance_for_one_region(self, process_log_entry_mock, get_remote_client_mock):
+    @patch.object(LogSyncWorkflow, "_process_lambda_insights")
+    def test_process_logs_for_instance_for_one_region(
+        self, process_lambda_insights, process_log_entry_mock, get_remote_client_mock
+    ):
         # Set up the test data
         functions_instance = "test_instance"
         provider_region = {"provider": "test_provider", "region": "test_region"}
@@ -128,6 +131,7 @@ class TestLogSyncWorkflow(unittest.TestCase):
         # Set up the return value for _get_remote_client
         mock_remote_client = Mock()
         mock_remote_client.get_logs_between.return_value = ["log1", "log2"]
+        mock_remote_client.get_insights_logs_between.return_value = ["insight_log1"]
         get_remote_client_mock.return_value = mock_remote_client
 
         # Call the method
@@ -138,8 +142,59 @@ class TestLogSyncWorkflow(unittest.TestCase):
         # Check that the mocks were called with the correct arguments
         get_remote_client_mock.assert_called_once_with(provider_region)
         mock_remote_client.get_logs_between.assert_called_once_with(functions_instance, time_from, time_to)
+        mock_remote_client.get_insights_logs_between.assert_called_once_with(
+            functions_instance, time_from - timedelta(minutes=30), time_to + timedelta(minutes=30)
+        )
         calls = [call("log1", provider_region), call("log2", provider_region)]
         process_log_entry_mock.assert_has_calls(calls)
+        process_lambda_insights.assert_called_once_with(["insight_log1"])
+
+    def test_process_lambda_insights(self):
+        # Set up the test data
+        logs = [
+            json.dumps(
+                {
+                    "request_id": "1",
+                    "duration": 100,
+                    "cold_start": True,
+                    "memory_utilization": 50,
+                    "total_network": 10,
+                    "cpu_total_time": 5,
+                }
+            ),
+            json.dumps(
+                {
+                    "request_id": "2",
+                    "duration": 200,
+                    "cold_start": False,
+                    "memory_utilization": 60,
+                    "total_network": 20,
+                    "cpu_total_time": 10,
+                }
+            ),
+        ]
+
+        # Call the method
+        self.log_sync_workflow._process_lambda_insights(logs)
+
+        # Check the _insights_logs attribute
+        expected_result = {
+            "1": {
+                "duration": 100,
+                "cold_start": True,
+                "memory_utilization": 50,
+                "total_network": 10,
+                "cpu_total_time": 5,
+            },
+            "2": {
+                "duration": 200,
+                "cold_start": False,
+                "memory_utilization": 60,
+                "total_network": 20,
+                "cpu_total_time": 10,
+            },
+        }
+        self.assertEqual(self.log_sync_workflow._insights_logs, expected_result)
 
     @patch.object(LogSyncWorkflow, "_extract_from_string")
     @patch.object(LogSyncWorkflow, "_check_to_forget")

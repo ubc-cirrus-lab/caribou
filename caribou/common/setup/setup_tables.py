@@ -22,7 +22,9 @@ def create_table(dynamodb, table_name):
         client.create_sync_tables()
     dynamodb.create_table(
         TableName=table_name,
-        AttributeDefinitions=[{"AttributeName": "key", "AttributeType": "S"}],
+        AttributeDefinitions=[
+            {"AttributeName": "key", "AttributeType": "S"},
+        ],
         KeySchema=[{"AttributeName": "key", "KeyType": "HASH"}],
         BillingMode="PAY_PER_REQUEST",
     )
@@ -37,12 +39,14 @@ def create_bucket(s3, bucket_name):
     except s3.exceptions.ClientError as e:
         if e.response["Error"]["Code"] != "404" and e.response["Error"]["Code"] != "403":
             raise
-    s3.create_bucket(Bucket=bucket_name)
+    s3.create_bucket(
+        Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": constants.GLOBAL_SYSTEM_REGION}
+    )
 
 
 def main():
     dynamodb = boto3.client("dynamodb", region_name=constants.GLOBAL_SYSTEM_REGION)
-    s3 = boto3.client("s3", region_name="us-east-1")
+    s3 = boto3.client("s3", region_name=constants.GLOBAL_SYSTEM_REGION)
 
     # Get all attributes of the constants module
     for attr in dir(constants):
@@ -55,6 +59,8 @@ def main():
         elif attr.endswith("_BUCKET"):
             # Allow for the bucket name to be overridden by an environment variable
             bucket_name = os.environ.get(f"CARIBOU_OVERRIDE_{attr}", getattr(constants, attr))
+            print("bucket_name", bucket_name)
+            print(f"attr: {attr}")
             logger.info("Creating bucket: %s", bucket_name)
             create_bucket(s3, bucket_name)
 

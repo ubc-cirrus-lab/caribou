@@ -787,6 +787,33 @@ class TestAWSRemoteClient(unittest.TestCase):
         )
 
     @patch.object(AWSRemoteClient, "_client")
+    def test_get_insights_logs_between(self, mock_client):
+        # Mocking the scenario where the logs are retrieved successfully
+        mock_logs_client = MagicMock()
+        mock_client.return_value = mock_logs_client
+
+        client = AWSRemoteClient("region1")
+
+        # Mock the return value of filter_log_events
+        mock_logs_client.filter_log_events.return_value = {"events": [{"message": "log_message"}]}
+
+        start_time = datetime.now()
+        end_time = start_time + timedelta(hours=1)
+
+        result = client.get_insights_logs_between("function_instance", start_time, end_time)
+
+        # Check that the return value is correct
+        self.assertEqual(result, ["log_message"])
+
+        # Check that filter_log_events was called with the correct arguments
+        mock_logs_client.filter_log_events.assert_called_with(
+            logGroupName="/aws/lambda-insights",
+            logStreamNamePrefix="function_instance",
+            startTime=int(start_time.timestamp() * 1000),
+            endTime=int(end_time.timestamp() * 1000),
+        )
+
+    @patch.object(AWSRemoteClient, "_client")
     def test_remove_key(self, mock_client):
         # Mocking the scenario where the key is removed successfully
         mock_dynamodb_client = MagicMock()

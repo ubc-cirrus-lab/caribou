@@ -117,3 +117,6 @@ class MockRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
 
     def get_logs_between(self, function_instance: str, start: datetime, end: datetime) -> list[str]:
         pass
+
+    def get_insights_logs_between(self, function_instance: str, start: datetime, end: datetime) -> list[str]:
+        pass
