@@ -19,6 +19,7 @@ class TestWorkflowRunSample(unittest.TestCase):
         transmission_data.to_instance = "instance2"
         transmission_data.from_region = {"provider": "provider1", "region": "region1"}
         transmission_data.to_region = {"provider": "provider2", "region": "region2"}
+        sample.insights = {"insight1": "value1"}
         sample.log_start_time = datetime(2022, 1, 1, 0, 0, 0)
         sample.log_end_time = datetime(2022, 1, 1, 1, 0, 0)
         sample.execution_latencies = {"instance1": 0.1}
@@ -46,6 +47,7 @@ class TestWorkflowRunSample(unittest.TestCase):
             datetime(2022, 1, 1, 0, 0),
             {
                 "run_id": "run1",
+                "insights": {"insight1": "value1"},
                 "runtime": 7200.0,
                 "start_time": "2022-01-01 00:00:00,000000",
                 "execution_latencies": {"instance1": 0.1},

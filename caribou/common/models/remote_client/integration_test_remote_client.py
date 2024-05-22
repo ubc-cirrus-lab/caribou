@@ -462,3 +462,6 @@ class IntegrationTestRemoteClient(RemoteClient):  # pylint: disable=too-many-pub
 
     def get_logs_between(self, function_instance: str, start: datetime, end: datetime) -> list[str]:
         return []
+
+    def get_insights_logs_between(self, function_instance: str, start: datetime, end: datetime) -> list[str]:
+        return []
