@@ -73,6 +73,9 @@ class WorkflowRetriever(DataRetriever):
 
         self._calculate_invocation_probability(instance_summary)
 
+    def _handle_lambda_insights(self, log: dict[str, Any], instance_summary: dict[str, Any]) -> None:
+        pass
+
     def _handle_execution_latencies(self, log: dict[str, Any], instance_summary: dict[str, Any]) -> None:
         for instance, execution_latency_information in log["execution_latencies"].items():
             if instance not in instance_summary:
