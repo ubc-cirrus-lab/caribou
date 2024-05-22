@@ -118,9 +118,9 @@ class TestLogSyncWorkflow(unittest.TestCase):
 
     @patch.object(LogSyncWorkflow, "_get_remote_client")
     @patch.object(LogSyncWorkflow, "_process_log_entry")
-    @patch.object(LogSyncWorkflow, "_process_lambda_insights")
+    @patch.object(LogSyncWorkflow, "_setup_lambda_insights")
     def test_process_logs_for_instance_for_one_region(
-        self, process_lambda_insights, process_log_entry_mock, get_remote_client_mock
+        self, setup_lambda_insights_mock, process_log_entry_mock, get_remote_client_mock
     ):
         # Set up the test data
         functions_instance = "test_instance"
@@ -147,7 +147,7 @@ class TestLogSyncWorkflow(unittest.TestCase):
         )
         calls = [call("log1", provider_region), call("log2", provider_region)]
         process_log_entry_mock.assert_has_calls(calls)
-        process_lambda_insights.assert_called_once_with(["insight_log1"])
+        setup_lambda_insights_mock.assert_called_once_with(["insight_log1"])
 
     def test_process_lambda_insights(self):
         # Set up the test data
@@ -175,7 +175,7 @@ class TestLogSyncWorkflow(unittest.TestCase):
         ]
 
         # Call the method
-        self.log_sync_workflow._process_lambda_insights(logs)
+        self.log_sync_workflow._setup_lambda_insights(logs)
 
         # Check the _insights_logs attribute
         expected_result = {
@@ -201,7 +201,9 @@ class TestLogSyncWorkflow(unittest.TestCase):
     @patch.object(LogSyncWorkflow, "_handle_system_log_messages")
     def test_process_log_entry(self, handle_system_log_messages_mock, check_to_forget_mock, extract_from_string_mock):
         # Set up the test data
-        log_entry = f"REPORT [INFO]\ttest_request_id\t LOG_VERSION ({LOG_VERSION}) test_log_entry Init Duration"
+        log_entry = (
+            f"REPORT [INFO]\ttest_request_id\ttest_run_id\t LOG_VERSION ({LOG_VERSION}) test_log_entry Init Duration"
+        )
         provider_region = {"provider": "test_provider", "region": "test_region"}
 
         # Set up the return values for _extract_from_string
@@ -221,6 +223,7 @@ class TestLogSyncWorkflow(unittest.TestCase):
             self.log_sync_workflow._collected_logs["test_run_id"],
             provider_region,
             datetime.strptime("2021-01-01 00:00:00,000+00:00", TIME_FORMAT),
+            "test_run_id",
         )
 
     @patch.object(LogSyncWorkflow, "_extract_entry_point_log")
@@ -243,13 +246,15 @@ class TestLogSyncWorkflow(unittest.TestCase):
         log_time = datetime.now(GLOBAL_TIME_ZONE)
 
         # Call the method
-        self.log_sync_workflow._handle_system_log_messages(log_entry, workflow_run_sample, provider_region, log_time)
+        self.log_sync_workflow._handle_system_log_messages(
+            log_entry, workflow_run_sample, provider_region, log_time, "test_run_id"
+        )
 
         # Check that the mocks were called with the correct arguments
         extract_entry_point_log_mock.assert_called_once_with(workflow_run_sample, log_entry, provider_region, log_time)
         extract_invoked_logs_mock.assert_called_once_with(workflow_run_sample, log_entry, provider_region, log_time)
         extract_executed_logs_mock.assert_called_once_with(
-            workflow_run_sample, log_entry, {"provider": "test_provider", "region": "test_region"}
+            workflow_run_sample, log_entry, {"provider": "test_provider", "region": "test_region"}, "test_run_id"
         )
         extract_invoking_successor_logs_mock.assert_called_once_with(
             workflow_run_sample, log_entry, provider_region, log_time
@@ -353,15 +358,28 @@ class TestLogSyncWorkflow(unittest.TestCase):
         # Set up the return values for _extract_from_string
         extract_from_string_mock.side_effect = ["test_instance", "1234"]
 
+        self.log_sync_workflow._insights_logs = {
+            "test_request_id": {
+                "duration": 1234,
+                "cold_start": False,
+                "memory_utilization": 0,
+                "total_network": 0,
+                "cpu_total_time": 0,
+            }
+        }
+
         # Call the method
         self.log_sync_workflow._extract_executed_logs(
-            workflow_run_sample, log_entry, {"provider": "test_provider", "region": "test_region"}
+            workflow_run_sample, log_entry, {"provider": "test_provider", "region": "test_region"}, "test_request_id"
         )
 
-        # Check that the WorkflowRunSample object was updated as expected
         self.assertEqual(
             workflow_run_sample.execution_latencies["test_instance"],
-            {"latency": 1234.0, "provider_region": "test_provider:test_region"},
+            {
+                "latency": 1234.0,
+                "provider_region": "test_provider:test_region",
+                "insights": self.log_sync_workflow._insights_logs["test_request_id"],
+            },
         )
 
         # Check that _extract_from_string was called with the correct arguments
