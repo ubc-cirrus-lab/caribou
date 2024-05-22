@@ -97,12 +97,12 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         lambda_insights_logs = remote_client.get_insights_logs_between(
             functions_instance, time_from - timedelta(minutes=30), time_to + timedelta(minutes=30)
         )
-        self._process_lambda_insights(lambda_insights_logs)
+        self._setup_lambda_insights(lambda_insights_logs)
 
         for log in logs:
             self._process_log_entry(log, provider_region)
 
-    def _process_lambda_insights(self, logs: list[str]) -> None:
+    def _setup_lambda_insights(self, logs: list[str]) -> None:
         # Clear the lambda insights logs
         self._insights_logs = {}
 
@@ -166,11 +166,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         request_id = parts[2]
         workflow_run_sample.request_ids.add(request_id)
 
-        # Add the insights logs to the workflow run sample
-        workflow_run_sample.insights = self._insights_logs.get(request_id, {})
-
-        # Process the log entry
-        self._handle_system_log_messages(log_entry, workflow_run_sample, provider_region, log_time_dt)
+        self._handle_system_log_messages(log_entry, workflow_run_sample, provider_region, log_time_dt, request_id)
 
     def _handle_system_log_messages(
         self,
@@ -178,13 +174,14 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         workflow_run_sample: WorkflowRunSample,
         provider_region: dict[str, str],
         log_time: datetime,
+        request_id: str,
     ) -> None:
         if "ENTRY_POINT" in log_entry:
             self._extract_entry_point_log(workflow_run_sample, log_entry, provider_region, log_time)
         if "INVOKED" in log_entry:
             self._extract_invoked_logs(workflow_run_sample, log_entry, provider_region, log_time)
         if "EXECUTED" in log_entry:
-            self._extract_executed_logs(workflow_run_sample, log_entry, provider_region)
+            self._extract_executed_logs(workflow_run_sample, log_entry, provider_region, request_id)
         if "INVOKING_SUCCESSOR" in log_entry:
             self._extract_invoking_successor_logs(
                 workflow_run_sample,
@@ -249,7 +246,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         transmission_data.transmission_end_time = log_time
 
     def _extract_executed_logs(
-        self, workflow_run_sample: WorkflowRunSample, log_entry: str, provider_region: dict[str, str]
+        self, workflow_run_sample: WorkflowRunSample, log_entry: str, provider_region: dict[str, str], request_id: str
     ) -> None:
         function_executed = self._extract_from_string(log_entry, r"INSTANCE \((.*?)\)")
         if not isinstance(function_executed, str):
@@ -265,6 +262,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         workflow_run_sample.execution_latencies[function_executed] = {
             "latency": duration,
             "provider_region": provider_region_str,
+            "insights": self._insights_logs.get(request_id, {}),
         }
 
     def _extract_invoking_successor_logs(

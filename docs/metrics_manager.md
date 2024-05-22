@@ -236,27 +236,41 @@ Below is an example of the `workflow_summary_table` for a workflow with 2 instan
   "logs": [
     {
       "run_id": "eca39262530c4033a9f29343a39d71ca",
-      "insights": {
-        "duration": 8.746771,
-        "cold_start": false,
-        "memory_utilization": 21,
-        "total_network": 366023,
-        "cpu_total_time": 640
-      },
       "runtime": 8.746771,
       "start_time": "2024-03-09 18:26:24,469750+0000",
       "execution_latencies": {
         "small_sync_example-0_0_1-initial_function:entry_point:0": {
             "latency": 7.561505556106567,
             "provider_region": "aws:us-east-1",
+            "insights": {
+              "duration": 7.561505556106567,
+              "cold_start": false,
+              "memory_utilization": 21,
+              "total_network": 366023,
+              "cpu_total_time": 640
+            },
         },
         "small_sync_example-0_0_1-syncFunction:sync:": {
             "latency": 1.798128366470337,
             "provider_region": "aws:us-east-1",
+            "insights": {
+              "duration": 1.798128366470337,
+              "cold_start": false,
+              "memory_utilization": 21,
+              "total_network": 366023,
+              "cpu_total_time": 640
+            },
         },
         "small_sync_example-0_0_1-secondSyncFunction:sync:": {
             "latency": 1.1149189472198486,
             "provider_region": "aws:us-east-1",
+            "insights": {
+              "duration": 1.1149189472198486,
+              "cold_start": false,
+              "memory_utilization": 21,
+              "total_network": 366023,
+              "cpu_total_time": 640
+            },
         }
       },
       "transmission_data": [
