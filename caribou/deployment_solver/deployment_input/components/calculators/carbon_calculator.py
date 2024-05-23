@@ -8,6 +8,11 @@ from caribou.deployment_solver.deployment_input.components.loaders.workflow_load
 
 
 class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-attributes
+    # TODO: This needs to be removed when the CPU utilization data is available
+    small_or_large = "small"
+    energy_factor = 0.005
+    home_base_case = energy_factor == 0.005
+
     def __init__(
         self,
         carbon_loader: CarbonLoader,
@@ -29,11 +34,6 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
 
         # Carbon setting - hourly or average policy
         self._hourly_carbon_setting: Optional[str] = None  # None indicates the default setting -> Average everything
-
-        # TODO: This needs to be removed when the CPU utilization data is available
-        self.small_or_large = "small"
-        self.energy_factor = 0.005
-        self.home_base_case = self.energy_factor == 0.005
 
     def alter_carbon_setting(self, carbon_setting: Optional[str]) -> None:
         self._hourly_carbon_setting = carbon_setting

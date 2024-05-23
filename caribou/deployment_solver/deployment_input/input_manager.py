@@ -1,3 +1,4 @@
+import pdb
 import random
 import time
 from typing import Optional
@@ -201,3 +202,69 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
 
     def get_all_regions(self) -> list[str]:
         return self._region_viability_loader.get_available_regions()
+
+    def get_all_carbon_data(self):
+        return self._carbon_loader.get_carbon_data()
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        state.pop('_data_collector_client', None)
+        state['_region_viability_loader'] = self._region_viability_loader.get_available_regions()
+        state.pop('_datacenter_loader', None)
+        state.pop('_performance_loader', None)
+        state['_carbon_loader'] = self._carbon_loader.get_carbon_data()
+        state['_workflow_loader'] = self._workflow_loader.get_workflow_data()
+        state.pop('_runtime_calculator', None)
+        state['_carbon_calculator'] = {
+            'small_or_large': self._carbon_calculator.small_or_large,
+            'energy_factor': self._carbon_calculator.energy_factor,
+            'home_base_case': self._carbon_calculator.home_base_case
+
+        }
+        state.pop('_cost_calculator', None)
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        self._data_collector_client: RemoteClient = Endpoints().get_data_collector_client()
+        self._region_viability_loader = RegionViabilityLoader(self._data_collector_client)
+        self._datacenter_loader = DatacenterLoader(self._data_collector_client)
+        self._performance_loader = PerformanceLoader(self._data_collector_client)
+        self._carbon_loader = CarbonLoader(self._data_collector_client)
+        self._workflow_loader = WorkflowLoader(self._data_collector_client, self._workflow_config)
+
+        # Setup the viability loader and load the availability regions
+        self._region_viability_loader.setup(
+            state.get('_region_viability_loader')
+        )  # Setup the viability loader -> This loads data from the database
+
+        # Setup the calculator
+        self._runtime_calculator = RuntimeCalculator(self._performance_loader, self._workflow_loader)
+        self._carbon_calculator = CarbonCalculator(
+            self._carbon_loader, self._datacenter_loader, self._workflow_loader, self._runtime_calculator
+        )
+        self._cost_calculator = CostCalculator(self._datacenter_loader, self._workflow_loader, self._runtime_calculator)
+        self._carbon_calculator.small_or_large = state.get('_carbon_calculator').get('small_or_large')
+        self._carbon_calculator.energy_factor = state.get('_carbon_calculator').get('energy_factor')
+        self._carbon_calculator.home_base_case = state.get('_carbon_calculator').get('home_base_case')
+        requested_regions: set[str] = set(self._region_indexer.get_value_indices().keys())
+        # Load the workflow loader
+        workflow_id = self._workflow_config.workflow_id
+        if workflow_id is None:
+            raise ValueError("Workflow ID is not set in the config")
+        self._workflow_loader.set_workflow_data(
+            state.get('_workflow_loader')
+        )
+
+        # Home region of the workflow should already be in requested regions
+        # We should asset this is true
+        if self._workflow_loader.get_home_region() not in requested_regions:
+            raise ValueError("Home region of the workflow is not in the requested regions! This should NEVER happen!")
+
+        # Now setup all appropriate loaders
+        self._datacenter_loader.setup(requested_regions)
+        self._performance_loader.setup(requested_regions)
+        self._carbon_loader.setup(
+            requested_regions,
+            carbon_data=state.get('_carbon_loader'),
+        )

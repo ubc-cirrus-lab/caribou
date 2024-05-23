@@ -1,4 +1,5 @@
 import json
+import pdb
 import time
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
@@ -36,6 +37,7 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
         self._region_indexer = RegionIndexer(self._workflow_level_permitted_regions)
         self._instance_indexer = InstanceIndexer(list(self._workflow_config.instances.values()))
 
+        # pdb.set_trace()
         # Complete the setup of the input manager
         self._input_manager.setup(self._region_indexer, self._instance_indexer)
 

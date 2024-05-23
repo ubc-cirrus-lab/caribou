@@ -1,3 +1,4 @@
+import os
 import pdb
 import statistics
 import time
@@ -7,6 +8,7 @@ import numpy as np
 import scipy.stats as st
 
 from caribou.common.constants import TAIL_LATENCY_THRESHOLD
+from caribou.deployment_solver.deployment_input.components.loaders.region_viability_loader import RegionViabilityLoader
 from caribou.deployment_solver.deployment_input.input_manager import InputManager
 from caribou.deployment_solver.deployment_metrics_calculator.deployment_metrics_calculator import (
     DeploymentMetricsCalculator,
@@ -17,6 +19,7 @@ from caribou.deployment_solver.workflow_config import WorkflowConfig
 from memory_profiler import profile
 
 def _simulation_worker(
+        input_manager: InputManager,
         workflow_config: WorkflowConfig,
         region_indexer: RegionIndexer,
         instance_indexer: InstanceIndexer,
@@ -26,13 +29,17 @@ def _simulation_worker(
         output_queue: Queue,
 
 ):
-    input_manager: InputManager = InputManager(workflow_config, tail_latency_threshold)
-    input_manager.setup(region_indexer, instance_indexer)
+    # print(f"Started Worker {os.getpid()}")
+    # print(f"{os.getpid()}-available regions: {input_manager.get_all_regions()}")
+    # print(f"{os.getpid()}-carbon data: {input_manager.get_all_carbon_data()}")
+    # input_manager: InputManager = InputManager(workflow_config, tail_latency_threshold)
+    # input_manager.setup(region_indexer, instance_indexer)
     deployment_metrics_calculator: DeploymentMetricsCalculator = DeploymentMetricsCalculator(
         workflow_config, input_manager, region_indexer, instance_indexer, tail_latency_threshold
     )
     while True:
         deployment = input_queue.get()
+#         print(f'Received deployment {os.getpid()}')
         costs_distribution_list: list[float] = []
         runtimes_distribution_list: list[float] = []
         carbons_distribution_list: list[float] = []
@@ -93,10 +100,13 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
         self._output_queue = self._manager.Queue()
         n_iterations = self.batch_size // n_processes
         self._pool = []
+#         print(f"PARENT - available regions: {input_manager.get_all_regions()}")
+#         print(f"PARENT - carbon data: {input_manager.get_all_carbon_data()}")
         for _ in range(n_processes):
             p = Process(
                 target=_simulation_worker,
                 args=(
+                    input_manager,
                     workflow_config,
                     region_indexer,
                     instance_indexer,
@@ -180,6 +190,7 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
         }
         # print(f"perform_monte_carlo: {time.time() - start_time}")
         return result
+
 
     def __del__(self):
         if self.n_processes > 1:
