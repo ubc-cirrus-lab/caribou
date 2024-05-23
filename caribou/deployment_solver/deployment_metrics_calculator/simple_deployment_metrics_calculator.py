@@ -18,16 +18,16 @@ from caribou.deployment_solver.models.region_indexer import RegionIndexer
 from caribou.deployment_solver.workflow_config import WorkflowConfig
 from memory_profiler import profile
 
-def _simulation_worker(
-        input_manager: InputManager,
-        workflow_config: WorkflowConfig,
-        region_indexer: RegionIndexer,
-        instance_indexer: InstanceIndexer,
-        tail_latency_threshold: int,
-        n_iterations: int,
-        input_queue: Queue,
-        output_queue: Queue,
 
+def _simulation_worker(
+    input_manager: InputManager,
+    workflow_config: WorkflowConfig,
+    region_indexer: RegionIndexer,
+    instance_indexer: InstanceIndexer,
+    tail_latency_threshold: int,
+    n_iterations: int,
+    input_queue: Queue,
+    output_queue: Queue,
 ):
     # print(f"Started Worker {os.getpid()}")
     # print(f"{os.getpid()}-available regions: {input_manager.get_all_regions()}")
@@ -39,7 +39,7 @@ def _simulation_worker(
     )
     while True:
         deployment = input_queue.get()
-#         print(f'Received deployment {os.getpid()}')
+        #         print(f'Received deployment {os.getpid()}')
         costs_distribution_list: list[float] = []
         runtimes_distribution_list: list[float] = []
         carbons_distribution_list: list[float] = []
@@ -59,13 +59,13 @@ def _simulation_worker(
 
 class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
     def __init__(
-            self,
-            workflow_config: WorkflowConfig,
-            input_manager: InputManager,
-            region_indexer: RegionIndexer,
-            instance_indexer: InstanceIndexer,
-            tail_latency_threshold: int = TAIL_LATENCY_THRESHOLD,
-            n_processes: int = 4,
+        self,
+        workflow_config: WorkflowConfig,
+        input_manager: InputManager,
+        region_indexer: RegionIndexer,
+        instance_indexer: InstanceIndexer,
+        tail_latency_threshold: int = TAIL_LATENCY_THRESHOLD,
+        n_processes: int = 4,
     ):
         super().__init__(
             workflow_config,
@@ -87,21 +87,21 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
             )
 
     def _setup(
-            self,
-            workflow_config: WorkflowConfig,
-            input_manager: InputManager,
-            region_indexer: RegionIndexer,
-            instance_indexer: InstanceIndexer,
-            tail_latency_threshold: int,
-            n_processes: int,
+        self,
+        workflow_config: WorkflowConfig,
+        input_manager: InputManager,
+        region_indexer: RegionIndexer,
+        instance_indexer: InstanceIndexer,
+        tail_latency_threshold: int,
+        n_processes: int,
     ):
         self._manager = Manager()
         self._input_queue = self._manager.Queue()
         self._output_queue = self._manager.Queue()
         n_iterations = self.batch_size // n_processes
         self._pool = []
-#         print(f"PARENT - available regions: {input_manager.get_all_regions()}")
-#         print(f"PARENT - carbon data: {input_manager.get_all_carbon_data()}")
+        #         print(f"PARENT - available regions: {input_manager.get_all_regions()}")
+        #         print(f"PARENT - carbon data: {input_manager.get_all_carbon_data()}")
         for _ in range(n_processes):
             p = Process(
                 target=_simulation_worker,
@@ -114,8 +114,7 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
                     n_iterations,
                     self._input_queue,
                     self._output_queue,
-                )
-
+                ),
             )
             p.start()
             self._pool.append(p)
@@ -190,7 +189,6 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
         }
         # print(f"perform_monte_carlo: {time.time() - start_time}")
         return result
-
 
     def __del__(self):
         if self.n_processes > 1:

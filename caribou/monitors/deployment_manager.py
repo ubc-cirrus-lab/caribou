@@ -82,7 +82,7 @@ class DeploymentManager(Monitor):
 
             workflow_config_dict = json.loads(workflow_json["workflow_config"])
 
-            if workflow_config_dict.get('workflow_name', None) != 'map_reduce':
+            if workflow_config_dict.get("workflow_name", None) != "map_reduce":
                 continue
 
             workflow_config = WorkflowConfig(workflow_config_dict)

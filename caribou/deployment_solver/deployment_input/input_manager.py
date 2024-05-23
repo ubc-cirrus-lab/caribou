@@ -1,4 +1,3 @@
-import pdb
 import random
 import time
 from typing import Optional
@@ -114,11 +113,11 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         return (cost, carbon, execution_latency)
 
     def get_transmission_cost_carbon_latency(
-            self,
-            from_instance_index: int,
-            to_instance_index: int,
-            from_region_index: int,
-            to_region_index: int,
+        self,
+        from_instance_index: int,
+        to_instance_index: int,
+        from_region_index: int,
+        to_region_index: int,
     ) -> tuple[float, float, float]:
         # Convert the instance and region indices to their names
         from_instance_name: Optional[str] = None
@@ -151,7 +150,7 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         ]
 
         if (
-                transmission_size is None
+            transmission_size is None
         ):  # At this point we can assume that the transmission size is 0 for any missing data
             transmission_size = 0.0
 
@@ -208,20 +207,19 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
 
     def __getstate__(self):
         state = self.__dict__.copy()
-        state.pop('_data_collector_client', None)
-        state['_region_viability_loader'] = self._region_viability_loader.get_available_regions()
-        state.pop('_datacenter_loader', None)
-        state.pop('_performance_loader', None)
-        state['_carbon_loader'] = self._carbon_loader.get_carbon_data()
-        state['_workflow_loader'] = self._workflow_loader.get_workflow_data()
-        state.pop('_runtime_calculator', None)
-        state['_carbon_calculator'] = {
-            'small_or_large': self._carbon_calculator.small_or_large,
-            'energy_factor': self._carbon_calculator.energy_factor,
-            'home_base_case': self._carbon_calculator.home_base_case
-
+        state.pop("_data_collector_client", None)
+        state.pop("_datacenter_loader", None)
+        state.pop("_performance_loader", None)
+        state.pop("_runtime_calculator", None)
+        state.pop("_cost_calculator", None)
+        state["_region_viability_loader"] = self._region_viability_loader.get_available_regions()
+        state["_carbon_loader"] = self._carbon_loader.get_carbon_data()
+        state["_workflow_loader"] = self._workflow_loader.get_workflow_data()
+        state["_carbon_calculator"] = {
+            "small_or_large": self._carbon_calculator.small_or_large,
+            "energy_factor": self._carbon_calculator.energy_factor,
+            "home_base_case": self._carbon_calculator.home_base_case,
         }
-        state.pop('_cost_calculator', None)
         return state
 
     def __setstate__(self, state):
@@ -232,11 +230,7 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         self._performance_loader = PerformanceLoader(self._data_collector_client)
         self._carbon_loader = CarbonLoader(self._data_collector_client)
         self._workflow_loader = WorkflowLoader(self._data_collector_client, self._workflow_config)
-
-        # Setup the viability loader and load the availability regions
-        self._region_viability_loader.setup(
-            state.get('_region_viability_loader')
-        )  # Setup the viability loader -> This loads data from the database
+        self._region_viability_loader.setup(state.get("_region_viability_loader"))
 
         # Setup the calculator
         self._runtime_calculator = RuntimeCalculator(self._performance_loader, self._workflow_loader)
@@ -244,17 +238,16 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
             self._carbon_loader, self._datacenter_loader, self._workflow_loader, self._runtime_calculator
         )
         self._cost_calculator = CostCalculator(self._datacenter_loader, self._workflow_loader, self._runtime_calculator)
-        self._carbon_calculator.small_or_large = state.get('_carbon_calculator').get('small_or_large')
-        self._carbon_calculator.energy_factor = state.get('_carbon_calculator').get('energy_factor')
-        self._carbon_calculator.home_base_case = state.get('_carbon_calculator').get('home_base_case')
+        self._carbon_calculator.small_or_large = state.get("_carbon_calculator").get("small_or_large")
+        self._carbon_calculator.energy_factor = state.get("_carbon_calculator").get("energy_factor")
+        self._carbon_calculator.home_base_case = state.get("_carbon_calculator").get("home_base_case")
         requested_regions: set[str] = set(self._region_indexer.get_value_indices().keys())
+
         # Load the workflow loader
         workflow_id = self._workflow_config.workflow_id
         if workflow_id is None:
             raise ValueError("Workflow ID is not set in the config")
-        self._workflow_loader.set_workflow_data(
-            state.get('_workflow_loader')
-        )
+        self._workflow_loader.set_workflow_data(state.get("_workflow_loader"))
 
         # Home region of the workflow should already be in requested regions
         # We should asset this is true
@@ -266,5 +259,5 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         self._performance_loader.setup(requested_regions)
         self._carbon_loader.setup(
             requested_regions,
-            carbon_data=state.get('_carbon_loader'),
+            carbon_data=state.get("_carbon_loader"),
         )
