@@ -2,8 +2,8 @@ import unittest
 from unittest.mock import MagicMock, patch, Mock
 
 from caribou.deployment_solver.deployment_input.input_manager import InputManager
-from caribou.deployment_solver.deployment_metrics_calculator.simple_deployment_metrics_calculator import (
-    SimpleDeploymentMetricsCalculator,
+from caribou.deployment_solver.deployment_metrics_calculator.parallel_deployment_metrics_calculator import (
+    ParallelDeploymentMetricsCalculator,
 )
 from caribou.deployment_solver.models.instance_indexer import InstanceIndexer
 from caribou.deployment_solver.models.region_indexer import RegionIndexer
@@ -12,7 +12,7 @@ from caribou.deployment_solver.workflow_config import WorkflowConfig
 
 class TestSimpleDeploymentMetricsCalculator(unittest.TestCase):
     @patch.object(
-        SimpleDeploymentMetricsCalculator,
+        ParallelDeploymentMetricsCalculator,
         "calculate_workflow",
         return_value={"cost": 1.0, "runtime": 1.0, "carbon": 1.0},
     )
@@ -44,7 +44,7 @@ class TestSimpleDeploymentMetricsCalculator(unittest.TestCase):
             mock_region_index,
             mock_instance_indexer
     ):
-        self.calculator = SimpleDeploymentMetricsCalculator(
+        self.calculator = ParallelDeploymentMetricsCalculator(
             WorkflowConfig(
                 MagicMock()
             ), InputManager(

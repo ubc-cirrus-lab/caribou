@@ -1,16 +1,16 @@
 import unittest
 from unittest.mock import MagicMock, patch, Mock
-from caribou.deployment_solver.deployment_metrics_calculator.simple_deployment_metrics_calculator import (
-    SimpleDeploymentMetricsCalculator,
+from caribou.deployment_solver.deployment_metrics_calculator.parallel_deployment_metrics_calculator import (
+    ParallelDeploymentMetricsCalculator,
 )
 
 
 class TestSimpleDeploymentMetricsCalculator(unittest.TestCase):
     def setUp(self):
-        self.calculator = SimpleDeploymentMetricsCalculator(MagicMock(), MagicMock(), MagicMock(), MagicMock(), n_processes=1)
+        self.calculator = ParallelDeploymentMetricsCalculator(MagicMock(), MagicMock(), MagicMock(), MagicMock(), n_processes=1)
 
     @patch.object(
-        SimpleDeploymentMetricsCalculator,
+        ParallelDeploymentMetricsCalculator,
         "calculate_workflow",
         return_value={"cost": 1.0, "runtime": 1.0, "carbon": 1.0},
     )
