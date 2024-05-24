@@ -1,6 +1,7 @@
 import os
 import pdb
 import statistics
+import sys
 import time
 from multiprocessing import Queue, Manager, Process
 
@@ -38,7 +39,12 @@ def _simulation_worker(
         workflow_config, input_manager, region_indexer, instance_indexer, tail_latency_threshold
     )
     while True:
-        deployment = input_queue.get()
+        received_input = input_queue.get()
+        if isinstance(received_input, str) or received_input is None:
+            input_manager.alter_carbon_setting(received_input)
+            output_queue.put("OK")
+            continue
+        deployment = received_input
         #         print(f'Received deployment {os.getpid()}')
         costs_distribution_list: list[float] = []
         runtimes_distribution_list: list[float] = []
@@ -48,13 +54,13 @@ def _simulation_worker(
             costs_distribution_list.append(results["cost"])
             runtimes_distribution_list.append(results["runtime"])
             carbons_distribution_list.append(results["carbon"])
-            output_queue.put(
-                (
-                    costs_distribution_list,
-                    runtimes_distribution_list,
-                    carbons_distribution_list,
-                )
+        output_queue.put(
+            (
+                costs_distribution_list,
+                runtimes_distribution_list,
+                carbons_distribution_list,
             )
+        )
 
 
 class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
@@ -131,6 +137,8 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
                 costs_distribution_list.extend(result[0])
                 runtimes_distribution_list.extend(result[1])
                 carbons_distribution_list.extend(result[2])
+            assert self._input_queue.empty()
+            assert self._output_queue.empty()
         else:
             for _ in range(self.batch_size):
                 results = self.calculate_workflow(deployment)
@@ -189,6 +197,14 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
         }
         # print(f"perform_monte_carlo: {time.time() - start_time}")
         return result
+
+    def update_data_for_new_hour(self, hour_to_run: str) -> None:
+        for _ in range(self.n_processes):
+            self._input_queue.put(hour_to_run)
+        for i in range(self.n_processes):
+            _ = self._output_queue.get()
+        assert self._input_queue.empty()
+        assert self._output_queue.empty()
 
     def __del__(self):
         if self.n_processes > 1:

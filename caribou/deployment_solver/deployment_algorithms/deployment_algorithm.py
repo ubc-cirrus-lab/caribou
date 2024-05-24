@@ -1,4 +1,5 @@
 import json
+import pdb
 import time
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
@@ -66,6 +67,7 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
     def run(self, hours_to_run: Optional[list[str]] = None) -> None:
         hour_to_run_to_result: dict[str, Any] = {
             "time_keys_to_staging_area_data": {},
+            "deployment_metrics": {}
         }
         if hours_to_run is None:
             hours_to_run = [None]  # type: ignore
@@ -75,19 +77,20 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
             deployments = self._run_algorithm()
             ranked_deployments = self._ranker.rank(deployments)
             selected_deployment = self._select_deployment(ranked_deployments)
-            print(f"Solve Time: {time.time() - start_time}")
+            # print(f"Solve Time: {time.time() - start_time}")
             formatted_deployment = self._formatter.format(
                 selected_deployment,
                 self._instance_indexer.indicies_to_values(),
                 self._region_indexer.indicies_to_values(),
             )
-            print(selected_deployment)
-            print("------")
+            # print(selected_deployment)
+            # print("------")
             if hour_to_run is None:
                 # If the hour_to_run is None, we have used the daily average and thus only have one result
                 # For this result to be selected at all times, we set the key to "0"
                 hour_to_run = "0"
             hour_to_run_to_result["time_keys_to_staging_area_data"][hour_to_run] = formatted_deployment
+            hour_to_run_to_result["deployment_metrics"][hour_to_run] = selected_deployment[1]
 
         self._add_expiry_date_to_results(hour_to_run_to_result)
 
@@ -95,6 +98,8 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
 
     def _update_data_for_new_hour(self, hour_to_run: str) -> None:
         self._input_manager.alter_carbon_setting(hour_to_run)
+        if isinstance(self._deployment_metrics_calculator, SimpleDeploymentMetricsCalculator):
+            self._deployment_metrics_calculator.update_data_for_new_hour(hour_to_run)
         (
             self._home_deployment,  # pylint: disable=attribute-defined-outside-init
             self._home_deployment_metrics,  # pylint: disable=attribute-defined-outside-init
