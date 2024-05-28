@@ -1,6 +1,7 @@
 import json
 import logging
 import random
+import uuid
 from datetime import datetime
 from typing import Any, Optional
 
@@ -33,10 +34,15 @@ class Client:
         self._home_region_threshold = 0.1  # 10% of the time run in home region
 
     def run(self, input_data: Optional[str] = None) -> None:
+        current_time = datetime.now(GLOBAL_TIME_ZONE).strftime(TIME_FORMAT)
+
         if self._workflow_id is None:
             raise RuntimeError("No workflow id provided")
 
-        result = self._endpoints.get_deployment_algorithm_workflow_placement_decision_client().get_value_from_table(
+        (
+            result,
+            consumed_read_capacity,
+        ) = self._endpoints.get_deployment_algorithm_workflow_placement_decision_client().get_value_from_table(
             WORKFLOW_PLACEMENT_DECISION_TABLE, self._workflow_id
         )
 
@@ -47,6 +53,9 @@ class Client:
             raise RuntimeError(
                 f"No workflow placement decision found for workflow, did you deploy the workflow and is the workflow id ({self._workflow_id}) correct?"  # pylint: disable=line-too-long
             )
+
+        # Get the size of the data
+        data_size = len(input_data.encode("utf-8")) / (1024**3)
 
         workflow_placement_decision = json.loads(result)
 
@@ -60,18 +69,20 @@ class Client:
             workflow_placement_decision, send_to_home_region
         )
 
-        current_time = datetime.now(GLOBAL_TIME_ZONE).strftime(TIME_FORMAT)
-
         workflow_placement_decision["send_to_home_region"] = send_to_home_region
 
+        run_id = uuid.uuid4().hex
+        print(f"Run ID for current run: {run_id}")
         wrapped_input_data = {
             "input_data": input_data,
             "time_request_sent": current_time,
             "workflow_placement_decision": workflow_placement_decision,
+            "wpd_data_size": data_size,
+            "wpd_consumed_read_capacity": consumed_read_capacity,
+            "run_id": run_id,
         }
 
         json_payload = json.dumps(wrapped_input_data)
-
         RemoteClientFactory.get_remote_client(provider, region).invoke_function(
             message=json_payload,
             identifier=identifier,

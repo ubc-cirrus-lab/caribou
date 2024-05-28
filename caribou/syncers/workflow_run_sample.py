@@ -11,10 +11,11 @@ class WorkflowRunSample:  # pylint: disable=too-many-instance-attributes
         self.request_ids: set[str] = set()
         self.log_start_time: Optional[datetime] = None
         self.log_end_time: Optional[datetime] = None
-        self.execution_latencies: dict[str, dict[str, Any]] = {}
+        self.execution_data: dict[str, dict[str, Any]] = {}
         self.transmission_data: dict[str, TransmissionData] = {}
         self.start_hop_latency: float = 0.0
         self.start_hop_data_transfer_size: float = 0.0
+        self.start_hop_instance_id: Optional[str] = None
         self.start_hop_destination: Optional[dict[str, str]] = None
         self.non_executions: dict[str, dict[str, int]] = {}
 
@@ -54,10 +55,11 @@ class WorkflowRunSample:  # pylint: disable=too-many-instance-attributes
                 "run_id": self.run_id,
                 "runtime": self.duration.total_seconds(),
                 "start_time": self.log_start_time.strftime(TIME_FORMAT),
-                "execution_latencies": self.execution_latencies,
+                "execution_data": self.execution_data,
                 "transmission_data": self._get_formatted_transmission_data(),
                 "start_hop_latency": self.start_hop_latency,
                 "start_hop_data_transfer_size": self.start_hop_data_transfer_size,
+                "start_hop_instance_id": self.start_hop_instance_id,
                 "start_hop_destination": self.start_hop_destination,
                 "non_executions": self.non_executions,
             },

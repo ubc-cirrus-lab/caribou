@@ -19,7 +19,7 @@ class InputLoader(ABC):
         return all_data
 
     def _retrieve_data(self, table_name: str, data_key: str) -> dict[str, Any]:
-        value = self._client.get_value_from_table(table_name, data_key)
+        value, _ = self._client.get_value_from_table(table_name, data_key)
 
         loaded_data: dict[str, Any] = {}
         if value is not None and value != "":

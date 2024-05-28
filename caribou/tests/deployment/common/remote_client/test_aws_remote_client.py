@@ -373,6 +373,7 @@ class TestAWSRemoteClient(unittest.TestCase):
             ExpressionAttributeNames={"#M": "message"},
             ExpressionAttributeValues={":m": {"SS": [message]}},
             UpdateExpression="ADD #M :m",
+            ReturnConsumedCapacity="TOTAL",
         )
 
     @patch.object(AWSRemoteClient, "_client")
@@ -387,16 +388,18 @@ class TestAWSRemoteClient(unittest.TestCase):
         mock_client.return_value.get_item.assert_called_once_with(
             TableName=SYNC_MESSAGES_TABLE,
             Key={"id": {"S": f"{current_instance_name}:{workflow_instance_id}"}},
+            ReturnConsumedCapacity="TOTAL",
+            ConsistentRead=True,
         )
-        self.assertEqual(result, ["test_message"])
+        self.assertEqual(result, (["test_message"], 0.0))
 
         mock_client.return_value.get_item.return_value = {}
         result = self.aws_client.get_predecessor_data(current_instance_name, workflow_instance_id)
-        self.assertEqual(result, [])
+        self.assertEqual(result, ([], 0.0))
 
         mock_client.return_value.get_item.return_value = {"Item": {}}
         result = self.aws_client.get_predecessor_data(current_instance_name, workflow_instance_id)
-        self.assertEqual(result, [])
+        self.assertEqual(result, ([], 0.0))
 
     @patch.object(AWSRemoteClient, "_client")
     @patch("time.sleep", return_value=None)
@@ -446,7 +449,7 @@ class TestAWSRemoteClient(unittest.TestCase):
         table_name = "test_table"
         key = "test_key"
         mock_client.return_value.get_item.return_value = {"Item": {"key": {"S": key}, "value": {"S": "test_value"}}}
-        result = self.aws_client.get_value_from_table(table_name, key)
+        result, _ = self.aws_client.get_value_from_table(table_name, key)
         self.assertEqual(result, "test_value")
 
     @patch.object(AWSRemoteClient, "_client")
@@ -521,7 +524,7 @@ class TestAWSRemoteClient(unittest.TestCase):
         result = client.set_predecessor_reached("predecessor_name", "sync_node_name", "workflow_instance_id", True)
 
         # Check that the return value is correct
-        self.assertEqual(result, [True])
+        self.assertEqual(result, ([True], 0.0))
 
     @patch.object(AWSRemoteClient, "_client")
     def test_create_sync_tables(self, mock_client):

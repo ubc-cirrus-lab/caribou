@@ -181,7 +181,9 @@ class IntegrationTestRemoteClient(RemoteClient):  # pylint: disable=too-many-pub
         conn.commit()
         conn.close()
 
-    def get_predecessor_data(self, current_instance_name: str, workflow_instance_id: str) -> list[str]:
+    def get_predecessor_data(
+        self, current_instance_name: str, workflow_instance_id: str, consistent_read: bool = True
+    ) -> tuple[list[str], float]:
         conn = self._db_connection()
         cursor = conn.cursor()
         cursor.execute(
@@ -190,9 +192,11 @@ class IntegrationTestRemoteClient(RemoteClient):  # pylint: disable=too-many-pub
         )
         result = cursor.fetchall()
         conn.close()
-        return [data[0] for data in result]
+        return [data[0] for data in result], 0.0
 
-    def upload_predecessor_data_at_sync_node(self, function_name: str, workflow_instance_id: str, message: str) -> None:
+    def upload_predecessor_data_at_sync_node(
+        self, function_name: str, workflow_instance_id: str, message: str
+    ) -> float:
         conn = self._db_connection()
         cursor = conn.cursor()
         cursor.execute(
@@ -202,6 +206,8 @@ class IntegrationTestRemoteClient(RemoteClient):  # pylint: disable=too-many-pub
         conn.commit()
         conn.close()
 
+        return 0.0
+
     def set_value_in_table(self, table_name: str, key: str, value: str) -> None:
         conn = self._db_connection()
         cursor = conn.cursor()
@@ -209,13 +215,13 @@ class IntegrationTestRemoteClient(RemoteClient):  # pylint: disable=too-many-pub
         conn.commit()
         conn.close()
 
-    def get_value_from_table(self, table_name: str, key: str) -> str:
+    def get_value_from_table(self, table_name: str, key: str, consistent_read: bool = True) -> tuple[str, float]:
         conn = self._db_connection()
         cursor = conn.cursor()
         cursor.execute(f"SELECT value FROM {table_name} WHERE key=?", (key,))
         result = cursor.fetchone()
         conn.close()
-        return result[0] if result else ""
+        return (result[0], 0.0) if result else ("", 0.0)
 
     def upload_resource(self, key: str, resource: bytes) -> None:
         conn = self._db_connection()
@@ -232,7 +238,7 @@ class IntegrationTestRemoteClient(RemoteClient):  # pylint: disable=too-many-pub
         conn.close()
         return result[0] if result else b""
 
-    def get_key_present_in_table(self, table_name: str, key: str) -> bool:
+    def get_key_present_in_table(self, table_name: str, key: str, consistent_read: bool = True) -> bool:
         conn = self._db_connection()
         cursor = conn.cursor()
         cursor.execute(f"SELECT * FROM {table_name} WHERE key=?", (key,))
@@ -242,7 +248,7 @@ class IntegrationTestRemoteClient(RemoteClient):  # pylint: disable=too-many-pub
 
     def set_predecessor_reached(
         self, predecessor_name: str, sync_node_name: str, workflow_instance_id: str, direct_call: bool
-    ) -> list[bool]:
+    ) -> tuple[list[bool], float]:
         conn = self._db_connection()
         cursor = conn.cursor()
         cursor.execute(
@@ -256,7 +262,7 @@ class IntegrationTestRemoteClient(RemoteClient):  # pylint: disable=too-many-pub
         result = cursor.fetchone()
         conn.commit()
         conn.close()
-        return [bool(res) for res in result]
+        return [bool(res) for res in result], 0.0
 
     def get_all_values_from_table(self, table_name: str) -> dict:
         conn = self._db_connection()

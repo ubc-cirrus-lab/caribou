@@ -26,7 +26,7 @@ class ReDeploymentServer:
         self._check_workflow_already_deployed()
 
     def _load_workflow_data(self) -> dict[str, Any]:
-        workflow_data = self._endpoints.get_deployment_resources_client().get_value_from_table(
+        workflow_data, _ = self._endpoints.get_deployment_resources_client().get_value_from_table(
             DEPLOYMENT_RESOURCES_TABLE, self._workflow_id
         )
 
@@ -50,7 +50,7 @@ class ReDeploymentServer:
         if not isinstance(workflow_function_descriptions, list):
             raise ValueError("Workflow function description is not a list")
 
-        staging_area_data_raw = self._endpoints.get_deployment_manager_client().get_value_from_table(
+        staging_area_data_raw, _ = self._endpoints.get_deployment_manager_client().get_value_from_table(
             WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE, self._workflow_id
         )
 
@@ -96,7 +96,10 @@ class ReDeploymentServer:
         self,
         expiry_time: str,
     ) -> None:
-        previous_workflow_placement_decision_raw = self._endpoints.get_deployment_manager_client().get_value_from_table(
+        (
+            previous_workflow_placement_decision_raw,
+            _,
+        ) = self._endpoints.get_deployment_manager_client().get_value_from_table(
             WORKFLOW_PLACEMENT_DECISION_TABLE, self._workflow_id
         )
 

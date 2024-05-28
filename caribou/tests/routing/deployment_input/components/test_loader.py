@@ -15,7 +15,7 @@ class TestInputLoader(unittest.TestCase):
     @patch("json.loads")
     def test_retrieve_data(self, mock_json_loads):
         mock_json_loads.return_value = {"key": "value"}
-        self.client.get_value_from_table.return_value = '{"key": "value"}'
+        self.client.get_value_from_table.return_value = ('{"key": "value"}', 0.0)
         result = self.loader._retrieve_data("table", "key")
         self.assertEqual(result, {"key": "value"})
 

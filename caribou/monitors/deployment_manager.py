@@ -56,7 +56,7 @@ class DeploymentManager(Monitor):
         data_collector_client = self._endpoints.get_data_collector_client()
 
         for workflow_id in workflow_ids:
-            workflow_info_raw = deployment_manager_client.get_value_from_table(
+            workflow_info_raw, _ = deployment_manager_client.get_value_from_table(
                 DEPLOYMENT_MANAGER_WORKFLOW_INFO_TABLE, workflow_id
             )
 
@@ -71,7 +71,7 @@ class DeploymentManager(Monitor):
 
             self.workflow_collector.run_on_workflow(workflow_id)
 
-            workflow_config_from_table = data_collector_client.get_value_from_table(
+            workflow_config_from_table, _ = data_collector_client.get_value_from_table(
                 DEPLOYMENT_MANAGER_RESOURCE_TABLE, workflow_id
             )
 
@@ -84,7 +84,7 @@ class DeploymentManager(Monitor):
 
             workflow_config = WorkflowConfig(workflow_config_dict)
 
-            workflow_summary_raw = data_collector_client.get_value_from_table(WORKFLOW_INSTANCE_TABLE, workflow_id)
+            workflow_summary_raw, _ = data_collector_client.get_value_from_table(WORKFLOW_INSTANCE_TABLE, workflow_id)
 
             workflow_summary = json.loads(workflow_summary_raw)
 
@@ -200,7 +200,7 @@ class DeploymentManager(Monitor):
         )
 
     def _get_potential_carbon_savings_per_invocation_s(self, home_region: str) -> float:
-        home_region_carbon_info_raw = self._endpoints.get_deployment_manager_client().get_value_from_table(
+        home_region_carbon_info_raw, _ = self._endpoints.get_deployment_manager_client().get_value_from_table(
             CARBON_REGION_TABLE, home_region
         )
         if home_region_carbon_info_raw is None:
@@ -215,7 +215,7 @@ class DeploymentManager(Monitor):
 
         carbon_intensities = []
         for region in potential_offloading_regions:
-            region_carbon_raw = self._endpoints.get_deployment_manager_client().get_value_from_table(
+            region_carbon_raw, _ = self._endpoints.get_deployment_manager_client().get_value_from_table(
                 CARBON_REGION_TABLE, region
             )
             if region_carbon_raw is None:
@@ -275,7 +275,7 @@ class DeploymentManager(Monitor):
         )
 
     def _get_carbon_intensity_system(self) -> float:
-        region_carbon_raw = self._endpoints.get_deployment_manager_client().get_value_from_table(
+        region_carbon_raw, _ = self._endpoints.get_deployment_manager_client().get_value_from_table(
             CARBON_REGION_TABLE, f"aws:{GLOBAL_SYSTEM_REGION}"
         )
 

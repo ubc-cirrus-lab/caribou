@@ -64,7 +64,8 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
     def sync_workflow(self) -> None:
         self._sync_logs()
         data_for_upload: str = self._prepare_data_for_upload(self._previous_data)
-        self._upload_data(data_for_upload)
+        # self._upload_data(data_for_upload)
+        print(json.dumps(json.loads(data_for_upload), indent=4))
 
     def _upload_data(self, data_for_upload: str) -> None:
         self._workflow_summary_client.update_value_in_table(
@@ -112,9 +113,28 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
 
             request_id = log_dict.get("request_id", None)
             if request_id:
-                important_entries = ["duration", "cold_start", "memory_utilization", "total_network", "cpu_total_time"]
+                important_entries = [
+                    "cold_start",
+                    "used_memory_max",
+                    "total_memory",
+                    "memory_utilization",
+                    "cpu_total_time",
+                    "duration",
+                    "rx_bytes",
+                    "tx_bytes",
+                    "total_network",
+                ]
                 for entry in important_entries:
                     if entry in log_dict:
+                        # Do unit conversion if needed
+                        # For duration and cpu_total_time, we convert from ms to s
+                        if entry in ["duration", "cpu_total_time"]:
+                            log_dict[entry] = log_dict[entry] / 1000
+
+                        # For "rx_bytes", "tx_bytes", and total_network, we convert from bytes to GB
+                        if entry in ["rx_bytes", "tx_bytes", "total_network"]:
+                            log_dict[entry] = log_dict[entry] / (1024**3)  # Convert bytes to GB
+
                         if request_id not in self._insights_logs:
                             self._insights_logs[request_id] = {}
                         self._insights_logs[request_id][entry] = log_dict[entry]
@@ -191,6 +211,8 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
             )
         if "CONDITIONAL_NON_EXECUTION" in log_entry:
             self._extract_conditional_non_execution_logs(workflow_run_sample, log_entry)
+        if "PREDECESSOR_DATA" in log_entry:
+            self._extract_predecessor_data(workflow_run_sample, log_entry)
 
     def _check_to_forget(self) -> None:
         # We need to check if the logs we have contain no tainted cold starts
@@ -218,6 +240,12 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         log_time: datetime,
     ) -> None:
         workflow_run_sample.log_start_time = log_time
+
+        # Extract the instance name of the start hop from the log entry
+        function_executed = self._extract_from_string(log_entry, r"INSTANCE \((.*?)\)")
+        if not isinstance(function_executed, str):
+            raise ValueError(f"Invalid function_executed: {function_executed}")
+        workflow_run_sample.start_hop_instance_id = function_executed
 
         # Extract the start hop latency and data transfer size from the log entry
         data_transfer_size = self._extract_from_string(log_entry, r"PAYLOAD_SIZE \((.*?)\)")
@@ -259,11 +287,32 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
 
         provider_region_str = provider_region["provider"] + ":" + provider_region["region"]
 
-        workflow_run_sample.execution_latencies[function_executed] = {
-            "latency": duration,
-            "provider_region": provider_region_str,
-            "insights": self._insights_logs.get(request_id, {}),
-        }
+        # Add the entry to the execution data if it doesn't exist
+        if function_executed not in workflow_run_sample.execution_data:
+            workflow_run_sample.execution_data[function_executed] = {}
+
+        workflow_run_sample.execution_data[function_executed]["latency"] = duration
+        workflow_run_sample.execution_data[function_executed]["provider_region"] = provider_region_str
+        workflow_run_sample.execution_data[function_executed]["insights"] = self._insights_logs.get(request_id, {})
+
+    def _extract_predecessor_data(self, workflow_run_sample: WorkflowRunSample, log_entry: str) -> None:
+        function_executed = self._extract_from_string(log_entry, r"INSTANCE \((.*?)\)")
+        if not isinstance(function_executed, str):
+            raise ValueError(f"Invalid function_executed: {function_executed}")
+
+        # Extract the start hop latency and data transfer size from the log entry
+        loaded_predecessor_payload_size = self._extract_from_string(log_entry, r"PAYLOAD_SIZE \((.*?)\)")
+        loaded_predecessor_payload_size_fl = 0.0
+        if loaded_predecessor_payload_size:
+            loaded_predecessor_payload_size_fl = float(loaded_predecessor_payload_size)
+
+        # Add the entry to the execution summary if it doesn't exist
+        if function_executed not in workflow_run_sample.execution_data:
+            workflow_run_sample.execution_data[function_executed] = {}
+
+        workflow_run_sample.execution_data[function_executed][
+            "predecessors_data_size"
+        ] = loaded_predecessor_payload_size_fl
 
     def _extract_invoking_successor_logs(
         self,
@@ -368,7 +417,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
 
     def _check_for_missing_execution_instance_region(self, previous_log: dict[str, Any]) -> bool:
         has_missing_information = False
-        for function, execution_data in previous_log["execution_latencies"].items():
+        for function, execution_data in previous_log["execution_data"].items():
             if function not in self._existing_data["execution_instance_region"]:
                 has_missing_information = True
                 self._existing_data["execution_instance_region"][function] = {}
@@ -450,7 +499,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         return result_logs
 
     def _extend_existing_execution_instance_region(self, log: dict[str, Any]) -> None:
-        for function, execution_data in log["execution_latencies"].items():
+        for function, execution_data in log["execution_data"].items():
             if function not in self._existing_data["execution_instance_region"]:
                 self._existing_data["execution_instance_region"][function] = {}
             provider_region = execution_data["provider_region"]

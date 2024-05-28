@@ -81,17 +81,24 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
 
     def set_predecessor_reached(
         self, predecessor_name: str, sync_node_name: str, workflow_instance_id: str, direct_call: bool
-    ) -> list[bool]:
+    ) -> tuple[list[bool], float]:
         client = self._client("dynamodb")
 
+        # Record the consumed capacity (Write Capacity Units) for this operation
+        # Refer to: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/read-write-operations.html
+        consumed_write_capacity = 0.0
+
         # Check if the map exists and create it if not
-        client.update_item(
+        mc_response = client.update_item(
             TableName=SYNC_PREDECESSOR_COUNTER_TABLE,
             Key={"id": {"S": workflow_instance_id}},
             UpdateExpression="SET #s = if_not_exists(#s, :empty_map)",
             ExpressionAttributeNames={"#s": sync_node_name},
             ExpressionAttributeValues={":empty_map": {"M": {}}},
+            ReturnConsumedCapacity="TOTAL",
         )
+
+        consumed_write_capacity += mc_response.get("ConsumedCapacity", {}).get("CapacityUnits", 0.0)
 
         # Update the map with the new predecessor_name and direct_call
         if not direct_call:
@@ -102,6 +109,7 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
                 ExpressionAttributeNames={"#s": sync_node_name, "#p": predecessor_name},
                 ExpressionAttributeValues={":direct_call": {"BOOL": direct_call}},
                 ReturnValues="ALL_NEW",
+                ReturnConsumedCapacity="TOTAL",
             )
         else:
             response = client.update_item(
@@ -111,9 +119,12 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
                 ExpressionAttributeNames={"#s": sync_node_name, "#p": predecessor_name},
                 ExpressionAttributeValues={":direct_call": {"BOOL": direct_call}},
                 ReturnValues="ALL_NEW",
+                ReturnConsumedCapacity="TOTAL",
             )
 
-        return [item["BOOL"] for item in response["Attributes"][sync_node_name]["M"].values()]
+        consumed_write_capacity += response.get("ConsumedCapacity", {}).get("CapacityUnits", 0.0)
+
+        return [item["BOOL"] for item in response["Attributes"][sync_node_name]["M"].values()], consumed_write_capacity
 
     def create_sync_tables(self) -> None:
         # Check if table exists
@@ -132,7 +143,9 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
                 else:
                     raise
 
-    def upload_predecessor_data_at_sync_node(self, function_name: str, workflow_instance_id: str, message: str) -> None:
+    def upload_predecessor_data_at_sync_node(
+        self, function_name: str, workflow_instance_id: str, message: str
+    ) -> float:
         client = self._client("dynamodb")
         sync_node_id = f"{function_name}:{workflow_instance_id}"
         response = client.update_item(
@@ -145,24 +158,40 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
                 ":m": {"SS": [message]},
             },
             UpdateExpression="ADD #M :m",
+            ReturnConsumedCapacity="TOTAL",
         )
-        return response
+
+        return response.get("ConsumedCapacity", {}).get("CapacityUnits", 0.0)
 
     def get_predecessor_data(
-        self, current_instance_name: str, workflow_instance_id: str  # pylint: disable=unused-argument
-    ) -> list[str]:
+        self,
+        current_instance_name: str,
+        workflow_instance_id: str,
+        consistent_read: bool = True,  # pylint: disable=unused-argument
+    ) -> tuple[list[str], float]:
         client = self._client("dynamodb")
         sync_node_id = f"{current_instance_name}:{workflow_instance_id}"
+        # Currently we use strongly consistent reads for the sync messages
+        # Refer to: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/read-write-operations.html
+        # TODO: Consider using eventually consistent reads (Research the implications of this change)
         response = client.get_item(
             TableName=SYNC_MESSAGES_TABLE,
             Key={"id": {"S": sync_node_id}},
+            ReturnConsumedCapacity="TOTAL",
+            ConsistentRead=consistent_read,
         )
+
+        # Record the consumed capacity (Read Capacity Units) for the sync node
+        consumed_read_capacity = response.get("ConsumedCapacity", {}).get("CapacityUnits", 0.0)
+
         if "Item" not in response:
-            return []
+            return [], consumed_read_capacity
+
         item = response.get("Item")
         if item is not None and "message" in item:
-            return item["message"]["SS"]
-        return []
+            return item["message"]["SS"], consumed_read_capacity
+
+        return [], consumed_read_capacity
 
     def create_function(
         self,
@@ -294,7 +323,7 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
             ExpressionAttributeValues={":value": {"S": image_name}},
         )
 
-    def _get_deployed_image_uri(self, function_name: str) -> str:
+    def _get_deployed_image_uri(self, function_name: str, consistent_read: bool = True) -> str:
         workflow_instance_id = "-".join(function_name.split("-")[0:2])
 
         function_name_simple = function_name[len(workflow_instance_id) + 1 :].rsplit("_", 1)[0]
@@ -307,6 +336,7 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         response = client.get_item(
             TableName=CARIBOU_WORKFLOW_IMAGES_TABLE,
             Key={"key": {"S": workflow_instance_id}},
+            ConsistentRead=consistent_read,
         )
 
         if "Item" not in response:
@@ -580,15 +610,26 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
             UpdateExpression=update_expression,
         )
 
-    def get_value_from_table(self, table_name: str, key: str) -> str:
+    def get_value_from_table(self, table_name: str, key: str, consistent_read: bool = True) -> tuple[str, float]:
         client = self._client("dynamodb")
-        response = client.get_item(TableName=table_name, Key={"key": {"S": key}})
+        response = client.get_item(
+            TableName=table_name,
+            Key={"key": {"S": key}},
+            ConsistentRead=consistent_read,
+            ReturnConsumedCapacity="TOTAL",
+        )
+
+        # Record the consumed capacity (Read Capacity Units) for the sync node
+        consumed_read_capacity = response.get("ConsumedCapacity", {}).get("CapacityUnits", 0.0)
+
         if "Item" not in response:
-            return ""
+            return "", consumed_read_capacity
+
         item = response.get("Item")
         if item is not None and "value" in item:
-            return item["value"]["S"]
-        return ""
+            return item["value"]["S"], consumed_read_capacity
+
+        return "", consumed_read_capacity
 
     def remove_value_from_table(self, table_name: str, key: str) -> None:
         client = self._client("dynamodb")
@@ -604,9 +645,9 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
             return {item["key"]["S"]: item["value"]["S"] for item in items}
         return {}
 
-    def get_key_present_in_table(self, table_name: str, key: str) -> bool:
+    def get_key_present_in_table(self, table_name: str, key: str, consistent_read: bool = True) -> bool:
         client = self._client("dynamodb")
-        response = client.get_item(TableName=table_name, Key={"key": {"S": key}})
+        response = client.get_item(TableName=table_name, Key={"key": {"S": key}}, ConsistentRead=consistent_read)
         return "Item" in response
 
     def upload_resource(self, key: str, resource: bytes) -> None:
