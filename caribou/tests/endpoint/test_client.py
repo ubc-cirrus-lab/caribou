@@ -1,6 +1,6 @@
 import unittest
 from datetime import datetime
-from unittest.mock import patch, MagicMock
+from unittest.mock import Mock, patch, MagicMock
 from caribou.endpoint.client import Client
 import json
 from caribou.common.models.endpoints import Endpoints
@@ -16,32 +16,35 @@ class TestClient(unittest.TestCase):
         self, mock_get_deployment_algorithm_workflow_placement_decision_client, mock_get_remote_client, mock_datetime
     ):
         mock_deployment_algorithm_client = MagicMock()
-        mock_deployment_algorithm_client.get_value_from_table.return_value = json.dumps(
-            {
-                "current_instance_name": "instance1",
-                "workflow_placement": {
-                    "current_deployment": {
-                        "time_keys": ["0"],
-                        "instances": {
-                            "0": {
+        mock_deployment_algorithm_client.get_value_from_table.return_value = (
+            json.dumps(
+                {
+                    "current_instance_name": "instance1",
+                    "workflow_placement": {
+                        "current_deployment": {
+                            "time_keys": ["0"],
+                            "instances": {
+                                "0": {
+                                    "instance1": {
+                                        "provider_region": {"provider": "aws", "region": "us-east-1"},
+                                        "identifier": "function1",
+                                    }
+                                }
+                            },
+                            "expiry_time": "2022-01-01 00:01:00",
+                        },
+                        "home_deployment": {
+                            "instances": {
                                 "instance1": {
-                                    "provider_region": {"provider": "aws", "region": "us-east-1"},
+                                    "provider_region": {"provider": "aws", "region": "us-west-2"},
                                     "identifier": "function1",
                                 }
                             }
                         },
-                        "expiry_time": "2022-01-01 00:01:00",
                     },
-                    "home_deployment": {
-                        "instances": {
-                            "instance1": {
-                                "provider_region": {"provider": "aws", "region": "us-west-2"},
-                                "identifier": "function1",
-                            }
-                        }
-                    },
-                },
-            }
+                }
+            ),
+            0.0,
         )
         mock_get_deployment_algorithm_workflow_placement_decision_client.return_value = mock_deployment_algorithm_client
 
@@ -53,16 +56,19 @@ class TestClient(unittest.TestCase):
         mock_datetime.now.return_value = datetime(2022, 1, 1, 0, 0, 0)
         mock_datetime.strptime.return_value = datetime(2022, 1, 1, 0, 1, 0)
 
-        client = Client("workflow_name")
-        client._home_region_threshold = 0.0  # Never send to home region
-        client.run({"key": "value"})
+        mock_uuid = Mock()
+        mock_uuid.hex = "37a5262"
+        with patch("uuid.uuid4", return_value=mock_uuid):
+            client = Client("workflow_name")
+            client._home_region_threshold = 0.0  # Never send to home region
+            client.run('{"key": "value"}')
 
-        # Verify the remote client was invoked with the correct parameters
-        mock_get_remote_client.assert_called_with("aws", "us-east-1")
-        mock_remote_client.invoke_function.assert_called_once_with(
-            message='{"input_data": {"key": "value"}, "time_request_sent": "2022-01-01 00:00:00,000000", "workflow_placement_decision": {"current_instance_name": "instance1", "workflow_placement": {"current_deployment": {"time_keys": ["0"], "instances": {"0": {"instance1": {"provider_region": {"provider": "aws", "region": "us-east-1"}, "identifier": "function1"}}}, "expiry_time": "2022-01-01 00:01:00"}, "home_deployment": {"instances": {"instance1": {"provider_region": {"provider": "aws", "region": "us-west-2"}, "identifier": "function1"}}}}, "time_key": "0", "send_to_home_region": false}}',
-            identifier="function1",
-        )
+            # Verify the remote client was invoked with the correct parameters
+            mock_get_remote_client.assert_called_with("aws", "us-east-1")
+            mock_remote_client.invoke_function.assert_called_once_with(
+                message='{"input_data": "{\\"key\\": \\"value\\"}", "time_request_sent": "2022-01-01 00:00:00,000000", "workflow_placement_decision": {"current_instance_name": "instance1", "workflow_placement": {"current_deployment": {"time_keys": ["0"], "instances": {"0": {"instance1": {"provider_region": {"provider": "aws", "region": "us-east-1"}, "identifier": "function1"}}}, "expiry_time": "2022-01-01 00:01:00"}, "home_deployment": {"instances": {"instance1": {"provider_region": {"provider": "aws", "region": "us-west-2"}, "identifier": "function1"}}}}, "time_key": "0", "send_to_home_region": false}, "wpd_data_size": 1.4901161193847656e-08, "wpd_consumed_read_capacity": 0.0, "run_id": "37a5262"}',
+                identifier="function1",
+            )
 
     @patch.object(Endpoints, "get_deployment_algorithm_workflow_placement_decision_client")
     def test_no_workflow_placement_decision_found(
@@ -70,7 +76,7 @@ class TestClient(unittest.TestCase):
     ):
         # Mocking the scenario where no workflow placement decision is found
         mock_deployment_algorithm_client = MagicMock()
-        mock_deployment_algorithm_client.get_value_from_table.return_value = None
+        mock_deployment_algorithm_client.get_value_from_table.return_value = (None, 0.0)
         mock_get_deployment_algorithm_workflow_placement_decision_client.return_value = mock_deployment_algorithm_client
 
         client = Client("workflow_name")

@@ -374,7 +374,7 @@ class TestLogSyncWorkflow(unittest.TestCase):
         )
 
         self.assertEqual(
-            workflow_run_sample.execution_latencies["test_instance"],
+            workflow_run_sample.execution_summary["test_instance"],
             {
                 "latency": 1234.0,
                 "provider_region": "test_provider:test_region",

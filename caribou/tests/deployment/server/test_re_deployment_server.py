@@ -15,7 +15,7 @@ class TestReDeploymentServer(unittest.TestCase):
     def setUp(self, mock_endpoints):
         # Set up the mock
         mock_client = MagicMock()
-        mock_client.get_value_from_table.return_value = json.dumps({"key": "value"})
+        mock_client.get_value_from_table.return_value = (json.dumps({"key": "value"}), 0.0)
         mock_endpoints.return_value.get_deployment_resources_client.return_value = mock_client
 
         self.mock_endpoints = mock_endpoints
@@ -36,7 +36,7 @@ class TestReDeploymentServer(unittest.TestCase):
         # Set up the mock
         mock_client = MagicMock()
         self.mock_endpoints.return_value.get_deployment_resources_client.return_value = mock_client
-        mock_client.get_value_from_table.return_value = json.dumps({"key": "value"})
+        mock_client.get_value_from_table.return_value = (json.dumps({"key": "value"}), 0.0)
 
         # Call the method
         result = self.re_deployment_server._load_workflow_data()
@@ -52,14 +52,17 @@ class TestReDeploymentServer(unittest.TestCase):
     def test_run(self, mock_update_workflow_placement_decision, mock_run_deployer):
         # Set up the mock
         mock_client = MagicMock()
-        mock_client.get_value_from_table.return_value = json.dumps(
-            {
-                "time_keys_to_staging_area_data": {
-                    "time_key1": "specific_staging_area_data1",
-                    "time_key2": "specific_staging_area_data2",
-                },
-                "expiry_time": "expiry_time",
-            }
+        mock_client.get_value_from_table.return_value = (
+            json.dumps(
+                {
+                    "time_keys_to_staging_area_data": {
+                        "time_key1": "specific_staging_area_data1",
+                        "time_key2": "specific_staging_area_data2",
+                    },
+                    "expiry_time": "expiry_time",
+                }
+            ),
+            0.0,
         )
         self.mock_endpoints.return_value.get_deployment_manager_client.return_value = mock_client
 
@@ -126,7 +129,7 @@ class TestReDeploymentServer(unittest.TestCase):
     def test_update_workflow_placement_decision(self):
         # Set up the mock
         mock_client = MagicMock()
-        mock_client.get_value_from_table.return_value = json.dumps({"workflow_placement": {}})
+        mock_client.get_value_from_table.return_value = (json.dumps({"workflow_placement": {}}), 0.0)
         self.mock_endpoints.return_value.get_deployment_manager_client.return_value = mock_client
 
         self.re_deployment_server._time_keys_to_instances = {"time_key": "instance"}

@@ -34,7 +34,7 @@ class MockRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
     def send_message_to_messaging_service(self, identifier, message):
         pass
 
-    def get_predecessor_data(self, current_instance_name, workflow_instance_id):
+    def get_predecessor_data(self, current_instance_name, workflow_instance_id, consistent_read: bool = True):
         pass
 
     def upload_predecessor_data_at_sync_node(self, function_name, workflow_instance_id, message):
@@ -43,7 +43,7 @@ class MockRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
     def set_value_in_table(self, table_name, key, value):
         pass
 
-    def get_value_from_table(self, table_name, key):
+    def get_value_from_table(self, table_name, key, consistent_read: bool = True):
         pass
 
     def upload_resource(self, key, resource):
@@ -66,7 +66,7 @@ class MockRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
     ):
         pass
 
-    def get_key_present_in_table(self, table_name: str, key: str) -> bool:
+    def get_key_present_in_table(self, table_name: str, key: str, consistent_read: bool = True) -> bool:
         pass
 
     def set_predecessor_reached(

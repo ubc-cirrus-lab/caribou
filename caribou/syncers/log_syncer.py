@@ -30,7 +30,9 @@ class LogSyncer:
         )
 
         for workflow_id, deployment_manager_config_str in currently_deployed_workflows.items():
-            previous_data_str = self._workflow_summary_client.get_value_from_table(WORKFLOW_SUMMARY_TABLE, workflow_id)
+            previous_data_str, _ = self._workflow_summary_client.get_value_from_table(
+                WORKFLOW_SUMMARY_TABLE, workflow_id
+            )
             previous_data = json.loads(previous_data_str) if previous_data_str else {}
 
             last_sync_time: Optional[str] = previous_data.get(

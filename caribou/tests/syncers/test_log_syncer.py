@@ -38,7 +38,7 @@ class TestLogSyncer(unittest.TestCase):
         mock_deployment_resources_client = MagicMock()
         mock_deployment_resources_client.get_all_values_from_table.return_value = {"workflow1": "config1"}
         mock_workflow_summary_client = MagicMock()
-        mock_workflow_summary_client.get_value_from_table.return_value = '{"last_sync_time": "time1"}'
+        mock_workflow_summary_client.get_value_from_table.return_value = ('{"last_sync_time": "time1"}', 0.0)
 
         # Configure the mock_endpoints
         mock_endpoints.return_value.get_deployment_resources_client.return_value = mock_deployment_resources_client

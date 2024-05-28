@@ -21,7 +21,7 @@ class TestWorkflowRunSample(unittest.TestCase):
         transmission_data.to_region = {"provider": "provider2", "region": "region2"}
         sample.log_start_time = datetime(2022, 1, 1, 0, 0, 0)
         sample.log_end_time = datetime(2022, 1, 1, 1, 0, 0)
-        sample.execution_latencies = {"instance1": 0.1}
+        sample.execution_summary = {"instance1": 0.1}
         sample.transmission_data = {"taint1": transmission_data}
         sample.start_hop_latency = 0.2
         sample.start_hop_data_transfer_size = 1.0

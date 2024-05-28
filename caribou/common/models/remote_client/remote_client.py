@@ -47,7 +47,22 @@ class RemoteClient(ABC):  # pylint: disable=too-many-public-methods
         function_name: Optional[str] = None,
         expected_counter: int = -1,
         current_instance_name: Optional[str] = None,
-    ) -> None:
+        alternative_message: Optional[str] = None,
+    ) -> tuple[Optional[float], bool, float, float]:
+        # Returns the (size of uploaded sync data None if no data was uploaded,
+        # if successor was invoked, RTT for dynamodb access, and the consumed write capacity),
+        # In other words (payload_size, successor_invoked, RTT, consumed_write_capacity)
+        uploaded_payload_size: Optional[float] = None
+
+        # If the successor was invoked
+        successor_invoked = True
+
+        # The RTT for a potential dynamodb upload (Only for sync nodes)
+        upload_rtt = 0.0
+
+        # Write consumed capacity is only used for sync nodes
+        total_consumed_write_capacity = 0.0
+
         if sync:
             if function_name is None:
                 raise RuntimeError("Function name must be specified for synchronization node")
@@ -64,22 +79,41 @@ class RemoteClient(ABC):  # pylint: disable=too-many-public-methods
                 payload = ""
             payload = message_dictionary["payload"]
             json_payload = json.dumps(payload)
-            self.upload_predecessor_data_at_sync_node(function_name, workflow_instance_id, json_payload)
-            reached_states = self.set_predecessor_reached(
+            uploaded_payload_size = len(json_payload.encode("utf-8")) / (1024**3)
+
+            # Record the RTT time for uploading the data
+            time_start = datetime.now()
+            total_consumed_write_capacity += self.upload_predecessor_data_at_sync_node(
+                function_name, workflow_instance_id, json_payload
+            )
+            time_end = datetime.now()
+
+            # Calculate the time taken to upload the data
+            upload_rtt = (time_end - time_start).total_seconds()
+
+            # Update the predecessor reached states
+            reached_states, write_consumed_capacity = self.set_predecessor_reached(
                 current_instance_name, function_name, workflow_instance_id, direct_call=True
             )
+            total_consumed_write_capacity += write_consumed_capacity
 
             if len(reached_states) != expected_counter:
-                return
+                successor_invoked = False
+                return uploaded_payload_size, successor_invoked, upload_rtt, total_consumed_write_capacity
         try:
+            if sync and alternative_message is not None:
+                message = alternative_message
+
             self.send_message_to_messaging_service(identifier, message)
         except Exception as e:
             raise RuntimeError(f"Could not invoke function through SNS: {str(e)}") from e
 
+        return uploaded_payload_size, successor_invoked, upload_rtt, total_consumed_write_capacity
+
     @abstractmethod
     def set_predecessor_reached(
         self, predecessor_name: str, sync_node_name: str, workflow_instance_id: str, direct_call: bool
-    ) -> list[bool]:
+    ) -> tuple[list[bool], float]:
         raise NotImplementedError()
 
     @abstractmethod
@@ -87,11 +121,15 @@ class RemoteClient(ABC):  # pylint: disable=too-many-public-methods
         raise NotImplementedError()
 
     @abstractmethod
-    def get_predecessor_data(self, current_instance_name: str, workflow_instance_id: str) -> list[str]:
+    def get_predecessor_data(
+        self, current_instance_name: str, workflow_instance_id: str, consistent_read: bool = True
+    ) -> tuple[list[str], float]:
         raise NotImplementedError()
 
     @abstractmethod
-    def upload_predecessor_data_at_sync_node(self, function_name: str, workflow_instance_id: str, message: str) -> None:
+    def upload_predecessor_data_at_sync_node(
+        self, function_name: str, workflow_instance_id: str, message: str
+    ) -> float:
         raise NotImplementedError()
 
     @abstractmethod
@@ -109,7 +147,7 @@ class RemoteClient(ABC):  # pylint: disable=too-many-public-methods
         raise NotImplementedError()
 
     @abstractmethod
-    def get_value_from_table(self, table_name: str, key: str) -> str:
+    def get_value_from_table(self, table_name: str, key: str, consistent_read: bool = True) -> tuple[str, float]:
         raise NotImplementedError()
 
     @abstractmethod
@@ -121,7 +159,7 @@ class RemoteClient(ABC):  # pylint: disable=too-many-public-methods
         raise NotImplementedError()
 
     @abstractmethod
-    def get_key_present_in_table(self, table_name: str, key: str) -> bool:
+    def get_key_present_in_table(self, table_name: str, key: str, consistent_read: bool = True) -> bool:
         raise NotImplementedError()
 
     @abstractmethod
