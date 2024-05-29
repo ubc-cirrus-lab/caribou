@@ -22,6 +22,11 @@ from caribou.common.models.endpoints import Endpoints
 from caribou.common.models.remote_client.aws_remote_client import AWSRemoteClient
 from caribou.common.models.remote_client.remote_client_factory import RemoteClientFactory
 
+# Set logging level for Boto3 to WARNING to suppress INFO messages
+# Mainly to suppress 'Found credentials in environment variables.' message
+# May in the future want to make it just targetting the specific logger
+logging.getLogger("botocore").setLevel(logging.WARNING)
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 logger.addHandler(logging.StreamHandler())
