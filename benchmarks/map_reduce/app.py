@@ -21,7 +21,7 @@ logger.setLevel(logging.INFO)
     name="Input_Processor",
     entry_point=True,
 )
-def input_processor(event: dict[str, Any]) -> dict[str, Any]:
+def input_processor(event: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
     if isinstance(event, str):
         event = json.loads(event)
 
@@ -88,7 +88,7 @@ def input_processor(event: dict[str, Any]) -> dict[str, Any]:
 
 
 @workflow.serverless_function(name="Mapper_Function")
-def mapper(event: dict[str, Any]) -> dict[str, Any]:
+def mapper(event: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
 
     input_base_dir = event["input_base_dir"]
     number_shards = event["number_shards"]
@@ -97,7 +97,7 @@ def mapper(event: dict[str, Any]) -> dict[str, Any]:
 
     run_id = workflow.get_run_id()
 
-    s3 = boto3.client("s3")
+    s3 = boto3.client("s3", region_name='us-west-2')
     with TemporaryDirectory() as tmp_dir:
 
         start_index = worker_index * shards_per_worker
@@ -147,7 +147,7 @@ def mapper(event: dict[str, Any]) -> dict[str, Any]:
 
 
 @workflow.serverless_function(name="Shuffler_Function")
-def shuffler(event: dict[str, Any]) -> dict[str, Any]:
+def shuffler(event: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
 
     results = workflow.get_predecessor_data()
 
@@ -188,7 +188,7 @@ def shuffler(event: dict[str, Any]) -> dict[str, Any]:
 
 
 @workflow.serverless_function(name="Reducer_Function")
-def reducer(event: dict[str, Any]) -> dict[str, Any]:
+def reducer(event: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
 
     word_count_file_path_1 = event["mapper_result1"]
     word_count_file_path_2 = event["mapper_result2"]
@@ -197,7 +197,7 @@ def reducer(event: dict[str, Any]) -> dict[str, Any]:
 
     merged_word_counts = {}
 
-    s3 = boto3.client("s3")
+    s3 = boto3.client("s3", region_name='us-west-2')
 
     with TemporaryDirectory() as tmp_dir:
         if word_count_file_path_1 is not None:
@@ -247,12 +247,12 @@ def reducer(event: dict[str, Any]) -> dict[str, Any]:
 
 
 @workflow.serverless_function(name="Output_Processor")
-def output_processor(event: dict[str, Any]) -> dict[str, Any]:
+def output_processor(event: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
     results = workflow.get_predecessor_data()
 
     final_word_counts = {}
 
-    s3 = boto3.client("s3")
+    s3 = boto3.client("s3", region_name='us-west-2')
 
     with TemporaryDirectory() as tmp_dir:
 

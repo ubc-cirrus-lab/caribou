@@ -12,7 +12,7 @@ workflow = CaribouWorkflow(name="dna_visualization", version="0.0.1")
 
 
 @workflow.serverless_function(name="Visualize", entry_point=True)
-def visualize(event: dict[str, Any]) -> dict[str, Any]:
+def visualize(event: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
     if isinstance(event, str):
         event = json.loads(event)
 
@@ -26,7 +26,7 @@ def visualize(event: dict[str, Any]) -> dict[str, Any]:
     local_gen_filename = f"/tmp/genbank-{req_id}.gb"
     local_result_filename = f"/tmp/result-{req_id}.png"
 
-    s3 = boto3.client("s3")
+    s3 = boto3.client("s3", region_name='us-west-2')
     s3.download_file(
         "caribou-dna-visualization",
         f"genbank/{gen_file_name}",

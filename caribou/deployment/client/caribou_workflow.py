@@ -281,18 +281,29 @@ class CaribouWorkflow:
             successor_workflow_placement_decision = self.get_successor_workflow_placement_decision_dictionary(
                 workflow_placement_decision, successor_instance_name
             )
-            payload_wrapper = {}
+            payload_wrapper: dict[str, Any] = {}
+            transmission_taint = uuid.uuid4().hex
             payload_wrapper["workflow_placement_decision"] = successor_workflow_placement_decision
+            payload_wrapper["transmission_taint"] = transmission_taint
             json_payload = json.dumps(payload_wrapper)
 
-            _, _, _, consumed_write_capacity = RemoteClientFactory.get_remote_client(provider, region).invoke_function(
+            _, _, _, _ = RemoteClientFactory.get_remote_client(provider, region).invoke_function(
                 message=json_payload,
                 identifier=identifier,
                 workflow_instance_id=workflow_placement_decision["run_id"],
                 sync=False,
             )
 
-            total_consumed_write_capacity += consumed_write_capacity
+            log_message = (
+                f"INVOKING_SYNC_NODE: INSTANCE ({predecessor_instance_name}) calling "
+                f"SYNC_NODE ({successor_instance_name}) with PAYLOAD_SIZE "
+                f"({len(json_payload.encode('utf-8')) / (1024**3)}) GB and TAINT ({transmission_taint})"
+                f"to PROVIDER ({provider}) and REGION ({region})."
+            )
+            self.log_for_retrieval(
+                log_message,
+                workflow_placement_decision["run_id"],
+            )
 
         log_message = (
             f"INFORMING_SYNC_NODE: INSTANCE ({predecessor_instance_name}) informing "

@@ -173,7 +173,6 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         sync_node_id = f"{current_instance_name}:{workflow_instance_id}"
         # Currently we use strongly consistent reads for the sync messages
         # Refer to: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/read-write-operations.html
-        # TODO: Consider using eventually consistent reads (Research the implications of this change)
         response = client.get_item(
             TableName=SYNC_MESSAGES_TABLE,
             Key={"id": {"S": sync_node_id}},
