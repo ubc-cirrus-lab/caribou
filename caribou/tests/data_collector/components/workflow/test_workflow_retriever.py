@@ -141,7 +141,6 @@ class TestWorkflowRetriever(unittest.TestCase):
             "instance1": {
                 "invocations": 1,
                 "executions": {"provider1:region1": [0.1]},
-                "insights": {},
                 "to_instance": {
                     "instance2": {
                         "invoked": 1,

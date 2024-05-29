@@ -23,7 +23,7 @@ workflow = CaribouWorkflow(name="video_analytics", version="0.0.1")
     name="GetInput",
     entry_point=True,
 )
-def get_input(event: dict[str, Any]) -> dict[str, Any]:
+def get_input(event: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
     if isinstance(event, str):
         event = json.loads(event)
 
@@ -55,7 +55,7 @@ def get_input(event: dict[str, Any]) -> dict[str, Any]:
 
 
 @workflow.serverless_function(name="Streaming")
-def streaming(event: dict[str, Any]) -> dict[str, Any]:
+def streaming(event: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
     video_name = event["video_name"]
     request_id = event["request_id"]
     print(f"Processing video: {video_name}")
@@ -73,7 +73,7 @@ def streaming(event: dict[str, Any]) -> dict[str, Any]:
 
 
 @workflow.serverless_function(name="Decode")
-def decode(event: dict[str, Any]) -> dict[str, Any]:
+def decode(event: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
     video_name = event["video_name"]
     request_id = event["request_id"]
     print(f"Decoding video: {video_name}")
@@ -91,12 +91,12 @@ def decode(event: dict[str, Any]) -> dict[str, Any]:
 
 
 @workflow.serverless_function(name="Recognition")
-def recognition(event: dict[str, Any]) -> dict[str, Any]:
+def recognition(event: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
     decoded_filename = event["decoded_filename"]
     request_id = event["request_id"]
     print(f"Recognizing video: {decoded_filename}")
 
-    s3 = boto3.client("s3")
+    s3 = boto3.client("s3", region_name='us-west-2')
     response = s3.get_object(Bucket="caribou-video-analytics", Key=decoded_filename)
     image_bytes = response["Body"].read()
 
@@ -119,7 +119,7 @@ def video_analytics_streaming(filename: str, request_id: int) -> str:
         # Make sure the directory exists
         os.makedirs(os.path.dirname(local_filename), exist_ok=True)
 
-        s3 = boto3.client("s3")
+        s3 = boto3.client("s3", region_name='us-west-2')
 
         s3.download_file("caribou-video-analytics", filename, local_filename)
 
@@ -155,7 +155,7 @@ def video_analytics_decode(filename: str, request_id: int) -> str:
         # Make sure the directory exists
         os.makedirs(os.path.dirname(local_filename), exist_ok=True)
 
-        s3 = boto3.client("s3")
+        s3 = boto3.client("s3", region_name='us-west-2')
 
         # Download the video file from S3
         s3.download_file("caribou-video-analytics", filename, local_filename)
@@ -199,7 +199,6 @@ def video_analytics_decode(filename: str, request_id: int) -> str:
         # Return the name of the last uploaded frame as an example
         return decoded_filename
 
-
 def decode_video(local_filename: str) -> bytes:
     cap = cv2.VideoCapture(local_filename)
     frames = []
@@ -209,7 +208,6 @@ def decode_video(local_filename: str) -> bytes:
             break
         frames.append(cv2.imencode(".jpg", frame)[1].tobytes())
     return frames
-
 
 def preprocess_image(image_bytes):
     img = Image.open(io.BytesIO(image_bytes))
@@ -224,10 +222,9 @@ def preprocess_image(image_bytes):
     img = transform(img)
     return torch.unsqueeze(img, 0)
 
-
 def infer(image_bytes):
     # Load model labels
-    s3 = boto3.client("s3")
+    s3 = boto3.client("s3", region_name='us-west-2')
     response = s3.get_object(Bucket="caribou-video-analytics", Key="imagenet_labels.txt")
     labels = response["Body"].read().decode("utf-8").splitlines()
 

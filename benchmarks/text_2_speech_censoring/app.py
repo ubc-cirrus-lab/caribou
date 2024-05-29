@@ -19,7 +19,7 @@ workflow = CaribouWorkflow(name="text_2_speech_censoring", version="0.0.1")
     name="GetInput",
     entry_point=True,
 )
-def get_input(event: dict[str, Any]) -> dict[str, Any]:
+def get_input(event: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
     if isinstance(event, str):
         event = json.loads(event)
 
@@ -42,10 +42,10 @@ def get_input(event: dict[str, Any]) -> dict[str, Any]:
 
 
 @workflow.serverless_function(name="Text2Speech")
-def text_2_speech(event: dict[str, Any]) -> dict[str, Any]:
+def text_2_speech(event: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
     input_file = event["input_file"]
 
-    s3 = boto3.client("s3")
+    s3 = boto3.client("s3", region_name='us-west-2')
     with TemporaryDirectory() as tmp_dir:
 
         local_name = f"{tmp_dir}/input.txt"
@@ -68,7 +68,7 @@ def text_2_speech(event: dict[str, Any]) -> dict[str, Any]:
 
         remote_name = f"text_2_speech/{workflow.get_run_id()}_{file_name}"
 
-        s3 = boto3.client("s3")
+        s3 = boto3.client("s3", region_name='us-west-2')
 
         s3.upload_file(
             local_name,
@@ -86,10 +86,10 @@ def text_2_speech(event: dict[str, Any]) -> dict[str, Any]:
 
 
 @workflow.serverless_function(name="Profanity")
-def profanity(event: dict[str, Any]) -> dict[str, Any]:
+def profanity(event: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
     input_file = event["input_file"]
 
-    s3 = boto3.client("s3")
+    s3 = boto3.client("s3", region_name='us-west-2')
     with TemporaryDirectory() as tmp_dir:
 
         local_name = f"{tmp_dir}/input.txt"
@@ -144,10 +144,10 @@ def extract_indexes(text, char="*") -> list:
 
 
 @workflow.serverless_function(name="Conversion")
-def conversion(event: dict[str, Any]) -> dict[str, Any]:
+def conversion(event: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
     file_name = event["file_name"]
 
-    s3 = boto3.client("s3")
+    s3 = boto3.client("s3", region_name='us-west-2')
     with TemporaryDirectory() as tmp_dir:
 
         local_name = f"{tmp_dir}/input.txt"
@@ -186,10 +186,10 @@ def conversion(event: dict[str, Any]) -> dict[str, Any]:
 
 
 @workflow.serverless_function(name="Compression")
-def compression(event: dict[str, Any]) -> dict[str, Any]:
+def compression(event: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
     file_name = event["file_name"]
 
-    s3 = boto3.client("s3")
+    s3 = boto3.client("s3", region_name='us-west-2')
     with TemporaryDirectory() as tmp_dir:
         local_name = f"{tmp_dir}/input.wav"
         s3.download_file("caribou-text-2-speech-censoring", file_name, local_name)
@@ -230,7 +230,7 @@ def compression(event: dict[str, Any]) -> dict[str, Any]:
 
 
 @workflow.serverless_function(name="Censor")
-def censor(event: dict[str, Any]) -> dict[str, Any]:
+def censor(event: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
     results = workflow.get_predecessor_data()
 
     for result in results:
@@ -243,7 +243,7 @@ def censor(event: dict[str, Any]) -> dict[str, Any]:
     if not "file_name" or not "data":
         raise ValueError("No file name or data provided")
 
-    s3 = boto3.client("s3")
+    s3 = boto3.client("s3", region_name='us-west-2')
     with TemporaryDirectory() as tmp_dir:
         local_index_name = f"{tmp_dir}/indexes.json"
         s3.download_file("caribou-text-2-speech-censoring", index_file, local_index_name)
