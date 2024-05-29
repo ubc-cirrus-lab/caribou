@@ -8,7 +8,7 @@ import logging
 import time
 import uuid
 from datetime import datetime
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, cast
 
 from caribou.common.constants import GLOBAL_TIME_ZONE, LOG_VERSION, TIME_FORMAT, WORKFLOW_PLACEMENT_DECISION_TABLE
 from caribou.common.models.endpoints import Endpoints
@@ -16,7 +16,26 @@ from caribou.common.models.remote_client.remote_client_factory import RemoteClie
 from caribou.common.utils import get_function_source
 from caribou.deployment.client.caribou_function import CaribouFunction
 
-logger = logging.getLogger()
+# Alter the logging to use CARIBOU level instead of info
+## Define a custom logging level
+CARIBOU_LEVEL = 25
+logging.addLevelName(CARIBOU_LEVEL, "CARIBOU")
+
+
+## Custom logger class
+class CustomLogger(logging.Logger):
+    def caribou(self, message: str, *args: Any, **kws: Any) -> None:
+        if self.isEnabledFor(CARIBOU_LEVEL):
+            self._log(CARIBOU_LEVEL, message, args, **kws)
+
+
+## Replace the default logger class with your custom logger class
+logging.setLoggerClass(CustomLogger)
+
+## Create an instance of your custom logger class
+logger = cast(CustomLogger, logging.getLogger(__name__))
+
+## Set the logging level
 logger.setLevel(logging.INFO)
 
 
@@ -778,7 +797,7 @@ class CaribouWorkflow:
             message_time = datetime.now(GLOBAL_TIME_ZONE)
         message_time_str: str = message_time.strftime(TIME_FORMAT)
 
-        logger.info(
+        logger.caribou(
             "TIME (%s) RUN_ID (%s) MESSAGE (%s) LOG_VERSION (%s)",
             message_time_str,
             run_id,
