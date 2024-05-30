@@ -218,7 +218,7 @@ class CaribouWorkflow:
                 f"UPLOAD_DATA_TO_SYNC_TABLE: INSTANCE ({current_instance_name}) uploading to "
                 f"SUCCESSOR ({successor_instance_name}) with UPLOAD_SIZE "
                 f"({payload_size}) GB with UPLOAD_RTT "
-                f"{upload_rtt} s and potential wrapper PAYLOAD_SIZE "
+                f"({upload_rtt}) s and potential wrapper PAYLOAD_SIZE "
                 f"({len(send_json_payload.encode('utf-8')) / (1024**3)}) GB "
                 f"consuming CONSUMED_WRITE_CAPACITY ({total_consumed_write_capacity}) "
                 f"to PROVIDER ({provider}) and REGION ({region})."
@@ -463,8 +463,8 @@ class CaribouWorkflow:
 
         # Now log the loaded data (To show that the data was loaded from dynamodb)
         log_message = (
-            f"SYNC_NODE_PREDECESSOR_DATA: INSTANCE ({current_instance_name}) loaded SYNC_NODE_PREDECESSOR_DATA "
-            f"with PAYLOAD_SIZE ({size_of_results / (1024**3)}) GB and CONSUMED_READ_CAPACITY ({consumed_capacity})"
+            f"DOWNLOAD_DATA_FROM_SYNC_TABLE: INSTANCE ({current_instance_name}) loaded SYNC_NODE_PREDECESSOR_DATA "
+            f"with DOWNLOAD_SIZE ({size_of_results / (1024**3)}) GB and CONSUMED_READ_CAPACITY ({consumed_capacity})"
         )
         self.log_for_retrieval(
             log_message,
@@ -694,23 +694,14 @@ class CaribouWorkflow:
                     workflow_placement_decision["time_key"] = self._get_time_key(workflow_placement_decision)
 
                     # Log the retrieval of workflow placement decision
-                    log_message = (
-                        f"RETRIEVED_WPD: INSTANCE ({workflow_placement_decision['current_instance_name']}) "
-                        f"retrieved WORKFLOW_PLACEMENT_DECISION with PAYLOAD_SIZE "
-                        f"({wpd_data_size}) GB and CONSUMED_READ_CAPACITY ({wpd_consumed_read_capacity})"
-                    )
-                    self.log_for_retrieval(
-                        log_message,
-                        workflow_placement_decision["run_id"],
-                    )
-
                     payload = argument
                     log_message = (
-                        f"ENTRY_POINT: : Entry Point INSTANCE "
+                        f"ENTRY_POINT: Entry Point INSTANCE "
                         f'({workflow_placement_decision["current_instance_name"]}) '
                         f'of workflow {f"{self.name}-{self.version}"} called with PAYLOAD_SIZE '
                         f'({len(json.dumps(payload, cls=CustomEncoder).encode("utf-8")) / (1024**3)}) GB and '
-                        f"INIT_LATENCY ({init_latency}) s"
+                        f"INIT_LATENCY ({init_latency}) s with WORKFLOW_PLACEMENT_DECISION_SIZE "
+                        f"({wpd_data_size}) GB and CONSUMED_READ_CAPACITY ({wpd_consumed_read_capacity})"
                     )
                     self.log_for_retrieval(log_message, workflow_placement_decision["run_id"], function_start_time)
                 else:
@@ -730,8 +721,12 @@ class CaribouWorkflow:
                 self._run_id_to_successor_index[workflow_placement_decision["run_id"]] = 0
 
                 cpu_model = self.get_cpu_info()
+                log_message = (
+                    f"USED_CPU_MODEL: CPU_MODEL ({cpu_model.replace('(', '<').replace(')', '>')}) used in INSTANCE "
+                    f'({workflow_placement_decision["current_instance_name"]}) '
+                )
                 self.log_for_retrieval(
-                    f"CPU_MODEL: {cpu_model}",
+                    log_message,
                     workflow_placement_decision["run_id"],  # type: ignore
                     function_start_time,
                 )
