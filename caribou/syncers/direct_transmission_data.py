@@ -1,15 +1,13 @@
-import logging
 from datetime import datetime, timedelta
 from typing import Any, Optional
 
-logger = logging.getLogger(__name__)
 
-
-class TransmissionData:  # pylint: disable=too-many-instance-attributes
+class DirectTransmissionData:  # pylint: disable=too-many-instance-attributes
     def __init__(self, taint: str):
         self.taint = taint
         self.transmission_start_time: Optional[datetime] = None
         self.transmission_end_time: Optional[datetime] = None
+        self.from_direct_successor: bool = True
         self.transmission_size: float = 0.0
         self.from_instance: Optional[str] = None
         self.to_instance: Optional[str] = None
@@ -20,6 +18,7 @@ class TransmissionData:  # pylint: disable=too-many-instance-attributes
         return {
             "transmission_size": self.transmission_size,
             "transmission_latency": self.transmission_latency.total_seconds(),
+            "from_direct_successor": self.from_direct_successor,
             "from_instance": self.from_instance,
             "to_instance": self.to_instance,
             "from_region": self.from_region,
@@ -49,4 +48,4 @@ class TransmissionData:  # pylint: disable=too-many-instance-attributes
         )
 
     def __str__(self) -> str:
-        return f"TransmissionData({self.taint}, {self.transmission_start_time}, {self.transmission_end_time}, {self.transmission_size}, {self.from_instance}, {self.to_instance}, {self.from_region}, {self.to_region})"  # pylint: disable=line-too-long
+        return f"OrchestrationTransmissionData({self.taint}, {self.transmission_start_time}, {self.transmission_end_time}, {self.from_direct_successor}, {self.transmission_size}, {self.from_instance}, {self.to_instance}, {self.from_region}, {self.to_region})"  # pylint: disable=line-too-long

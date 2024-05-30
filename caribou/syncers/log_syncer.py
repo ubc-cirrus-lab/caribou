@@ -40,7 +40,8 @@ class LogSyncer:
                 None,
             )
 
-            time_intervals_to_sync = self._get_time_intervals_to_sync(last_sync_time, 30)
+            # time_intervals_to_sync = self._get_time_intervals_to_sync(last_sync_time, 30)
+            time_intervals_to_sync = self._get_time_intervals_to_sync(last_sync_time, 0)
 
             if len(time_intervals_to_sync) == 0:
                 continue
