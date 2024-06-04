@@ -7,7 +7,6 @@ import os
 from datetime import datetime
 import logging
 import math
-import concurrent.futures
 
 from caribou.deployment.client import CaribouWorkflow
 
@@ -49,40 +48,29 @@ def input_processor(event: dict[str, Any], metadata: dict[str, Any]) -> dict[str
         "shards_per_worker": shards_per_worker,
     }
 
-    pool = concurrent.futures.ThreadPoolExecutor(max_workers=6)
+    # Mapper 1
+    payload["worker_index"] = 0
+    workflow.invoke_serverless_function(mapper, payload)
 
-    def worker1():
-        payload["worker_index"] = 0
-        workflow.invoke_serverless_function(mapper, payload)
+    # Mapper 2
+    payload["worker_index"] = 1
+    workflow.invoke_serverless_function(mapper, payload, number_of_workers_needed > 1)
 
-    def worker2():
-        payload["worker_index"] = 1
-        workflow.invoke_serverless_function(mapper, payload, number_of_workers_needed > 1)
+    # Mapper 3
+    payload["worker_index"] = 2
+    workflow.invoke_serverless_function(mapper, payload, number_of_workers_needed > 2)
 
-    def worker3():
-        payload["worker_index"] = 2
-        workflow.invoke_serverless_function(mapper, payload, number_of_workers_needed > 2)
+    # Mapper 4
+    payload["worker_index"] = 3
+    workflow.invoke_serverless_function(mapper, payload, number_of_workers_needed > 3)
 
-    def worker4():
-        payload["worker_index"] = 3
-        workflow.invoke_serverless_function(mapper, payload, number_of_workers_needed > 3)
+    # Mapper 5
+    payload["worker_index"] = 4
+    workflow.invoke_serverless_function(mapper, payload, number_of_workers_needed > 4)
 
-    def worker5():
-        payload["worker_index"] = 4
-        workflow.invoke_serverless_function(mapper, payload, number_of_workers_needed > 4)
-
-    def worker6():
-        payload["worker_index"] = 5
-        workflow.invoke_serverless_function(mapper, payload, number_of_workers_needed > 5)
-
-    pool.submit(worker1)
-    pool.submit(worker2)
-    pool.submit(worker3)
-    pool.submit(worker4)
-    pool.submit(worker5)
-    pool.submit(worker6)
-
-    pool.shutdown(wait=True)
+    # Mapper 6
+    payload["worker_index"] = 5
+    workflow.invoke_serverless_function(mapper, payload, number_of_workers_needed > 5)
 
     return {"status": 200}
 
@@ -155,34 +143,26 @@ def shuffler(event: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
 
     logger.info(f"Results: {results}, Number of results: {num_results}")
 
-    pool = concurrent.futures.ThreadPoolExecutor(max_workers=2)
+    # Reducer 1
+    workflow.invoke_serverless_function(
+        reducer,
+        {
+            "mapper_result1": results[0]["word_count_file_path"],
+            "mapper_result2": results[1].get("word_count_file_path", None) if num_results >= 2 else None,
+            "reducer_index": 1,
+        },
+    )
 
-    def worker1():
-        workflow.invoke_serverless_function(
-            reducer,
-            {
-                "mapper_result1": results[0]["word_count_file_path"],
-                "mapper_result2": results[1].get("word_count_file_path", None) if num_results >= 2 else None,
-                "reducer_index": 1,
-            },
-        )
-
-    def worker2():
-        if num_results >= 3:
-            payload2 = {
-                "mapper_result1": results[2]["word_count_file_path"],
-                "mapper_result2": results[3].get("word_count_file_path", None) if num_results == 4 else None,
-                "reducer_index": 2,
-            }
-        else:
-            payload2 = {"mapper_result1": None, "mapper_result2": None, "reducer_index": 2}
-
-        workflow.invoke_serverless_function(reducer, payload2, num_results >= 3)
-
-    pool.submit(worker1)
-    pool.submit(worker2)
-
-    pool.shutdown(wait=True)
+    # Reducer 2
+    if num_results >= 3:
+        payload2 = {
+            "mapper_result1": results[2]["word_count_file_path"],
+            "mapper_result2": results[3].get("word_count_file_path", None) if num_results == 4 else None,
+            "reducer_index": 2,
+        }
+    else:
+        payload2 = {"mapper_result1": None, "mapper_result2": None, "reducer_index": 2}
+    workflow.invoke_serverless_function(reducer, payload2, num_results >= 3)
 
     return {"status": 200}
 

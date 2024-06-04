@@ -1,7 +1,7 @@
 import unittest
 from datetime import datetime, timedelta
 from caribou.syncers.workflow_run_sample import WorkflowRunSample
-from caribou.syncers.direct_transmission_data import DirectTransmissionData
+from caribou.syncers.transmission_data import TransmissionData
 
 
 class TestWorkflowRunSample(unittest.TestCase):
@@ -11,7 +11,7 @@ class TestWorkflowRunSample(unittest.TestCase):
         sample = WorkflowRunSample("run1")
 
         # Set some attributes
-        transmission_data = DirectTransmissionData("taint1")
+        transmission_data = TransmissionData("taint1")
         transmission_data.transmission_start_time = datetime(2022, 1, 1, 0, 0, 0)
         transmission_data.transmission_end_time = datetime(2022, 1, 1, 1, 0, 0)
         transmission_data.transmission_size = 1.0
@@ -22,7 +22,7 @@ class TestWorkflowRunSample(unittest.TestCase):
         sample.log_start_time = datetime(2022, 1, 1, 0, 0, 0)
         sample.log_end_time = datetime(2022, 1, 1, 1, 0, 0)
         sample.execution_summary = {"instance1": 0.1}
-        sample.direct_transmission_data = {"taint1": transmission_data}
+        sample.transmission_data = {"taint1": transmission_data}
         sample.start_hop_latency = 0.2
         sample.start_hop_data_transfer_size = 1.0
         sample.start_hop_destination = {"provider": "provider1", "region": "region1"}
@@ -39,7 +39,7 @@ class TestWorkflowRunSample(unittest.TestCase):
         self.assertEqual(sample.get_transmission_data("taint1"), transmission_data)
 
         # Check the is_complete method
-        self.assertTrue(sample.is_complete())
+        self.assertTrue(sample.is_valid_and_complete())
 
         # Check the to_dict method
         expected_result = (

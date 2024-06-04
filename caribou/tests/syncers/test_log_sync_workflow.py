@@ -598,7 +598,7 @@ class TestLogSyncWorkflow(unittest.TestCase):
         }
 
         # Call the method
-        self.log_sync_workflow._filter_daily_invocation_counts(previous_daily_invocation_counts)
+        self.log_sync_workflow._filter_daily_counts(previous_daily_invocation_counts)
 
         # Check that the previous_daily_invocation_counts dictionary was updated as expected
         expected_result = {(now - timedelta(days=i)).strftime(TIME_FORMAT_DAYS): i for i in range(FORGETTING_TIME_DAYS)}

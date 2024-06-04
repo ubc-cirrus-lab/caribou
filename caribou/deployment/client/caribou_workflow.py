@@ -7,7 +7,8 @@ import json
 import logging
 import time
 import uuid
-from datetime import datetime
+from concurrent.futures import Future, ThreadPoolExecutor
+from datetime import datetime, timedelta
 from typing import Any, Callable, Optional, cast
 
 from caribou.common.constants import GLOBAL_TIME_ZONE, LOG_VERSION, TIME_FORMAT, WORKFLOW_PLACEMENT_DECISION_TABLE
@@ -88,7 +89,7 @@ class CaribouWorkflow:
     :param name: The name of the workflow.
     """
 
-    def __init__(self, name: str, version: str):
+    def __init__(self, name: str, version: str):  # pylint: disable=too-many-instance-attributes
         self.name = name
         self.version = version
         self.functions: dict[str, CaribouFunction] = {}
@@ -96,6 +97,13 @@ class CaribouWorkflow:
         self._function_names: set[str] = set()
         self._endpoint = Endpoints()
         self._current_workflow_placement_decision: dict[str, Any] = {}
+
+        # For thread pool -> Invoke successor functions asynchronously
+        self._thread_pool: ThreadPoolExecutor = ThreadPoolExecutor(max_workers=4)
+        self._futures: list[Future] = []
+
+        # For logging
+        self._function_start_time: Optional[datetime] = None
 
     def get_run_id(self) -> str:
         return self._current_workflow_placement_decision["run_id"]
@@ -146,93 +154,132 @@ class CaribouWorkflow:
             function, workflow_placement_decision
         )
 
-        provider, region, identifier = self.get_successor_workflow_placement_decision(
-            successor_instance_name, workflow_placement_decision
-        )
+        def invoke_worker(invocation_start_time: datetime):
+            time_from_function_start: Optional[timedelta] = None
+            if self._function_start_time is not None:
+                time_from_function_start = invocation_start_time - self._function_start_time
 
-        if not conditional:
-            # For the sync nodes we still need to inform the platform that the function has finished.
-            total_consumed_capacity = self._inform_sync_node_of_conditional_non_execution(
-                workflow_placement_decision, successor_instance_name, current_instance_name
+            provider, region, identifier = self.get_successor_workflow_placement_decision(
+                successor_instance_name, workflow_placement_decision
             )
 
-            # We don't call the function if it is conditional and the condition is not met.
+            if not conditional:
+                # For the sync nodes we still need to inform the platform that the function has finished.
+                (
+                    total_sync_data_response_size,
+                    total_consumed_capacity,
+                    sync_nodes_invoked_logs,
+                ) = self._inform_sync_node_of_conditional_non_execution(
+                    workflow_placement_decision, successor_instance_name, current_instance_name
+                )
+
+                for sync_nodes_invoked_info in sync_nodes_invoked_logs:
+                    log_message = (
+                        f"INVOKING_SYNC_NODE: INSTANCE ({current_instance_name}) for "
+                        f"PREDECESSOR_INSTANCE ({sync_nodes_invoked_info['predecessor']}) calling "
+                        f"SYNC_NODE ({sync_nodes_invoked_info['sync_node']}) with "
+                        f"PAYLOAD_SIZE ({sync_nodes_invoked_info['payload_size']}) GB and "
+                        f"TAINT ({sync_nodes_invoked_info['transmission_taint']}) to "
+                        f"PROVIDER ({sync_nodes_invoked_info['provider']}) and REGION ({sync_nodes_invoked_info['region']})"
+                    )
+                    self.log_for_retrieval(
+                        log_message,
+                        workflow_placement_decision["run_id"],
+                        sync_nodes_invoked_info['call_start_time']
+                    )
+
+                # We don't call the function if it is conditional and the condition is not met.
+                log_message = (
+                    f"CONDITIONAL_NON_EXECUTION: INSTANCE ({current_instance_name}) calling "
+                    f"SUCCESSOR ({successor_instance_name}) consuming "
+                    f"CONSUMED_WRITE_CAPACITY ({total_consumed_capacity}) with "
+                    f"SYNC_DATA_RESPONSE_SIZE ({total_sync_data_response_size}) GB to "
+                    f"PROVIDER ({provider}) and REGION ({region}) with "
+                    f"INVOCATION_TIME_FROM_FUNCTION_START ({time_from_function_start.total_seconds()}) s and "
+                    f"FINISH_TIME_FROM_INVOCATION_START ({(datetime.now(GLOBAL_TIME_ZONE) - invocation_start_time).total_seconds()}) s"
+                )
+                self.log_for_retrieval(log_message, workflow_placement_decision["run_id"])
+                return
+
+            # Wrap the payload and add the workflow_placement decision
+            payload_wrapper: dict[str, Any] = {}
+            transmission_taint = uuid.uuid4().hex
+            payload_wrapper["workflow_placement_decision"] = successor_workflow_placement_decision_dictionary
+            payload_wrapper["transmission_taint"] = transmission_taint
+
+            alternative_json_payload: Optional[str] = None
+            if payload:
+                # Get an version of the json payload without the "payload"
+                # key to be used in case of a sync node
+                alternative_json_payload = json.dumps(payload_wrapper, cls=CustomEncoder)
+                payload_wrapper["payload"] = payload
+
+            json_payload = json.dumps(payload_wrapper, cls=CustomEncoder)
+
+            is_successor_sync_node = successor_instance_name.split(":", maxsplit=2)[1] == "sync"
+
+            expected_counter = -1
+            if is_successor_sync_node:
+                expected_counter = len(
+                    set(workflow_placement_decision["instances"][successor_instance_name]["preceding_instances"])
+                )
+
+            (
+                upload_payload_size,
+                sync_data_response_size,
+                successor_invoked,
+                upload_rtt,
+                total_consumed_write_capacity,
+            ) = RemoteClientFactory.get_remote_client(provider, region).invoke_function(
+                message=json_payload,
+                identifier=identifier,
+                workflow_instance_id=workflow_placement_decision["run_id"],
+                sync=is_successor_sync_node,
+                function_name=successor_instance_name,
+                expected_counter=expected_counter,
+                current_instance_name=current_instance_name,
+                alternative_message=alternative_json_payload,
+            )
+
+            send_json_payload = json_payload
+            if upload_payload_size:
+                # If sending to sync, system alters the direct
+                # payload without user payload data
+                if alternative_json_payload:
+                    send_json_payload = alternative_json_payload
+
             log_message = (
-                f"CONDITIONAL_NON_EXECUTION: INSTANCE ({current_instance_name}) calling "
-                f"SUCCESSOR ({successor_instance_name}) consuming CONSUMED_WRITE_CAPACITY "
-                f"({total_consumed_capacity}) to PROVIDER ({provider}) and REGION ({region})."
-            )
-            self.log_for_retrieval(
-                log_message,
-                workflow_placement_decision["run_id"],
-            )
-            return
-
-        # Wrap the payload and add the workflow_placement decision
-        payload_wrapper: dict[str, Any] = {}
-        transmission_taint = uuid.uuid4().hex
-        payload_wrapper["workflow_placement_decision"] = successor_workflow_placement_decision_dictionary
-        payload_wrapper["transmission_taint"] = transmission_taint
-
-        alternative_json_payload: Optional[str] = None
-        if payload:
-            # Get an version of the json payload without the "payload"
-            # key to be used in case of a sync node
-            alternative_json_payload = json.dumps(payload_wrapper, cls=CustomEncoder)
-            payload_wrapper["payload"] = payload
-
-        json_payload = json.dumps(payload_wrapper, cls=CustomEncoder)
-
-        is_successor_sync_node = successor_instance_name.split(":", maxsplit=2)[1] == "sync"
-
-        expected_counter = -1
-        if is_successor_sync_node:
-            expected_counter = len(
-                set(workflow_placement_decision["instances"][successor_instance_name]["preceding_instances"])
-            )
-
-        (
-            payload_size,
-            successor_invoked,
-            upload_rtt,
-            total_consumed_write_capacity,
-        ) = RemoteClientFactory.get_remote_client(provider, region).invoke_function(
-            message=json_payload,
-            identifier=identifier,
-            workflow_instance_id=workflow_placement_decision["run_id"],
-            sync=is_successor_sync_node,
-            function_name=successor_instance_name,
-            expected_counter=expected_counter,
-            current_instance_name=current_instance_name,
-            alternative_message=alternative_json_payload,
-        )
-
-        send_json_payload = json_payload
-        if payload_size:
-            # If sending to sync, system alters the direct
-            # payload without user payload data
-            if alternative_json_payload:
-                send_json_payload = alternative_json_payload
-
-            log_message = (
-                f"UPLOAD_DATA_TO_SYNC_TABLE: INSTANCE ({current_instance_name}) uploading to "
-                f"SUCCESSOR ({successor_instance_name}) with UPLOAD_SIZE "
-                f"({payload_size}) GB with UPLOAD_RTT "
-                f"({upload_rtt}) s and potential wrapper PAYLOAD_SIZE "
-                f"({len(send_json_payload.encode('utf-8')) / (1024**3)}) GB "
-                f"consuming CONSUMED_WRITE_CAPACITY ({total_consumed_write_capacity}) "
-                f"to PROVIDER ({provider}) and REGION ({region})."
-            )
-            self.log_for_retrieval(
-                log_message,
-                workflow_placement_decision["run_id"],
-            )
-
-        if successor_invoked:
-            log_message = (
-                f"INVOKING_SUCCESSOR: INSTANCE ({current_instance_name}) calling "
+                f"INVOKING_SUCCESSOR: INSTANCE ({current_instance_name}) potentially calling "
                 f"SUCCESSOR ({successor_instance_name}) with PAYLOAD_SIZE "
-                f"({len(send_json_payload.encode('utf-8')) / (1024**3)}) GB and TAINT ({transmission_taint})"
+                f"({len(send_json_payload.encode('utf-8')) / (1024**3)}) GB and TAINT ({transmission_taint}) to "
+                f"PROVIDER ({provider}) and REGION ({region}) "
+                f"SUCCESSOR_INVOKED ({successor_invoked}) at "
+                f"INVOCATION_TIME_FROM_FUNCTION_START ({time_from_function_start.total_seconds()}) s and "
+                f"FINISH_TIME_FROM_INVOCATION_START ({(datetime.now(GLOBAL_TIME_ZONE) - invocation_start_time).total_seconds()}) s"
+                f" UPLOADED_DATA_TO_SYNC_TABLE ({(upload_payload_size is not None)})"
+            )
+            if upload_payload_size:  # Add the upload DATA SIZE to the log message
+                log_message += (
+                    f" UPLOAD_DATA_SIZE ({upload_payload_size}) GB consuming "
+                    f"CONSUMED_WRITE_CAPACITY ({total_consumed_write_capacity}) loaded "
+                    f"SYNC_DATA_RESPONSE_SIZE ({sync_data_response_size}) GB with "
+                    f"UPLOAD_RTT ({upload_rtt}) s"
+                )
+            self.log_for_retrieval(log_message, workflow_placement_decision["run_id"], invocation_start_time)
+
+        # Start the invocation timer AFTER the successor instance name has been determined
+        # As they will also be in the critical path
+        invocation_start_time = datetime.now(GLOBAL_TIME_ZONE)
+        if self._thread_pool is not None and isinstance(self._thread_pool, ThreadPoolExecutor):
+            future: Future = self._thread_pool.submit(invoke_worker, invocation_start_time)
+            self._futures.append(future)
+        else:
+            # Run the worker in the main thread
+            invoke_worker(invocation_start_time)
+
+            log_message = (
+                f"INVOKED_SYNCHRONOUSLY: INSTANCE ({current_instance_name}) calling "
+                f"SUCCESSOR ({successor_instance_name}) were not invoked asynchronously"
             )
             self.log_for_retrieval(
                 log_message,
@@ -241,15 +288,20 @@ class CaribouWorkflow:
 
     def _inform_sync_node_of_conditional_non_execution(
         self, workflow_placement_decision: dict[str, Any], successor_instance_name: str, current_instance_name: str
-    ) -> float:
+    ) -> tuple[float, float, list[dict[str, Any]]]:
         # Record the total consumed write capacity
         total_consumed_capacity = 0.0
+        total_sync_data_response_size = 0.0
+        sync_nodes_invoked_logs: list[dict[str, Any]] = []
 
         # If the successor is a sync node, we need to inform the platform that the function has finished.
         if successor_instance_name.split(":", maxsplit=2)[1] == "sync":
-            total_consumed_capacity += self._inform_and_invoke_sync_node(
-                workflow_placement_decision, successor_instance_name, current_instance_name
+            response_size, consumed_capacity = self._inform_and_invoke_sync_node(
+                workflow_placement_decision, successor_instance_name, current_instance_name, sync_nodes_invoked_logs
             )
+
+            total_sync_data_response_size += response_size
+            total_consumed_capacity += consumed_capacity
 
         # If the successor has dependent sync predecessors,
         # we need to inform the platform that the function has finished.
@@ -259,18 +311,29 @@ class CaribouWorkflow:
                     predecessor = predecessor_and_sync[0]
                     sync_node = predecessor_and_sync[1]
 
-                    total_consumed_capacity += self._inform_and_invoke_sync_node(
-                        workflow_placement_decision, sync_node, predecessor
+                    response_size, consumed_capacity = self._inform_and_invoke_sync_node(
+                        workflow_placement_decision, sync_node, predecessor, sync_nodes_invoked_logs
                     )
+
+                    total_sync_data_response_size += response_size
+                    total_consumed_capacity += consumed_capacity
+
                 break
 
-        return total_consumed_capacity
+        return total_sync_data_response_size, total_consumed_capacity, sync_nodes_invoked_logs
 
     def _inform_and_invoke_sync_node(
-        self, workflow_placement_decision: dict[str, Any], successor_instance_name: str, predecessor_instance_name: str
-    ) -> float:
+        self,
+        workflow_placement_decision: dict[str, Any],
+        successor_instance_name: str,
+        predecessor_instance_name: str,
+        sync_nodes_invoked_logs: list[dict[str, Any]],
+    ) -> tuple[float, float]:
+        potential_call_start_time = datetime.now(GLOBAL_TIME_ZONE)
+
         # Total consumed write capacity
         total_consumed_write_capacity = 0.0
+        total_sync_data_response_size = 0.0
 
         provider, region, identifier = self.get_successor_workflow_placement_decision(
             successor_instance_name, workflow_placement_decision
@@ -283,8 +346,8 @@ class CaribouWorkflow:
                 .get("preceding_instances", [])
             )
         )
-
-        reached_states, consumed_write_capacity = RemoteClientFactory.get_remote_client(
+        
+        reached_states, response_size, consumed_write_capacity = RemoteClientFactory.get_remote_client(
             provider, region
         ).set_predecessor_reached(
             predecessor_name=predecessor_instance_name,
@@ -292,6 +355,7 @@ class CaribouWorkflow:
             workflow_instance_id=workflow_placement_decision["run_id"],
             direct_call=False,
         )
+        total_sync_data_response_size += response_size
         total_consumed_write_capacity += consumed_write_capacity
 
         # If all the predecessors have been reached and any of them have directly reached the sync node
@@ -306,24 +370,26 @@ class CaribouWorkflow:
             payload_wrapper["transmission_taint"] = transmission_taint
             json_payload = json.dumps(payload_wrapper)
 
-            _, _, _, _ = RemoteClientFactory.get_remote_client(provider, region).invoke_function(
+            _, _, _, _, _ = RemoteClientFactory.get_remote_client(provider, region).invoke_function(
                 message=json_payload,
                 identifier=identifier,
                 workflow_instance_id=workflow_placement_decision["run_id"],
                 sync=False,
             )
 
-            log_message = (
-                f"INVOKING_SYNC_NODE: INSTANCE ({predecessor_instance_name}) calling "
-                f"SYNC_NODE ({successor_instance_name}) with PAYLOAD_SIZE "
-                f"({len(json_payload.encode('utf-8')) / (1024**3)}) GB and TAINT ({transmission_taint})"
-                f"to PROVIDER ({provider}) and REGION ({region})."
-            )
-            self.log_for_retrieval(
-                log_message,
-                workflow_placement_decision["run_id"],
+            sync_nodes_invoked_logs.append(
+                {
+                    "sync_node": successor_instance_name,
+                    "predecessor": predecessor_instance_name,
+                    "payload_size": len(json_payload.encode("utf-8")) / (1024**3),
+                    "transmission_taint": transmission_taint,
+                    "region": region,
+                    "provider": provider,
+                    "call_start_time": potential_call_start_time,
+                }
             )
 
+        # FOR DEBUG ONLY -> CAN BE SAFELY REMOVED
         log_message = (
             f"INFORMING_SYNC_NODE: INSTANCE ({predecessor_instance_name}) informing "
             f"SYNC_NODE ({successor_instance_name}) of non-execution"
@@ -333,7 +399,7 @@ class CaribouWorkflow:
             workflow_placement_decision["run_id"],
         )
 
-        return total_consumed_write_capacity
+        return total_sync_data_response_size, total_consumed_write_capacity
 
     def get_successor_workflow_placement_decision(
         self, successor_instance_name: str, workflow_placement_decision: dict[str, Any]
@@ -621,8 +687,7 @@ class CaribouWorkflow:
             handler_name = name if name is not None else func.__name__
 
             def wrapper(*args, **kwargs):  # type: ignore  # pylint: disable=unused-argument, too-many-branches
-                function_start_time = datetime.now(GLOBAL_TIME_ZONE)
-                caribou_metadata = {}
+                self._function_start_time = datetime.now(GLOBAL_TIME_ZONE)
 
                 # Modify args and kwargs here as needed
                 argument_raw = args[0]
@@ -666,7 +731,7 @@ class CaribouWorkflow:
                     init_latency = "N/A"
                     if time_invoked_at_client:
                         datetime_invoked_at_client = datetime.strptime(time_invoked_at_client, TIME_FORMAT)
-                        time_difference_datetime = function_start_time - datetime_invoked_at_client
+                        time_difference_datetime = self._function_start_time - datetime_invoked_at_client
                         # Get s from the time difference
                         # Note due to desync between client and server, the time difference can be negative
                         # In this case, we set the init_latency to 0.
@@ -703,7 +768,7 @@ class CaribouWorkflow:
                         f"INIT_LATENCY ({init_latency}) s with WORKFLOW_PLACEMENT_DECISION_SIZE "
                         f"({wpd_data_size}) GB and CONSUMED_READ_CAPACITY ({wpd_consumed_read_capacity})"
                     )
-                    self.log_for_retrieval(log_message, workflow_placement_decision["run_id"], function_start_time)
+                    self.log_for_retrieval(log_message, workflow_placement_decision["run_id"], self._function_start_time)
                 else:
                     # Get the workflow_placement decision from the message received from the predecessor function
                     if "workflow_placement_decision" not in argument:
@@ -715,7 +780,7 @@ class CaribouWorkflow:
                     f'INVOKED: INSTANCE ({workflow_placement_decision["current_instance_name"]}) '
                     f"called with TAINT ({transmission_taint})"
                 )
-                self.log_for_retrieval(log_message, workflow_placement_decision["run_id"], function_start_time)
+                self.log_for_retrieval(log_message, workflow_placement_decision["run_id"], self._function_start_time)
 
                 self._current_workflow_placement_decision = workflow_placement_decision
                 self._run_id_to_successor_index[workflow_placement_decision["run_id"]] = 0
@@ -723,12 +788,12 @@ class CaribouWorkflow:
                 cpu_model = self.get_cpu_info()
                 log_message = (
                     f"USED_CPU_MODEL: CPU_MODEL ({cpu_model.replace('(', '<').replace(')', '>')}) used in INSTANCE "
-                    f'({workflow_placement_decision["current_instance_name"]}) '
+                    f'({workflow_placement_decision["current_instance_name"]})'
                 )
                 self.log_for_retrieval(
                     log_message,
                     workflow_placement_decision["run_id"],  # type: ignore
-                    function_start_time,
+                    self._function_start_time,
                 )
 
                 # Provide some metadata to the client
@@ -738,33 +803,40 @@ class CaribouWorkflow:
                     current_instance_name,
                     workflow_instance_id,
                 ) = self.get_current_instance_provider_region_instance_name()
-                caribou_metadata["workflow_name"] = f"{self.name}-{self.version}"
-                caribou_metadata["run_id"] = workflow_instance_id
-                caribou_metadata["current_instance_name"] = current_instance_name
-                caribou_metadata["current_provider"] = provider
-                caribou_metadata["current_region"] = region
-                caribou_metadata["cpu_model"] = cpu_model
-                caribou_metadata["function_start_time"] = function_start_time.strftime(TIME_FORMAT)
 
+                caribou_metadata = {
+                    "workflow_name": f"{self.name}-{self.version}",
+                    "run_id": workflow_instance_id,
+                    "current_instance_name": current_instance_name,
+                    "current_provider": provider,
+                    "current_region": region,
+                    "cpu_model": cpu_model,
+                    "function_start_time": self._function_start_time.strftime(TIME_FORMAT),
+                }
                 result: Any = None
                 try:
-                    # Call the original function with the modified arguments
-                    start_time = time.time()
+                    # Call the function with the payload and the caribou metadata
                     result = func(payload, caribou_metadata)
-                    end_time = time.time()
+
+                    user_code_end_time = datetime.now(GLOBAL_TIME_ZONE)
+
+                    # Wait until all the futures (Invoke serverless functions) are done
+                    for future in self._futures:
+                        future.result()
+                    self._futures = []
+
+                    end_time = datetime.now(GLOBAL_TIME_ZONE)
 
                     log_message = (
-                        f'EXECUTED: INSTANCE ({workflow_placement_decision["current_instance_name"]}) '
-                        f"executed EXECUTION_TIME ({end_time - start_time})"
+                        f'EXECUTED: INSTANCE ({workflow_placement_decision["current_instance_name"]}) with '
+                        f"USER_EXECUTION_TIME ({(user_code_end_time - self._function_start_time).total_seconds()}) s and "
+                        f"TOTAL_EXECUTION_TIME ({(end_time - self._function_start_time).total_seconds()}) s"
                     )
                     self.log_for_retrieval(
                         log_message,
                         workflow_placement_decision["run_id"],
                     )
                 except Exception as e:  # pylint: disable=broad-except
-                    # Handle the exception here
-                    logger.exception("An exception occurred:")
-
                     log_message = (
                         f'EXCEPTION: INSTANCE ({workflow_placement_decision["current_instance_name"]}) '
                         f"raised EXCEPTION ({e})"
@@ -774,6 +846,9 @@ class CaribouWorkflow:
                         workflow_placement_decision["run_id"],
                     )
 
+                    # Log that exception occurred
+                    logger.exception("An exception occurred:")
+                    
                     # TODO: Add mechanism to log failures of a workflow with its run_id
 
                 return result
