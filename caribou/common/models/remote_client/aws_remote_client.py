@@ -81,7 +81,7 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
 
     def set_predecessor_reached(
         self, predecessor_name: str, sync_node_name: str, workflow_instance_id: str, direct_call: bool
-    ) -> tuple[list[bool], float]:
+    ) -> tuple[list[bool], float, float]:
         client = self._client("dynamodb")
 
         # Record the consumed capacity (Write Capacity Units) for this operation
@@ -124,7 +124,14 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
 
         consumed_write_capacity += response.get("ConsumedCapacity", {}).get("CapacityUnits", 0.0)
 
-        return [item["BOOL"] for item in response["Attributes"][sync_node_name]["M"].values()], consumed_write_capacity
+        # Measure the size of the response
+        response_size = len(json.dumps(response).encode("utf-8")) / (1024**3)
+
+        return (
+            [item["BOOL"] for item in response["Attributes"][sync_node_name]["M"].values()],
+            response_size,
+            consumed_write_capacity,
+        )
 
     def create_sync_tables(self) -> None:
         # Check if table exists

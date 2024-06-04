@@ -15,7 +15,6 @@ from caribou.common.constants import (
 )
 from caribou.common.models.remote_client.remote_client import RemoteClient
 from caribou.common.models.remote_client.remote_client_factory import RemoteClientFactory
-from caribou.syncers.indirect_transmission_data import IndirectTransmissionData
 from caribou.syncers.workflow_run_sample import WorkflowRunSample
 
 
@@ -32,6 +31,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         self.workflow_id = workflow_id
         self._collected_logs: dict[str, WorkflowRunSample] = {}
         self._daily_invocation_set: dict[str, set[str]] = {}
+        self._daily_failure_set: dict[str, set[str]] = {}
         self._time_intervals_to_sync: list[tuple[datetime, datetime]] = time_intervals_to_sync
         self._tainted_cold_start_samples: set[str] = set()
         self._blacklisted_run_ids: set[str] = set()
@@ -42,6 +42,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         self._deployed_regions: dict[str, dict[str, Any]] = {}
         self._load_information(deployment_manager_config_str)
         self._insights_logs: dict[str, Any] = {}
+        self._reported_execution_duration: dict[str, float] = {}
 
         self._existing_data: dict[str, Any] = {
             "execution_instance_region": {},
@@ -148,10 +149,15 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         # If this log entry contains an init duration, then this run has incurred a cold start.
         # We taint the sample with this information.
         # Those logs starts with "REPORT" and contains "Init Duration"
-        if log_entry.startswith("REPORT") and "Init Duration" in log_entry:
+        if log_entry.startswith("REPORT"):
             request_id = self._extract_from_string(log_entry, r"RequestId: (.*?)\t")
-            if request_id:
+            if "Init Duration" in log_entry:
                 self._tainted_cold_start_samples.add(request_id)
+            else:
+                # Record the execution duration of the lambda function
+                duration = self._extract_from_string(log_entry, r"Duration: (.*?) ms\t")
+                if duration:
+                    self._reported_execution_duration[request_id] = float(duration) / 1000.0
 
         # Ensure that the log entry is a valid log entry and has the correct version
         # Those logs starts with "[CARIBOU]" and contains "LOG_VERSION"
@@ -251,6 +257,15 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
                 self._extract_upload_data_to_sync_table(workflow_run_sample, message)
             elif message.startswith("DOWNLOAD_DATA_FROM_SYNC_TABLE"):
                 self._extract_download_data_from_sync_table(workflow_run_sample, message)
+            elif message.startswith("EXCEPTION"):
+                # Taint and blacklist the run_id as we don't need to collect more logs for it
+                del self._collected_logs[run_id]
+                self._blacklisted_run_ids.add(run_id)
+
+                log_day_str = log_time.strftime(TIME_FORMAT_DAYS)
+                if log_day_str not in self._daily_failure_set:
+                    self._daily_failure_set[log_day_str] = set()
+                self._daily_failure_set[log_day_str].add(run_id)
             else:
                 print("The following CARIBOU messages were untracked:", message)
         else:
@@ -270,7 +285,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         function_executed = self._extract_from_string(log_entry, r"INSTANCE \((.*?)\)")
         if not isinstance(function_executed, str):
             raise ValueError(f"Invalid function_executed: {function_executed}")
-        workflow_run_sample.start_hop_instance_id = function_executed
+        workflow_run_sample.start_hop_instance_name = function_executed
 
         # Extract the start hop latency from the log entry
         start_hop_latency = self._extract_from_string(log_entry, r"INIT_LATENCY \((.*?)\)")
@@ -332,7 +347,13 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         if function_executed not in workflow_run_sample.execution_data:
             workflow_run_sample.execution_data[function_executed] = {}
 
-        workflow_run_sample.execution_data[function_executed]["latency"] = duration
+        if request_id in self._reported_execution_duration:
+            workflow_run_sample.execution_data[function_executed]["latency"] = self._reported_execution_duration[
+                request_id
+            ]
+        else:
+            workflow_run_sample.execution_data[function_executed]["latency"] = duration
+
         workflow_run_sample.execution_data[function_executed]["provider_region"] = provider_region_str
         workflow_run_sample.execution_data[function_executed]["insights"] = self._insights_logs.get(request_id, {})
 
@@ -383,7 +404,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         if not isinstance(consumed_write_capacity, float):
             raise ValueError(f"Invalid consumed_write_capacity: {consumed_write_capacity}")
 
-        # TODO: NEED TO LOOK INTO HOW TO ADDRESS THIS, 
+        # TODO: NEED TO LOOK INTO HOW TO ADDRESS THIS,
         # MAYBE WE WOULD NOT SET THE DESTINATION HERE
         destination_provider = self._extract_from_string(log_entry, r"PROVIDER \((.*?)\)")
         if not isinstance(destination_provider, str):
@@ -473,18 +494,18 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
             "sync_data_consumed_write_capacity"
         ] = consumed_write_capacity
 
-        # Add to indirect transmission data
-        workflow_run_sample.indirect_transmission_data.append(
-            IndirectTransmissionData(
-                transmission_start_time=workflow_run_sample.log_start_time,
-                upload_rtt=upload_rtt,
-                potential_transmission_size=potential_payload_size,
-                from_instance=caller_function,
-                to_instance=callee_function,
-                from_region=workflow_run_sample.start_hop_destination,
-                to_region={"provider": destination_provider, "region": destination_region},
-            )
-        )
+        # # Add to indirect transmission data
+        # workflow_run_sample.indirect_transmission_data.append(
+        #     IndirectTransmissionData(
+        #         transmission_start_time=workflow_run_sample.log_start_time,
+        #         upload_rtt=upload_rtt,
+        #         potential_transmission_size=potential_payload_size,
+        #         from_instance=caller_function,
+        #         to_instance=callee_function,
+        #         from_region=workflow_run_sample.start_hop_destination,
+        #         to_region={"provider": destination_provider, "region": destination_region},
+        #     )
+        # )
 
     def _extract_download_data_from_sync_table(self, workflow_run_sample: WorkflowRunSample, log_entry: str) -> None:
         function_executed = self._extract_from_string(log_entry, r"INSTANCE \((.*?)\)")
@@ -532,11 +553,14 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
 
     def _prepare_data_for_upload(self, previous_data: dict) -> str:
         previous_daily_invocation_counts = previous_data.get("daily_invocation_counts", {})
-
-        self._filter_daily_invocation_counts(previous_daily_invocation_counts)
+        self._filter_daily_counts(previous_daily_invocation_counts)
         self._merge_daily_invocation_counts(previous_daily_invocation_counts)
-
         daily_invocation_counts = previous_daily_invocation_counts
+
+        previous_daily_failure_counts = previous_data.get("daily_failure_counts", {})
+        self._filter_daily_counts(previous_daily_failure_counts)
+        self._merge_daily_failure_counts(previous_daily_failure_counts)
+        daily_failure_counts = previous_daily_failure_counts
 
         collected_logs: list[dict[str, Any]] = self._format_collected_logs()
         self._fill_up_collected_logs(collected_logs, previous_data)
@@ -545,11 +569,11 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
 
         data_to_upload = {
             "daily_invocation_counts": daily_invocation_counts,
+            "daily_failure_counts": daily_failure_counts,
             "logs": collected_logs,
             "workflow_runtime_samples": workflow_runtime_samples,
             "last_sync_time": self._time_intervals_to_sync[-1][1].strftime(TIME_FORMAT),
         }
-        print(data_to_upload)
         return json.dumps(data_to_upload)
 
     def _fill_up_collected_logs(self, collected_logs: list[dict[str, Any]], previous_data: dict) -> None:
@@ -651,7 +675,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
     def _format_collected_logs(self) -> list[dict[str, Any]]:
         logs: list[tuple[datetime, dict]] = []
         for workflow_run_sample in self._collected_logs.values():
-            if not workflow_run_sample.is_complete():
+            if not workflow_run_sample.is_valid_and_complete():
                 continue
 
             log = workflow_run_sample.to_dict()
@@ -676,7 +700,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
             self._existing_data["execution_instance_region"][function][provider_region] += 1
 
     def _extend_existing_transmission_from_instance_to_instance_region(self, log: dict[str, Any]) -> None:
-        for transmission_data in log["direct_transmission_data"]:
+        for transmission_data in log["transmission_data"]:
             from_instance = transmission_data["from_instance"]
             to_instance = transmission_data["to_instance"]
             from_region_str = (
@@ -708,16 +732,22 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
                 from_region_str
             ][to_region_str] += 1
 
-    def _filter_daily_invocation_counts(self, previous_daily_invocation_counts: dict) -> None:
+    def _filter_daily_counts(self, previous_daily_counts: dict) -> None:
         oldest_allowed_date = datetime.now(GLOBAL_TIME_ZONE) - timedelta(days=FORGETTING_TIME_DAYS)
-        previous_daily_invocation_counts_keys = set(previous_daily_invocation_counts.keys())
-        for date_str in previous_daily_invocation_counts_keys:
+        previous_daily_counts_keys = set(previous_daily_counts.keys())
+        for date_str in previous_daily_counts_keys:
             date = datetime.strptime(date_str, TIME_FORMAT_DAYS)
             if date < oldest_allowed_date:
-                del previous_daily_invocation_counts[date_str]
+                del previous_daily_counts[date_str]
 
     def _merge_daily_invocation_counts(self, previous_daily_invocation_counts: dict) -> None:
         for date_str, invocation_set in self._daily_invocation_set.items():
             if date_str not in previous_daily_invocation_counts:
                 previous_daily_invocation_counts[date_str] = 0
             previous_daily_invocation_counts[date_str] += len(invocation_set)
+
+    def _merge_daily_failure_counts(self, previous_daily_failure_counts: dict) -> None:
+        for date_str, failure_set in self._daily_failure_set.items():
+            if date_str not in previous_daily_failure_counts:
+                previous_daily_failure_counts[date_str] = 0
+            previous_daily_failure_counts[date_str] += len(failure_set)

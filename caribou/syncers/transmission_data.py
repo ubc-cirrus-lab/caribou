@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from typing import Any, Optional
 
 
-class DirectTransmissionData:  # pylint: disable=too-many-instance-attributes
+class TransmissionData:  # pylint: disable=too-many-instance-attributes
     def __init__(self, taint: str):
         self.taint = taint
         self.transmission_start_time: Optional[datetime] = None
@@ -48,4 +48,4 @@ class DirectTransmissionData:  # pylint: disable=too-many-instance-attributes
         )
 
     def __str__(self) -> str:
-        return f"OrchestrationTransmissionData({self.taint}, {self.transmission_start_time}, {self.transmission_end_time}, {self.from_direct_successor}, {self.transmission_size}, {self.from_instance}, {self.to_instance}, {self.from_region}, {self.to_region})"  # pylint: disable=line-too-long
+        return f"InvocationTransmissionData({self.taint}, {self.transmission_start_time}, {self.transmission_end_time}, {self.from_direct_successor}, {self.transmission_size}, {self.from_instance}, {self.to_instance}, {self.from_region}, {self.to_region})"  # pylint: disable=line-too-long

@@ -48,11 +48,12 @@ class RemoteClient(ABC):  # pylint: disable=too-many-public-methods
         expected_counter: int = -1,
         current_instance_name: Optional[str] = None,
         alternative_message: Optional[str] = None,
-    ) -> tuple[Optional[float], bool, float, float]:
+    ) -> tuple[Optional[float], Optional[float], bool, float, float]:
         # Returns the (size of uploaded sync data None if no data was uploaded,
         # if successor was invoked, RTT for dynamodb access, and the consumed write capacity),
         # In other words (payload_size, successor_invoked, RTT, consumed_write_capacity)
         uploaded_payload_size: Optional[float] = None
+        sync_data_response_size: Optional[float] = None
 
         # If the successor was invoked
         successor_invoked = True
@@ -92,14 +93,14 @@ class RemoteClient(ABC):  # pylint: disable=too-many-public-methods
             upload_rtt = (time_end - time_start).total_seconds()
 
             # Update the predecessor reached states
-            reached_states, write_consumed_capacity = self.set_predecessor_reached(
+            reached_states, sync_data_response_size, write_consumed_capacity = self.set_predecessor_reached(
                 current_instance_name, function_name, workflow_instance_id, direct_call=True
             )
             total_consumed_write_capacity += write_consumed_capacity
 
             if len(reached_states) != expected_counter:
                 successor_invoked = False
-                return uploaded_payload_size, successor_invoked, upload_rtt, total_consumed_write_capacity
+                return uploaded_payload_size, sync_data_response_size, successor_invoked, upload_rtt, total_consumed_write_capacity
         try:
             if sync and alternative_message is not None:
                 message = alternative_message
@@ -108,12 +109,12 @@ class RemoteClient(ABC):  # pylint: disable=too-many-public-methods
         except Exception as e:
             raise RuntimeError(f"Could not invoke function through SNS: {str(e)}") from e
 
-        return uploaded_payload_size, successor_invoked, upload_rtt, total_consumed_write_capacity
+        return uploaded_payload_size, sync_data_response_size, successor_invoked, upload_rtt, total_consumed_write_capacity
 
     @abstractmethod
     def set_predecessor_reached(
         self, predecessor_name: str, sync_node_name: str, workflow_instance_id: str, direct_call: bool
-    ) -> tuple[list[bool], float]:
+    ) -> tuple[list[bool], float, float]:
         raise NotImplementedError()
 
     @abstractmethod
