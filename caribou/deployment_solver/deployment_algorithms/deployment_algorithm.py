@@ -16,11 +16,9 @@ from caribou.deployment_solver.deployment_input.input_manager import InputManage
 from caribou.deployment_solver.deployment_metrics_calculator.deployment_metrics_calculator import (
     DeploymentMetricsCalculator,
 )
-from caribou.deployment_solver.deployment_metrics_calculator.parallel_deployment_metrics_calculator import (
-    ParallelDeploymentMetricsCalculator,
+from caribou.deployment_solver.deployment_metrics_calculator.simple_deployment_metrics_calculator import (
+    SimpleDeploymentMetricsCalculator,
 )
-from caribou.deployment_solver.deployment_metrics_calculator.simple_deployment_metrics_calculator import \
-    SimpleDeploymentMetricsCalculator
 from caribou.deployment_solver.formatter.formatter import Formatter
 from caribou.deployment_solver.models.instance_indexer import InstanceIndexer
 from caribou.deployment_solver.models.region_indexer import RegionIndexer
@@ -29,12 +27,7 @@ from caribou.deployment_solver.workflow_config import WorkflowConfig
 
 
 class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
-    def __init__(
-            self,
-            workflow_config: WorkflowConfig,
-            expiry_time_delta_seconds: int = DEFAULT_MONITOR_COOLDOWN,
-            n_workers: int = 4
-    ):
+    def __init__(self, workflow_config: WorkflowConfig, expiry_time_delta_seconds: int = DEFAULT_MONITOR_COOLDOWN):
         self._workflow_config = workflow_config
 
         self._input_manager = InputManager(workflow_config=workflow_config)
@@ -47,21 +40,12 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
         # Complete the setup of the input manager
         self._input_manager.setup(self._region_indexer, self._instance_indexer)
 
-        if n_workers > 1:
-            self._deployment_metrics_calculator: ParallelDeploymentMetricsCalculator = ParallelDeploymentMetricsCalculator(
-                workflow_config,
-                self._input_manager,
-                self._region_indexer,
-                self._instance_indexer,
-                n_workers
-            )
-        else:
-            self._deployment_metrics_calculator: SimpleDeploymentMetricsCalculator = SimpleDeploymentMetricsCalculator(
-                workflow_config,
-                self._input_manager,
-                self._region_indexer,
-                self._instance_indexer,
-            )
+        self._deployment_metrics_calculator: DeploymentMetricsCalculator = SimpleDeploymentMetricsCalculator(
+            workflow_config,
+            self._input_manager,
+            self._region_indexer,
+            self._instance_indexer,
+        )
 
         self._home_region_index = self._region_indexer.value_to_index(self._workflow_config.home_region)
 
@@ -114,7 +98,7 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
 
     def _update_data_for_new_hour(self, hour_to_run: str) -> None:
         self._input_manager.alter_carbon_setting(hour_to_run)
-        if isinstance(self._deployment_metrics_calculator, ParallelDeploymentMetricsCalculator):
+        if isinstance(self._deployment_metrics_calculator, SimpleDeploymentMetricsCalculator):
             self._deployment_metrics_calculator.update_data_for_new_hour(hour_to_run)
         (
             self._home_deployment,  # pylint: disable=attribute-defined-outside-init
