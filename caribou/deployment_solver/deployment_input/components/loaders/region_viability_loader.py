@@ -6,9 +6,6 @@ from caribou.deployment_solver.deployment_input.components.loader import InputLo
 
 
 class RegionViabilityLoader(InputLoader):
-    _use_mock_data: bool = False
-    _mock_input: Optional[dict] = None
-
     def __init__(self, client: RemoteClient) -> None:
         super().__init__(client, AVAILABLE_REGIONS_TABLE)
         self._available_regions: list[str] = []

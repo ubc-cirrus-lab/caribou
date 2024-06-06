@@ -35,7 +35,6 @@ class DeploymentMetricsCalculator(ABC):
         # Get average and tail cost/carbon/runtime from Monte Carlo simulation
         return self._perform_monte_carlo_simulation(deployment)
 
-    # @abstractmethod
     def _perform_monte_carlo_simulation(self, deployment: list[int]) -> dict[str, float]:
         """
         Perform a Monte Carlo simulation to get the average cost, runtime, and carbon footprint of the deployment.

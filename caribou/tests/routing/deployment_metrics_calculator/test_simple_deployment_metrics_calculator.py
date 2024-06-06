@@ -1,14 +1,7 @@
-import pdb
 import unittest
 from multiprocessing import Queue, Process
-from unittest import mock
 from unittest.mock import MagicMock, patch, Mock
 
-from pytest_mock import mocker
-
-from caribou.deployment_solver.deployment_metrics_calculator.deployment_metrics_calculator import (
-    DeploymentMetricsCalculator,
-)
 from caribou.deployment_solver.deployment_metrics_calculator.simple_deployment_metrics_calculator import (
     SimpleDeploymentMetricsCalculator,
 )
@@ -42,8 +35,6 @@ def mock_simulation_worker(
 
 
 def mock_init_workers(*args, **kwargs):
-    pdb.set_trace()
-    print(args, kwargs.keys())
     n_processes = args[5]
     n_iterations = args[6]
     input_queue = args[7]
