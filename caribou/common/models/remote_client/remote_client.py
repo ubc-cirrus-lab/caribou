@@ -100,7 +100,13 @@ class RemoteClient(ABC):  # pylint: disable=too-many-public-methods
 
             if len(reached_states) != expected_counter:
                 successor_invoked = False
-                return uploaded_payload_size, sync_data_response_size, successor_invoked, upload_rtt, total_consumed_write_capacity
+                return (
+                    uploaded_payload_size,
+                    sync_data_response_size,
+                    successor_invoked,
+                    upload_rtt,
+                    total_consumed_write_capacity,
+                )
         try:
             if sync and alternative_message is not None:
                 message = alternative_message
@@ -109,7 +115,13 @@ class RemoteClient(ABC):  # pylint: disable=too-many-public-methods
         except Exception as e:
             raise RuntimeError(f"Could not invoke function through SNS: {str(e)}") from e
 
-        return uploaded_payload_size, sync_data_response_size, successor_invoked, upload_rtt, total_consumed_write_capacity
+        return (
+            uploaded_payload_size,
+            sync_data_response_size,
+            successor_invoked,
+            upload_rtt,
+            total_consumed_write_capacity,
+        )
 
     @abstractmethod
     def set_predecessor_reached(

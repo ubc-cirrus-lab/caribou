@@ -1,5 +1,4 @@
 import json
-import logging
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -9,13 +8,11 @@ from caribou.common.constants import (
     GLOBAL_TIME_ZONE,
     TIME_FORMAT,
     WORKFLOW_SUMMARY_TABLE,
+    BUFFER_LAMBDA_INSIGHTS_GRACE_PERIOD,
 )
 from caribou.common.models.endpoints import Endpoints
 from caribou.common.models.remote_client.remote_client import RemoteClient
 from caribou.syncers.log_sync_workflow import LogSyncWorkflow
-
-logger = logging.getLogger(__name__)
-
 
 class LogSyncer:
     def __init__(self) -> None:
@@ -40,8 +37,7 @@ class LogSyncer:
                 None,
             )
 
-            # time_intervals_to_sync = self._get_time_intervals_to_sync(last_sync_time, 30)
-            time_intervals_to_sync = self._get_time_intervals_to_sync(last_sync_time, 0)
+            time_intervals_to_sync = self._get_time_intervals_to_sync(last_sync_time, BUFFER_LAMBDA_INSIGHTS_GRACE_PERIOD)
 
             if len(time_intervals_to_sync) == 0:
                 continue

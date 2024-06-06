@@ -155,9 +155,9 @@ class CaribouWorkflow:
         )
 
         def invoke_worker(invocation_start_time: datetime):
-            time_from_function_start: Optional[timedelta] = None
+            time_from_function_start: float = 0.0  # Default value (Should not be used)
             if self._function_start_time is not None:
-                time_from_function_start = invocation_start_time - self._function_start_time
+                time_from_function_start = (invocation_start_time - self._function_start_time).total_seconds()
 
             provider, region, identifier = self.get_successor_workflow_placement_decision(
                 successor_instance_name, workflow_placement_decision
@@ -174,19 +174,22 @@ class CaribouWorkflow:
                 )
 
                 for sync_nodes_invoked_info in sync_nodes_invoked_logs:
+                    finish_time: datetime = sync_nodes_invoked_info["finish_time"]
+                    call_start_time: datetime = sync_nodes_invoked_info["call_start_time"]
                     log_message = (
-                        f"INVOKING_SYNC_NODE: INSTANCE ({current_instance_name}) for "
+                        f"INVOKING_SYNC_NODE: INSTANCE ({current_instance_name}) to "
+                        f"SUCCESSOR ({successor_instance_name}) for "
                         f"PREDECESSOR_INSTANCE ({sync_nodes_invoked_info['predecessor']}) calling "
                         f"SYNC_NODE ({sync_nodes_invoked_info['sync_node']}) with "
                         f"PAYLOAD_SIZE ({sync_nodes_invoked_info['payload_size']}) GB and "
                         f"TAINT ({sync_nodes_invoked_info['transmission_taint']}) to "
-                        f"PROVIDER ({sync_nodes_invoked_info['provider']}) and REGION ({sync_nodes_invoked_info['region']})"
+                        f"PROVIDER ({sync_nodes_invoked_info['provider']}) and "
+                        f"REGION ({sync_nodes_invoked_info['region']}) with "
+                        f"INVOCATION_TIME_FROM_FUNCTION_START ({time_from_function_start}) s and "
+                        f"FINISH_TIME_FROM_INVOCATION_START ({(finish_time - invocation_start_time).total_seconds()}) s and "
+                        f"CALL_START_TO_FINISH ({(finish_time - call_start_time).total_seconds()}) s"
                     )
-                    self.log_for_retrieval(
-                        log_message,
-                        workflow_placement_decision["run_id"],
-                        sync_nodes_invoked_info['call_start_time']
-                    )
+                    self.log_for_retrieval(log_message, workflow_placement_decision["run_id"], invocation_start_time)
 
                 # We don't call the function if it is conditional and the condition is not met.
                 log_message = (
@@ -195,7 +198,7 @@ class CaribouWorkflow:
                     f"CONSUMED_WRITE_CAPACITY ({total_consumed_capacity}) with "
                     f"SYNC_DATA_RESPONSE_SIZE ({total_sync_data_response_size}) GB to "
                     f"PROVIDER ({provider}) and REGION ({region}) with "
-                    f"INVOCATION_TIME_FROM_FUNCTION_START ({time_from_function_start.total_seconds()}) s and "
+                    f"INVOCATION_TIME_FROM_FUNCTION_START ({time_from_function_start}) s and "
                     f"FINISH_TIME_FROM_INVOCATION_START ({(datetime.now(GLOBAL_TIME_ZONE) - invocation_start_time).total_seconds()}) s"
                 )
                 self.log_for_retrieval(log_message, workflow_placement_decision["run_id"])
@@ -254,7 +257,7 @@ class CaribouWorkflow:
                 f"({len(send_json_payload.encode('utf-8')) / (1024**3)}) GB and TAINT ({transmission_taint}) to "
                 f"PROVIDER ({provider}) and REGION ({region}) "
                 f"SUCCESSOR_INVOKED ({successor_invoked}) at "
-                f"INVOCATION_TIME_FROM_FUNCTION_START ({time_from_function_start.total_seconds()}) s and "
+                f"INVOCATION_TIME_FROM_FUNCTION_START ({time_from_function_start}) s and "
                 f"FINISH_TIME_FROM_INVOCATION_START ({(datetime.now(GLOBAL_TIME_ZONE) - invocation_start_time).total_seconds()}) s"
                 f" UPLOADED_DATA_TO_SYNC_TABLE ({(upload_payload_size is not None)})"
             )
@@ -346,7 +349,7 @@ class CaribouWorkflow:
                 .get("preceding_instances", [])
             )
         )
-        
+
         reached_states, response_size, consumed_write_capacity = RemoteClientFactory.get_remote_client(
             provider, region
         ).set_predecessor_reached(
@@ -386,10 +389,11 @@ class CaribouWorkflow:
                     "region": region,
                     "provider": provider,
                     "call_start_time": potential_call_start_time,
+                    "finish_time": datetime.now(GLOBAL_TIME_ZONE),
                 }
             )
 
-        # FOR DEBUG ONLY -> CAN BE SAFELY REMOVED
+        # FOR DEBUG ONLY -> can be safely removed if needed
         log_message = (
             f"INFORMING_SYNC_NODE: INSTANCE ({predecessor_instance_name}) informing "
             f"SYNC_NODE ({successor_instance_name}) of non-execution"
@@ -520,6 +524,8 @@ class CaribouWorkflow:
             current_instance_name,
             workflow_instance_id,
         ) = self.get_current_instance_provider_region_instance_name()
+        # log the start time of loading the data
+        get_predecessor_start_time = datetime.now(GLOBAL_TIME_ZONE)
 
         client = RemoteClientFactory.get_remote_client(provider, region)
 
@@ -527,10 +533,19 @@ class CaribouWorkflow:
         size_of_results = sum(len(message.encode("utf-8")) for message in response)
         results: list[dict[str, Any]] = [json.loads(message, cls=CustomDecoder) for message in response]
 
+        # log the end time of loading the data
+        get_predecessor_end_time = datetime.now(GLOBAL_TIME_ZONE)
+
+        # Get the time taken to load the data
+        get_predecessor_duration = (get_predecessor_end_time - get_predecessor_start_time).total_seconds()
+
         # Now log the loaded data (To show that the data was loaded from dynamodb)
+        # MAY LOOK INTO LOGGING THE TIME OF THIS DEPENDENT ON DOWNLOAD SIZE
         log_message = (
             f"DOWNLOAD_DATA_FROM_SYNC_TABLE: INSTANCE ({current_instance_name}) loaded SYNC_NODE_PREDECESSOR_DATA "
-            f"with DOWNLOAD_SIZE ({size_of_results / (1024**3)}) GB and CONSUMED_READ_CAPACITY ({consumed_capacity})"
+            f"with DOWNLOAD_SIZE ({size_of_results / (1024**3)}) GB and "
+            f"CONSUMED_READ_CAPACITY ({consumed_capacity}) and taken "
+            f"DOWNLOAD_TIME ({get_predecessor_duration}) s"
         )
         self.log_for_retrieval(
             log_message,
@@ -768,7 +783,9 @@ class CaribouWorkflow:
                         f"INIT_LATENCY ({init_latency}) s with WORKFLOW_PLACEMENT_DECISION_SIZE "
                         f"({wpd_data_size}) GB and CONSUMED_READ_CAPACITY ({wpd_consumed_read_capacity})"
                     )
-                    self.log_for_retrieval(log_message, workflow_placement_decision["run_id"], self._function_start_time)
+                    self.log_for_retrieval(
+                        log_message, workflow_placement_decision["run_id"], self._function_start_time
+                    )
                 else:
                     # Get the workflow_placement decision from the message received from the predecessor function
                     if "workflow_placement_decision" not in argument:
@@ -848,7 +865,7 @@ class CaribouWorkflow:
 
                     # Log that exception occurred
                     logger.exception("An exception occurred:")
-                    
+
                     # TODO: Add mechanism to log failures of a workflow with its run_id
 
                 return result
