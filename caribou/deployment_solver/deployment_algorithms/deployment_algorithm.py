@@ -65,10 +65,7 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
         ]
 
     def run(self, hours_to_run: Optional[list[str]] = None) -> None:
-        hour_to_run_to_result: dict[str, Any] = {
-            "time_keys_to_staging_area_data": {},
-            "deployment_metrics": {}
-        }
+        hour_to_run_to_result: dict[str, Any] = {"time_keys_to_staging_area_data": {}, "deployment_metrics": {}}
         if hours_to_run is None:
             hours_to_run = [None]  # type: ignore
         for hour_to_run in hours_to_run:

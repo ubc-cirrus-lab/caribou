@@ -16,45 +16,24 @@ class TestSimpleDeploymentMetricsCalculator(unittest.TestCase):
         "calculate_workflow",
         return_value={"cost": 1.0, "runtime": 1.0, "carbon": 1.0},
     )
-    @patch.object(
-        WorkflowConfig,
-        "__init__",
-        return_value=None
-    )
-    @patch.object(
-        InputManager,
-        "__init__",
-        return_value=None
-    )
-    @patch.object(
-        RegionIndexer,
-        "__init__",
-        return_value=None
-    )
-    @patch.object(
-        InstanceIndexer,
-        "__init__",
-        return_value=None
-    )
+    @patch.object(WorkflowConfig, "__init__", return_value=None)
+    @patch.object(InputManager, "__init__", return_value=None)
+    @patch.object(RegionIndexer, "__init__", return_value=None)
+    @patch.object(InstanceIndexer, "__init__", return_value=None)
     def test_perform_monte_carlo_simulation(
-            self,
-            mock_calculate_workflow,
-            mock_workflow_config,
-            mock_input_manager,
-            mock_region_index,
-            mock_instance_indexer
+        self,
+        mock_calculate_workflow,
+        mock_workflow_config,
+        mock_input_manager,
+        mock_region_index,
+        mock_instance_indexer,
     ):
         self.calculator = SimpleDeploymentMetricsCalculator(
-            WorkflowConfig(
-                MagicMock()
-            ), InputManager(
-                MagicMock()
-            ), RegionIndexer(
-                MagicMock()
-            ), InstanceIndexer(
-                MagicMock()
-            ),
-            n_processes=4
+            WorkflowConfig(MagicMock()),
+            InputManager(MagicMock()),
+            RegionIndexer(MagicMock()),
+            InstanceIndexer(MagicMock()),
+            n_processes=4,
         )
         # Call the method with a test deployment
         deployment = [0, 1, 2, 3]

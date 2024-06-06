@@ -1,6 +1,7 @@
 import random
 from copy import deepcopy
 from typing import Optional
+
 from memory_profiler import profile
 
 from caribou.deployment_solver.deployment_algorithms.deployment_algorithm import DeploymentAlgorithm

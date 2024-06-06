@@ -15,7 +15,10 @@ class CarbonLoader(InputLoader):
     _use_mock_data: bool = False
     _mock_input: Optional[dict] = None
 
-    def __init__(self, client: RemoteClient, ) -> None:
+    def __init__(
+        self,
+        client: RemoteClient,
+    ) -> None:
         super().__init__(client, CARBON_REGION_TABLE)
 
     def setup(self, available_regions: set[str], carbon_data: Optional = None) -> None:
