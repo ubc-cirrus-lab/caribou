@@ -29,7 +29,6 @@ def _simulation_worker(
     )
     while True:
         received_input = input_queue.get()
-        print(received_input)
         if isinstance(received_input, str) or received_input is None:
             input_manager.alter_carbon_setting(received_input)
             output_queue.put("OK")
