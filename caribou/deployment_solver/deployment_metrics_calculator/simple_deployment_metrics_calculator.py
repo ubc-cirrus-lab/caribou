@@ -1,5 +1,7 @@
 import statistics
-from multiprocessing import Manager, Process, Queue
+from multiprocessing import Manager, Process
+from queue import Queue
+from typing import Tuple
 
 import numpy as np
 import scipy.stats as st
@@ -23,7 +25,7 @@ def _simulation_worker(
     n_iterations: int,
     input_queue: Queue,
     output_queue: Queue,
-):
+) -> None:
     deployment_metrics_calculator: DeploymentMetricsCalculator = DeploymentMetricsCalculator(
         workflow_config, input_manager, region_indexer, instance_indexer, tail_latency_threshold
     )
@@ -60,7 +62,6 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
         instance_indexer: InstanceIndexer,
         tail_latency_threshold: int = TAIL_LATENCY_THRESHOLD,
         n_processes: int = 4,
-        threshold: int = 0.05
     ):
         super().__init__(
             workflow_config,
@@ -70,7 +71,6 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
             tail_latency_threshold,
         )
         self.n_processes = n_processes
-        self.threshold = threshold
         self.batch_size = 200
         if n_processes > 1:
             self._setup(
@@ -90,10 +90,10 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
         instance_indexer: InstanceIndexer,
         tail_latency_threshold: int,
         n_processes: int,
-    ):
+    ) -> None:
         self._manager = Manager()
-        self._input_queue = self._manager.Queue()
-        self._output_queue = self._manager.Queue()
+        self._input_queue: Queue = self._manager.Queue()
+        self._output_queue: Queue = self._manager.Queue()
         self._pool = self._init_workers(
             workflow_config,
             input_manager,
@@ -117,7 +117,7 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
         n_iterations: int,
         input_queue: Queue,
         output_queue: Queue,
-    ):
+    ) -> list[Process]:
         pool = []
         for _ in range(n_processes):
             p = Process(
@@ -137,7 +137,7 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
             pool.append(p)
         return pool
 
-    def calculate_workflow_loop(self, deployment):
+    def calculate_workflow_loop(self, deployment: list) -> Tuple[list[float], list[float], list[float]]:
         costs_distribution_list: list[float] = []
         runtimes_distribution_list: list[float] = []
         carbons_distribution_list: list[float] = []
@@ -170,6 +170,7 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
         carbons_distribution_list: list[float] = []
 
         max_number_of_iterations = 2000
+        threshold = 0.05
         number_of_iterations = 0
         while number_of_iterations < max_number_of_iterations:
             results = self.calculate_workflow_loop(deployment)
@@ -186,11 +187,11 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
                 len_distribution = len(distribution)
                 if mean and len_distribution > 1:
                     ci_low, ci_up = st.t.interval(
-                        1 - self.threshold, len_distribution - 1, loc=mean, scale=st.sem(distribution)
+                        1 - threshold, len_distribution - 1, loc=mean, scale=st.sem(distribution)
                     )
                     ci_width = ci_up - ci_low
                     relative_ci_width = ci_width / mean
-                    if relative_ci_width > self.threshold:
+                    if relative_ci_width > threshold:
                         all_within_threshold = False
                         break
                 elif all_within_threshold:
@@ -215,7 +216,7 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
         assert self._input_queue.empty()
         assert self._output_queue.empty()
 
-    def __del__(self):
+    def __del__(self) -> None:
         if self.n_processes > 1:
             for p in self._pool:
                 p.kill()

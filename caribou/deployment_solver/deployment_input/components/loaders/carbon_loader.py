@@ -19,7 +19,7 @@ class CarbonLoader(InputLoader):
     ) -> None:
         super().__init__(client, CARBON_REGION_TABLE)
 
-    def setup(self, available_regions: set[str], carbon_data: Optional = None) -> None:
+    def setup(self, available_regions: set[str], carbon_data: Optional[dict[str, Any]] = None) -> None:
         if carbon_data is not None:
             self._carbon_data = carbon_data
         else:
@@ -41,5 +41,5 @@ class CarbonLoader(InputLoader):
             .get("carbon_intensity", SOLVER_INPUT_GRID_CARBON_DEFAULT)
         )
 
-    def get_carbon_data(self):
+    def get_carbon_data(self) -> dict[str, Any]:
         return self._carbon_data

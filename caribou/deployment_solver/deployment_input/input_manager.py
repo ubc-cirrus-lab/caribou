@@ -1,6 +1,6 @@
 import random
 import time
-from typing import Optional
+from typing import Optional, Any
 
 from caribou.common.constants import TAIL_LATENCY_THRESHOLD
 from caribou.common.models.endpoints import Endpoints
@@ -202,10 +202,10 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
     def get_all_regions(self) -> list[str]:
         return self._region_viability_loader.get_available_regions()
 
-    def get_all_carbon_data(self):
+    def get_all_carbon_data(self) -> dict[str, Any]:
         return self._carbon_loader.get_carbon_data()
 
-    def __getstate__(self):
+    def __getstate__(self):  # type: ignore
         state = self.__dict__.copy()
         state.pop("_data_collector_client", None)
         state.pop("_datacenter_loader", None)
@@ -222,9 +222,9 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         }
         return state
 
-    def __setstate__(self, state):
+    def __setstate__(self, state):  # type: ignore
         self.__dict__.update(state)
-        self._data_collector_client: RemoteClient = Endpoints().get_data_collector_client()
+        self._data_collector_client: RemoteClient = Endpoints().get_data_collector_client()  # type: ignore
         self._region_viability_loader = RegionViabilityLoader(self._data_collector_client)
         self._datacenter_loader = DatacenterLoader(self._data_collector_client)
         self._performance_loader = PerformanceLoader(self._data_collector_client)
