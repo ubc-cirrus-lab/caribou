@@ -60,6 +60,7 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
         instance_indexer: InstanceIndexer,
         tail_latency_threshold: int = TAIL_LATENCY_THRESHOLD,
         n_processes: int = 4,
+        threshold: int = 0.05
     ):
         super().__init__(
             workflow_config,
@@ -69,6 +70,7 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
             tail_latency_threshold,
         )
         self.n_processes = n_processes
+        self.threshold = threshold
         self.batch_size = 200
         if n_processes > 1:
             self._setup(
@@ -169,7 +171,6 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
 
         max_number_of_iterations = 2000
         number_of_iterations = 0
-        threshold = 0.05
         while number_of_iterations < max_number_of_iterations:
             results = self.calculate_workflow_loop(deployment)
             costs_distribution_list.extend(results[0])
@@ -185,11 +186,11 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
                 len_distribution = len(distribution)
                 if mean and len_distribution > 1:
                     ci_low, ci_up = st.t.interval(
-                        1 - threshold, len_distribution - 1, loc=mean, scale=st.sem(distribution)
+                        1 - self.threshold, len_distribution - 1, loc=mean, scale=st.sem(distribution)
                     )
                     ci_width = ci_up - ci_low
                     relative_ci_width = ci_width / mean
-                    if relative_ci_width > threshold:
+                    if relative_ci_width > self.threshold:
                         all_within_threshold = False
                         break
                 elif all_within_threshold:
@@ -209,7 +210,7 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
     def update_data_for_new_hour(self, hour_to_run: str) -> None:
         for _ in range(self.n_processes):
             self._input_queue.put(hour_to_run)
-        for i in range(self.n_processes):
+        for _ in range(self.n_processes):
             _ = self._output_queue.get()
         assert self._input_queue.empty()
         assert self._output_queue.empty()

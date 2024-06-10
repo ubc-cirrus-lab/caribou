@@ -1,5 +1,5 @@
 import random
-from abc import ABC, abstractmethod
+from abc import ABC
 
 from caribou.common.constants import TAIL_LATENCY_THRESHOLD
 from caribou.deployment_solver.deployment_input.input_manager import InputManager
