@@ -209,6 +209,8 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
         return result
 
     def update_data_for_new_hour(self, hour_to_run: str) -> None:
+        if self.n_processes == 1:
+            return
         for _ in range(self.n_processes):
             self._input_queue.put(hour_to_run)
         for _ in range(self.n_processes):
