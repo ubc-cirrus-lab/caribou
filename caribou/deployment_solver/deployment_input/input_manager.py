@@ -1,6 +1,6 @@
 import random
 import time
-from typing import Optional, Any
+from typing import Any, Optional
 
 from caribou.common.constants import TAIL_LATENCY_THRESHOLD
 from caribou.common.models.endpoints import Endpoints
