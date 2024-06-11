@@ -123,6 +123,45 @@ Note: Data Transfer Cost and complexities of this warrant further investigation 
       "x86_64": 1.95172e-5,
       "free_tier_compute_gb_s": 400000
     },
+    "sns_cost": {
+      "us-east-1": 0.0001,
+      "us-west-2": 0.00015,
+      "eu-west-1": 0.00012
+      // Include pricing data for other regions as needed
+    },
+    "dynamodb_cost": {
+      "us-east-1": {
+        "storage_cost": 0.25,
+        "read_capacity_cost": 0.0065,
+        "write_capacity_cost": 0.0065
+      },
+      "us-west-2": {
+        "storage_cost": 0.25,
+        "read_capacity_cost": 0.0065,
+        "write_capacity_cost": 0.0065
+      },
+      "eu-west-1": {
+        "storage_cost": 0.27,
+        "read_capacity_cost": 0.007,
+        "write_capacity_cost": 0.007
+      }
+      // Include pricing data for other regions as needed
+    },
+    "ecr_cost": {
+      "us-east-1": {
+        "storage_cost": 0.10,
+        "pull_cost": 0.09
+      },
+      "us-west-2": {
+        "storage_cost": 0.11,
+        "pull_cost": 0.08
+      },
+      "eu-west-1": {
+        "storage_cost": 0.12,
+        "pull_cost": 0.10
+      }
+      // Include pricing data for other regions as needed
+    },
     "unit": "USD"
   },
   "transmission_cost": {
@@ -133,7 +172,6 @@ Note: Data Transfer Cost and complexities of this warrant further investigation 
   "pue": 1.15,
   "cfe": 0.9,
   "average_memory_power": 3.92e-6,
-  "average_cpu_power": 0.00212,
   "available_architectures": ["arm64", "x86_64"]
 }
 ```
