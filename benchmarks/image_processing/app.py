@@ -14,7 +14,7 @@ workflow = CaribouWorkflow(name="image_processing", version="0.0.1")
     name="Flip",
     entry_point=True,
 )
-def flip(event: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
+def flip(event: dict[str, Any]) -> dict[str, Any]:
     if isinstance(event, str):
         event = json.loads(event)
 
@@ -54,7 +54,7 @@ def flip(event: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
 
 
 @workflow.serverless_function(name="Rotate")
-def rotate(event: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
+def rotate(event: dict[str, Any]) -> dict[str, Any]:
     path = event["path"]
 
     s3 = boto3.client("s3", region_name='us-west-2')
@@ -87,7 +87,7 @@ def rotate(event: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
 
 
 @workflow.serverless_function(name="Filter")
-def filter_function(event: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
+def filter_function(event: dict[str, Any]) -> dict[str, Any]:
     path = event["path"]
 
     s3 = boto3.client("s3", region_name='us-west-2')
@@ -120,7 +120,7 @@ def filter_function(event: dict[str, Any], metadata: dict[str, Any]) -> dict[str
 
 
 @workflow.serverless_function(name="Greyscale")
-def greyscale(event: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
+def greyscale(event: dict[str, Any]) -> dict[str, Any]:
     path = event["path"]
 
     s3 = boto3.client("s3", region_name='us-west-2')
@@ -153,7 +153,7 @@ def greyscale(event: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]
 
 
 @workflow.serverless_function(name="Resize")
-def resize(event: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
+def resize(event: dict[str, Any]) -> dict[str, Any]:
     path = event["path"]
 
     s3 = boto3.client("s3", region_name='us-west-2')

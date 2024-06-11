@@ -23,7 +23,7 @@ workflow = CaribouWorkflow(name="video_analytics", version="0.0.1")
     name="GetInput",
     entry_point=True,
 )
-def get_input(event: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
+def get_input(event: dict[str, Any]) -> dict[str, Any]:
     if isinstance(event, str):
         event = json.loads(event)
 
@@ -55,7 +55,7 @@ def get_input(event: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]
 
 
 @workflow.serverless_function(name="Streaming")
-def streaming(event: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
+def streaming(event: dict[str, Any]) -> dict[str, Any]:
     video_name = event["video_name"]
     request_id = event["request_id"]
     print(f"Processing video: {video_name}")
@@ -73,7 +73,7 @@ def streaming(event: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]
 
 
 @workflow.serverless_function(name="Decode")
-def decode(event: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
+def decode(event: dict[str, Any]) -> dict[str, Any]:
     video_name = event["video_name"]
     request_id = event["request_id"]
     print(f"Decoding video: {video_name}")
@@ -91,7 +91,7 @@ def decode(event: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
 
 
 @workflow.serverless_function(name="Recognition")
-def recognition(event: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
+def recognition(event: dict[str, Any]) -> dict[str, Any]:
     decoded_filename = event["decoded_filename"]
     request_id = event["request_id"]
     print(f"Recognizing video: {decoded_filename}")
