@@ -111,3 +111,6 @@ BUFFER_LAMBDA_INSIGHTS_GRACE_PERIOD = 30  # 30 minutes
 
 # TODO: Implement this feature
 BUFFER_LOG_GRACE_PERIOD = 60  # In minutes, this refers to for each day how long to EXTEND the log collection period
+
+# Caribou wrapper max workers
+MAX_WORKERS = 4

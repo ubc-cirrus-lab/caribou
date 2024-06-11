@@ -1,3 +1,4 @@
+import json
 from typing import Any
 
 from caribou.common.models.remote_client.remote_client import RemoteClient
@@ -11,6 +12,7 @@ class WorkflowExporter(DataExporter):
 
     def export_all_data(self, workflow_summary_data: dict[str, Any]) -> None:
         self._export_workflow_summary(workflow_summary_data)
+        # print(json.dumps(workflow_summary_data, indent=4))
 
     def _export_workflow_summary(self, workflow_summary_data: dict[str, Any]) -> None:
         self._export_data(self._workflow_summary_table, workflow_summary_data, False)

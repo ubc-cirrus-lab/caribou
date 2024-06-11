@@ -19,7 +19,7 @@ workflow = CaribouWorkflow(name="text_2_speech_censoring", version="0.0.1")
     name="GetInput",
     entry_point=True,
 )
-def get_input(event: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
+def get_input(event: dict[str, Any]) -> dict[str, Any]:
     if isinstance(event, str):
         event = json.loads(event)
 
@@ -42,7 +42,7 @@ def get_input(event: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]
 
 
 @workflow.serverless_function(name="Text2Speech")
-def text_2_speech(event: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
+def text_2_speech(event: dict[str, Any]) -> dict[str, Any]:
     input_file = event["input_file"]
 
     s3 = boto3.client("s3", region_name='us-west-2')
@@ -86,7 +86,7 @@ def text_2_speech(event: dict[str, Any], metadata: dict[str, Any]) -> dict[str, 
 
 
 @workflow.serverless_function(name="Profanity")
-def profanity(event: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
+def profanity(event: dict[str, Any]) -> dict[str, Any]:
     input_file = event["input_file"]
 
     s3 = boto3.client("s3", region_name='us-west-2')
@@ -144,7 +144,7 @@ def extract_indexes(text, char="*") -> list:
 
 
 @workflow.serverless_function(name="Conversion")
-def conversion(event: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
+def conversion(event: dict[str, Any]) -> dict[str, Any]:
     file_name = event["file_name"]
 
     s3 = boto3.client("s3", region_name='us-west-2')
@@ -186,7 +186,7 @@ def conversion(event: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any
 
 
 @workflow.serverless_function(name="Compression")
-def compression(event: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
+def compression(event: dict[str, Any]) -> dict[str, Any]:
     file_name = event["file_name"]
 
     s3 = boto3.client("s3", region_name='us-west-2')
@@ -230,7 +230,7 @@ def compression(event: dict[str, Any], metadata: dict[str, Any]) -> dict[str, An
 
 
 @workflow.serverless_function(name="Censor")
-def censor(event: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
+def censor(event: dict[str, Any]) -> dict[str, Any]:
     results = workflow.get_predecessor_data()
 
     for result in results:
