@@ -517,14 +517,17 @@ class TestAWSRemoteClient(unittest.TestCase):
         client = AWSRemoteClient("region1")
 
         # Mock the return value of update_item
-        mock_dynamodb_client.update_item.return_value = {
-            "Attributes": {"sync_node_name": {"M": {"workflow_instance_id": {"BOOL": True}}}}
+        update_item_return_value = {
+            "Attributes": {"sync_node_name": {"M": {"workflow_instance_id": {"BOOL": True}}}},
+            "ConsumedCapacity": {"CapacityUnits": 5.3},
         }
+        mock_dynamodb_client.update_item.return_value = update_item_return_value
 
         result = client.set_predecessor_reached("predecessor_name", "sync_node_name", "workflow_instance_id", True)
 
         # Check that the return value is correct
-        self.assertEqual(result, ([True], 0.0))
+        update_item_response_size = len(json.dumps(update_item_return_value).encode("utf-8")) / (1024**3)
+        self.assertEqual(result, ([True], update_item_response_size, 5.3 * 2))
 
     @patch.object(AWSRemoteClient, "_client")
     def test_create_sync_tables(self, mock_client):

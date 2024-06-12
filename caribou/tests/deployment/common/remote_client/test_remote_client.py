@@ -9,7 +9,7 @@ class TestRemoteClient(unittest.TestCase):
     def test_invoke_function(self):
         client = MockRemoteClient()
         client.send_message_to_messaging_service = Mock()
-        client.set_predecessor_reached = Mock(return_value=([True], 0.0))
+        client.set_predecessor_reached = Mock(return_value=([True], 0.0, 0.0))
         client.upload_predecessor_data_at_sync_node = Mock(return_value=0.0)
 
         message = json.dumps({"payload": "test"})

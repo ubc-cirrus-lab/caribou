@@ -1,7 +1,11 @@
 import json
 from typing import Any, Optional
+import math
 
-from caribou.common.constants import WORKFLOW_SUMMARY_TABLE
+import numpy as np
+from scipy import stats
+
+from caribou.common.constants import WORKFLOW_SUMMARY_TABLE, MAX_TRANSFER_SIZE
 from caribou.common.models.remote_client.remote_client import RemoteClient
 from caribou.data_collector.components.data_retriever import DataRetriever
 
@@ -73,6 +77,9 @@ class WorkflowRetriever(DataRetriever):
 
                 start_hop_data_transfer_size = float(start_hop_log.get("data_transfer_size", 0.0))
 
+                # Round start hop data transfer size to nearest 1 KB
+                start_hop_data_transfer_size = self._round_to_kb(start_hop_data_transfer_size, 1)
+
                 if start_hop_data_transfer_size not in start_hop_summary[start_hop_destination]:
                     start_hop_summary[start_hop_destination][start_hop_data_transfer_size] = []
                 start_hop_latency = start_hop_log.get("latency", None)
@@ -100,6 +107,8 @@ class WorkflowRetriever(DataRetriever):
                 instance_summary[instance]["invocations"] = 0
             if "cpu_utilization" not in instance_summary[instance]:
                 instance_summary[instance]["cpu_utilization"] = []
+            if "has_download" not in instance_summary[instance]:
+                instance_summary[instance]["has_download"] = False
             if "executions" not in instance_summary[instance]:
                 instance_summary[instance]["executions"] = {
                     "at_region": {},
@@ -115,10 +124,13 @@ class WorkflowRetriever(DataRetriever):
             instance_summary[instance]["cpu_utilization"].append(execution_information["cpu_utilization"])
 
             # Process execution data
+            download_size = execution_information.get("download_information", {}).get("download_size", 0.0)
+            if download_size > 0.0:
+                instance_summary[instance]["has_download"] = True
             execution_data = {
                 "duration": execution_information["duration"],
                 "data_transfer_during_execution": execution_information["data_transfer_during_execution"],
-                "download_size": execution_information.get("download_information", {}).get("download_size", 0.0),
+                "download_size": download_size,
                 "successor_invocations": {},
             }
 
@@ -134,6 +146,19 @@ class WorkflowRetriever(DataRetriever):
 
     def _reorganize_instance_summary(self, instance_summary: dict[str, Any]) -> None:
         for instance_val in instance_summary.values():
+            # Handle the cpu utilization
+            cpu_utilization = instance_val.get("cpu_utilization", [])
+            if cpu_utilization:
+                # Get the average cpu utilization but ensure
+                # that if value > 1, set to 1, and if value < 0, set to 0
+                cpu_utilization = [min(1.0, max(0.0, cpu)) for cpu in cpu_utilization]
+                instance_val["cpu_utilization"] = sum(cpu_utilization) / len(cpu_utilization)
+
+            # Retrieve the has download flag and remove it from the dictionary
+            has_download = instance_val.get("has_download", False)
+            del instance_val["has_download"]
+            
+            # Handle the execution data
             execution_data = instance_val.get("executions", {})
             if execution_data:
                 # Get list of all successor instances
@@ -142,14 +167,16 @@ class WorkflowRetriever(DataRetriever):
                 del instance_val["executions"]["successor_instances"]
 
                 # Get translation of successor instances
-                # Basically index 0-2 is reserved, then every other instance is assigned a new index
+                # Basically index 0-1 is reserved, then every other instance is assigned a new index
                 index_translation = {
-                    "duration": 0,
-                    "data_transfer_during_execution": 1,
-                    "download_size": 2,
+                    "data_transfer_during_execution": 0,
                 }
+                # If its a sync node and has download, then download size is also a feature
+                if has_download:
+                    index_translation["download_size"] = 1
+
                 for index, successor_instance in enumerate(successor_instances):
-                    index_translation[successor_instance] = index + 3
+                    index_translation[successor_instance] = index + len(index_translation)
 
                 # Add the index translation to the instance_val
                 instance_val["executions"]["index_translation"] = index_translation
@@ -157,21 +184,35 @@ class WorkflowRetriever(DataRetriever):
                 # Now translate the at_region data to be in a list of the
                 # form with values stored in the order of index_translation
                 for region, execution_data in instance_val["executions"]["at_region"].items():
-                    reformatted_data = []
+                    durations = []
+                    duration_to_auxiliary_data = {}
 
                     for execution in execution_data:
+                        duration = execution["duration"]
+                        durations.append(duration)
+
+                        # Round the duration to the nearest 10 ms
+                        duration = self._round_to_ms(duration, 10)
+                        
+                        # Make new auxiliary data if not present
+                        if duration not in duration_to_auxiliary_data:
+                            duration_to_auxiliary_data[duration] = []
+
                         new_execution = [None] * len(index_translation)
-                        new_execution[0] = execution["duration"]
-                        new_execution[1] = execution["data_transfer_during_execution"]
-                        new_execution[2] = execution["download_size"]
+                        new_execution[0] = execution["data_transfer_during_execution"]
+                        if has_download:
+                            new_execution[1] = execution.get("download_size", 0.0)
                         for successor, successor_data in execution["successor_invocations"].items():
                             new_execution[index_translation[successor]] = successor_data[
                                 "invocation_time_from_function_start"
                             ]
 
-                        reformatted_data.append(new_execution)
+                        duration_to_auxiliary_data[duration].append(new_execution)
 
-                    instance_val["executions"]["at_region"][region] = reformatted_data
+                    instance_val["executions"]["at_region"][region] = {
+                        "durations": durations,
+                        "auxiliary_data": duration_to_auxiliary_data,
+                    }
 
     def _handle_region_to_region_transmission(self, log: dict[str, Any], instance_summary: dict[str, Any]) -> None:
         for data in log["transmission_data"]:
@@ -234,15 +275,16 @@ class WorkflowRetriever(DataRetriever):
                     }
 
                 instance_summary[from_instance]["to_instance"][to_instance]["transfer_sizes"].append(
-                    transmission_data_transfer_size
-                )
+                    self._round_to_kb(transmission_data_transfer_size, 1)
+                ) # Round to nearest kb (as dynamodb write is charged in kb)
 
                 # Add an entry for the transfer latency
                 # (Only for cases where successor_invoked is True)
                 # Else we do not have the transfer latency for this
                 # node as it is not directly invoked
                 if successor_invoked:
-                    transmission_data_transfer_size_str = str(transmission_data_transfer_size)
+                    # Round to nearest 10 KB (as data transfer latency should not be too granular)
+                    transmission_data_transfer_size_str = str(self._round_to_kb(transmission_data_transfer_size, 10))
                     if (
                         transmission_data_transfer_size_str
                         not in instance_summary[from_instance]["to_instance"][to_instance]["regions_to_regions"][
@@ -292,57 +334,82 @@ class WorkflowRetriever(DataRetriever):
                     caller_callee_data["invoked"] + caller_callee_data["non_executions"]
                 )
 
+    # Best fit line approach.
     def _handle_missing_region_to_region_transmission_data(self, instance_summary: dict[str, Any]) -> None:
         for instance_val in instance_summary.values():  # pylint: disable=too-many-nested-blocks
             to_instances = instance_val.get("to_instance", {})
             for to_instance_val in to_instances.values():
-                all_transfer_sizes = set(to_instance_val.get("transfer_sizes", []))
                 regions_to_regions = to_instance_val.get("regions_to_regions", {})
                 for from_regions_information in regions_to_regions.values():
-                    # Calculate global averages for each size
-                    global_avg_latency_per_size = {}
-                    for size in all_transfer_sizes:
-                        total_latencies = []
-                        for to_region_information in from_regions_information.values():
-                            latencies = to_region_information["transfer_size_to_transfer_latencies"].get(size)
-                            if latencies:
-                                total_latencies.extend(latencies)
-                        if total_latencies:
-                            global_avg_latency_per_size[size] = sum(total_latencies) / len(total_latencies)
-
-                    # Scale missing latencies based on the common transfer size (if available)
                     for to_region_information in from_regions_information.values():
-                        existing_sizes = {
-                            float(data) for data in to_region_information["transfer_size_to_transfer_latencies"].keys()
+                        # Calculate the best fit line for the data (Used in case of missing data)
+                        transfer_size_to_transfer_latencies = to_region_information["transfer_size_to_transfer_latencies"]
+                        
+                        number_of_data_sizes = len(transfer_size_to_transfer_latencies)
+                        if number_of_data_sizes == 0:
+                            # Case where there are no data
+                            continue
+
+                        # Calculate the average latency for each transfer size
+                        average_transfer_size_to_transfer_latencies = {}
+                        for size, latencies in transfer_size_to_transfer_latencies.items():
+                            average_transfer_size_to_transfer_latencies[size] = sum(latencies) / len(latencies) 
+                        
+                        # Calculate the averege transfer latency
+                        average_transfer_latency = sum(average_transfer_size_to_transfer_latencies.values()) / number_of_data_sizes
+
+                        slope = 0.0
+                        intercept = average_transfer_latency
+                        if number_of_data_sizes > 1:
+                            # Prepare the data
+                            transfer_sizes = []
+                            transfer_latencies = []
+
+                            for size, latencies in transfer_size_to_transfer_latencies.items():
+                                size = float(size)
+                                for latency in latencies:
+                                    transfer_sizes.append(size)
+                                    transfer_latencies.append(latency)
+
+                            # Convert to numpy arrays
+                            x = np.array(transfer_sizes)
+                            y = np.array(transfer_latencies)
+
+                            # Perform linear regression
+                            potential_slope, potential_intercept, _, _, _ = stats.linregress(x, y)
+
+                            # Check if the found slope and intercept
+                            # are somewhat reasonable
+                            if (potential_intercept > 0.0 and potential_slope >= 0.0):
+                                slope = potential_slope
+                                intercept = potential_intercept
+
+                        # Save the best fit line
+                        # And add some limitations such as min and max latency
+                        to_region_information["best_fit_line"] = {
+                            "slope": slope,
+                            "intercept": intercept,
+                            "min_latency": average_transfer_latency * 0.50,
+                            "max_latency": average_transfer_latency * 1.50,
                         }
 
-                        # Only scale if there are missing sizes
-                        # And if there are existing sizes
-                        if existing_sizes:
-                            missing_sizes = all_transfer_sizes - existing_sizes
 
-                            for missing_size in missing_sizes:
-                                # Find the nearest size for which we have data
-                                try:
-                                    nearest_size = min(
-                                        to_region_information["transfer_size_to_transfer_latencies"].keys(),
-                                        key=lambda x, missing_size=missing_size: abs(float(x) - float(missing_size)),  # type: ignore  # pylint: disable=line-too-long
-                                    )
-                                    scaling_factor = (
-                                        global_avg_latency_per_size[missing_size]
-                                        / global_avg_latency_per_size[nearest_size]
-                                        if nearest_size in global_avg_latency_per_size
-                                        else 1
-                                    )
+    def _round_to_kb(self, number: float, round_to: int = 10) -> float:
+        """
+        Rounds the input number (in GB) to the nearest KB or 10 KB in base 2, rounding up.
+        
+        :param number: The input number in GB.
+        :param round_to: The value to round to (1 for nearest KB, 10 for nearest 10 KB).
+        :return: The rounded number in GB.
+        """
+        return math.ceil(number * (1024 ** 2) / round_to) * round_to / (1024 ** 2)
 
-                                    scaled_latencies = [
-                                        latency * scaling_factor
-                                        for latency in to_region_information["transfer_size_to_transfer_latencies"][
-                                            nearest_size
-                                        ]
-                                    ]
-                                    to_region_information["transfer_size_to_transfer_latencies"][
-                                        missing_size
-                                    ] = scaled_latencies
-                                except KeyError:
-                                    pass
+    def _round_to_ms(self, number: float, round_to: int = 1) -> float:
+        """
+        Rounds the input number (in seconds) to the nearest ms, rounding up.
+        
+        :param number: The input number in seconds.
+        :param round_to: The value to round to (1 for nearest ms, 10 for nearest 10 ms).
+        :return: The rounded number in seconds.
+        """
+        return math.ceil(number * 1000 / round_to) * round_to / 1000
