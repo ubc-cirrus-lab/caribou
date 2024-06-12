@@ -13,7 +13,7 @@ class WorkflowRunSample:  # pylint: disable=too-many-instance-attributes
 
         # Used for ensuring that we only observe workflow samples
         # that does not have duplicate invocations in the same run.
-        self.encountered_instance_request_IDs: dict[str, set[str]] = {}
+        self.encountered_instance_request_ids: dict[str, set[str]] = {}
 
         self.log_start_time: Optional[datetime] = None
         self.log_end_time: Optional[datetime] = None
@@ -55,9 +55,9 @@ class WorkflowRunSample:  # pylint: disable=too-many-instance-attributes
         # Add the request ID to the encountered request IDs
         # This is to blacklist runs that have duplicate invocations
         # As they distort the data.
-        if instance_name not in self.encountered_instance_request_IDs:
-            self.encountered_instance_request_IDs[instance_name] = set()
-        self.encountered_instance_request_IDs[instance_name].add(request_id)
+        if instance_name not in self.encountered_instance_request_ids:
+            self.encountered_instance_request_ids[instance_name] = set()
+        self.encountered_instance_request_ids[instance_name].add(request_id)
 
         if instance_name not in self.execution_data:
             self.execution_data[instance_name] = ExecutionData(instance_name)
@@ -75,8 +75,8 @@ class WorkflowRunSample:  # pylint: disable=too-many-instance-attributes
         )
 
     def _has_duplicate_instances(self) -> bool:
-        for instance_request_IDs in self.encountered_instance_request_IDs.values():
-            if len(instance_request_IDs) > 1:
+        for instance_request_ids in self.encountered_instance_request_ids.values():
+            if len(instance_request_ids) > 1:
                 return True
         return False
 
@@ -115,7 +115,7 @@ class WorkflowRunSample:  # pylint: disable=too-many-instance-attributes
                 "non_executions": self.non_executions,
                 "start_hop_info": {
                     "instance_name": self.start_hop_instance_name,
-                    "destination": f"{self.start_hop_destination['provider']}:{self.start_hop_destination['region']}" if self.start_hop_destination else None,
+                    "destination": self._format_region(self.start_hop_destination),
                     "data_transfer_size": self.start_hop_data_transfer_size,
                     "latency": self.start_hop_latency,
                     "workflow_placement_decision": {
@@ -126,3 +126,8 @@ class WorkflowRunSample:  # pylint: disable=too-many-instance-attributes
                 "unique_cpu_models": list(self.cpu_models),
             },
         )
+
+    def _format_region(self, region: Optional[dict[str, str]]) -> Optional[str]:
+        if region:
+            return f"{region['provider']}:{region['region']}"
+        return None

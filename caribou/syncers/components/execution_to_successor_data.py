@@ -1,4 +1,3 @@
-from datetime import datetime
 from typing import Any, Optional
 
 
@@ -67,7 +66,7 @@ class ExecutionToSuccessorData:  # pylint: disable=too-many-instance-attributes
 
         return total_download_data_size
 
-    def to_dict(self) -> tuple[datetime, dict[str, Any]]:
+    def to_dict(self) -> dict[str, Any]:
         # Only return the fields that are not None
         result = {
             "successor_instance_name": self.successor_instance_name,
@@ -79,7 +78,7 @@ class ExecutionToSuccessorData:  # pylint: disable=too-many-instance-attributes
             # "upload_rtt": self.upload_rtt,
             # "consumed_write_capacity": self.consumed_write_capacity,
             # "sync_data_response_size": self.sync_data_response_size,
-            "destination_region": f"{self.destination_region['provider']}:{self.destination_region['region']}" if self.destination_region else None,
+            "destination_region": self._format_region(self.destination_region),
             "invoking_sync_node_data_output": self.invoking_sync_node_data_output,
         }
 
@@ -87,3 +86,8 @@ class ExecutionToSuccessorData:  # pylint: disable=too-many-instance-attributes
         filtered_result = {key: value for key, value in result.items() if value is not None and value != {}}
 
         return filtered_result
+
+    def _format_region(self, region: Optional[dict[str, str]]) -> Optional[str]:
+        if region:
+            return f"{region['provider']}:{region['region']}"
+        return None

@@ -67,7 +67,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         data_for_upload: str = self._prepare_data_for_upload(self._previous_data)
         self._upload_data(data_for_upload)
 
-        # # Script used for debugging
+        # # # Script used for debugging
         # print(json.dumps(json.loads(data_for_upload), indent=4))
 
     def _upload_data(self, data_for_upload: str) -> None:
@@ -153,7 +153,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         # Those logs starts with "REPORT" and contains "Init Duration"
         if log_entry.startswith("REPORT"):
             request_id = self._extract_from_string(log_entry, r"RequestId: (.*?)\t")
-            if "Init Duration" in log_entry:
+            if "Init Duration" in log_entry and request_id is not None:
                 self._tainted_cold_start_samples.add(request_id)
 
         # Ensure that the log entry is a valid log entry and has the correct version
@@ -262,7 +262,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
                 if log_day_str not in self._daily_failure_set:
                     self._daily_failure_set[log_day_str] = set()
                 self._daily_failure_set[log_day_str].add(run_id)
-            elif message.startswith("INFORMING_SYNC_NODE"):
+            elif message.startswith("INFORMING_SYNC_NODE") or message.startswith("DEBUG_MESSAGE"):
                 # Debug message, we can ignore
                 pass
             else:
@@ -359,6 +359,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         execution_data.provider_region = provider_region
         execution_data.lambda_insights = self._insights_logs.get(request_id, {})
 
+    # pylint: disable=too-many-statements
     def _extract_invoking_successor_logs(
         self,
         workflow_run_sample: WorkflowRunSample,
@@ -501,6 +502,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
             if not successor_invoked:
                 transmission_data.to_region = {"provider": destination_provider, "region": destination_region}
 
+    # pylint: disable=too-many-statements
     def _extract_invoking_sync_node_logs(
         self,
         workflow_run_sample: WorkflowRunSample,
@@ -793,7 +795,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         for transmission_data in previous_log["direct_transmission_data"]:
             from_instance = transmission_data["from_instance"]
             to_instance = transmission_data["to_instance"]
-            from_region_str =  transmission_data["from_region"]
+            from_region_str = transmission_data["from_region"]
             to_region_str = transmission_data["to_region"]
             if from_instance not in self._existing_data["transmission_from_instance_to_instance_region"]:
                 has_missing_information = True
@@ -858,7 +860,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
             instance = execution_data["instance_name"]
             if instance not in self._existing_data["execution_instance_region"]:
                 self._existing_data["execution_instance_region"][instance] = {}
-            provider_region = execution_data["provider_region"] 
+            provider_region = execution_data["provider_region"]
             if provider_region not in self._existing_data["execution_instance_region"][instance]:
                 self._existing_data["execution_instance_region"][instance][provider_region] = 0
             self._existing_data["execution_instance_region"][instance][provider_region] += 1
@@ -895,7 +897,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
             # Here we increment the count of the transmission ONLY for transmission data
             # that is 'from_direct_successor' as the other data is not relevant for the
             # purpose of getting the direct successor transmission data
-            if transmission_data["from_direct_successor"]: 
+            if transmission_data["from_direct_successor"]:
                 self._existing_data["transmission_from_instance_to_instance_region"][from_instance][to_instance][
                     from_region_str
                 ][to_region_str] += 1

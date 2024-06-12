@@ -1,4 +1,3 @@
-from datetime import datetime, timedelta
 from typing import Any, Optional
 
 from caribou.syncers.components.execution_to_successor_data import ExecutionToSuccessorData
@@ -67,7 +66,7 @@ class ExecutionData:  # pylint: disable=too-many-instance-attributes
 
         if self.download_size:
             total_input_data_size += self.download_size
-        
+
         for successor_data in self.successor_data.values():
             total_input_data_size += successor_data.get_total_input_data_size()
 
@@ -75,6 +74,9 @@ class ExecutionData:  # pylint: disable=too-many-instance-attributes
 
     @property
     def input_data_transfer_during_execution(self) -> float:
+        if self.lambda_insights is None:
+            return 0.0
+
         insights_total_recieved_data = self.lambda_insights.get("rx_bytes", 0.0) / (1024**3)  # Convert bytes to GB
         other_recieved_data = max(0.0, insights_total_recieved_data - self._get_total_input_data_size())
 
@@ -82,6 +84,9 @@ class ExecutionData:  # pylint: disable=too-many-instance-attributes
 
     @property
     def output_data_transfer_during_execution(self) -> float:
+        if self.lambda_insights is None:
+            return 0.0
+
         insights_total_send_data = self.lambda_insights.get("tx_bytes", 0.0) / (1024**3)  # Convert bytes to GB
         other_send_data = max(0.0, insights_total_send_data - self._get_total_output_data_size())
 
@@ -118,6 +123,9 @@ class ExecutionData:  # pylint: disable=too-many-instance-attributes
 
     @property
     def cpu_utilization(self) -> Optional[float]:
+        if self.lambda_insights is None:
+            return None
+
         cpu_total_time = self.lambda_insights.get("cpu_total_time", None)
         if cpu_total_time is None:
             return None
@@ -146,20 +154,20 @@ class ExecutionData:  # pylint: disable=too-many-instance-attributes
         )
 
     def to_dict(self) -> dict[str, Any]:
-        download_information: dict[str, Any] = None
+        download_information: Optional[dict[str, Any]] = None
         if self.download_size is not None:
             download_information = {
                 "download_size": self.download_size,
                 "download_time": self.download_time,
                 "consumed_read_capacity": self.consumed_read_capacity,
             }
-        
-        relevant_insights: dict[str, Any] = None
+
+        relevant_insights: Optional[dict[str, Any]] = None
         if self.lambda_insights is not None:
             relevant_insights = {
-                'cpu_total_time': self.lambda_insights.get('cpu_total_time', None),
-                'duration': self.lambda_insights.get('duration', None),
-                'total_memory': self.lambda_insights.get('total_memory', None),
+                "cpu_total_time": self.lambda_insights.get("cpu_total_time", None),
+                "duration": self.lambda_insights.get("duration", None),
+                "total_memory": self.lambda_insights.get("total_memory", None),
             }
 
         # Only return the fields that are not None
@@ -172,7 +180,7 @@ class ExecutionData:  # pylint: disable=too-many-instance-attributes
             "cpu_model": self.cpu_model,
             # "execution_duration": self.execution_duration,
             # "reported_duration": self.reported_duration,
-            "provider_region": f"{self.provider_region['provider']}:{self.provider_region['region']}" if self.provider_region else None,
+            "provider_region": self._format_region(self.provider_region),
             "download_information": download_information,
             # "other_recieved_data": self.other_recieved_data, # Can be commented out
             # "other_send_data": self.other_send_data, # Can be commented out
@@ -188,3 +196,8 @@ class ExecutionData:  # pylint: disable=too-many-instance-attributes
         filtered_result = {key: value for key, value in result.items() if value is not None and value != {}}
 
         return filtered_result
+
+    def _format_region(self, region: Optional[dict[str, str]]) -> Optional[str]:
+        if region:
+            return f"{region['provider']}:{region['region']}"
+        return None

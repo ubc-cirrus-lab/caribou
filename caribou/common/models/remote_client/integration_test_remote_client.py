@@ -248,7 +248,7 @@ class IntegrationTestRemoteClient(RemoteClient):  # pylint: disable=too-many-pub
 
     def set_predecessor_reached(
         self, predecessor_name: str, sync_node_name: str, workflow_instance_id: str, direct_call: bool
-    ) -> tuple[list[bool], float]:
+    ) -> tuple[list[bool], float, float]:
         conn = self._db_connection()
         cursor = conn.cursor()
         cursor.execute(
@@ -262,7 +262,7 @@ class IntegrationTestRemoteClient(RemoteClient):  # pylint: disable=too-many-pub
         result = cursor.fetchone()
         conn.commit()
         conn.close()
-        return [bool(res) for res in result], 0.0
+        return [bool(res) for res in result], 0.0, 0.0
 
     def get_all_values_from_table(self, table_name: str) -> dict:
         conn = self._db_connection()

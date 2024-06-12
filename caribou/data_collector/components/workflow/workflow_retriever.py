@@ -27,7 +27,9 @@ class WorkflowRetriever(DataRetriever):
             return {}
         summarized_workflow = json.loads(workflow_summarized)
 
-        start_hop_summary, instance_summary, runtime_samples = self._construct_summaries(summarized_workflow.get("logs", {}))
+        start_hop_summary, instance_summary, runtime_samples = self._construct_summaries(
+            summarized_workflow.get("logs", {})
+        )
 
         return {
             "workflow_runtime_samples": runtime_samples,
@@ -47,7 +49,7 @@ class WorkflowRetriever(DataRetriever):
             workflow_runtime = log.get("runtime", None)
             if workflow_runtime is not None:
                 runtime_samples.append(workflow_runtime)
-            
+
             # Add to start hop summary
             self._extend_start_hop_summary(start_hop_summary, log)
 
@@ -111,7 +113,7 @@ class WorkflowRetriever(DataRetriever):
 
             # Append an entry of the cpu utilization
             instance_summary[instance]["cpu_utilization"].append(execution_information["cpu_utilization"])
-            
+
             # Process execution data
             execution_data = {
                 "duration": execution_information["duration"],
@@ -119,12 +121,12 @@ class WorkflowRetriever(DataRetriever):
                 "download_size": execution_information.get("download_information", {}).get("download_size", 0.0),
                 "successor_invocations": {},
             }
-            
+
             successor_data: Optional[dict[str, Any]] = execution_information.get("successor_data", None)
             if successor_data is not None:
-                for successor, successor_data in successor_data.items():
+                for successor, successor_info in successor_data.items():
                     execution_data["successor_invocations"][successor] = {
-                        "invocation_time_from_function_start": successor_data["invocation_time_from_function_start"],
+                        "invocation_time_from_function_start": successor_info["invocation_time_from_function_start"],
                     }
                     instance_summary[instance]["executions"]["successor_instances"].add(successor)
 
@@ -156,14 +158,16 @@ class WorkflowRetriever(DataRetriever):
                 # form with values stored in the order of index_translation
                 for region, execution_data in instance_val["executions"]["at_region"].items():
                     reformatted_data = []
-                    
+
                     for execution in execution_data:
                         new_execution = [None] * len(index_translation)
                         new_execution[0] = execution["duration"]
                         new_execution[1] = execution["data_transfer_during_execution"]
                         new_execution[2] = execution["download_size"]
                         for successor, successor_data in execution["successor_invocations"].items():
-                            new_execution[index_translation[successor]] = successor_data["invocation_time_from_function_start"]
+                            new_execution[index_translation[successor]] = successor_data[
+                                "invocation_time_from_function_start"
+                            ]
 
                         reformatted_data.append(new_execution)
 
@@ -187,7 +191,7 @@ class WorkflowRetriever(DataRetriever):
             # Check if the transmission data also contain sync_information
             # Denoting if it uploads or recieves data from synchronization
             sync_information = data.get("sync_information", None)
-            if (sync_information is not None):
+            if sync_information is not None:
                 # Right now we are making an assumption that data transfer size
                 # Is the sum of the wrapper data transfer size and the upload size
                 upload_size: float = sync_information.get("upload_size", 0.0)
@@ -199,8 +203,8 @@ class WorkflowRetriever(DataRetriever):
                 # Create the missing dictionary entries (Common)
                 if from_instance not in instance_summary:
                     instance_summary[from_instance] = {}
-                if 'to_instance' not in instance_summary[from_instance]:
-                    instance_summary[from_instance]['to_instance'] = {}
+                if "to_instance" not in instance_summary[from_instance]:
+                    instance_summary[from_instance]["to_instance"] = {}
                 if to_instance not in instance_summary[from_instance]["to_instance"]:
                     instance_summary[from_instance]["to_instance"][to_instance] = {
                         "invoked": 0,
@@ -209,7 +213,7 @@ class WorkflowRetriever(DataRetriever):
                         "transfer_sizes": [],
                         "regions_to_regions": {},
                     }
-                
+
                 # Increment invoked count (Even if not directly invoked)
                 instance_summary[from_instance]["to_instance"][to_instance]["invoked"] += 1
 
@@ -217,22 +221,40 @@ class WorkflowRetriever(DataRetriever):
                 ## First create the missing dictionary entries
                 if from_region not in instance_summary[from_instance]["to_instance"][to_instance]["regions_to_regions"]:
                     instance_summary[from_instance]["to_instance"][to_instance]["regions_to_regions"][from_region] = {}
-                if (to_region not in instance_summary[from_instance]["to_instance"][to_instance]["regions_to_regions"][from_region]):
-                    instance_summary[from_instance]["to_instance"][to_instance]["regions_to_regions"][from_region][to_region] = {
+                if (
+                    to_region
+                    not in instance_summary[from_instance]["to_instance"][to_instance]["regions_to_regions"][
+                        from_region
+                    ]
+                ):
+                    instance_summary[from_instance]["to_instance"][to_instance]["regions_to_regions"][from_region][
+                        to_region
+                    ] = {
                         "transfer_size_to_transfer_latencies": {},
                     }
 
-                instance_summary[from_instance]["to_instance"][to_instance]["transfer_sizes"].append(transmission_data_transfer_size)
-                
+                instance_summary[from_instance]["to_instance"][to_instance]["transfer_sizes"].append(
+                    transmission_data_transfer_size
+                )
+
                 # Add an entry for the transfer latency
                 # (Only for cases where successor_invoked is True)
                 # Else we do not have the transfer latency for this
                 # node as it is not directly invoked
                 if successor_invoked:
                     transmission_data_transfer_size_str = str(transmission_data_transfer_size)
-                    if (transmission_data_transfer_size_str not in instance_summary[from_instance]["to_instance"][to_instance]["regions_to_regions"][from_region][to_region]["transfer_size_to_transfer_latencies"]):
-                        instance_summary[from_instance]["to_instance"][to_instance]["regions_to_regions"][from_region][to_region]["transfer_size_to_transfer_latencies"][transmission_data_transfer_size_str] = []
-                    instance_summary[from_instance]["to_instance"][to_instance]["regions_to_regions"][from_region][to_region]["transfer_size_to_transfer_latencies"][transmission_data_transfer_size_str].append(
+                    if (
+                        transmission_data_transfer_size_str
+                        not in instance_summary[from_instance]["to_instance"][to_instance]["regions_to_regions"][
+                            from_region
+                        ][to_region]["transfer_size_to_transfer_latencies"]
+                    ):
+                        instance_summary[from_instance]["to_instance"][to_instance]["regions_to_regions"][from_region][
+                            to_region
+                        ]["transfer_size_to_transfer_latencies"][transmission_data_transfer_size_str] = []
+                    instance_summary[from_instance]["to_instance"][to_instance]["regions_to_regions"][from_region][
+                        to_region
+                    ]["transfer_size_to_transfer_latencies"][transmission_data_transfer_size_str].append(
                         data["transmission_latency"]
                     )
             else:
@@ -249,8 +271,8 @@ class WorkflowRetriever(DataRetriever):
             # Create the missing dictionary entries
             if caller not in instance_summary:
                 instance_summary[caller] = {}
-            if 'to_instance' not in instance_summary[caller]:
-                instance_summary[caller]['to_instance'] = {}
+            if "to_instance" not in instance_summary[caller]:
+                instance_summary[caller]["to_instance"] = {}
             for callee, count in non_execution.items():
                 if callee not in instance_summary[caller]["to_instance"]:
                     instance_summary[caller]["to_instance"][callee] = {
@@ -293,7 +315,7 @@ class WorkflowRetriever(DataRetriever):
                         existing_sizes = {
                             float(data) for data in to_region_information["transfer_size_to_transfer_latencies"].keys()
                         }
-                        
+
                         # Only scale if there are missing sizes
                         # And if there are existing sizes
                         if existing_sizes:
