@@ -2,6 +2,7 @@ import datetime
 import os
 from typing import Any
 
+import json
 import boto3
 import googlemaps
 import requests
@@ -184,14 +185,13 @@ class ProviderRetriever(DataRetriever):
     def _retrieve_aws_sns_cost(self, aws_regions: list[str]) -> dict[str, Any]:
         sns_cost_dict = {}
         for region_key in aws_regions:
-            region_code = region_key.split(":")[1]
+            region_code = "us-east-1" 'region_key.split(":")[1]' 
             product = "AmazonSNS"
             service = "AmazonSNS"
             operation = "Request"  
             filters = [
                 {"Type": "TERM_MATCH", "Field": "location", "Value": f"AWS Region: {region_code}"},
-                {"Type": "TERM_MATCH", "Field": "productFamily", "Value": "Messaging"},
-                {"Type": "TERM_MATCH", "Field": "operation", "Value": operation},
+                {"Type": "TERM_MATCH", "Field": "productFamily", "Value": "Bundle"},
             ]
             price = self._get_aws_product_price(product, service, filters)
             sns_cost_dict[region_key] = price
@@ -205,21 +205,20 @@ class ProviderRetriever(DataRetriever):
             service = "AmazonDynamoDB"
             filters = [
                 {"Type": "TERM_MATCH", "Field": "location", "Value": f"AWS Region: {region_code}"},
-                {"Type": "TERM_MATCH", "Field": "databaseEngine", "Value": "NoSQL"},
             ]
             storage_cost = self._get_aws_product_price(product, service, filters)
 
             filters = [
                 {"Type": "TERM_MATCH", "Field": "location", "Value": f"AWS Region: {region_code}"},
-                {"Type": "TERM_MATCH", "Field": "productFamily", "Value": "Provisioned Throughput"},
-                {"Type": "TERM_MATCH", "Field": "operation", "Value": "ReadCapacityUnit-Hrs"},
+                {"Type": "TERM_MATCH", "Field": "productFamily", "Value": "Provisioned IOPS"},
+                {"Type": "TERM_MATCH", "Field": "operation", "Value": "DelegatedOperations"},
             ]
             read_capacity_cost = self._get_aws_product_price(product, service, filters)
 
             filters = [
                 {"Type": "TERM_MATCH", "Field": "location", "Value": f"AWS Region: {region_code}"},
-                {"Type": "TERM_MATCH", "Field": "productFamily", "Value": "Provisioned Throughput"},
-                {"Type": "TERM_MATCH", "Field": "operation", "Value": "WriteCapacityUnit-Hrs"},
+                {"Type": "TERM_MATCH", "Field": "productFamily", "Value": "Database Storage"},
+                {"Type": "TERM_MATCH", "Field": "operation", "Value": "PayPerRequestThroughput"},
             ]
             write_capacity_cost = self._get_aws_product_price(product, service, filters)
 
@@ -237,15 +236,13 @@ class ProviderRetriever(DataRetriever):
             product = "AmazonECR"
             service = "AmazonECR"
             filters = [
-                {"Type": "TERM_MATCH", "Field": "location", "Value": f"AWS Region: {region_code}"},
-                {"Type": "TERM_MATCH", "Field": "productFamily", "Value": "Storage"},
+                {"Type": "termType", "Field": "location", "Value": f"AWS Region: {region_code}"},
             ]
             storage_cost = self._get_aws_product_price(product, service, filters)
 
             filters = [
-                {"Type": "TERM_MATCH", "Field": "location", "Value": f"AWS Region: {region_code}"},
-                {"Type": "TERM_MATCH", "Field": "productFamily", "Value": "Request"},
-                {"Type": "TERM_MATCH", "Field": "usagetype", "Value": "ECR-HTTPPull"},
+                {"Type": "termType", "Field": "location", "Value": f"AWS Region: {region_code}"},
+                {"Type": "termType", "Field": "storageType", "Value": "S3"},
             ]
             pull_cost = self._get_aws_product_price(product, service, filters)
 
@@ -442,7 +439,7 @@ class ProviderRetriever(DataRetriever):
         if not products:
             raise ValueError(f"No pricing information found for {product}")
 
-        price_info = products[0]
+        price_info = json.loads(products[0])  # chaîne JSON en dictionnaire
         price_details = price_info.get("terms", {}).get("OnDemand", {})
         if not price_details:
             raise ValueError(f"No on-demand pricing information found for {product}")
