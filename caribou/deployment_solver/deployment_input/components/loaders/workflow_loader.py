@@ -43,6 +43,12 @@ class WorkflowLoader(InputLoader):
     def setup(self, workflow_id: str) -> None:
         self._workflow_data = self._retrieve_workflow_data(workflow_id)
 
+    def get_workflow_data(self) -> dict[str, Any]:
+        return self._workflow_data
+
+    def set_workflow_data(self, data: dict[str, Any]) -> None:
+        self._workflow_data = data
+
     def get_home_region(self) -> str:
         return self._home_region
 

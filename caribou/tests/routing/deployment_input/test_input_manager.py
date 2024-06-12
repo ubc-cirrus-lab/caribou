@@ -6,6 +6,9 @@ from caribou.common.models.remote_client.remote_client import RemoteClient
 from caribou.deployment_solver.deployment_input.components.calculators.carbon_calculator import CarbonCalculator
 from caribou.deployment_solver.deployment_input.components.calculators.cost_calculator import CostCalculator
 from caribou.deployment_solver.deployment_input.components.calculators.runtime_calculator import RuntimeCalculator
+from caribou.deployment_solver.deployment_input.components.loaders.carbon_loader import CarbonLoader
+from caribou.deployment_solver.deployment_input.components.loaders.datacenter_loader import DatacenterLoader
+from caribou.deployment_solver.deployment_input.components.loaders.performance_loader import PerformanceLoader
 from caribou.deployment_solver.models.instance_indexer import InstanceIndexer
 from caribou.deployment_solver.models.region_indexer import RegionIndexer
 from caribou.deployment_solver.deployment_input.input_manager import InputManager
@@ -145,6 +148,39 @@ class TestInputManager(unittest.TestCase):
         self.input_manager._region_viability_loader = Mock()
         self.input_manager._region_viability_loader.get_available_regions.return_value = ["region1", "region2"]
         self.assertEqual(self.input_manager.get_all_regions(), ["region1", "region2"])
+
+    def test_get_state(self):
+        self.input_manager._region_viability_loader = Mock()
+        self.input_manager._region_viability_loader.get_available_regions.return_value = ["region1", "region2"]
+        self.input_manager._carbon_loader = MagicMock()
+        self.input_manager._workflow_loader = MagicMock()
+        self.input_manager._carbon_calculator = MagicMock()
+        state = self.input_manager.__getstate__()
+        self.assertEqual(state.get("_region_viability_loader"), ["region1", "region2"])
+
+    @patch(InputManager.__module__ + ".RegionViabilityLoader")
+    @patch(InputManager.__module__ + ".Endpoints")
+    @patch(InputManager.__module__ + ".DatacenterLoader")
+    @patch(InputManager.__module__ + ".PerformanceLoader")
+    @patch(InputManager.__module__ + ".CarbonLoader")
+    def test_set_state(
+        self,
+        mock_endpoints,
+        mock_region_viability_loader,
+        mock_datacenter_loader,
+        mock_performance_loader,
+        mock_carbon_loader,
+    ):
+        mock_datacenter_loader_instance = mock_datacenter_loader.return_value
+        mock_datacenter_loader_instance.setup.return_value = None
+        self.input_manager._region_indexer = MagicMock(spec=RegionIndexer)
+        self.input_manager._region_indexer.get_value_indices = MagicMock(
+            return_value={"provider1:region1": 0, "provider1:region2": 1}
+        )
+        state = MagicMock()
+        state.__getitem__.return_value = {}
+        self.input_manager.__setstate__(state)
+        mock_datacenter_loader_instance.setup.assert_called_once()
 
 
 if __name__ == "__main__":
