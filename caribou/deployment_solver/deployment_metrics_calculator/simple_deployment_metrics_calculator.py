@@ -32,6 +32,8 @@ def _simulation_worker(
     while True:
         received_input = input_queue.get()
         if isinstance(received_input, str) or received_input is None:
+            if received_input == "exit":
+                break
             input_manager.alter_carbon_setting(received_input)
             output_queue.put("OK")
             continue
@@ -220,5 +222,7 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
 
     def __del__(self) -> None:
         if self.n_processes > 1:
+            for _ in range(self.n_processes):
+                self._input_queue.put("exit")
             for p in self._pool:
                 p.kill()

@@ -10,8 +10,6 @@ from caribou.deployment_solver.deployment_input.components.loader import InputLo
 
 class CarbonLoader(InputLoader):
     _carbon_data: dict[str, Any]
-    _use_mock_data: bool = False
-    _mock_input: Optional[dict] = None
 
     def __init__(
         self,

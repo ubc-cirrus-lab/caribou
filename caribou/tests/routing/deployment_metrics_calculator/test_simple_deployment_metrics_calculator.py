@@ -1,9 +1,14 @@
 import unittest
-from multiprocessing import Queue, Process
+from multiprocessing import Queue, Process, Manager
 from unittest.mock import MagicMock, patch, Mock
 
+from caribou.deployment_solver.deployment_input.input_manager import InputManager
+from caribou.deployment_solver.deployment_metrics_calculator.deployment_metrics_calculator import (
+    DeploymentMetricsCalculator,
+)
 from caribou.deployment_solver.deployment_metrics_calculator.simple_deployment_metrics_calculator import (
     SimpleDeploymentMetricsCalculator,
+    _simulation_worker,
 )
 
 
@@ -104,6 +109,76 @@ class TestSimpleDeploymentMetricsCalculator(unittest.TestCase):
         self.assertEqual(results["tail_cost"], 1.0)
         self.assertEqual(results["tail_runtime"], 1.0)
         self.assertEqual(results["tail_carbon"], 1.0)
+
+    @patch(
+        "caribou.deployment_solver.deployment_metrics_calculator.deployment_metrics_calculator.DeploymentMetricsCalculator",
+        autospec=True,
+    )
+    @patch("caribou.deployment_solver.deployment_input.input_manager", autospec=True)
+    @patch.object(
+        DeploymentMetricsCalculator,
+        "calculate_workflow",
+        return_value={"cost": 2.0, "runtime": 2.0, "carbon": 2.0},
+    )
+    def test_simulation_worker(
+        self,
+        mock_metrics_calculator,
+        MockInputManager,
+        mock_calculate_workflow,
+    ):
+        mock_input_manager = MockInputManager.return_value
+        mock_input_manager.alter_carbon_setting.return_value = None
+        deployment = [0, 1, 2, 3]
+        n_iterations = 5
+        manager = Manager()
+        input_q = manager.Queue()
+        input_q.put("0")
+        input_q.put(deployment)
+        input_q.put("exit")
+        output_q = manager.Queue()
+        _simulation_worker(
+            input_manager=mock_input_manager,
+            workflow_config=MagicMock(),
+            region_indexer=MagicMock(),
+            instance_indexer=MagicMock(),
+            tail_latency_threshold=0,
+            n_iterations=n_iterations,
+            input_queue=input_q,
+            output_queue=output_q,
+        )
+        mock_input_manager.alter_carbon_setting.assert_called_once()
+        outputs = []
+        while not output_q.empty():
+            outputs.append(output_q.get())
+        self.assertEqual(len(outputs), 2)
+        self.assertEqual(outputs[0], "OK")
+        cost, runtime, carbon = outputs[1]
+        self.assertEqual(cost, [2.0] * n_iterations)
+        self.assertEqual(runtime, [2.0] * n_iterations)
+        self.assertEqual(carbon, [2.0] * n_iterations)
+
+    @patch.object(
+        SimpleDeploymentMetricsCalculator,
+        "_init_workers",
+        side_effect=mock_init_workers,
+    )
+    def test_update_for_new_hour(self, mock_init_workers):
+        self.calculator = SimpleDeploymentMetricsCalculator(
+            MagicMock(), MagicMock(), MagicMock(), MagicMock(), n_processes=1
+        )
+        self.calculator.update_data_for_new_hour("0")
+
+    @patch.object(
+        SimpleDeploymentMetricsCalculator,
+        "_init_workers",
+        side_effect=mock_init_workers,
+    )
+    def test_update_for_new_hour_parallel(self, mock_init_workers):
+        self.calculator = SimpleDeploymentMetricsCalculator(
+            MagicMock(), MagicMock(), MagicMock(), MagicMock(), n_processes=4
+        )
+        self.calculator.update_data_for_new_hour("0")
+        self.assertTrue(self.calculator._input_queue.empty())
 
 
 if __name__ == "__main__":
