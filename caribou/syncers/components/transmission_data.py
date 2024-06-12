@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any, Optional
 
 
@@ -30,7 +30,7 @@ class TransmissionData:  # pylint: disable=too-many-instance-attributes
         self.uninvoked_instance: Optional[str] = None
 
     def to_dict(self) -> dict[str, Any]:
-        sync_information: dict[str, Any] = None
+        sync_information: Optional[dict[str, Any]] = None
         if self.contains_upload_time:
             sync_information = {
                 "upload_size": self.upload_size,
@@ -46,16 +46,15 @@ class TransmissionData:  # pylint: disable=too-many-instance-attributes
             "from_instance": self.from_instance,
             "uninvoked_instance": self.uninvoked_instance,
             "to_instance": self.to_instance,
-            "from_region": f"{self.from_region['provider']}:{self.from_region['region']}" if self.from_region else None,
-            "to_region": f"{self.to_region['provider']}:{self.to_region['region']}" if self.to_region else None,
+            "from_region": self._format_region(self.from_region),
+            "to_region": self._format_region(self.to_region),
             # Info regarding if the successor was invoked
             "successor_invoked": self.successor_invoked,
             # For sync nodes with Conditional calls
             "from_direct_successor": self.from_direct_successor,
-
             # For sync nodes -> require upload data
             # "contains_upload_time": self.contains_upload_time,
-            "sync_information": sync_information
+            "sync_information": sync_information,
         }
 
         # Filter out fields that are None
@@ -104,6 +103,11 @@ class TransmissionData:  # pylint: disable=too-many-instance-attributes
         # "sync_data_response_size": self.sync_data_response_size,
         # "from_direct_successor": self.from_direct_successor,
         # "proxy_for_instance": self.proxy_for_instance,
+
+    def _format_region(self, region: Optional[dict[str, str]]) -> Optional[str]:
+        if region:
+            return f"{region['provider']}:{region['region']}"
+        return None
 
     def __str__(self) -> str:
         # return f"InvocationTransmissionData({self.taint}, {self.transmission_start_time}, {self.transmission_end_time}, {self.from_direct_successor}, {self.transmission_size}, {self.from_instance}, {self.to_instance}, {self.from_region}, {self.to_region})"  # pylint: disable=line-too-long

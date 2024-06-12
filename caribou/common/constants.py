@@ -99,7 +99,6 @@ GLOBAL_TIME_ZONE = pytz.utc
 TIME_FORMAT = "%Y-%m-%d %H:%M:%S,%f%z"
 TIME_FORMAT_DAYS = "%Y-%m-%d%z"
 
-
 # Log-Syncer parameters
 ## Forgetting factors
 FORGETTING_TIME_DAYS = 30  # 30 days
@@ -107,10 +106,9 @@ FORGETTING_NUMBER = 5000  # 5000 invocations
 KEEP_ALIVE_DATA_COUNT = 10  # Keep sample it is part of any of the 10 samples for any execution or transmission
 
 ## Grace period for the log-syncer
+## Used as lambda insights can be delayed
 BUFFER_LAMBDA_INSIGHTS_GRACE_PERIOD = 30  # 30 minutes
 
-# TODO: Implement this feature
-BUFFER_LOG_GRACE_PERIOD = 60  # In minutes, this refers to for each day how long to EXTEND the log collection period
-
-# Caribou wrapper max workers
+# Caribou Wrapper parameters
+## max workers for async invocations
 MAX_WORKERS = 4

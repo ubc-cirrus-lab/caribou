@@ -5,13 +5,18 @@ import base64
 import binascii
 import json
 import logging
-import time
 import uuid
 from concurrent.futures import Future, ThreadPoolExecutor
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any, Callable, Optional, cast
 
-from caribou.common.constants import GLOBAL_TIME_ZONE, LOG_VERSION, TIME_FORMAT, WORKFLOW_PLACEMENT_DECISION_TABLE, MAX_WORKERS
+from caribou.common.constants import (
+    GLOBAL_TIME_ZONE,
+    LOG_VERSION,
+    MAX_WORKERS,
+    TIME_FORMAT,
+    WORKFLOW_PLACEMENT_DECISION_TABLE,
+)
 from caribou.common.models.endpoints import Endpoints
 from caribou.common.models.remote_client.remote_client_factory import RemoteClientFactory
 from caribou.common.utils import get_function_source
@@ -76,7 +81,7 @@ class CustomDecoder(json.JSONDecoder):
                     self.decode_values(value)
 
 
-class CaribouWorkflow:
+class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
     """
     CaribouWorkflow class that is used to register functions as a collection of connected serverless functions.
 
@@ -89,7 +94,7 @@ class CaribouWorkflow:
     :param name: The name of the workflow.
     """
 
-    def __init__(self, name: str, version: str):  # pylint: disable=too-many-instance-attributes
+    def __init__(self, name: str, version: str):
         self.name = name
         self.version = version
         self.functions: dict[str, CaribouFunction] = {}
@@ -103,7 +108,9 @@ class CaribouWorkflow:
         self._futures: list[Future] = []
 
         # For logging
-        self._function_start_time: Optional[datetime] = None
+        ## This will be overritten by the first function that is called
+        ## Just here as a placeholder to avoid using None
+        self._function_start_time: datetime = datetime.now(GLOBAL_TIME_ZONE)
 
     def get_run_id(self) -> str:
         return self._current_workflow_placement_decision["run_id"]
@@ -154,10 +161,14 @@ class CaribouWorkflow:
             function, workflow_placement_decision
         )
 
-        def invoke_worker(invocation_start_time: datetime, json_payload: str, alternative_json_payload: Optional[str], transmission_taint: str, conditional: bool) -> None:
-            time_from_function_start: float = 0.0  # Default value (Should not be used)
-            if self._function_start_time is not None:
-                time_from_function_start = (invocation_start_time - self._function_start_time).total_seconds()
+        def invoke_worker(
+            invocation_start_time: datetime,
+            json_payload: str,
+            alternative_json_payload: Optional[str],
+            transmission_taint: str,
+            conditional: bool,
+        ) -> None:
+            time_from_function_start = (invocation_start_time - self._function_start_time).total_seconds()
 
             provider, region, identifier = self.get_successor_workflow_placement_decision(
                 successor_instance_name, workflow_placement_decision
@@ -186,7 +197,8 @@ class CaribouWorkflow:
                         f"PROVIDER ({sync_nodes_invoked_info['provider']}) and "
                         f"REGION ({sync_nodes_invoked_info['region']}) with "
                         f"INVOCATION_TIME_FROM_FUNCTION_START ({time_from_function_start}) s and "
-                        f"FINISH_TIME_FROM_INVOCATION_START ({(finish_time - invocation_start_time).total_seconds()}) s and "
+                        f"FINISH_TIME_FROM_INVOCATION_START "
+                        f"({(finish_time - invocation_start_time).total_seconds()}) s and "
                         f"CALL_START_TO_FINISH ({(finish_time - call_start_time).total_seconds()}) s"
                     )
                     self.log_for_retrieval(log_message, workflow_placement_decision["run_id"], invocation_start_time)
@@ -199,7 +211,8 @@ class CaribouWorkflow:
                     f"SYNC_DATA_RESPONSE_SIZE ({total_sync_data_response_size}) GB to "
                     f"PROVIDER ({provider}) and REGION ({region}) with "
                     f"INVOCATION_TIME_FROM_FUNCTION_START ({time_from_function_start}) s and "
-                    f"FINISH_TIME_FROM_INVOCATION_START ({(datetime.now(GLOBAL_TIME_ZONE) - invocation_start_time).total_seconds()}) s"
+                    f"FINISH_TIME_FROM_INVOCATION_START "
+                    f"({(datetime.now(GLOBAL_TIME_ZONE) - invocation_start_time).total_seconds()}) s"
                 )
                 self.log_for_retrieval(log_message, workflow_placement_decision["run_id"])
                 return
@@ -242,7 +255,8 @@ class CaribouWorkflow:
                 f"PROVIDER ({provider}) and REGION ({region}) "
                 f"SUCCESSOR_INVOKED ({successor_invoked}) at "
                 f"INVOCATION_TIME_FROM_FUNCTION_START ({time_from_function_start}) s and "
-                f"FINISH_TIME_FROM_INVOCATION_START ({(datetime.now(GLOBAL_TIME_ZONE) - invocation_start_time).total_seconds()}) s"
+                f"FINISH_TIME_FROM_INVOCATION_START "
+                f"({(datetime.now(GLOBAL_TIME_ZONE) - invocation_start_time).total_seconds()}) s"
                 f" UPLOADED_DATA_TO_SYNC_TABLE ({(upload_payload_size is not None)})"
             )
             if upload_payload_size:  # Add the upload DATA SIZE to the log message
@@ -254,12 +268,12 @@ class CaribouWorkflow:
                 )
             self.log_for_retrieval(log_message, workflow_placement_decision["run_id"], invocation_start_time)
 
-
         # Wrap the payload and add the workflow_placement decision
-        payload_wrapper: dict[str, Any] = {}
         transmission_taint = uuid.uuid4().hex
-        payload_wrapper["workflow_placement_decision"] = successor_workflow_placement_decision_dictionary
-        payload_wrapper["transmission_taint"] = transmission_taint
+        payload_wrapper: dict[str, Any] = {
+            "workflow_placement_decision": successor_workflow_placement_decision_dictionary,
+            "transmission_taint": transmission_taint,
+        }
         alternative_json_payload: Optional[str] = None
         if payload:
             # Get an version of the json payload without the "payload"
@@ -268,38 +282,48 @@ class CaribouWorkflow:
             payload_wrapper["payload"] = payload
         json_payload = json.dumps(payload_wrapper, cls=CustomEncoder)
 
-        # Log the size of the payload
-        payload_size_byte = len(json_payload.encode('utf-8'))
-        # log_message = (
-        #     f"DEBUG_MESSAGE: PAYLOAD_SIZE "
-        #     f"({payload_size_byte / (1024**3)}) GB "
-        #     f"PAYLOAD_SIZE_BYTE ({payload_size_byte}) Bytes"
-        # )
-        # self.log_for_retrieval(
-        #     log_message,
-        #     workflow_placement_decision["run_id"],
-        # )
-
         # Check the payload_size_byte size, if its too large, we need throw an error
         # We need to ensure that the payload that we send to SNS is below
-        # 262,144 bytes (https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sns/client/publish.html),
-        # For safety, we will set the limit to 250,000 bytes
-        if payload_size_byte > 250000:
+        # 262,144 bytes (256 KB),
+        # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sns/client/publish.html
+        # For safety, we will set the limit to 256,000 bytes (250 KB)
+        payload_size_byte = len(json_payload.encode("utf-8"))
+        if payload_size_byte > 256000:
+            log_message = (
+                f"DEBUG_MESSAGE: PAYLOAD_SIZE "
+                f"({payload_size_byte / (1024**3)}) GB "
+                f"PAYLOAD_SIZE_BYTE ({payload_size_byte}) Bytes"
+                f"Exceeds the limit of 256,000 bytes"
+            )
+            self.log_for_retrieval(
+                log_message,
+                workflow_placement_decision["run_id"],
+            )
+
             raise ValueError(
                 f"Payload size is too large, please reduce the size of the payload. "
                 f"Current payload size is {payload_size_byte} bytes, please limit to"
                 f"under 250,000 bytes."
-                )
+            )
 
         # Start the invocation timer AFTER the successor instance name has been determined
         # As they will also be in the critical path
         invocation_start_time = datetime.now(GLOBAL_TIME_ZONE)
         if self._thread_pool is not None and isinstance(self._thread_pool, ThreadPoolExecutor):
-            future: Future = self._thread_pool.submit(invoke_worker, invocation_start_time, json_payload, alternative_json_payload, transmission_taint, conditional)
+            future: Future = self._thread_pool.submit(
+                invoke_worker,
+                invocation_start_time,
+                json_payload,
+                alternative_json_payload,
+                transmission_taint,
+                conditional,
+            )
             self._futures.append(future)
         else:
             # Run the worker in the main thread
-            invoke_worker(invocation_start_time, json_payload, alternative_json_payload, transmission_taint, conditional)
+            invoke_worker(
+                invocation_start_time, json_payload, alternative_json_payload, transmission_taint, conditional
+            )
             log_message = (
                 f"INVOKED_SYNCHRONOUSLY: INSTANCE ({current_instance_name}) calling "
                 f"SUCCESSOR ({successor_instance_name}) were not invoked asynchronously"
@@ -832,7 +856,7 @@ class CaribouWorkflow:
                     workflow_placement_decision["run_id"],  # type: ignore
                     self._function_start_time,
                 )
-                
+
                 result: Any = None
                 try:
                     # Call the function with the payload and the caribou metadata
@@ -847,9 +871,10 @@ class CaribouWorkflow:
 
                     end_time = datetime.now(GLOBAL_TIME_ZONE)
 
+                    user_execution_time = (user_code_end_time - self._function_start_time).total_seconds()
                     log_message = (
                         f'EXECUTED: INSTANCE ({workflow_placement_decision["current_instance_name"]}) with '
-                        f"USER_EXECUTION_TIME ({(user_code_end_time - self._function_start_time).total_seconds()}) s and "
+                        f"USER_EXECUTION_TIME ({user_execution_time}) s and "
                         f"TOTAL_EXECUTION_TIME ({(end_time - self._function_start_time).total_seconds()}) s"
                     )
                     self.log_for_retrieval(
