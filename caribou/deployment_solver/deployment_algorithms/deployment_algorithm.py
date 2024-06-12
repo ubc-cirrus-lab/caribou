@@ -25,7 +25,12 @@ from caribou.deployment_solver.workflow_config import WorkflowConfig
 
 
 class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
-    def __init__(self, workflow_config: WorkflowConfig, expiry_time_delta_seconds: int = DEFAULT_MONITOR_COOLDOWN):
+    def __init__(
+        self,
+        workflow_config: WorkflowConfig,
+        expiry_time_delta_seconds: int = DEFAULT_MONITOR_COOLDOWN,
+        n_workers: int = 1,
+    ):
         self._workflow_config = workflow_config
 
         self._input_manager = InputManager(workflow_config=workflow_config)
@@ -39,10 +44,7 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
         self._input_manager.setup(self._region_indexer, self._instance_indexer)
 
         self._deployment_metrics_calculator: DeploymentMetricsCalculator = SimpleDeploymentMetricsCalculator(
-            workflow_config,
-            self._input_manager,
-            self._region_indexer,
-            self._instance_indexer,
+            workflow_config, self._input_manager, self._region_indexer, self._instance_indexer, n_processes=n_workers
         )
 
         self._home_region_index = self._region_indexer.value_to_index(self._workflow_config.home_region)
@@ -63,9 +65,7 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
         ]
 
     def run(self, hours_to_run: Optional[list[str]] = None) -> None:
-        hour_to_run_to_result: dict[str, Any] = {
-            "time_keys_to_staging_area_data": {},
-        }
+        hour_to_run_to_result: dict[str, Any] = {"time_keys_to_staging_area_data": {}, "deployment_metrics": {}}
         if hours_to_run is None:
             hours_to_run = [None]  # type: ignore
         for hour_to_run in hours_to_run:
@@ -83,6 +83,7 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
                 # For this result to be selected at all times, we set the key to "0"
                 hour_to_run = "0"
             hour_to_run_to_result["time_keys_to_staging_area_data"][hour_to_run] = formatted_deployment
+            hour_to_run_to_result["deployment_metrics"][hour_to_run] = selected_deployment[1]
 
         self._add_expiry_date_to_results(hour_to_run_to_result)
 
@@ -90,6 +91,8 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
 
     def _update_data_for_new_hour(self, hour_to_run: str) -> None:
         self._input_manager.alter_carbon_setting(hour_to_run)
+        if isinstance(self._deployment_metrics_calculator, SimpleDeploymentMetricsCalculator):
+            self._deployment_metrics_calculator.update_data_for_new_hour(hour_to_run)
         (
             self._home_deployment,  # pylint: disable=attribute-defined-outside-init
             self._home_deployment_metrics,  # pylint: disable=attribute-defined-outside-init

@@ -1,5 +1,5 @@
 import random
-from abc import ABC, abstractmethod
+from abc import ABC
 
 from caribou.common.constants import TAIL_LATENCY_THRESHOLD
 from caribou.deployment_solver.deployment_input.input_manager import InputManager
@@ -35,14 +35,13 @@ class DeploymentMetricsCalculator(ABC):
         # Get average and tail cost/carbon/runtime from Monte Carlo simulation
         return self._perform_monte_carlo_simulation(deployment)
 
-    @abstractmethod
     def _perform_monte_carlo_simulation(self, deployment: list[int]) -> dict[str, float]:
         """
         Perform a Monte Carlo simulation to get the average cost, runtime, and carbon footprint of the deployment.
         """
         raise NotImplementedError
 
-    def _calculate_workflow(self, deployment: list[int]) -> dict[str, float]:
+    def calculate_workflow(self, deployment: list[int]) -> dict[str, float]:
         total_cost = 0.0
         total_carbon = 0.0
 
