@@ -6,7 +6,7 @@ from datetime import timedelta
 from caribou.syncers.log_sync_workflow import LogSyncWorkflow
 from caribou.common.models.remote_client.remote_client import RemoteClient
 from caribou.common.models.remote_client.remote_client_factory import RemoteClientFactory
-from caribou.syncers.workflow_run_sample import WorkflowRunSample
+from caribou.syncers.components.workflow_run_sample import WorkflowRunSample
 from caribou.common.constants import (
     WORKFLOW_SUMMARY_TABLE,
     TIME_FORMAT,

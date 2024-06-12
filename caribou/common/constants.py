@@ -112,3 +112,6 @@ BUFFER_LAMBDA_INSIGHTS_GRACE_PERIOD = 30  # 30 minutes
 # Caribou Wrapper parameters
 ## max workers for async invocations
 MAX_WORKERS = 4
+
+## Orchastration transfer size limitation
+MAX_TRANSFER_SIZE = 256000  # In bytes

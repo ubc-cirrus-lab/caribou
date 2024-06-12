@@ -64,7 +64,7 @@ class TestCaribouWorkflow(unittest.TestCase):
                 },
             },
         )
-        def test_func(payload, metadata):
+        def test_func(payload):
             return payload * 2
 
         # Check if the function was registered correctly
@@ -138,7 +138,7 @@ class TestCaribouWorkflow(unittest.TestCase):
                 {"key": "example_key_3", "value": "example_value_3"},
             ],
         )
-        def test_func(payload, metadata):
+        def test_func(payload):
             return payload * 2
 
         args, _ = self.workflow.register_function.call_args
@@ -173,7 +173,7 @@ class TestCaribouWorkflow(unittest.TestCase):
         self.workflow.register_function = Mock()
 
         @self.workflow.serverless_function(name="test_func")
-        def test_func(payload: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
+        def test_func(payload: dict[str, Any]) -> dict[str, Any]:
             return payload * 2
 
         # Check if the function was registered correctly
@@ -213,7 +213,7 @@ class TestCaribouWorkflow(unittest.TestCase):
         self.workflow.register_function = Mock()
         mock_remote_client = Mock()
 
-        mock_remote_client.invoke_function = Mock(return_value=(0.0, True, 0.0, 0.0))
+        mock_remote_client.invoke_function = Mock(return_value=(0.0, 0.0, True, 0.0, 0.0))
 
         mock_uuid = Mock()
         mock_uuid.hex = "37a5262"
@@ -223,7 +223,7 @@ class TestCaribouWorkflow(unittest.TestCase):
             with patch("uuid.uuid4", return_value=mock_uuid):
 
                 @self.workflow.serverless_function(name="test_func")
-                def test_func(payload: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
+                def test_func(payload: dict[str, Any]) -> dict[str, Any]:
                     # Call invoke_serverless_function from within test_func
                     self.workflow.invoke_serverless_function(test_func, payload)
 
@@ -294,7 +294,7 @@ class TestCaribouWorkflow(unittest.TestCase):
         self.workflow.register_function = Mock()
         mock_remote_client = Mock()
 
-        mock_remote_client.invoke_function = Mock(return_value=(0.0, True, 0.0, 0.0))
+        mock_remote_client.invoke_function = Mock(return_value=(0.0, 0.0, True, 0.0, 0.0))
 
         mock_uuid = Mock()
         mock_uuid.hex = "37a5262"
@@ -304,7 +304,7 @@ class TestCaribouWorkflow(unittest.TestCase):
             with patch("uuid.uuid4", return_value=mock_uuid):
 
                 @self.workflow.serverless_function(name="test_func")
-                def test_func(payload: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
+                def test_func(payload: dict[str, Any]) -> dict[str, Any]:
                     # Call invoke_serverless_function from within test_func
                     self.workflow.invoke_serverless_function(sync_func, payload)
 
@@ -391,7 +391,7 @@ class TestCaribouWorkflow(unittest.TestCase):
         self.workflow.register_function = Mock()
         mock_remote_client = Mock()
 
-        mock_remote_client.invoke_function = Mock(return_value=(0.0, True, 0.0, 0.0))
+        mock_remote_client.invoke_function = Mock(return_value=(0.0, 0.0, True, 0.0, 0.0))
 
         mock_uuid = Mock()
         mock_uuid.hex = "37a5262"
@@ -401,7 +401,7 @@ class TestCaribouWorkflow(unittest.TestCase):
             with patch("uuid.uuid4", return_value=mock_uuid):
 
                 @self.workflow.serverless_function(name="test_func")
-                def test_func(payload: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
+                def test_func(payload: dict[str, Any]) -> dict[str, Any]:
                     # Call invoke_serverless_function from within test_func
                     self.workflow.invoke_serverless_function(sync_func, payload)
 
@@ -416,7 +416,7 @@ class TestCaribouWorkflow(unittest.TestCase):
                 self.workflow.functions["test_func"] = registered_func
 
                 @self.workflow.serverless_function(name="test_func2")
-                def test_func2(payload: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
+                def test_func2(payload: dict[str, Any]) -> dict[str, Any]:
                     # Call invoke_serverless_function from within test_func
                     self.workflow.invoke_serverless_function(sync_func, payload)
 
@@ -431,7 +431,7 @@ class TestCaribouWorkflow(unittest.TestCase):
                 self.workflow.functions["test_func2"] = registered_func
 
                 @self.workflow.serverless_function(name="sync_func")
-                def sync_func(payload: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
+                def sync_func(payload: dict[str, Any]) -> dict[str, Any]:
                     return "Some response"
 
                 # Check if the function was registered correctly
@@ -520,7 +520,7 @@ class TestCaribouWorkflow(unittest.TestCase):
         self.workflow.register_function = Mock()
         mock_remote_client = Mock()
 
-        mock_remote_client.invoke_function = Mock(return_value=(0.0, True, 0.0, 0.0))
+        mock_remote_client.invoke_function = Mock(return_value=(0.0, 0.0, True, 0.0, 0.0))
 
         mock_uuid = Mock()
         mock_uuid.hex = "37a5262"
@@ -530,7 +530,7 @@ class TestCaribouWorkflow(unittest.TestCase):
             with patch("uuid.uuid4", return_value=mock_uuid):
 
                 @self.workflow.serverless_function(name="test_func")
-                def test_func(event: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
+                def test_func(event: dict[str, Any]) -> dict[str, Any]:
                     # Call invoke_serverless_function from within test_func
                     self.workflow.invoke_serverless_function(test_func)
 
@@ -599,12 +599,12 @@ class TestCaribouWorkflow(unittest.TestCase):
     def test_invoke_serverless_function_conditional_false(self):
         self.workflow.register_function = Mock()
 
-        self.workflow._inform_sync_node_of_conditional_non_execution = Mock()
+        self.workflow._inform_sync_node_of_conditional_non_execution = Mock(return_value=(0.0, 0.0, []))
 
         self.workflow.get_successor_workflow_placement_decision = Mock(return_value=("provider1", "region", None))
 
         @self.workflow.serverless_function(name="test_func")
-        def test_func(payload: str, metadata: dict[str, Any]) -> dict[str, Any]:
+        def test_func(payload: str) -> dict[str, Any]:
             self.workflow.invoke_serverless_function(test_func, payload, False)
 
         # Check if the function was registered correctly
@@ -688,7 +688,7 @@ class TestCaribouWorkflow(unittest.TestCase):
         self.workflow.register_function = Mock()
         mock_remote_client = Mock()
 
-        mock_remote_client.invoke_function = Mock(return_value=(0.0, True, 0.0, 0.0))
+        mock_remote_client.invoke_function = Mock(return_value=(0.0, 0.0, True, 0.0, 0.0))
 
         mock_uuid = Mock()
         mock_uuid.hex = "37a5262"
@@ -698,7 +698,7 @@ class TestCaribouWorkflow(unittest.TestCase):
             with patch("uuid.uuid4", return_value=mock_uuid):
 
                 @self.workflow.serverless_function(name="test_func")
-                def test_func(payload: str, metadata: dict[str, Any]) -> dict[str, Any]:
+                def test_func(payload: str) -> dict[str, Any]:
                     # Call invoke_serverless_function from within test_func
                     self.workflow.invoke_serverless_function(test_func, payload)
 
@@ -1067,6 +1067,7 @@ class TestCaribouWorkflow(unittest.TestCase):
         ) as mock_factory_class:
             mock_factory_class.get_remote_client("provider1", "region1").set_predecessor_reached.return_value = (
                 [True],
+                0.0,
                 0.0,
             )
             mock_factory_class.get_remote_client("provider1", "region1").invoke_function.return_value = None

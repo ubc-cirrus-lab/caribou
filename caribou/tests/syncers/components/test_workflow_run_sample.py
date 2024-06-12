@@ -1,7 +1,7 @@
 import unittest
 from datetime import datetime, timedelta
-from caribou.syncers.workflow_run_sample import WorkflowRunSample
-from caribou.syncers.transmission_data import TransmissionData
+from caribou.syncers.components.workflow_run_sample import WorkflowRunSample
+from caribou.syncers.components.transmission_data import TransmissionData
 
 
 class TestWorkflowRunSample(unittest.TestCase):
@@ -55,16 +55,47 @@ class TestWorkflowRunSample(unittest.TestCase):
                         "transmission_latency": 3600.0,
                         "from_instance": "instance1",
                         "to_instance": "instance2",
-                        "from_region": {"provider": "provider1", "region": "region1"},
-                        "to_region": {"provider": "provider2", "region": "region2"},
+                        "from_region": "provider1:region1",
+                        "to_region": "provider2:region2",
                     }
                 ],
+                "non_executions": {"instance1": {"instance2": 1}},
                 "start_hop_latency": 0.2,
                 "start_hop_data_transfer_size": 1.0,
                 "start_hop_destination": {"provider": "provider1", "region": "region1"},
-                "non_executions": {"instance1": {"instance2": 1}},
+
             },
         )
+        result = (
+            datetime(2022, 1, 1, 0, 0),
+            {'run_id': 'run1',
+             'start_time': '2022-01-01 00:00:00,000000',
+             'runtime': 7200.0,
+             'execution_data': [],
+             'transmission_data':
+             [
+                 {'transmission_size': 0.0, 
+                  'transmission_latency': 3600.0, 
+                  'from_instance': 'instance1', 
+                  'to_instance': 'instance2', 
+                  'from_region': 'provider1:region1', 
+                  'to_region': ''}
+                  ],
+                  'non_executions': {'instance1': {'instance2': 1}}, 
+                  'start_hop_info': {
+                      'instance_name': None, 
+                      'destination': 'provider1:region1', 
+                      'data_transfer_size': 1.0, 
+                      'latency': 0.2, 
+                      'workflow_placement_decision':{
+                            'data_size': None,
+                            'consumed_read_capacity': None
+                        }
+                    },
+                    'unique_cpu_models': []
+            })
+
+        print(sample.to_dict())
         self.assertEqual(sample.to_dict(), expected_result)
 
 

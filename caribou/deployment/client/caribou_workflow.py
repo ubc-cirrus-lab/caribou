@@ -16,6 +16,7 @@ from caribou.common.constants import (
     MAX_WORKERS,
     TIME_FORMAT,
     WORKFLOW_PLACEMENT_DECISION_TABLE,
+    MAX_TRANSFER_SIZE,
 )
 from caribou.common.models.endpoints import Endpoints
 from caribou.common.models.remote_client.remote_client_factory import RemoteClientFactory
@@ -288,12 +289,12 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
         # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sns/client/publish.html
         # For safety, we will set the limit to 256,000 bytes (250 KB)
         payload_size_byte = len(json_payload.encode("utf-8"))
-        if payload_size_byte > 256000:
+        if payload_size_byte > MAX_TRANSFER_SIZE:
             log_message = (
                 f"DEBUG_MESSAGE: PAYLOAD_SIZE "
                 f"({payload_size_byte / (1024**3)}) GB "
                 f"PAYLOAD_SIZE_BYTE ({payload_size_byte}) Bytes"
-                f"Exceeds the limit of 256,000 bytes"
+                f"Exceeds the limit of {MAX_TRANSFER_SIZE} bytes"
             )
             self.log_for_retrieval(
                 log_message,
