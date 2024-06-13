@@ -12,11 +12,11 @@ from caribou.common.constants import (
     TIME_FORMAT,
     TIME_FORMAT_DAYS,
     WORKFLOW_SUMMARY_TABLE,
+    BUFFER_LAMBDA_INSIGHTS_GRACE_PERIOD
 )
 from caribou.common.models.remote_client.remote_client import RemoteClient
 from caribou.common.models.remote_client.remote_client_factory import RemoteClientFactory
 from caribou.syncers.components.workflow_run_sample import WorkflowRunSample
-
 
 class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
     def __init__(
@@ -67,8 +67,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         data_for_upload: str = self._prepare_data_for_upload(self._previous_data)
         self._upload_data(data_for_upload)
 
-        # # # Script used for debugging
-        # print(json.dumps(json.loads(data_for_upload), indent=4))
+        # print(json.dumps(json.loads(data_for_upload)["logs"], indent=4))
 
     def _upload_data(self, data_for_upload: str) -> None:
         self._workflow_summary_client.update_value_in_table(
@@ -96,10 +95,11 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
             return
 
         # Lambda insight logs may not available at the same time as the lambda logs
-        # so we need to fetch logs from a wider time range (30 minutes before and after the lambda logs,
-        # could be recalibrated if needed)
+        # so we need to fetch logs from a wider time range
         lambda_insights_logs = remote_client.get_insights_logs_between(
-            functions_instance, time_from - timedelta(minutes=30), time_to + timedelta(minutes=30)
+            functions_instance,
+            time_from - timedelta(minutes=BUFFER_LAMBDA_INSIGHTS_GRACE_PERIOD),
+            time_to + timedelta(minutes=BUFFER_LAMBDA_INSIGHTS_GRACE_PERIOD)
         )
         self._setup_lambda_insights(lambda_insights_logs)
 
@@ -137,11 +137,6 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
                         # For duration and cpu_total_time, we convert from ms to s
                         if entry in ["duration", "cpu_total_time"]:
                             log_dict[entry] = log_dict[entry] / 1000
-
-                        # For total_network, we convert from bytes to GB
-                        # We do not convert "rx_bytes" and "tx_bytes"
-                        if entry in ["total_network"]:
-                            log_dict[entry] = log_dict[entry] / (1024**3)  # Convert bytes to GB
 
                         if request_id not in self._insights_logs:
                             self._insights_logs[request_id] = {}
@@ -315,7 +310,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
 
         execution_data = workflow_run_sample.get_execution_data(function_executed, request_id)
         execution_data.is_entry_point = True
-        execution_data.start_hop_payload_size = data_transfer_size_fl
+        execution_data.input_payload_size += data_transfer_size_fl
 
     def _extract_invoked_logs(
         self,
@@ -445,6 +440,12 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         successor_data.invocation_time_from_function_start = invocation_time_from_function_start
         successor_data.finish_time_from_function_start = finish_time_from_invocation_start
         successor_data.destination_region = {"provider": destination_provider, "region": destination_region}
+        successor_data.payload_data_size = payload_data_transfer_size
+
+        # Handle the recipient execution data
+        # Payload data size is the data transfer size
+        recipient_execution_data = workflow_run_sample.get_execution_data(callee_function, None)
+        recipient_execution_data.input_payload_size += payload_data_transfer_size
 
         # Handle task type
         if not uploaded_data_to_sync_table:
@@ -484,14 +485,13 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
             if not isinstance(upload_rtt, float):
                 raise ValueError(f"Invalid upload_rtt: {upload_rtt}")
 
-            successor_data.payload_data_size = payload_data_transfer_size
             successor_data.upload_data_size = upload_data_size
             successor_data.upload_rtt = upload_rtt
             successor_data.consumed_write_capacity = consumed_write_capacity
             successor_data.sync_data_response_size = sync_data_response_size
 
             # Additionally, we need to update the transmission data
-            transmission_data.contains_upload_time = uploaded_data_to_sync_table
+            transmission_data.contains_sync_information = uploaded_data_to_sync_table
             transmission_data.upload_size = upload_data_size
             transmission_data.consumed_write_capacity = consumed_write_capacity
             transmission_data.sync_data_response_size = sync_data_response_size
@@ -530,6 +530,18 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         sync_node_instance = self._extract_from_string(log_entry, r"SYNC_NODE \((.*?)\)")
         if not isinstance(sync_node_instance, str):
             raise ValueError(f"Invalid callee_function: {sync_node_instance}")
+
+        consumed_write_capacity = self._extract_from_string(log_entry, r"CONSUMED_WRITE_CAPACITY \((.*?)\)")
+        if consumed_write_capacity:
+            consumed_write_capacity = float(consumed_write_capacity)  # type: ignore
+        if not isinstance(consumed_write_capacity, float):
+            raise ValueError(f"Invalid consumed_write_capacity: {consumed_write_capacity}")
+
+        sync_data_response_size = self._extract_from_string(log_entry, r"SYNC_DATA_RESPONSE_SIZE \((.*?)\)")
+        if sync_data_response_size:
+            sync_data_response_size = float(sync_data_response_size)  # type: ignore
+        if not isinstance(sync_data_response_size, float):
+            raise ValueError(f"Invalid sync_data_response_size: {sync_data_response_size}")
 
         data_transfer_size = self._extract_from_string(log_entry, r"PAYLOAD_SIZE \((.*?)\)")
         if data_transfer_size:
@@ -576,6 +588,9 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         transmission_data.payload_transmission_size = data_transfer_size
         transmission_data.successor_invoked = True
         transmission_data.from_direct_successor = False
+        transmission_data.contains_sync_information = True
+        transmission_data.consumed_write_capacity = consumed_write_capacity
+        transmission_data.sync_data_response_size = sync_data_response_size
 
         ## Special updates for sync nodes (Non-Direct calls)
         transmission_data.uninvoked_instance = successor_function
@@ -731,7 +746,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
 
         self._fill_up_collected_logs(collected_logs, previous_data)
 
-        workflow_runtime_samples: list[float] = [collected_logs["runtime"] for collected_logs in collected_logs]
+        workflow_runtime_samples: list[float] = [collected_logs["runtime_s"] for collected_logs in collected_logs]
 
         data_to_upload = {
             "daily_invocation_counts": daily_invocation_counts,

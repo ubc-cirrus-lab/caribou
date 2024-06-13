@@ -69,17 +69,15 @@ class ExecutionToSuccessorData:  # pylint: disable=too-many-instance-attributes
     def to_dict(self) -> dict[str, Any]:
         # Only return the fields that are not None
         result = {
-            "successor_instance_name": self.successor_instance_name,
             "task_type": self.task_type,
-            "invocation_time_from_function_start": self.invocation_time_from_function_start,
+            "invocation_time_from_function_start_s": self.invocation_time_from_function_start,
             # "finish_time_from_function_start": self.finish_time_from_function_start,
-            # "invocation_data_size": self.invocation_data_size,
+            # "payload_data_size": self.payload_data_size,
             # "upload_data_size": self.upload_data_size,
-            # "upload_rtt": self.upload_rtt,
             # "consumed_write_capacity": self.consumed_write_capacity,
             # "sync_data_response_size": self.sync_data_response_size,
-            "destination_region": self._format_region(self.destination_region),
-            "invoking_sync_node_data_output": self.invoking_sync_node_data_output,
+            # "destination_region": self._format_region(self.destination_region),
+            # "invoking_sync_node_data_output": self.invoking_sync_node_data_output,
         }
 
         # Filter out fields that are None
@@ -87,7 +85,7 @@ class ExecutionToSuccessorData:  # pylint: disable=too-many-instance-attributes
 
         return filtered_result
 
-    def _format_region(self, region: Optional[dict[str, str]]) -> Optional[str]:
-        if region:
-            return f"{region['provider']}:{region['region']}"
-        return None
+    # def _format_region(self, region: Optional[dict[str, str]]) -> Optional[str]:
+    #     if region:
+    #         return f"{region['provider']}:{region['region']}"
+    #     return None

@@ -9,8 +9,9 @@ class ExecutionData:  # pylint: disable=too-many-instance-attributes
 
         self.is_entry_point: bool = False
 
+        # Input payload size, including but not limited to
         # Start hop input size (data input)
-        self.start_hop_payload_size: Optional[float] = None
+        self.input_payload_size: float = 0.0
 
         self.request_id: Optional[str] = None
         self.cpu_model: Optional[str] = None
@@ -61,8 +62,8 @@ class ExecutionData:  # pylint: disable=too-many-instance-attributes
     def _get_total_input_data_size(self) -> float:
         total_input_data_size = 0.0
 
-        if self.start_hop_payload_size:
-            total_input_data_size += self.start_hop_payload_size
+        if self.input_payload_size:
+            total_input_data_size += self.input_payload_size
 
         if self.download_size:
             total_input_data_size += self.download_size
@@ -73,28 +74,14 @@ class ExecutionData:  # pylint: disable=too-many-instance-attributes
         return total_input_data_size
 
     @property
-    def input_data_transfer_during_execution(self) -> float:
-        if self.lambda_insights is None:
-            return 0.0
-
-        insights_total_recieved_data = self.lambda_insights.get("rx_bytes", 0.0) / (1024**3)  # Convert bytes to GB
-        other_recieved_data = max(0.0, insights_total_recieved_data - self._get_total_input_data_size())
-
-        return other_recieved_data
-
-    @property
-    def output_data_transfer_during_execution(self) -> float:
-        if self.lambda_insights is None:
-            return 0.0
-
-        insights_total_send_data = self.lambda_insights.get("tx_bytes", 0.0) / (1024**3)  # Convert bytes to GB
-        other_send_data = max(0.0, insights_total_send_data - self._get_total_output_data_size())
-
-        return other_send_data
-
-    @property
     def data_transfer_during_execution(self) -> float:
-        return self.input_data_transfer_during_execution + self.output_data_transfer_during_execution
+        if self.lambda_insights is None:
+            return 0.0
+
+        insights_total_network_transfer = self.lambda_insights.get("total_network", 0.0) / (1024**3)  # Convert bytes to GB
+        data_transfer_during_execution = max(0.0, insights_total_network_transfer - self._get_total_input_data_size() - self._get_total_output_data_size())
+
+        return data_transfer_during_execution
 
     @property
     def longest_duration(self) -> float:
@@ -154,42 +141,43 @@ class ExecutionData:  # pylint: disable=too-many-instance-attributes
         )
 
     def to_dict(self) -> dict[str, Any]:
-        download_information: Optional[dict[str, Any]] = None
-        if self.download_size is not None:
-            download_information = {
-                "download_size": self.download_size,
-                "download_time": self.download_time,
-                "consumed_read_capacity": self.consumed_read_capacity,
-            }
+        # download_information: Optional[dict[str, Any]] = None
+        # if self.download_size is not None:
+        #     download_information = {
+        #         "download_size": self.download_size,
+        #         "download_time": self.download_time,
+        #         "consumed_read_capacity": self.consumed_read_capacity,
+        #     }
 
-        relevant_insights: Optional[dict[str, Any]] = None
-        if self.lambda_insights is not None:
-            relevant_insights = {
-                "cpu_total_time": self.lambda_insights.get("cpu_total_time", None),
-                "duration": self.lambda_insights.get("duration", None),
-                "total_memory": self.lambda_insights.get("total_memory", None),
-            }
+        # relevant_insights: Optional[dict[str, Any]] = None
+        # if self.lambda_insights is not None:
+        #     relevant_insights = {
+        #         "cpu_total_time": self.lambda_insights.get("cpu_total_time", None),
+        #         "duration": self.lambda_insights.get("duration", None),
+        #         "total_memory": self.lambda_insights.get("total_memory", None),
+        #         "total_network": self.lambda_insights.get("total_memory", None) / (1024**3), # Convert bytes to GB
+        #     }
 
         # Only return the fields that are not None
         result = {
             "instance_name": self.instance_name,
-            # "is_entry_point": self.is_entry_point,
+            # "input_payload_size": self.input_payload_size,
             # "request_id": self.request_id,
-            "user_code_duration": self.user_execution_duration,
-            "duration": self.longest_duration,
+            # "user_code_duration": self.user_execution_duration,
+            "duration_s": self.longest_duration,
             "cpu_model": self.cpu_model,
             # "execution_duration": self.execution_duration,
             # "reported_duration": self.reported_duration,
             "provider_region": self._format_region(self.provider_region),
-            "download_information": download_information,
-            # "other_recieved_data": self.other_recieved_data, # Can be commented out
-            # "other_send_data": self.other_send_data, # Can be commented out
-            "data_transfer_during_execution": self.data_transfer_during_execution,
+            # "download_information": download_information,
+            # "total_accounted_input_data_size": self._get_total_input_data_size(),
+            # "total_accounted_output_data_size": self._get_total_output_data_size(),
+            "data_transfer_during_execution_gb": self.data_transfer_during_execution,
             # "total_consumed_write_capacity": self.total_consumed_write_capacity,
             "cpu_utilization": self.cpu_utilization,
             # "lambda_insights": self.lambda_insights,
-            "relevant_insights": relevant_insights,
-            "successor_data": {k: v.to_dict() for k, v in self.successor_data.items()},  # Can be commented out
+            # "relevant_insights": relevant_insights,
+            "successor_data": {k: v.to_dict() for k, v in self.successor_data.items()},
         }
 
         # Filter out fields that are None

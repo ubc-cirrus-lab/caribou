@@ -14,9 +14,9 @@ class TransmissionData:  # pylint: disable=too-many-instance-attributes
         self.from_region: Optional[dict[str, str]] = None
         self.to_region: Optional[dict[str, str]] = None
 
-        # Denots if the time includes a upload time
-        # This is only for sync node successors
-        self.contains_upload_time: bool = False
+        # Denotes if it contains sync information
+        # This is only for sync node ancestors
+        self.contains_sync_information: bool = False
 
         self.upload_size: Optional[float] = None
         self.upload_rtt: Optional[float] = None
@@ -31,18 +31,20 @@ class TransmissionData:  # pylint: disable=too-many-instance-attributes
 
     def to_dict(self) -> dict[str, Any]:
         sync_information: Optional[dict[str, Any]] = None
-        if self.contains_upload_time:
+        if self.contains_sync_information:
             sync_information = {
-                "upload_size": self.upload_size,
-                # "upload_rtt": self.upload_rtt,
+                "upload_size_gb": self.upload_size,
                 "consumed_write_capacity": self.consumed_write_capacity,
-                "sync_data_response_size": self.sync_data_response_size,
+                "sync_data_response_size_gb": self.sync_data_response_size,
             }
+
+            # Filter out fields that are None
+            sync_information = {key: value for key, value in sync_information.items() if value is not None}
 
         # Only return the fields that are not None
         result = {
-            "transmission_size": self.payload_transmission_size,
-            "transmission_latency": self.transmission_latency,
+            "transmission_size_gb": self.payload_transmission_size,
+            "transmission_latency_s": self.transmission_latency,
             "from_instance": self.from_instance,
             "uninvoked_instance": self.uninvoked_instance,
             "to_instance": self.to_instance,
@@ -65,11 +67,6 @@ class TransmissionData:  # pylint: disable=too-many-instance-attributes
     @property
     def transmission_latency(self) -> Optional[float]:
         if not self.transmission_start_time or not self.transmission_end_time:
-            # TODO: Bring back
-            # raise ValueError(
-            #     "transmission_start_time or transmission_end_time is not set, "
-            #     "this should not happen, was is_completed called?"
-            # )
             return None
         return (self.transmission_end_time - self.transmission_start_time).total_seconds()
 
@@ -114,7 +111,7 @@ class TransmissionData:  # pylint: disable=too-many-instance-attributes
         return (
             f"InvocationTransmissionData({self.taint}, {self.transmission_start_time}, "
             f"{self.transmission_end_time}, {self.from_direct_successor}, {self.payload_transmission_size}, "
-            f"{self.from_instance}, {self.to_instance}, {self.from_region}, {self.to_region}, {self.contains_upload_time}, "
+            f"{self.from_instance}, {self.to_instance}, {self.from_region}, {self.to_region}, {self.contains_sync_information}, "
             f"{self.upload_size}, {self.upload_rtt}, {self.consumed_write_capacity}, "
             f"{self.sync_data_response_size}, {self.from_direct_successor}, {self.uninvoked_instance})"
         )
