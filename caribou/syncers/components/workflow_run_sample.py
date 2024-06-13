@@ -51,13 +51,14 @@ class WorkflowRunSample:  # pylint: disable=too-many-instance-attributes
             self.transmission_data[taint] = TransmissionData(taint)
         return self.transmission_data[taint]
 
-    def get_execution_data(self, instance_name: str, request_id: str) -> ExecutionData:
+    def get_execution_data(self, instance_name: str, request_id: Optional[str]) -> ExecutionData:
         # Add the request ID to the encountered request IDs
         # This is to blacklist runs that have duplicate invocations
         # As they distort the data.
-        if instance_name not in self.encountered_instance_request_ids:
-            self.encountered_instance_request_ids[instance_name] = set()
-        self.encountered_instance_request_ids[instance_name].add(request_id)
+        if request_id is not None:
+            if instance_name not in self.encountered_instance_request_ids:
+                self.encountered_instance_request_ids[instance_name] = set()
+            self.encountered_instance_request_ids[instance_name].add(request_id)
 
         if instance_name not in self.execution_data:
             self.execution_data[instance_name] = ExecutionData(instance_name)
@@ -109,17 +110,16 @@ class WorkflowRunSample:  # pylint: disable=too-many-instance-attributes
             {
                 "run_id": self.run_id,
                 "start_time": self.log_start_time.strftime(TIME_FORMAT),
-                "runtime": self.duration.total_seconds(),
+                "runtime_s": self.duration.total_seconds(),
                 "execution_data": self._get_formatted_execution_data(),
                 "transmission_data": self._get_formatted_invocation_transmission_data(),
                 "non_executions": self.non_executions,
                 "start_hop_info": {
-                    "instance_name": self.start_hop_instance_name,
                     "destination": self._format_region(self.start_hop_destination),
-                    "data_transfer_size": self.start_hop_data_transfer_size,
-                    "latency": self.start_hop_latency,
+                    "data_transfer_size_gb": self.start_hop_data_transfer_size,
+                    "latency_s": self.start_hop_latency,
                     "workflow_placement_decision": {
-                        "data_size": self.start_hop_wpd_data_size,
+                        "data_size_gb": self.start_hop_wpd_data_size,
                         "consumed_read_capacity": self.start_hop_wpd_consumed_read_capacity,
                     },
                 },

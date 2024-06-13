@@ -44,13 +44,16 @@ class WorkflowRetriever(DataRetriever):
         }
 
     def _construct_summaries(self, logs: list[dict[str, Any]]) -> tuple[dict[str, Any], dict[str, Any], list[float]]:
-        start_hop_summary: dict[str, Any] = {}
+        start_hop_summary: dict[str, Any] = {
+            "workflow_placement_decision_size_gb": [],
+            "transfer_size_gb_to_transfer_latencies_s": {},
+        }
         instance_summary: dict[str, Any] = {}
         runtime_samples: list[float] = []
 
         for log in logs:
             # Add to sample runtime
-            workflow_runtime = log.get("runtime", None)
+            workflow_runtime = log.get("runtime_s", None)
             if workflow_runtime is not None:
                 runtime_samples.append(workflow_runtime)
 
@@ -60,31 +63,40 @@ class WorkflowRetriever(DataRetriever):
             # Add to instance summary
             self._extend_instance_summary(instance_summary, log)
 
-        # Perform post processing
-        self._handle_missing_region_to_region_transmission_data(instance_summary)
-        self._calculate_invocation_probability(instance_summary)
+        # Perform post processing on start hop summary
+        self._reorganize_start_hop_summary(start_hop_summary)
+
+        # Perform post processing on instance summary
         self._reorganize_instance_summary(instance_summary)
 
         return start_hop_summary, instance_summary, runtime_samples
 
     def _extend_start_hop_summary(self, start_hop_summary: dict[str, Any], log: dict[str, Any]) -> None:
+        start_hop_size_latency_summary = start_hop_summary["transfer_size_gb_to_transfer_latencies_s"]
         start_hop_log: dict[str, Any] = log.get("start_hop_info", None)
         if start_hop_log:
             start_hop_destination = start_hop_log.get("destination", None)
             if start_hop_destination:
-                if start_hop_destination not in start_hop_summary:
-                    start_hop_summary[start_hop_destination] = {}
+                if start_hop_destination not in start_hop_size_latency_summary:
+                    start_hop_size_latency_summary[start_hop_destination] = {}
 
-                start_hop_data_transfer_size = float(start_hop_log.get("data_transfer_size", 0.0))
+                start_hop_data_transfer_size = float(start_hop_log.get("data_transfer_size_gb", 0.0))
 
                 # Round start hop data transfer size to nearest 1 KB
                 start_hop_data_transfer_size = self._round_to_kb(start_hop_data_transfer_size, 1)
 
-                if start_hop_data_transfer_size not in start_hop_summary[start_hop_destination]:
-                    start_hop_summary[start_hop_destination][start_hop_data_transfer_size] = []
-                start_hop_latency = start_hop_log.get("latency", None)
-                if start_hop_latency is not None:
-                    start_hop_summary[start_hop_destination][start_hop_data_transfer_size].append(start_hop_latency)
+                if start_hop_data_transfer_size not in start_hop_size_latency_summary[start_hop_destination]:
+                    start_hop_size_latency_summary[start_hop_destination][start_hop_data_transfer_size] = []
+                start_hop_latency = start_hop_log.get("latency_s", None)
+                if start_hop_latency is not None and start_hop_latency > 0.0:
+                    start_hop_size_latency_summary[start_hop_destination][start_hop_data_transfer_size].append(start_hop_latency)
+
+            # Add workflow_placement_decision size to the summary
+            workflow_placement_decision_size = start_hop_log.get("workflow_placement_decision", {}).get("data_size_gb", None)
+            if workflow_placement_decision_size is not None:
+                # Round to nearest 1 KB
+                workflow_placement_decision_size = self._round_to_kb(workflow_placement_decision_size, 1)
+                start_hop_summary["workflow_placement_decision_size_gb"].append(workflow_placement_decision_size)
 
     def _extend_instance_summary(  # pylint: disable=too-many-branches
         self, instance_summary: dict[str, Any], log: dict[str, Any]
@@ -107,8 +119,8 @@ class WorkflowRetriever(DataRetriever):
                 instance_summary[instance]["invocations"] = 0
             if "cpu_utilization" not in instance_summary[instance]:
                 instance_summary[instance]["cpu_utilization"] = []
-            if "has_download" not in instance_summary[instance]:
-                instance_summary[instance]["has_download"] = False
+            # if "has_download" not in instance_summary[instance]:
+            #     instance_summary[instance]["has_download"] = False
             if "executions" not in instance_summary[instance]:
                 instance_summary[instance]["executions"] = {
                     "at_region": {},
@@ -124,13 +136,13 @@ class WorkflowRetriever(DataRetriever):
             instance_summary[instance]["cpu_utilization"].append(execution_information["cpu_utilization"])
 
             # Process execution data
-            download_size = execution_information.get("download_information", {}).get("download_size", 0.0)
-            if download_size > 0.0:
-                instance_summary[instance]["has_download"] = True
+            # download_size = execution_information.get("download_information", {}).get("download_size", 0.0)
+            # if download_size > 0.0:
+            #     instance_summary[instance]["has_download"] = True
             execution_data = {
-                "duration": execution_information["duration"],
-                "data_transfer_during_execution": execution_information["data_transfer_during_execution"],
-                "download_size": download_size,
+                "duration_s": execution_information["duration_s"],
+                "data_transfer_during_execution_gb": execution_information["data_transfer_during_execution_gb"],
+                # "download_size": download_size,
                 "successor_invocations": {},
             }
 
@@ -138,81 +150,11 @@ class WorkflowRetriever(DataRetriever):
             if successor_data is not None:
                 for successor, successor_info in successor_data.items():
                     execution_data["successor_invocations"][successor] = {
-                        "invocation_time_from_function_start": successor_info["invocation_time_from_function_start"],
+                        "invocation_time_from_function_start_s": successor_info["invocation_time_from_function_start_s"],
                     }
                     instance_summary[instance]["executions"]["successor_instances"].add(successor)
 
             instance_summary[instance]["executions"]["at_region"][provider_region].append(execution_data)
-
-    def _reorganize_instance_summary(self, instance_summary: dict[str, Any]) -> None:
-        for instance_val in instance_summary.values():
-            # Handle the cpu utilization
-            cpu_utilization = instance_val.get("cpu_utilization", [])
-            if cpu_utilization:
-                # Get the average cpu utilization but ensure
-                # that if value > 1, set to 1, and if value < 0, set to 0
-                cpu_utilization = [min(1.0, max(0.0, cpu)) for cpu in cpu_utilization]
-                instance_val["cpu_utilization"] = sum(cpu_utilization) / len(cpu_utilization)
-
-            # Retrieve the has download flag and remove it from the dictionary
-            has_download = instance_val.get("has_download", False)
-            del instance_val["has_download"]
-            
-            # Handle the execution data
-            execution_data = instance_val.get("executions", {})
-            if execution_data:
-                # Get list of all successor instances
-                successor_instances = list(instance_val["executions"]["successor_instances"])
-                # Now remove the successor instances from the dictionary
-                del instance_val["executions"]["successor_instances"]
-
-                # Get translation of successor instances
-                # Basically index 0-1 is reserved, then every other instance is assigned a new index
-                index_translation = {
-                    "data_transfer_during_execution": 0,
-                }
-                # If its a sync node and has download, then download size is also a feature
-                if has_download:
-                    index_translation["download_size"] = 1
-
-                for index, successor_instance in enumerate(successor_instances):
-                    index_translation[successor_instance] = index + len(index_translation)
-
-                # Add the index translation to the instance_val
-                instance_val["executions"]["index_translation"] = index_translation
-
-                # Now translate the at_region data to be in a list of the
-                # form with values stored in the order of index_translation
-                for region, execution_data in instance_val["executions"]["at_region"].items():
-                    durations = []
-                    duration_to_auxiliary_data = {}
-
-                    for execution in execution_data:
-                        duration = execution["duration"]
-                        durations.append(duration)
-
-                        # Round the duration to the nearest 10 ms
-                        duration = self._round_to_ms(duration, 10)
-                        
-                        # Make new auxiliary data if not present
-                        if duration not in duration_to_auxiliary_data:
-                            duration_to_auxiliary_data[duration] = []
-
-                        new_execution = [None] * len(index_translation)
-                        new_execution[0] = execution["data_transfer_during_execution"]
-                        if has_download:
-                            new_execution[1] = execution.get("download_size", 0.0)
-                        for successor, successor_data in execution["successor_invocations"].items():
-                            new_execution[index_translation[successor]] = successor_data[
-                                "invocation_time_from_function_start"
-                            ]
-
-                        duration_to_auxiliary_data[duration].append(new_execution)
-
-                    instance_val["executions"]["at_region"][region] = {
-                        "durations": durations,
-                        "auxiliary_data": duration_to_auxiliary_data,
-                    }
 
     def _handle_region_to_region_transmission(self, log: dict[str, Any], instance_summary: dict[str, Any]) -> None:
         for data in log["transmission_data"]:
@@ -222,21 +164,6 @@ class WorkflowRetriever(DataRetriever):
             to_region = data["to_region"]
             successor_invoked = data["successor_invoked"]
             from_direct_successor = data["from_direct_successor"]
-
-            # Add an entry for the transfer size
-            # TODO: Right now we are making simple assumption that
-            # since wrapper should be small, the data transfer is
-            # always the sum of the wrapper and potential data upload size.
-            # In the future this may need to be more sophisticated.
-            transmission_data_transfer_size = float(data["transmission_size"])
-            # Check if the transmission data also contain sync_information
-            # Denoting if it uploads or recieves data from synchronization
-            sync_information = data.get("sync_information", None)
-            if sync_information is not None:
-                # Right now we are making an assumption that data transfer size
-                # Is the sum of the wrapper data transfer size and the upload size
-                upload_size: float = sync_information.get("upload_size", 0.0)
-                transmission_data_transfer_size += upload_size
 
             if from_direct_successor:
                 # This is the case where the transmission is from a direct successor
@@ -251,7 +178,8 @@ class WorkflowRetriever(DataRetriever):
                         "invoked": 0,
                         "non_executions": 0,
                         "invocation_probability": 0.0,
-                        "transfer_sizes": [],
+                        "sync_sizes_gb": [],
+                        "transfer_sizes_gb": [],
                         "regions_to_regions": {},
                     }
 
@@ -271,10 +199,25 @@ class WorkflowRetriever(DataRetriever):
                     instance_summary[from_instance]["to_instance"][to_instance]["regions_to_regions"][from_region][
                         to_region
                     ] = {
-                        "transfer_size_to_transfer_latencies": {},
+                        "transfer_size_gb_to_transfer_latencies_s": {},
                     }
 
-                instance_summary[from_instance]["to_instance"][to_instance]["transfer_sizes"].append(
+                # Add an entry for the transfer size
+                # Right now we are making a simple assumption that
+                # since wrapper should be small, the data transfer is
+                # always the sum of the wrapper and potential data upload size.
+                transmission_data_transfer_size = float(data["transmission_size_gb"])
+                
+                # Check if the transmission data also contain sync_information
+                # Denoting if it uploads or recieves data from synchronization
+                sync_information_upload_size = data.get("sync_information", {}).get("upload_size_gb", None)
+                sync_information_sync_size = data.get("sync_information", {}).get("sync_data_response_size_gb", None)
+                if sync_information_upload_size is not None:
+                    transmission_data_transfer_size += sync_information_upload_size
+                if sync_information_sync_size is not None:
+                    instance_summary[from_instance]["to_instance"][to_instance]["sync_sizes_gb"].append(sync_information_sync_size)
+
+                instance_summary[from_instance]["to_instance"][to_instance]["transfer_sizes_gb"].append(
                     self._round_to_kb(transmission_data_transfer_size, 1)
                 ) # Round to nearest kb (as dynamodb write is charged in kb)
 
@@ -289,15 +232,15 @@ class WorkflowRetriever(DataRetriever):
                         transmission_data_transfer_size_str
                         not in instance_summary[from_instance]["to_instance"][to_instance]["regions_to_regions"][
                             from_region
-                        ][to_region]["transfer_size_to_transfer_latencies"]
+                        ][to_region]["transfer_size_gb_to_transfer_latencies_s"]
                     ):
                         instance_summary[from_instance]["to_instance"][to_instance]["regions_to_regions"][from_region][
                             to_region
-                        ]["transfer_size_to_transfer_latencies"][transmission_data_transfer_size_str] = []
+                        ]["transfer_size_gb_to_transfer_latencies_s"][transmission_data_transfer_size_str] = []
                     instance_summary[from_instance]["to_instance"][to_instance]["regions_to_regions"][from_region][
                         to_region
-                    ]["transfer_size_to_transfer_latencies"][transmission_data_transfer_size_str].append(
-                        data["transmission_latency"]
+                    ]["transfer_size_gb_to_transfer_latencies_s"][transmission_data_transfer_size_str].append(
+                        data["transmission_latency_s"]
                     )
             else:
                 # TODO: Handle this scenerio. This is the case where the transmission is not from a direct successor
@@ -321,11 +264,102 @@ class WorkflowRetriever(DataRetriever):
                         "invoked": 0,
                         "non_executions": 0,
                         "invocation_probability": 0.0,
+                        "sync_sizes_gb": [],
+                        "transfer_sizes_gb": [],
                         "regions_to_regions": {},
                     }
 
                 # Append the number of non-executions
                 instance_summary[caller]["to_instance"][callee]["non_executions"] += count
+
+    def _reorganize_start_hop_summary(self, start_hop_summary: dict[str, Any]) -> None:
+        # Here we simply average the workflow_placement_decision_size_gb
+        # And round up to the nearest 1 KB
+        workflow_placement_decision_size_gb = start_hop_summary["workflow_placement_decision_size_gb"]
+        if workflow_placement_decision_size_gb:
+            start_hop_summary["workflow_placement_decision_size_gb"] = sum(workflow_placement_decision_size_gb) / len(
+                workflow_placement_decision_size_gb
+            )
+            start_hop_summary["workflow_placement_decision_size_gb"] = self._round_to_kb(
+                start_hop_summary["workflow_placement_decision_size_gb"], 1
+            )
+
+
+    def _reorganize_instance_summary(self, instance_summary: dict[str, Any]) -> None:
+        # Summarize the execution data (Duration, data transfer, etc.)
+        self._summarize_execution_data(instance_summary)
+
+        # Calculate the invocation probability
+        self._calculate_invocation_probability(instance_summary)
+
+        # Calculate the average sync table size
+        self._calculate_average_sync_table_size(instance_summary)
+
+        # Handle the missing region to region transmission data
+        # This is done by calculating the best fit line for the data
+        self._handle_missing_region_to_region_transmission_data(instance_summary)
+
+
+    def _summarize_execution_data(self, instance_summary: dict[str, Any]) -> None:
+        for instance_val in instance_summary.values():
+            # Handle the cpu utilization
+            cpu_utilization = instance_val.get("cpu_utilization", [])
+            if cpu_utilization:
+                # Get the average cpu utilization but ensure
+                # that if value > 1, set to 1, and if value < 0, set to 0
+                cpu_utilization = [min(1.0, max(0.0, cpu)) for cpu in cpu_utilization]
+                instance_val["cpu_utilization"] = sum(cpu_utilization) / len(cpu_utilization)
+
+            # Handle the execution data
+            execution_data = instance_val.get("executions", {})
+            if execution_data:
+                # Get list of all successor instances
+                successor_instances = list(instance_val["executions"]["successor_instances"])
+
+                # Now remove the successor instances from the dictionary
+                del instance_val["executions"]["successor_instances"]
+
+                # Get translation of successor instances
+                index_translation = {
+                    "data_transfer_during_execution_gb": 0,
+                }
+                original_index_length = len(index_translation)
+                for index, successor_instance in enumerate(successor_instances):
+                    index_translation[successor_instance] = index + original_index_length
+
+                # Add the index translation to the instance_val
+                instance_val["executions"]["auxiliary_index_translation"] = index_translation
+
+                # Now translate the at_region data to be in a list of the
+                # form with values stored in the order of index_translation
+                for region, execution_data in instance_val["executions"]["at_region"].items():
+                    durations = []
+                    duration_to_auxiliary_data = {}
+
+                    for execution in execution_data:
+                        duration = execution["duration_s"]
+                        durations.append(duration)
+
+                        # Round the duration to the nearest 10 ms
+                        duration = self._round_to_ms(duration, 10)
+                        
+                        # Make new auxiliary data if not present
+                        if duration not in duration_to_auxiliary_data:
+                            duration_to_auxiliary_data[duration] = []
+
+                        new_execution = [None] * len(index_translation)
+                        new_execution[0] = execution["data_transfer_during_execution_gb"]
+                        for successor, successor_data in execution["successor_invocations"].items():
+                            new_execution[index_translation[successor]] = successor_data[
+                                "invocation_time_from_function_start_s"
+                            ]
+
+                        duration_to_auxiliary_data[duration].append(new_execution)
+
+                    instance_val["executions"]["at_region"][region] = {
+                        "durations_s": durations,
+                        "auxiliary_data": duration_to_auxiliary_data,
+                    }
 
     def _calculate_invocation_probability(self, instance_summary: dict[str, Any]) -> None:
         for from_instance in instance_summary.values():
@@ -333,6 +367,17 @@ class WorkflowRetriever(DataRetriever):
                 caller_callee_data["invocation_probability"] = caller_callee_data["invoked"] / (
                     caller_callee_data["invoked"] + caller_callee_data["non_executions"]
                 )
+
+    def _calculate_average_sync_table_size(self, instance_summary: dict[str, Any]) -> None:
+        for from_instance in instance_summary.values():
+            for to_instance in from_instance.get("to_instance", {}).values():
+                sync_sizes_gb = to_instance.get("sync_sizes_gb", [])
+                if sync_sizes_gb:
+                    average_sync_size = sum(sync_sizes_gb) / len(sync_sizes_gb)
+                    # Round to nearest 1 KB
+                    to_instance["sync_sizes_gb"] = self._round_to_kb(average_sync_size, 1)
+                else:
+                    del to_instance["sync_sizes_gb"]
 
     # Best fit line approach.
     def _handle_missing_region_to_region_transmission_data(self, instance_summary: dict[str, Any]) -> None:
@@ -343,7 +388,7 @@ class WorkflowRetriever(DataRetriever):
                 for from_regions_information in regions_to_regions.values():
                     for to_region_information in from_regions_information.values():
                         # Calculate the best fit line for the data (Used in case of missing data)
-                        transfer_size_to_transfer_latencies = to_region_information["transfer_size_to_transfer_latencies"]
+                        transfer_size_to_transfer_latencies = to_region_information["transfer_size_gb_to_transfer_latencies_s"]
                         
                         number_of_data_sizes = len(transfer_size_to_transfer_latencies)
                         if number_of_data_sizes == 0:
@@ -389,8 +434,8 @@ class WorkflowRetriever(DataRetriever):
                         to_region_information["best_fit_line"] = {
                             "slope": slope,
                             "intercept": intercept,
-                            "min_latency": average_transfer_latency * 0.50,
-                            "max_latency": average_transfer_latency * 1.50,
+                            "min_latency_s": average_transfer_latency * 0.7,
+                            "max_latency_s": average_transfer_latency * 1.3,
                         }
 
 
