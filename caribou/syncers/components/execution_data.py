@@ -7,9 +7,7 @@ class ExecutionData:  # pylint: disable=too-many-instance-attributes
     def __init__(self, instance_name: str):
         self.instance_name: str = instance_name
 
-        self.is_entry_point: bool = False
-
-        # Input payload size, including but not limited to
+        # Input payload size, can also be for
         # Start hop input size (data input)
         self.input_payload_size: float = 0.0
 
@@ -17,24 +15,26 @@ class ExecutionData:  # pylint: disable=too-many-instance-attributes
         self.cpu_model: Optional[str] = None
 
         # Captured for user code execution
+        # May be used for future analysis
         self.user_execution_duration: Optional[float] = None
 
         # Captured after waiting for all async invocations are completed
+        # May be used for future analysis
         self.execution_duration: Optional[float] = None
 
-        # This is the reported duration from the Lambda logs (Should be longest)
-        self.reported_duration: Optional[float] = None
-
         # This is where the instance was executed
-        self.provider_region: Optional[dict[str, str]] = None
+        self.provider_region: Optional[str] = None
 
         # Download data size (From DynamoDB or S3)
+        # May be used for future analysis
         self.download_size: Optional[float] = None
 
         # Download time
+        # May be used for future analysis
         self.download_time: Optional[float] = None
 
         # Consumed read capacity
+        # May be used for future analysis
         self.consumed_read_capacity: Optional[float] = None
 
         # This is information from lambda insights
@@ -96,7 +96,6 @@ class ExecutionData:  # pylint: disable=too-many-instance-attributes
             for duration in [
                 self.user_execution_duration,
                 self.execution_duration,
-                self.reported_duration,
                 lambda_insight_duration,
             ]
             if duration is not None
@@ -141,43 +140,26 @@ class ExecutionData:  # pylint: disable=too-many-instance-attributes
         )
 
     def to_dict(self) -> dict[str, Any]:
-        # download_information: Optional[dict[str, Any]] = None
-        # if self.download_size is not None:
-        #     download_information = {
-        #         "download_size": self.download_size,
-        #         "download_time": self.download_time,
-        #         "consumed_read_capacity": self.consumed_read_capacity,
-        #     }
-
-        # relevant_insights: Optional[dict[str, Any]] = None
-        # if self.lambda_insights is not None:
-        #     relevant_insights = {
-        #         "cpu_total_time": self.lambda_insights.get("cpu_total_time", None),
-        #         "duration": self.lambda_insights.get("duration", None),
-        #         "total_memory": self.lambda_insights.get("total_memory", None),
-        #         "total_network": self.lambda_insights.get("total_memory", None) / (1024**3), # Convert bytes to GB
-        #     }
+        # Prepare data potentially used
+        # for indiviual log cost and carbon analysis
+        analysis_data = {
+            "input_payload_size_gb": self.input_payload_size,
+            "download_size_gb": self.download_size,
+            "consumed_read_capacity_from_download": self.consumed_read_capacity,
+            "total_input_data_transfer_gb": self._get_total_input_data_size(),
+            "total_output_data_transfer_gb": self._get_total_output_data_size(),
+        }
 
         # Only return the fields that are not None
         result = {
             "instance_name": self.instance_name,
-            # "input_payload_size": self.input_payload_size,
-            # "request_id": self.request_id,
-            # "user_code_duration": self.user_execution_duration,
             "duration_s": self.longest_duration,
             "cpu_model": self.cpu_model,
-            # "execution_duration": self.execution_duration,
-            # "reported_duration": self.reported_duration,
-            "provider_region": self._format_region(self.provider_region),
-            # "download_information": download_information,
-            # "total_accounted_input_data_size": self._get_total_input_data_size(),
-            # "total_accounted_output_data_size": self._get_total_output_data_size(),
+            "provider_region": self.provider_region,
             "data_transfer_during_execution_gb": self.data_transfer_during_execution,
-            # "total_consumed_write_capacity": self.total_consumed_write_capacity,
             "cpu_utilization": self.cpu_utilization,
-            # "lambda_insights": self.lambda_insights,
-            # "relevant_insights": relevant_insights,
             "successor_data": {k: v.to_dict() for k, v in self.successor_data.items()},
+            "additional_analysis_data": {key: value for key, value in analysis_data.items() if value is not None},
         }
 
         # Filter out fields that are None
@@ -185,7 +167,3 @@ class ExecutionData:  # pylint: disable=too-many-instance-attributes
 
         return filtered_result
 
-    def _format_region(self, region: Optional[dict[str, str]]) -> Optional[str]:
-        if region:
-            return f"{region['provider']}:{region['region']}"
-        return None

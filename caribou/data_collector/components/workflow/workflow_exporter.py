@@ -11,6 +11,36 @@ class SingleLineListEncoder(json.JSONEncoder):
             return '[' + ', '.join(self.encode(el) for el in obj) + ']'
         return super().encode(obj)
 
+def fix_nested_lists(s):
+    # Fix nested lists
+    pattern = re.compile(r'\[\s+([^][]+?)\s+\]')
+    while True:
+        s_new = pattern.sub(lambda m: '[' + ' '.join(m.group(1).split()) + ']', s)
+        if s_new == s:
+            break
+        s = s_new
+    
+    # Fix nested lists inside lists
+    pattern_nested = re.compile(r'\[\s*\[([^][]+?)\]\s*\]')
+    while True:
+        s_new = pattern_nested.sub(lambda m: '[[' + ' '.join(m.group(1).split()) + ']]', s)
+        if s_new == s:
+            break
+        s = s_new
+    
+    # Fix deeply nested lists
+    pattern_deep_nested = re.compile(r'\[\s*(\[[^][]+\](?:,\s*\[[^][]+\])*)\s*\]')
+    while True:
+        s_new = pattern_deep_nested.sub(lambda m: '[' + ' '.join(m.group(1).split()) + ']', s)
+        if s_new == s:
+            break
+        s = s_new
+    
+    return s
+
+def pretty_print(data):
+    json_str = json.dumps(data, cls=SingleLineListEncoder, indent=4)
+    print(fix_nested_lists(json_str))
 
 class WorkflowExporter(DataExporter):
     def __init__(self, client: RemoteClient, workflow_instance_table: str) -> None:
@@ -19,6 +49,7 @@ class WorkflowExporter(DataExporter):
 
     def export_all_data(self, workflow_summary_data: dict[str, Any]) -> None:
         self._export_workflow_summary(workflow_summary_data)
+        pretty_print(workflow_summary_data)
 
     def _export_workflow_summary(self, workflow_summary_data: dict[str, Any]) -> None:
         self._export_data(self._workflow_summary_table, workflow_summary_data, False)

@@ -18,16 +18,15 @@ class WorkflowRunSample:  # pylint: disable=too-many-instance-attributes
         self.log_start_time: Optional[datetime] = None
         self.log_end_time: Optional[datetime] = None
 
-        # Execution, transmission and non-execution data/information
+        # Execution and transmission data/information
         self.execution_data: dict[str, ExecutionData] = {}
         self.transmission_data: dict[str, TransmissionData] = {}
-        self.non_executions: dict[str, dict[str, int]] = {}
 
         # Start hop informations
         self.start_hop_latency: float = 0.0
         self.start_hop_data_transfer_size: float = 0.0
         self.start_hop_instance_name: Optional[str] = None
-        self.start_hop_destination: Optional[dict[str, str]] = None
+        self.start_hop_destination: Optional[str] = None
         self.start_hop_wpd_data_size: Optional[float] = None
         self.start_hop_wpd_consumed_read_capacity: Optional[float] = None
 
@@ -113,9 +112,8 @@ class WorkflowRunSample:  # pylint: disable=too-many-instance-attributes
                 "runtime_s": self.duration.total_seconds(),
                 "execution_data": self._get_formatted_execution_data(),
                 "transmission_data": self._get_formatted_invocation_transmission_data(),
-                "non_executions": self.non_executions,
                 "start_hop_info": {
-                    "destination": self._format_region(self.start_hop_destination),
+                    "destination": self.start_hop_destination,
                     "data_transfer_size_gb": self.start_hop_data_transfer_size,
                     "latency_s": self.start_hop_latency,
                     "workflow_placement_decision": {
@@ -126,8 +124,3 @@ class WorkflowRunSample:  # pylint: disable=too-many-instance-attributes
                 "unique_cpu_models": list(self.cpu_models),
             },
         )
-
-    def _format_region(self, region: Optional[dict[str, str]]) -> Optional[str]:
-        if region:
-            return f"{region['provider']}:{region['region']}"
-        return None

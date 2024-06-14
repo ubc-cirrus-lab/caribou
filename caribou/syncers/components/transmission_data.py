@@ -8,26 +8,39 @@ class TransmissionData:  # pylint: disable=too-many-instance-attributes
         self.transmission_start_time: Optional[datetime] = None
         self.transmission_end_time: Optional[datetime] = None
         self.payload_transmission_size: float = 0.0
-        self.successor_invoked: Optional[bool] = None
         self.from_instance: Optional[str] = None
         self.to_instance: Optional[str] = None
-        self.from_region: Optional[dict[str, str]] = None
-        self.to_region: Optional[dict[str, str]] = None
+        self.from_region: Optional[str] = None
+        self.to_region: Optional[str] = None
+
+        # Info regarding if the successor was invoked
+        self.successor_invoked: Optional[bool] = None
 
         # Denotes if it contains sync information
         # This is only for sync node ancestors
         self.contains_sync_information: bool = False
 
+        # For sync nodes
         self.upload_size: Optional[float] = None
+        
+        # RTT for uploading to dynamoDB
+        # Can be used for future analysis
         self.upload_rtt: Optional[float] = None
+
         self.consumed_write_capacity: Optional[float] = None
         self.sync_data_response_size: Optional[float] = None
-
         self.from_direct_successor: Optional[bool] = None
 
         # If not from a direct successor,
-        # This is a proxy call for a successor instance
+        # this will significantly affect what we want to collect
+        # Here we have (starting instance -> uninvoked successor instance,
+        # simulated sync predecessor -> sync node)
+        # Where the from_instance is the starting instance, the
+        # to_instance is the sync node. Now we also want
+        # to know the uninvoked successor instance, and the
+        # simulated sync predecessor.
         self.uninvoked_instance: Optional[str] = None
+        self.simulated_sync_predecessor: Optional[str] = None
 
     def to_dict(self) -> dict[str, Any]:
         sync_information: Optional[dict[str, Any]] = None
@@ -47,15 +60,12 @@ class TransmissionData:  # pylint: disable=too-many-instance-attributes
             "transmission_latency_s": self.transmission_latency,
             "from_instance": self.from_instance,
             "uninvoked_instance": self.uninvoked_instance,
+            "simulated_sync_predecessor": self.simulated_sync_predecessor,
             "to_instance": self.to_instance,
-            "from_region": self._format_region(self.from_region),
-            "to_region": self._format_region(self.to_region),
-            # Info regarding if the successor was invoked
+            "from_region": self.from_region,
+            "to_region": self.to_region,
             "successor_invoked": self.successor_invoked,
-            # For sync nodes with Conditional calls
             "from_direct_successor": self.from_direct_successor,
-            # For sync nodes -> require upload data
-            # "contains_upload_time": self.contains_upload_time,
             "sync_information": sync_information,
         }
 
@@ -79,39 +89,4 @@ class TransmissionData:  # pylint: disable=too-many-instance-attributes
                 self.from_region,
                 self.to_region,
             ]
-        )
-
-        # # return all(
-        # #     [
-        # #         self.transmission_start_time,
-        # #         self.transmission_end_time,
-        # #         self.from_instance,
-        # #         self.to_instance,
-        # #         self.from_region,
-        # #         self.to_region,
-        # #     ]
-        # # )
-        # return True
-
-        # # For sync nodes (or Conditional calls)
-        # "contains_upload_time": self.contains_upload_time,
-        # "upload_size": self.upload_size,
-        # "consumed_write_capacity": self.consumed_write_capacity,
-        # "sync_data_response_size": self.sync_data_response_size,
-        # "from_direct_successor": self.from_direct_successor,
-        # "proxy_for_instance": self.proxy_for_instance,
-
-    def _format_region(self, region: Optional[dict[str, str]]) -> Optional[str]:
-        if region:
-            return f"{region['provider']}:{region['region']}"
-        return None
-
-    def __str__(self) -> str:
-        # return f"InvocationTransmissionData({self.taint}, {self.transmission_start_time}, {self.transmission_end_time}, {self.from_direct_successor}, {self.transmission_size}, {self.from_instance}, {self.to_instance}, {self.from_region}, {self.to_region})"  # pylint: disable=line-too-long
-        return (
-            f"InvocationTransmissionData({self.taint}, {self.transmission_start_time}, "
-            f"{self.transmission_end_time}, {self.from_direct_successor}, {self.payload_transmission_size}, "
-            f"{self.from_instance}, {self.to_instance}, {self.from_region}, {self.to_region}, {self.contains_sync_information}, "
-            f"{self.upload_size}, {self.upload_rtt}, {self.consumed_write_capacity}, "
-            f"{self.sync_data_response_size}, {self.from_direct_successor}, {self.uninvoked_instance})"
         )

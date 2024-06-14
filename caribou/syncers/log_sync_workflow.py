@@ -12,7 +12,11 @@ from caribou.common.constants import (
     TIME_FORMAT,
     TIME_FORMAT_DAYS,
     WORKFLOW_SUMMARY_TABLE,
-    BUFFER_LAMBDA_INSIGHTS_GRACE_PERIOD
+    BUFFER_LAMBDA_INSIGHTS_GRACE_PERIOD,
+    INVOKE_SUCCESSOR_ONLY_TASK_TYPE,
+    SYNC_UPLOAD_AND_INVOKE_TASK_TYPE,
+    SYNC_UPLOAD_ONLY_TASK_TYPE,
+    CONDITIONALLY_NOT_INVOKE_TASK_TYPE,
 )
 from caribou.common.models.remote_client.remote_client import RemoteClient
 from caribou.common.models.remote_client.remote_client_factory import RemoteClientFactory
@@ -67,7 +71,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         data_for_upload: str = self._prepare_data_for_upload(self._previous_data)
         self._upload_data(data_for_upload)
 
-        # print(json.dumps(json.loads(data_for_upload)["logs"], indent=4))
+        print(json.dumps(json.loads(data_for_upload), indent=4))
 
     def _upload_data(self, data_for_upload: str) -> None:
         self._workflow_summary_client.update_value_in_table(
@@ -274,7 +278,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         request_id: str,
     ) -> None:
         workflow_run_sample.log_start_time = log_time
-        workflow_run_sample.start_hop_destination = provider_region
+        workflow_run_sample.start_hop_destination = self._format_region(provider_region)
 
         # Extract the instance name of the start hop from the log entry
         function_executed = self._extract_from_string(log_entry, r"INSTANCE \((.*?)\)")
@@ -309,7 +313,6 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
             workflow_run_sample.start_hop_wpd_consumed_read_capacity = consumed_read_capacity_fl
 
         execution_data = workflow_run_sample.get_execution_data(function_executed, request_id)
-        execution_data.is_entry_point = True
         execution_data.input_payload_size += data_transfer_size_fl
 
     def _extract_invoked_logs(
@@ -324,7 +327,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
             raise ValueError(f"Invalid taint: {taint}")
 
         transmission_data = workflow_run_sample.get_transmission_data(taint)
-        transmission_data.to_region = provider_region
+        transmission_data.to_region = self._format_region(provider_region)
         transmission_data.transmission_end_time = log_time
 
     def _extract_executed_logs(
@@ -351,7 +354,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         execution_data.request_id = request_id
         execution_data.user_execution_duration = user_execution_duration
         execution_data.execution_duration = execution_duration
-        execution_data.provider_region = provider_region
+        execution_data.provider_region = self._format_region(provider_region)
         execution_data.lambda_insights = self._insights_logs.get(request_id, {})
 
     # pylint: disable=too-many-statements
@@ -425,7 +428,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
 
         # Handle transmission data updates
         transmission_data = workflow_run_sample.get_transmission_data(taint)
-        transmission_data.from_region = provider_region
+        transmission_data.from_region = self._format_region(provider_region)
         transmission_data.from_instance = caller_function
         transmission_data.to_instance = callee_function
         transmission_data.transmission_start_time = log_time
@@ -439,8 +442,8 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
 
         successor_data.invocation_time_from_function_start = invocation_time_from_function_start
         successor_data.finish_time_from_function_start = finish_time_from_invocation_start
-        successor_data.destination_region = {"provider": destination_provider, "region": destination_region}
         successor_data.payload_data_size = payload_data_transfer_size
+        successor_data.destination_region = self._format_region({"provider": destination_provider, "region": destination_region})
 
         # Handle the recipient execution data
         # Payload data size is the data transfer size
@@ -450,15 +453,15 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         # Handle task type
         if not uploaded_data_to_sync_table:
             if successor_invoked:
-                successor_data.task_type = "INVOKE_SUCCESSOR_ONLY"
+                successor_data.task_type = INVOKE_SUCCESSOR_ONLY_TASK_TYPE
             # It should not be possible to have a successor not invoked
             # if it does not upload data to the sync table, as it will
             # not be a sync node and managed by a different message.
         else:
             if successor_invoked:
-                successor_data.task_type = "SYNC_UPLOAD_AND_INVOKE"
+                successor_data.task_type = SYNC_UPLOAD_AND_INVOKE_TASK_TYPE
             else:
-                successor_data.task_type = "SYNC_UPLOAD_ONLY"
+                successor_data.task_type = SYNC_UPLOAD_ONLY_TASK_TYPE
 
             # Update information regarding the upload data to the sync table
             upload_data_size = self._extract_from_string(log_entry, r"UPLOAD_DATA_SIZE \((.*?)\)")
@@ -486,7 +489,6 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
                 raise ValueError(f"Invalid upload_rtt: {upload_rtt}")
 
             successor_data.upload_data_size = upload_data_size
-            successor_data.upload_rtt = upload_rtt
             successor_data.consumed_write_capacity = consumed_write_capacity
             successor_data.sync_data_response_size = sync_data_response_size
 
@@ -500,7 +502,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
             # Fill in the destination region (Only for case of non-direct calls
             # for a sync node)
             if not successor_invoked:
-                transmission_data.to_region = {"provider": destination_provider, "region": destination_region}
+                transmission_data.to_region = self._format_region({"provider": destination_provider, "region": destination_region})
 
     # pylint: disable=too-many-statements
     def _extract_invoking_sync_node_logs(
@@ -581,7 +583,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
 
         # Handle transmission data updates
         transmission_data = workflow_run_sample.get_transmission_data(taint)
-        transmission_data.from_region = provider_region
+        transmission_data.from_region = self._format_region(provider_region)
         transmission_data.from_instance = caller_function
         transmission_data.to_instance = sync_node_instance
         transmission_data.transmission_start_time = log_time
@@ -594,6 +596,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
 
         ## Special updates for sync nodes (Non-Direct calls)
         transmission_data.uninvoked_instance = successor_function
+        transmission_data.simulated_sync_predecessor = successor_function
 
         # Handle execution data updates
         execution_data = workflow_run_sample.get_execution_data(caller_function, request_id)
@@ -654,18 +657,11 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         execution_data = workflow_run_sample.get_execution_data(caller_function, request_id)
         successor_data = execution_data.get_successor_data(callee_function)
 
-        successor_data.task_type = "CONDITIONALLY_NOT_INVOKE"
+        successor_data.task_type = CONDITIONALLY_NOT_INVOKE_TASK_TYPE
         successor_data.consumed_write_capacity = consumed_write_capacity
         successor_data.sync_data_response_size = sync_data_response_size
         successor_data.invocation_time_from_function_start = invocation_time_from_function_start
-        successor_data.destination_region = {"provider": destination_provider, "region": destination_region}
-
-        # Handle and log non-executions (Unsure what to do with this data)
-        if caller_function not in workflow_run_sample.non_executions:
-            workflow_run_sample.non_executions[caller_function] = {}
-        if callee_function not in workflow_run_sample.non_executions[caller_function]:
-            workflow_run_sample.non_executions[caller_function][callee_function] = 0
-        workflow_run_sample.non_executions[caller_function][callee_function] += 1
+        successor_data.destination_region = self._format_region({"provider": destination_provider, "region": destination_region})
 
     def _extract_cpu_model(self, workflow_run_sample: WorkflowRunSample, log_entry: str, request_id: str) -> None:
         function_executed = self._extract_from_string(log_entry, r"INSTANCE \((.*?)\)")
@@ -936,3 +932,8 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
             if date_str not in previous_daily_failure_counts:
                 previous_daily_failure_counts[date_str] = 0
             previous_daily_failure_counts[date_str] += len(failure_set)
+
+    def _format_region(self, region: Optional[dict[str, str]]) -> Optional[str]:
+        if region:
+            return f"{region['provider']}:{region['region']}"
+        return None
