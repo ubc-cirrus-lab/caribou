@@ -13,10 +13,10 @@ from typing import Any, Callable, Optional, cast
 from caribou.common.constants import (
     GLOBAL_TIME_ZONE,
     LOG_VERSION,
+    MAX_TRANSFER_SIZE,
     MAX_WORKERS,
     TIME_FORMAT,
     WORKFLOW_PLACEMENT_DECISION_TABLE,
-    MAX_TRANSFER_SIZE,
 )
 from caribou.common.models.endpoints import Endpoints
 from caribou.common.models.remote_client.remote_client_factory import RemoteClientFactory
@@ -896,8 +896,6 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
                         log_message,
                         workflow_placement_decision["run_id"],
                     )
-
-                    # TODO: Add mechanism to log failures of a workflow with its run_id
 
                     # Raise the error now
                     # To terminate the lambda function

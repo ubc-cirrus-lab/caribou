@@ -22,7 +22,7 @@ class TransmissionData:  # pylint: disable=too-many-instance-attributes
 
         # For sync nodes
         self.upload_size: Optional[float] = None
-        
+
         # RTT for uploading to dynamoDB
         # Can be used for future analysis
         self.upload_rtt: Optional[float] = None

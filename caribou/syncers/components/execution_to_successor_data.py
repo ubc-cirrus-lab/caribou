@@ -70,6 +70,6 @@ class ExecutionToSuccessorData:  # pylint: disable=too-many-instance-attributes
         }
 
         # Filter out fields that are None
-        filtered_result = {key: value for key, value in result.items() if value is not None and value != {}}
+        filtered_result = {key: value for key, value in result.items() if value is not None}
 
         return filtered_result

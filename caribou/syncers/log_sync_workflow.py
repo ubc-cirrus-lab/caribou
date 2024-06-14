@@ -4,23 +4,24 @@ from datetime import datetime, timedelta
 from typing import Any, Optional
 
 from caribou.common.constants import (
+    BUFFER_LAMBDA_INSIGHTS_GRACE_PERIOD,
+    CONDITIONALLY_NOT_INVOKE_TASK_TYPE,
     FORGETTING_NUMBER,
     FORGETTING_TIME_DAYS,
     GLOBAL_TIME_ZONE,
+    INVOKE_SUCCESSOR_ONLY_TASK_TYPE,
     KEEP_ALIVE_DATA_COUNT,
     LOG_VERSION,
+    SYNC_UPLOAD_AND_INVOKE_TASK_TYPE,
+    SYNC_UPLOAD_ONLY_TASK_TYPE,
     TIME_FORMAT,
     TIME_FORMAT_DAYS,
     WORKFLOW_SUMMARY_TABLE,
-    BUFFER_LAMBDA_INSIGHTS_GRACE_PERIOD,
-    INVOKE_SUCCESSOR_ONLY_TASK_TYPE,
-    SYNC_UPLOAD_AND_INVOKE_TASK_TYPE,
-    SYNC_UPLOAD_ONLY_TASK_TYPE,
-    CONDITIONALLY_NOT_INVOKE_TASK_TYPE,
 )
 from caribou.common.models.remote_client.remote_client import RemoteClient
 from caribou.common.models.remote_client.remote_client_factory import RemoteClientFactory
 from caribou.syncers.components.workflow_run_sample import WorkflowRunSample
+
 
 class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
     def __init__(
@@ -103,7 +104,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         lambda_insights_logs = remote_client.get_insights_logs_between(
             functions_instance,
             time_from - timedelta(minutes=BUFFER_LAMBDA_INSIGHTS_GRACE_PERIOD),
-            time_to + timedelta(minutes=BUFFER_LAMBDA_INSIGHTS_GRACE_PERIOD)
+            time_to + timedelta(minutes=BUFFER_LAMBDA_INSIGHTS_GRACE_PERIOD),
         )
         self._setup_lambda_insights(lambda_insights_logs)
 
@@ -443,7 +444,9 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         successor_data.invocation_time_from_function_start = invocation_time_from_function_start
         successor_data.finish_time_from_function_start = finish_time_from_invocation_start
         successor_data.payload_data_size = payload_data_transfer_size
-        successor_data.destination_region = self._format_region({"provider": destination_provider, "region": destination_region})
+        successor_data.destination_region = self._format_region(
+            {"provider": destination_provider, "region": destination_region}
+        )
 
         # Handle the recipient execution data
         # Payload data size is the data transfer size
@@ -502,7 +505,9 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
             # Fill in the destination region (Only for case of non-direct calls
             # for a sync node)
             if not successor_invoked:
-                transmission_data.to_region = self._format_region({"provider": destination_provider, "region": destination_region})
+                transmission_data.to_region = self._format_region(
+                    {"provider": destination_provider, "region": destination_region}
+                )
 
     # pylint: disable=too-many-statements
     def _extract_invoking_sync_node_logs(
@@ -661,7 +666,9 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         successor_data.consumed_write_capacity = consumed_write_capacity
         successor_data.sync_data_response_size = sync_data_response_size
         successor_data.invocation_time_from_function_start = invocation_time_from_function_start
-        successor_data.destination_region = self._format_region({"provider": destination_provider, "region": destination_region})
+        successor_data.destination_region = self._format_region(
+            {"provider": destination_provider, "region": destination_region}
+        )
 
     def _extract_cpu_model(self, workflow_run_sample: WorkflowRunSample, log_entry: str, request_id: str) -> None:
         function_executed = self._extract_from_string(log_entry, r"INSTANCE \((.*?)\)")
