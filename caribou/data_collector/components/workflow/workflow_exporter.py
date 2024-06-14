@@ -1,46 +1,50 @@
 import json
-from typing import Any
 import re
+from typing import Any
 
 from caribou.common.models.remote_client.remote_client import RemoteClient
 from caribou.data_collector.components.data_exporter import DataExporter
 
+
 class SingleLineListEncoder(json.JSONEncoder):
-    def encode(self, obj):
+    def encode(self, obj: Any) -> str:  # pylint: disable=arguments-renamed
         if isinstance(obj, list):
-            return '[' + ', '.join(self.encode(el) for el in obj) + ']'
+            return "[" + ", ".join(self.encode(el) for el in obj) + "]"
         return super().encode(obj)
 
-def fix_nested_lists(s):
+
+def fix_nested_lists(s: str) -> str:
     # Fix nested lists
-    pattern = re.compile(r'\[\s+([^][]+?)\s+\]')
+    pattern = re.compile(r"\[\s+([^][]+?)\s+\]")
     while True:
-        s_new = pattern.sub(lambda m: '[' + ' '.join(m.group(1).split()) + ']', s)
+        s_new = pattern.sub(lambda m: "[" + " ".join(m.group(1).split()) + "]", s)
         if s_new == s:
             break
         s = s_new
-    
+
     # Fix nested lists inside lists
-    pattern_nested = re.compile(r'\[\s*\[([^][]+?)\]\s*\]')
+    pattern_nested = re.compile(r"\[\s*\[([^][]+?)\]\s*\]")
     while True:
-        s_new = pattern_nested.sub(lambda m: '[[' + ' '.join(m.group(1).split()) + ']]', s)
+        s_new = pattern_nested.sub(lambda m: "[[" + " ".join(m.group(1).split()) + "]]", s)
         if s_new == s:
             break
         s = s_new
-    
+
     # Fix deeply nested lists
-    pattern_deep_nested = re.compile(r'\[\s*(\[[^][]+\](?:,\s*\[[^][]+\])*)\s*\]')
+    pattern_deep_nested = re.compile(r"\[\s*(\[[^][]+\](?:,\s*\[[^][]+\])*)\s*\]")
     while True:
-        s_new = pattern_deep_nested.sub(lambda m: '[' + ' '.join(m.group(1).split()) + ']', s)
+        s_new = pattern_deep_nested.sub(lambda m: "[" + " ".join(m.group(1).split()) + "]", s)
         if s_new == s:
             break
         s = s_new
-    
+
     return s
 
-def pretty_print(data):
+
+def pretty_print(data: dict[Any, Any]) -> None:
     json_str = json.dumps(data, cls=SingleLineListEncoder, indent=4)
     print(fix_nested_lists(json_str))
+
 
 class WorkflowExporter(DataExporter):
     def __init__(self, client: RemoteClient, workflow_instance_table: str) -> None:

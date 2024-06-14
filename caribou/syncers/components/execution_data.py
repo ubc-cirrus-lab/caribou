@@ -78,8 +78,13 @@ class ExecutionData:  # pylint: disable=too-many-instance-attributes
         if self.lambda_insights is None:
             return 0.0
 
-        insights_total_network_transfer = self.lambda_insights.get("total_network", 0.0) / (1024**3)  # Convert bytes to GB
-        data_transfer_during_execution = max(0.0, insights_total_network_transfer - self._get_total_input_data_size() - self._get_total_output_data_size())
+        insights_total_network_transfer = self.lambda_insights.get("total_network", 0.0) / (
+            1024**3
+        )  # Convert bytes to GB
+        data_transfer_during_execution = max(
+            0.0,
+            insights_total_network_transfer - self._get_total_input_data_size() - self._get_total_output_data_size(),
+        )
 
         return data_transfer_during_execution
 
@@ -166,4 +171,3 @@ class ExecutionData:  # pylint: disable=too-many-instance-attributes
         filtered_result = {key: value for key, value in result.items() if value is not None and value != {}}
 
         return filtered_result
-
