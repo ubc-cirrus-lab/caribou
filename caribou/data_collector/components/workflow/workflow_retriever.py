@@ -5,7 +5,7 @@ import math
 import numpy as np
 from scipy import stats
 
-from caribou.common.constants import WORKFLOW_SUMMARY_TABLE, MAX_TRANSFER_SIZE
+from caribou.common.constants import WORKFLOW_SUMMARY_TABLE, CONDITIONALLY_NOT_INVOKE_TASK_TYPE
 from caribou.common.models.remote_client.remote_client import RemoteClient
 from caribou.data_collector.components.data_retriever import DataRetriever
 
@@ -105,8 +105,6 @@ class WorkflowRetriever(DataRetriever):
 
         self._handle_region_to_region_transmission(log, instance_summary)
 
-        self._handle_non_executions(log, instance_summary)
-
     def _handle_execution_data(self, log: dict[str, Any], instance_summary: dict[str, Any]) -> None:
         for execution_information in log["execution_data"]:
             instance = execution_information["instance_name"]
@@ -119,8 +117,6 @@ class WorkflowRetriever(DataRetriever):
                 instance_summary[instance]["invocations"] = 0
             if "cpu_utilization" not in instance_summary[instance]:
                 instance_summary[instance]["cpu_utilization"] = []
-            # if "has_download" not in instance_summary[instance]:
-            #     instance_summary[instance]["has_download"] = False
             if "executions" not in instance_summary[instance]:
                 instance_summary[instance]["executions"] = {
                     "at_region": {},
@@ -136,13 +132,9 @@ class WorkflowRetriever(DataRetriever):
             instance_summary[instance]["cpu_utilization"].append(execution_information["cpu_utilization"])
 
             # Process execution data
-            # download_size = execution_information.get("download_information", {}).get("download_size", 0.0)
-            # if download_size > 0.0:
-            #     instance_summary[instance]["has_download"] = True
             execution_data = {
                 "duration_s": execution_information["duration_s"],
                 "data_transfer_during_execution_gb": execution_information["data_transfer_during_execution_gb"],
-                # "download_size": download_size,
                 "successor_invocations": {},
             }
 
@@ -156,32 +148,85 @@ class WorkflowRetriever(DataRetriever):
 
             instance_summary[instance]["executions"]["at_region"][provider_region].append(execution_data)
 
+            # Deal with the successor non-execution data
+            successor_data = execution_information.get("successor_data", None)
+            if successor_data is not None:
+                for successor, successor_info in successor_data.items():
+                    # Get the task type of the successor data
+                    task_type = successor_info.get("task_type", None)
+
+                    if task_type == CONDITIONALLY_NOT_INVOKE_TASK_TYPE:
+                        # Create the missing dictionary entries
+                        caller = instance
+                        callee = successor
+                        if caller not in instance_summary:
+                            instance_summary[caller] = {}
+                        if "to_instance" not in instance_summary[caller]:
+                            instance_summary[caller]["to_instance"] = {}
+                        if callee not in instance_summary[caller]["to_instance"]:
+                            instance_summary[caller]["to_instance"][callee] = {
+                                "invoked": 0,
+                                "non_executions": 0,
+                                "invocation_probability": 0.0,
+                                "sync_sizes_gb": [],
+                                "transfer_sizes_gb": [],
+                                "regions_to_regions": {},
+                                "non_execution_info": {
+                                    "consumed_write_capacity": [],
+                                    "sync_data_response_size_gb": [],
+                                    "simulated_triggers": set(),
+                                },
+                            }
+
+                        # Mark this as a non-execution
+                        instance_summary[caller]["to_instance"][callee]["non_executions"] += 1
+
+                        # Get the consumed write capacity and sync data response size
+                        consumed_write_capacity = successor_info.get("consumed_write_capacity", None)
+                        sync_data_response_size = successor_info.get("sync_data_response_size_gb", None)
+                        if consumed_write_capacity is not None and sync_data_response_size is not None:
+                            instance_summary[caller]["to_instance"][callee]["non_execution_info"]["consumed_write_capacity"].append(consumed_write_capacity)
+                            instance_summary[caller]["to_instance"][callee]["non_execution_info"]["sync_data_response_size_gb"].append(sync_data_response_size)
+
     def _handle_region_to_region_transmission(self, log: dict[str, Any], instance_summary: dict[str, Any]) -> None:
         for data in log["transmission_data"]:
             from_instance = data["from_instance"]
+            uninvoked_instance = data.get("uninvoked_instance", None)
             to_instance = data["to_instance"]
             from_region = data["from_region"]
             to_region = data["to_region"]
             successor_invoked = data["successor_invoked"]
             from_direct_successor = data["from_direct_successor"]
 
+            # Get the intended origin and destination instances
+            # To create a common dictionary entry
+            origin_instance = from_instance
+            intended_destination_instance = to_instance
+            if not from_direct_successor:
+                intended_destination_instance = uninvoked_instance
+            
+            # Create the missing dictionary entries (Common)
+            if origin_instance not in instance_summary:
+                instance_summary[origin_instance] = {}
+            if "to_instance" not in instance_summary[origin_instance]:
+                instance_summary[origin_instance]["to_instance"] = {}
+            if intended_destination_instance not in instance_summary[origin_instance]["to_instance"]:
+                instance_summary[origin_instance]["to_instance"][intended_destination_instance] = {
+                    "invoked": 0,
+                    "non_executions": 0,
+                    "invocation_probability": 0.0,
+                    "sync_sizes_gb": [],
+                    "transfer_sizes_gb": [],
+                    "regions_to_regions": {},
+                    "non_execution_info": {
+                        "consumed_write_capacity": [],
+                        "sync_data_response_size_gb": [],
+                        "simulated_triggers": set(),
+                    },
+                }
+
             if from_direct_successor:
                 # This is the case where the transmission is from a direct successor
-
-                # Create the missing dictionary entries (Common)
-                if from_instance not in instance_summary:
-                    instance_summary[from_instance] = {}
-                if "to_instance" not in instance_summary[from_instance]:
-                    instance_summary[from_instance]["to_instance"] = {}
-                if to_instance not in instance_summary[from_instance]["to_instance"]:
-                    instance_summary[from_instance]["to_instance"][to_instance] = {
-                        "invoked": 0,
-                        "non_executions": 0,
-                        "invocation_probability": 0.0,
-                        "sync_sizes_gb": [],
-                        "transfer_sizes_gb": [],
-                        "regions_to_regions": {},
-                    }
 
                 # Increment invoked count (Even if not directly invoked)
                 instance_summary[from_instance]["to_instance"][to_instance]["invoked"] += 1
@@ -200,6 +245,8 @@ class WorkflowRetriever(DataRetriever):
                         to_region
                     ] = {
                         "transfer_size_gb_to_transfer_latencies_s": {},
+                        "best_fit_line": {},
+                        "simulated_transfer_latencies_s": [],
                     }
 
                 # Add an entry for the transfer size
@@ -243,34 +290,54 @@ class WorkflowRetriever(DataRetriever):
                         data["transmission_latency_s"]
                     )
             else:
-                # TODO: Handle this scenerio. This is the case where the transmission is not from a direct successor
-                # Aka via non-execution, a node calls some potentially far descendant
                 # This is the case where the transmission is not from a direct successor
-                # Aka for a non-execution, it invokes some descendant
-                # This may need to be simulated for non-execution calls
-                pass
+                # Aka via non-execution, a node calls some potentially far descendant
+                simulated_sync_predecessor = data.get("simulated_sync_predecessor", None)
+                sync_node_insance = to_instance
 
-    def _handle_non_executions(self, log: dict[str, Any], instance_summary: dict[str, Any]) -> None:
-        non_executions = log.get("non_executions", {})
-        for caller, non_execution in non_executions.items():
-            # Create the missing dictionary entries
-            if caller not in instance_summary:
-                instance_summary[caller] = {}
-            if "to_instance" not in instance_summary[caller]:
-                instance_summary[caller]["to_instance"] = {}
-            for callee, count in non_execution.items():
-                if callee not in instance_summary[caller]["to_instance"]:
-                    instance_summary[caller]["to_instance"][callee] = {
+                # Append the combination of (simulated_sync_predecessor, to to_region (sync node))
+                # to the simulated triggers of (origin_instance, to intended_destination_instance)
+                instance_summary[origin_instance]["to_instance"][intended_destination_instance]["non_execution_info"]["simulated_triggers"].add((simulated_sync_predecessor, sync_node_insance))
+
+                # Create the missing dictionary entries (For from simulated_sync_predecessor to sync_node_insance)
+                if simulated_sync_predecessor not in instance_summary:
+                    instance_summary[simulated_sync_predecessor] = {}
+                if "to_instance" not in instance_summary[simulated_sync_predecessor]:
+                    instance_summary[simulated_sync_predecessor]["to_instance"] = {}
+                if sync_node_insance not in instance_summary[simulated_sync_predecessor]["to_instance"]:
+                    instance_summary[simulated_sync_predecessor]["to_instance"][sync_node_insance] = {
                         "invoked": 0,
                         "non_executions": 0,
                         "invocation_probability": 0.0,
                         "sync_sizes_gb": [],
                         "transfer_sizes_gb": [],
                         "regions_to_regions": {},
+                        "non_execution_info": {
+                            "consumed_write_capacity": [],
+                            "sync_data_response_size_gb": [],
+                            "simulated_triggers": set(),
+                        },
                     }
-
-                # Append the number of non-executions
-                instance_summary[caller]["to_instance"][callee]["non_executions"] += count
+                if from_region not in instance_summary[simulated_sync_predecessor]["to_instance"][sync_node_insance]["regions_to_regions"]:
+                    instance_summary[simulated_sync_predecessor]["to_instance"][sync_node_insance]["regions_to_regions"][from_region] = {}
+                if (
+                    to_region
+                    not in instance_summary[simulated_sync_predecessor]["to_instance"][sync_node_insance]["regions_to_regions"][
+                        from_region
+                    ]
+                ):
+                    instance_summary[simulated_sync_predecessor]["to_instance"][sync_node_insance]["regions_to_regions"][from_region][
+                        to_region
+                    ] = {
+                        "transfer_size_gb_to_transfer_latencies_s": {},
+                        "best_fit_line": {},
+                        "simulated_transfer_latencies_s": [],
+                    }
+                
+                # Add an entry to the simulated_transfer_latencies_s
+                instance_summary[simulated_sync_predecessor]["to_instance"][sync_node_insance]["regions_to_regions"][from_region][to_region]["simulated_transfer_latencies_s"].append(
+                    data["transmission_latency_s"]
+                )
 
     def _reorganize_start_hop_summary(self, start_hop_summary: dict[str, Any]) -> None:
         # Here we simply average the workflow_placement_decision_size_gb
@@ -283,14 +350,22 @@ class WorkflowRetriever(DataRetriever):
             start_hop_summary["workflow_placement_decision_size_gb"] = self._round_to_kb(
                 start_hop_summary["workflow_placement_decision_size_gb"], 1
             )
-
+        
+        # Go through all the regions in transfer_size_gb_to_transfer_latencies_s
+        # And if the list is empty, simply change the value to [0.0]
+        # Used in the case that there are no valid latencies
+        for region_to_transfer_size_latencies in start_hop_summary["transfer_size_gb_to_transfer_latencies_s"].values():
+            for transfer_size, latencies in region_to_transfer_size_latencies.items():
+                if not latencies or latencies == []:
+                    region_to_transfer_size_latencies[transfer_size] = [0.0]
 
     def _reorganize_instance_summary(self, instance_summary: dict[str, Any]) -> None:
         # Summarize the execution data (Duration, data transfer, etc.)
         self._summarize_execution_data(instance_summary)
 
-        # Calculate the invocation probability
-        self._calculate_invocation_probability(instance_summary)
+        # Summarize the non-execution data,
+        # i.e. calculate the invocation probability
+        self._summarize_non_execution_data(instance_summary)
 
         # Calculate the average sync table size
         self._calculate_average_sync_table_size(instance_summary)
@@ -298,7 +373,6 @@ class WorkflowRetriever(DataRetriever):
         # Handle the missing region to region transmission data
         # This is done by calculating the best fit line for the data
         self._handle_missing_region_to_region_transmission_data(instance_summary)
-
 
     def _summarize_execution_data(self, instance_summary: dict[str, Any]) -> None:
         for instance_val in instance_summary.values():
@@ -361,12 +435,39 @@ class WorkflowRetriever(DataRetriever):
                         "auxiliary_data": duration_to_auxiliary_data,
                     }
 
-    def _calculate_invocation_probability(self, instance_summary: dict[str, Any]) -> None:
+    def _summarize_non_execution_data(self, instance_summary: dict[str, Any]) -> None:
         for from_instance in instance_summary.values():
             for caller_callee_data in from_instance.get("to_instance", {}).values():
+                # Calculate the invocation probability
                 caller_callee_data["invocation_probability"] = caller_callee_data["invoked"] / (
                     caller_callee_data["invoked"] + caller_callee_data["non_executions"]
                 )
+                
+                # Average the consumed write capacity and sync data response size
+                non_execution_info = caller_callee_data.get("non_execution_info", None)
+                if non_execution_info is not None:
+                    consumed_write_capacity = non_execution_info.get("consumed_write_capacity", [])
+                    sync_data_response_size = non_execution_info.get("sync_data_response_size_gb", [])
+                    if consumed_write_capacity != []:
+                        consumed_write_capacity = sum(consumed_write_capacity) / len(consumed_write_capacity)
+
+                        # Round to the nearest whole number
+                        non_execution_info["consumed_write_capacity"] = math.ceil(consumed_write_capacity)
+                    else:
+                        non_execution_info["consumed_write_capacity"] = 0.0
+                    if sync_data_response_size != []:
+                        sync_data_response_size_gb = sum(sync_data_response_size) / len(sync_data_response_size)
+
+                        # Round to the nearest kb
+                        non_execution_info["sync_data_response_size_gb"] = self._round_to_kb(sync_data_response_size_gb, 1)
+                    else:
+                        non_execution_info["sync_data_response_size_gb"] = 0.0
+                
+                # Handle the simulated triggers
+                # This is done by converting the set to a list
+                # And then sorting the list
+                simulated_triggers = non_execution_info.get("simulated_triggers", set())
+                non_execution_info["simulated_triggers"] = sorted(list(simulated_triggers))
 
     def _calculate_average_sync_table_size(self, instance_summary: dict[str, Any]) -> None:
         for from_instance in instance_summary.values():
@@ -432,8 +533,8 @@ class WorkflowRetriever(DataRetriever):
                         # Save the best fit line
                         # And add some limitations such as min and max latency
                         to_region_information["best_fit_line"] = {
-                            "slope": slope,
-                            "intercept": intercept,
+                            "slope_s": slope,
+                            "intercept_s": intercept,
                             "min_latency_s": average_transfer_latency * 0.7,
                             "max_latency_s": average_transfer_latency * 1.3,
                         }

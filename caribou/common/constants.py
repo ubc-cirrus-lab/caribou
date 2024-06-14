@@ -109,6 +109,12 @@ KEEP_ALIVE_DATA_COUNT = 10  # Keep sample it is part of any of the 10 samples fo
 ## Used as lambda insights can be delayed
 BUFFER_LAMBDA_INSIGHTS_GRACE_PERIOD = 30  # 30 minutes
 
+## Successor task types
+INVOKE_SUCCESSOR_ONLY_TASK_TYPE = "INVOKE_SUCCESSOR_ONLY"
+SYNC_UPLOAD_AND_INVOKE_TASK_TYPE = "SYNC_UPLOAD_AND_INVOKE"
+SYNC_UPLOAD_ONLY_TASK_TYPE = "SYNC_UPLOAD_ONLY"
+CONDITIONALLY_NOT_INVOKE_TASK_TYPE = "CONDITIONALLY_NOT_INVOKE"
+
 # Caribou Wrapper parameters
 ## max workers for async invocations
 MAX_WORKERS = 4

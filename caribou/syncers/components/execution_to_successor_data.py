@@ -8,14 +8,10 @@ class ExecutionToSuccessorData:  # pylint: disable=too-many-instance-attributes
     ) -> None:
         self.successor_instance_name: str = successor_instance_name
 
-        # Task type -> SuccessorTaskType
-        ## INVOKE_SUCCESSOR_ONLY = 1
-        ## SYNC_UPLOAD_ONLY = 2
-        ## SYNC_UPLOAD_AND_INVOKE = 3
-        ## CONDITIONALLY_NOT_INVOKE = 4
+        # Task type
         self.task_type: Optional[str] = None
 
-        # For SuccessorTaskType 1-4
+        # May be used for future analysis
         self.invocation_time_from_function_start: Optional[float] = None
         self.finish_time_from_function_start: Optional[float] = None
 
@@ -27,9 +23,6 @@ class ExecutionToSuccessorData:  # pylint: disable=too-many-instance-attributes
         # Output data
         self.upload_data_size: Optional[float] = None
 
-        # Upload RTT
-        self.upload_rtt: Optional[float] = None
-
         # Upload total consumed write capacity
         self.consumed_write_capacity: Optional[float] = None
 
@@ -38,7 +31,7 @@ class ExecutionToSuccessorData:  # pylint: disable=too-many-instance-attributes
         self.sync_data_response_size: Optional[float] = None
 
         # Destination region of the successor
-        self.destination_region: Optional[dict[str, str]] = None
+        self.destination_region: Optional[str] = None
 
         # Invoking sync node (Sending information)
         # Used for invoking descendent, output data
@@ -71,21 +64,12 @@ class ExecutionToSuccessorData:  # pylint: disable=too-many-instance-attributes
         result = {
             "task_type": self.task_type,
             "invocation_time_from_function_start_s": self.invocation_time_from_function_start,
-            # "finish_time_from_function_start": self.finish_time_from_function_start,
-            # "payload_data_size": self.payload_data_size,
-            # "upload_data_size": self.upload_data_size,
-            # "consumed_write_capacity": self.consumed_write_capacity,
-            # "sync_data_response_size": self.sync_data_response_size,
-            # "destination_region": self._format_region(self.destination_region),
-            # "invoking_sync_node_data_output": self.invoking_sync_node_data_output,
+            "consumed_write_capacity": self.consumed_write_capacity,
+            "sync_data_response_size_gb": self.sync_data_response_size,
+            "destination_region": self.destination_region,
         }
 
         # Filter out fields that are None
         filtered_result = {key: value for key, value in result.items() if value is not None and value != {}}
 
         return filtered_result
-
-    # def _format_region(self, region: Optional[dict[str, str]]) -> Optional[str]:
-    #     if region:
-    #         return f"{region['provider']}:{region['region']}"
-    #     return None
