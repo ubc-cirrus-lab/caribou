@@ -70,7 +70,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
     def sync_workflow(self) -> None:
         self._sync_logs()
         data_for_upload: str = self._prepare_data_for_upload(self._previous_data)
-        # self._upload_data(data_for_upload)
+        self._upload_data(data_for_upload)
 
         print(json.dumps(json.loads(data_for_upload), indent=4))
 
@@ -538,6 +538,15 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         if not isinstance(sync_node_instance, str):
             raise ValueError(f"Invalid callee_function: {sync_node_instance}")
 
+        successor_invoked = self._extract_from_string(log_entry, r"SUCCESSOR_INVOKED \((.*?)\)")
+        if successor_invoked:
+            if successor_invoked == "True":
+                successor_invoked = True  # type: ignore
+            elif successor_invoked == "False":
+                successor_invoked = False  # type: ignore
+        if not isinstance(successor_invoked, bool):
+            raise ValueError(f"Invalid successor_invoked: {successor_invoked}")
+        
         consumed_write_capacity = self._extract_from_string(log_entry, r"CONSUMED_WRITE_CAPACITY \((.*?)\)")
         if consumed_write_capacity:
             consumed_write_capacity = float(consumed_write_capacity)  # type: ignore
@@ -587,29 +596,36 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
             raise ValueError(f"Invalid destination_region: {destination_region}")
 
         # Handle transmission data updates
-        transmission_data = workflow_run_sample.get_transmission_data(taint)
-        transmission_data.from_region = self._format_region(provider_region)
-        transmission_data.from_instance = caller_function
-        transmission_data.to_instance = sync_node_instance
-        transmission_data.transmission_start_time = log_time
-        transmission_data.payload_transmission_size = data_transfer_size
-        transmission_data.successor_invoked = True
-        transmission_data.from_direct_successor = False
-        transmission_data.contains_sync_information = True
-        transmission_data.consumed_write_capacity = consumed_write_capacity
-        transmission_data.sync_data_response_size = sync_data_response_size
+        if successor_invoked:
+            # Only concerned with the transmission data if the successor was invoked
+            # Else its simply a sync table update
+            transmission_data = workflow_run_sample.get_transmission_data(taint)
+            transmission_data.from_region = self._format_region(provider_region)
+            transmission_data.from_instance = caller_function
+            transmission_data.to_instance = sync_node_instance
+            transmission_data.transmission_start_time = log_time
+            transmission_data.payload_transmission_size = data_transfer_size
+            transmission_data.successor_invoked = True
+            transmission_data.from_direct_successor = False
+            transmission_data.contains_sync_information = True
+            transmission_data.consumed_write_capacity = consumed_write_capacity
+            transmission_data.sync_data_response_size = sync_data_response_size
 
-        ## Special updates for sync nodes (Non-Direct calls)
-        transmission_data.uninvoked_instance = successor_function
-        transmission_data.simulated_sync_predecessor = successor_function
+            ## Special updates for sync nodes (Non-Direct calls)
+            transmission_data.uninvoked_instance = successor_function
+            transmission_data.simulated_sync_predecessor = successor_function
 
         # Handle execution data updates
         execution_data = workflow_run_sample.get_execution_data(caller_function, request_id)
 
         successor_data = execution_data.get_successor_data(successor_function)
-        proxy_instance_str = f"{proxy_for_instance} -> {sync_node_instance}"
-
-        successor_data.invoking_sync_node_data_output[proxy_instance_str] = data_transfer_size
+        proxy_instance_str = f"{proxy_for_instance}>{sync_node_instance}"
+        successor_data.invoking_sync_node_data_output[proxy_instance_str] = {
+            "data_transfer_size": data_transfer_size,
+            "sync_data_response_size": sync_data_response_size,
+            "consumed_write_capacity": consumed_write_capacity,
+            "destination_region": self._format_region({"provider": destination_provider, "region": destination_region}),
+        }
 
     def _extract_conditional_non_execution_logs(
         self, workflow_run_sample: WorkflowRunSample, log_entry: str, request_id: str

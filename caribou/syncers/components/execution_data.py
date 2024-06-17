@@ -121,6 +121,14 @@ class ExecutionData:  # pylint: disable=too-many-instance-attributes
         if cpu_total_time is None:
             return None
 
+        # If the cpu_total_time is 0, it means
+        # that the function is likely too short to
+        # get a good estimate of the CPU utilization
+        # In that case, it might be safer to assume
+        # that the CPU utilization is 1.0
+        if cpu_total_time == 0:
+            return 1.0
+
         # In megabytes
         total_memory = self.lambda_insights.get("total_memory", 0.0)
 

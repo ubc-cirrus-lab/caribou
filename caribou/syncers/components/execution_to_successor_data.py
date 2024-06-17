@@ -31,11 +31,14 @@ class ExecutionToSuccessorData:  # pylint: disable=too-many-instance-attributes
         self.sync_data_response_size: Optional[float] = None
 
         # Destination region of the successor
+        # This is not accurate as if it is a non-execution
+        # it can transfer data to another region (multi-region deployment)
+        # MAY BE REMOVED
         self.destination_region: Optional[str] = None
 
         # Invoking sync node (Sending information)
         # Used for invoking descendent, output data
-        self.invoking_sync_node_data_output: dict[str, float] = {}
+        self.invoking_sync_node_data_output: dict[str, dict[str, Any]] = {}
 
     def get_total_output_data_size(self) -> float:
         total_upload_data_size = 0.0
@@ -47,6 +50,7 @@ class ExecutionToSuccessorData:  # pylint: disable=too-many-instance-attributes
             total_upload_data_size += self.upload_data_size
 
         for data_size in self.invoking_sync_node_data_output.values():
+            data_size = data_size.get("data_transfer_size", 0.0)
             total_upload_data_size += data_size
 
         return total_upload_data_size
@@ -64,9 +68,7 @@ class ExecutionToSuccessorData:  # pylint: disable=too-many-instance-attributes
         result = {
             "task_type": self.task_type,
             "invocation_time_from_function_start_s": self.invocation_time_from_function_start,
-            "consumed_write_capacity": self.consumed_write_capacity,
-            "sync_data_response_size_gb": self.sync_data_response_size,
-            "destination_region": self.destination_region,
+            "sync_info": self.invoking_sync_node_data_output if self.invoking_sync_node_data_output else None,
         }
 
         # Filter out fields that are None
