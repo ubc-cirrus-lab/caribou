@@ -23,7 +23,10 @@ class TestExecutionToSuccessorData(unittest.TestCase):
     def test_get_total_output_data_size(self):
         self.execution_data.payload_data_size = 1.0
         self.execution_data.upload_data_size = 2.0
-        self.execution_data.invoking_sync_node_data_output = {"data1": 3.0, "data2": 4.0}
+        self.execution_data.invoking_sync_node_data_output = {
+            "node1": {"data_transfer_size": 3.0},
+            "node2": {"data_transfer_size": 4.0},
+        }
         self.assertEqual(self.execution_data.get_total_output_data_size(), 10.0)
 
     def test_get_total_output_data_size_none(self):
@@ -50,9 +53,6 @@ class TestExecutionToSuccessorData(unittest.TestCase):
         expected_dict = {
             "task_type": "test_task",
             "invocation_time_from_function_start_s": 1.5,
-            "consumed_write_capacity": 2.5,
-            "sync_data_response_size_gb": 3.5,
-            "destination_region": "us-west-2",
         }
 
         self.assertEqual(self.execution_data.to_dict(), expected_dict)
@@ -65,6 +65,40 @@ class TestExecutionToSuccessorData(unittest.TestCase):
         self.execution_data.destination_region = None
 
         expected_dict = {}
+
+        self.assertEqual(self.execution_data.to_dict(), expected_dict)
+
+    def test_get_total_output_data_size_with_invoking_sync_node_data_output(self):
+        self.execution_data.payload_data_size = 1.0
+        self.execution_data.upload_data_size = 2.0
+        self.execution_data.invoking_sync_node_data_output = {
+            "node1": {"data_transfer_size": 3.0},
+            "node2": {"data_transfer_size": 4.0},
+        }
+        self.assertEqual(self.execution_data.get_total_output_data_size(), 10.0)
+
+    def test_get_total_output_data_size_with_invoking_sync_node_data_output_none(self):
+        self.execution_data.payload_data_size = 1.0
+        self.execution_data.upload_data_size = 2.0
+        self.execution_data.invoking_sync_node_data_output = {
+            "node1": {"data_transfer_size": 0.0},
+            "node2": {"data_transfer_size": 0.0},
+        }
+        self.assertEqual(self.execution_data.get_total_output_data_size(), 3.0)
+
+    def test_to_dict_with_invoking_sync_node_data_output(self):
+        self.execution_data.task_type = "test_task"
+        self.execution_data.invocation_time_from_function_start = 1.5
+        self.execution_data.invoking_sync_node_data_output = {
+            "node1": {"data_transfer_size": 3.0},
+            "node2": {"data_transfer_size": 4.0},
+        }
+
+        expected_dict = {
+            "task_type": "test_task",
+            "invocation_time_from_function_start_s": 1.5,
+            "sync_info": {"node1": {"data_transfer_size": 3.0}, "node2": {"data_transfer_size": 4.0}},
+        }
 
         self.assertEqual(self.execution_data.to_dict(), expected_dict)
 
