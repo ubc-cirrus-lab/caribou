@@ -178,26 +178,35 @@ class WorkflowRetriever(DataRetriever):
                                 "sync_sizes_gb": [],
                                 "transfer_sizes_gb": [],
                                 "regions_to_regions": {},
-                                "non_execution_info": {
-                                    "consumed_write_capacity": [],
-                                    "sync_data_response_size_gb": [],
-                                    "simulated_triggers": set(),
-                                },
+                                "non_execution_info": {},
                             }
 
                         # Mark this as a non-execution
                         instance_summary[caller]["to_instance"][callee]["non_executions"] += 1
-
-                        # Get the consumed write capacity and sync data response size
-                        consumed_write_capacity = successor_info.get("consumed_write_capacity", None)
-                        sync_data_response_size = successor_info.get("sync_data_response_size_gb", None)
-                        if consumed_write_capacity is not None and sync_data_response_size is not None:
-                            instance_summary[caller]["to_instance"][callee]["non_execution_info"][
-                                "consumed_write_capacity"
-                            ].append(consumed_write_capacity)
-                            instance_summary[caller]["to_instance"][callee]["non_execution_info"][
-                                "sync_data_response_size_gb"
-                            ].append(sync_data_response_size)
+                        
+                        # Add the sync info
+                        sync_info = successor_info.get("sync_info", None)
+                        if sync_info is not None:
+                            for sync_to_from_instance, sync_instance_info in sync_info.items():
+                                # Add dictionary entries
+                                if sync_to_from_instance not in instance_summary[caller]["to_instance"][callee]["non_execution_info"]:
+                                    sync_node_instance = sync_to_from_instance.split(">")[1]
+                                    instance_summary[caller]["to_instance"][callee]["non_execution_info"][sync_to_from_instance] = {
+                                        'sync_node_instance': sync_node_instance,
+                                        'consumed_write_capacity': [],
+                                        'sync_data_response_size_gb': [],
+                                    }
+                                
+                                # Get the consumed write capacity and sync data response size
+                                consumed_write_capacity = sync_instance_info.get("consumed_write_capacity", None)
+                                sync_data_response_size = sync_instance_info.get("sync_data_response_size", None)
+                                if consumed_write_capacity is not None and sync_data_response_size is not None:
+                                    instance_summary[caller]["to_instance"][callee]["non_execution_info"][
+                                        sync_to_from_instance
+                                    ]["consumed_write_capacity"].append(consumed_write_capacity)
+                                    instance_summary[caller]["to_instance"][callee]["non_execution_info"][
+                                        sync_to_from_instance
+                                    ]["sync_data_response_size_gb"].append(sync_data_response_size)
 
     # pylint: disable=too-many-branches, too-many-statements
     def _handle_region_to_region_transmission(self, log: dict[str, Any], instance_summary: dict[str, Any]) -> None:
@@ -230,11 +239,7 @@ class WorkflowRetriever(DataRetriever):
                     "sync_sizes_gb": [],
                     "transfer_sizes_gb": [],
                     "regions_to_regions": {},
-                    "non_execution_info": {
-                        "consumed_write_capacity": [],
-                        "sync_data_response_size_gb": [],
-                        "simulated_triggers": set(),
-                    },
+                    "non_execution_info": {},
                 }
 
             if from_direct_successor:
@@ -309,12 +314,6 @@ class WorkflowRetriever(DataRetriever):
                 simulated_sync_predecessor = data.get("simulated_sync_predecessor", None)
                 sync_node_insance = to_instance
 
-                # Append the combination of (simulated_sync_predecessor, to to_region (sync node))
-                # to the simulated triggers of (origin_instance, to intended_destination_instance)
-                instance_summary[origin_instance]["to_instance"][intended_destination_instance]["non_execution_info"][
-                    "simulated_triggers"
-                ].add((simulated_sync_predecessor, sync_node_insance))
-
                 # Create the missing dictionary entries (For from simulated_sync_predecessor to sync_node_insance)
                 if simulated_sync_predecessor not in instance_summary:
                     instance_summary[simulated_sync_predecessor] = {}
@@ -328,11 +327,7 @@ class WorkflowRetriever(DataRetriever):
                         "sync_sizes_gb": [],
                         "transfer_sizes_gb": [],
                         "regions_to_regions": {},
-                        "non_execution_info": {
-                            "consumed_write_capacity": [],
-                            "sync_data_response_size_gb": [],
-                            "simulated_triggers": set(),
-                        },
+                        "non_execution_info": {},
                     }
                 if (
                     from_region
@@ -469,30 +464,25 @@ class WorkflowRetriever(DataRetriever):
                 # Average the consumed write capacity and sync data response size
                 non_execution_info = caller_callee_data.get("non_execution_info", None)
                 if non_execution_info is not None:
-                    consumed_write_capacity = non_execution_info.get("consumed_write_capacity", [])
-                    sync_data_response_size = non_execution_info.get("sync_data_response_size_gb", [])
-                    if consumed_write_capacity != []:
-                        consumed_write_capacity = sum(consumed_write_capacity) / len(consumed_write_capacity)
+                    # Summarize the consumed write capacity and sync data response size
+                    for sync_call_from_to_instance, sync_call_entry in non_execution_info.items():
+                        consumed_write_capacity = sync_call_entry.get("consumed_write_capacity", [])
+                        if consumed_write_capacity != []:
+                            consumed_write_capacity = sum(consumed_write_capacity) / len(consumed_write_capacity)
+                            # Round to the nearest whole number
+                            non_execution_info[sync_call_from_to_instance]["consumed_write_capacity"] = math.ceil(consumed_write_capacity)
+                        else:
+                            non_execution_info[sync_call_from_to_instance]["consumed_write_capacity"] = 0.0
 
-                        # Round to the nearest whole number
-                        non_execution_info["consumed_write_capacity"] = math.ceil(consumed_write_capacity)
-                    else:
-                        non_execution_info["consumed_write_capacity"] = 0.0
-                    if sync_data_response_size != []:
-                        sync_data_response_size_gb = sum(sync_data_response_size) / len(sync_data_response_size)
-
-                        # Round to the nearest kb
-                        non_execution_info["sync_data_response_size_gb"] = self._round_to_kb(
-                            sync_data_response_size_gb, 1
-                        )
-                    else:
-                        non_execution_info["sync_data_response_size_gb"] = 0.0
-
-                # Handle the simulated triggers
-                # This is done by converting the set to a list
-                # And then sorting the list
-                simulated_triggers = non_execution_info.get("simulated_triggers", set())
-                non_execution_info["simulated_triggers"] = sorted(list(simulated_triggers))
+                        sync_data_response_size = sync_call_entry.get("sync_data_response_size_gb", [])
+                        if sync_data_response_size != []:
+                            sync_data_response_size_gb = sum(sync_data_response_size) / len(sync_data_response_size)
+                            # Round to the nearest kb
+                            non_execution_info[sync_call_from_to_instance]["sync_data_response_size_gb"] = self._round_to_kb(
+                                sync_data_response_size_gb, 1
+                            )
+                        else:
+                            non_execution_info[sync_call_from_to_instance]["sync_data_response_size_gb"] = 0.0
 
     def _calculate_average_sync_table_size(self, instance_summary: dict[str, Any]) -> None:
         for from_instance in instance_summary.values():
