@@ -1,4 +1,0 @@
-dna_features_viewer
-boto3==1.34.43
-pyyaml==6.0.1
-pytz==2024.1

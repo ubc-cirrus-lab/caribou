@@ -1,4 +1,0 @@
-boto3
-pillow
-pyyaml==6.0.1
-pytz==2024.1
