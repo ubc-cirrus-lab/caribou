@@ -43,6 +43,8 @@ def fix_nested_lists(s: str) -> str:
 
 def pretty_print(data: dict[Any, Any]) -> None:
     json_str = json.dumps(data, cls=SingleLineListEncoder, indent=4)
+
+    # TODO: Remove this print statement
     print(fix_nested_lists(json_str))
 
 

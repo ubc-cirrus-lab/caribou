@@ -31,9 +31,8 @@ class ExecutionToSuccessorData:  # pylint: disable=too-many-instance-attributes
         self.sync_data_response_size: Optional[float] = None
 
         # Destination region of the successor
-        # This is not accurate as if it is a non-execution
-        # it can transfer data to another region (multi-region deployment)
-        # MAY BE REMOVED
+        # This is not accurate for non-execution nodes
+        # Due to the multiple sync updates
         self.destination_region: Optional[str] = None
 
         # Invoking sync node (Sending information)
