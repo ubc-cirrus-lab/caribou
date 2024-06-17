@@ -192,11 +192,12 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
                         f"INVOKING_SYNC_NODE: INSTANCE ({current_instance_name}) to "
                         f"SUCCESSOR ({successor_instance_name}) for "
                         f"PREDECESSOR_INSTANCE ({sync_nodes_invoked_info['predecessor']}) calling "
-                        f"SYNC_NODE ({sync_nodes_invoked_info['sync_node']}) with "
-                        f"PAYLOAD_SIZE ({sync_nodes_invoked_info['payload_size']}) GB and "
+                        f"SYNC_NODE ({sync_nodes_invoked_info['sync_node']}) where "
+                        f"SUCCESSOR_INVOKED ({sync_nodes_invoked_info['invoked']}) with "
+                        f"PAYLOAD_SIZE ({sync_nodes_invoked_info.get('payload_size', 0.0)}) GB and "
                         f"SYNC_DATA_RESPONSE_SIZE ({sync_nodes_invoked_info['sync_data_response_size']}) GB and "
                         f"CONSUMED_WRITE_CAPACITY ({sync_nodes_invoked_info['consumed_write_capacity']}) with "
-                        f"TAINT ({sync_nodes_invoked_info['transmission_taint']}) to "
+                        f"TAINT ({sync_nodes_invoked_info.get('transmission_taint', None)}) to "
                         f"PROVIDER ({sync_nodes_invoked_info['provider']}) and "
                         f"REGION ({sync_nodes_invoked_info['region']}) with "
                         f"INVOCATION_TIME_FROM_FUNCTION_START ({time_from_function_start}) s and "
@@ -204,7 +205,6 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
                         f"({(finish_time - invocation_start_time).total_seconds()}) s and "
                         f"CALL_START_TO_FINISH ({(finish_time - call_start_time).total_seconds()}) s"
                     )
-
                     self.log_for_retrieval(log_message, workflow_placement_decision["run_id"], invocation_start_time)
 
                 # We don't call the function if it is conditional and the condition is not met.
@@ -440,6 +440,21 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
                     "provider": provider,
                     "call_start_time": potential_call_start_time,
                     "finish_time": datetime.now(GLOBAL_TIME_ZONE),
+                    "invoked": True,
+                }
+            )
+        else:
+            sync_nodes_invoked_logs.append(
+                {
+                    "sync_node": successor_instance_name,
+                    "predecessor": predecessor_instance_name,
+                    "sync_data_response_size": response_size,
+                    "consumed_write_capacity": consumed_write_capacity,
+                    "region": region,
+                    "provider": provider,
+                    "call_start_time": potential_call_start_time,
+                    "finish_time": datetime.now(GLOBAL_TIME_ZONE),
+                    "invoked": False,
                 }
             )
 

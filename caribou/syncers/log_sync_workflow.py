@@ -70,7 +70,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
     def sync_workflow(self) -> None:
         self._sync_logs()
         data_for_upload: str = self._prepare_data_for_upload(self._previous_data)
-        self._upload_data(data_for_upload)
+        # self._upload_data(data_for_upload)
 
         print(json.dumps(json.loads(data_for_upload), indent=4))
 
@@ -810,7 +810,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
 
     def _check_for_missing_transmission_from_instance_to_instance_region(self, previous_log: dict[str, Any]) -> bool:
         has_missing_information = False
-        for transmission_data in previous_log["direct_transmission_data"]:
+        for transmission_data in previous_log["transmission_data"]:
             from_instance = transmission_data["from_instance"]
             to_instance = transmission_data["to_instance"]
             from_region_str = transmission_data["from_region"]
