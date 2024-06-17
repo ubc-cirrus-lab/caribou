@@ -28,9 +28,6 @@ class LogSyncer:
         )
 
         for workflow_id, deployment_manager_config_str in currently_deployed_workflows.items():
-            # if workflow_id != "simple_join-0.0.1":
-            #     continue
-
             previous_data_str, _ = self._workflow_summary_client.get_value_from_table(
                 WORKFLOW_SUMMARY_TABLE, workflow_id
             )

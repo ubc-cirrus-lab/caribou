@@ -546,7 +546,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
                 successor_invoked = False  # type: ignore
         if not isinstance(successor_invoked, bool):
             raise ValueError(f"Invalid successor_invoked: {successor_invoked}")
-        
+
         consumed_write_capacity = self._extract_from_string(log_entry, r"CONSUMED_WRITE_CAPACITY \((.*?)\)")
         if consumed_write_capacity:
             consumed_write_capacity = float(consumed_write_capacity)  # type: ignore
@@ -622,7 +622,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         proxy_instance_str = f"{proxy_for_instance}>{sync_node_instance}"
         successor_data.invoking_sync_node_data_output[proxy_instance_str] = {
             "data_transfer_size": data_transfer_size,
-            "sync_data_response_size": sync_data_response_size,
+            "sync_data_response_size_gb": sync_data_response_size,
             "consumed_write_capacity": consumed_write_capacity,
             "destination_region": self._format_region({"provider": destination_provider, "region": destination_region}),
         }

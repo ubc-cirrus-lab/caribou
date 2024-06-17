@@ -478,6 +478,7 @@ class TestLogSyncWorkflow(unittest.TestCase):
             "test_successor",
             "test_predecessor",
             "test_sync_node",
+            "True",
             "1234",
             "1.2",
             "3.4",

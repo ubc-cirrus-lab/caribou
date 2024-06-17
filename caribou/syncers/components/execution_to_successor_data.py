@@ -49,8 +49,8 @@ class ExecutionToSuccessorData:  # pylint: disable=too-many-instance-attributes
         if self.upload_data_size:
             total_upload_data_size += self.upload_data_size
 
-        for data_size in self.invoking_sync_node_data_output.values():
-            data_size = data_size.get("data_transfer_size", 0.0)
+        for data_size_info in self.invoking_sync_node_data_output.values():
+            data_size: float = data_size_info.get("data_transfer_size", 0.0)
             total_upload_data_size += data_size
 
         return total_upload_data_size

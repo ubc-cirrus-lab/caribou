@@ -109,7 +109,7 @@ class WorkflowRetriever(DataRetriever):
 
         self._handle_region_to_region_transmission(log, instance_summary)
 
-    # pylint: disable=too-many-branches
+    # pylint: disable=too-many-branches, too-many-nested-blocks
     def _handle_execution_data(self, log: dict[str, Any], instance_summary: dict[str, Any]) -> None:
         for execution_information in log["execution_data"]:
             instance = execution_information["instance_name"]
@@ -183,23 +183,28 @@ class WorkflowRetriever(DataRetriever):
 
                         # Mark this as a non-execution
                         instance_summary[caller]["to_instance"][callee]["non_executions"] += 1
-                        
+
                         # Add the sync info
                         sync_info = successor_info.get("sync_info", None)
                         if sync_info is not None:
                             for sync_to_from_instance, sync_instance_info in sync_info.items():
                                 # Add dictionary entries
-                                if sync_to_from_instance not in instance_summary[caller]["to_instance"][callee]["non_execution_info"]:
+                                if (
+                                    sync_to_from_instance
+                                    not in instance_summary[caller]["to_instance"][callee]["non_execution_info"]
+                                ):
                                     sync_node_instance = sync_to_from_instance.split(">")[1]
-                                    instance_summary[caller]["to_instance"][callee]["non_execution_info"][sync_to_from_instance] = {
-                                        'sync_node_instance': sync_node_instance,
-                                        'consumed_write_capacity': [],
-                                        'sync_data_response_size_gb': [],
+                                    instance_summary[caller]["to_instance"][callee]["non_execution_info"][
+                                        sync_to_from_instance
+                                    ] = {
+                                        "sync_node_instance": sync_node_instance,
+                                        "consumed_write_capacity": [],
+                                        "sync_data_response_size_gb": [],
                                     }
-                                
+
                                 # Get the consumed write capacity and sync data response size
                                 consumed_write_capacity = sync_instance_info.get("consumed_write_capacity", None)
-                                sync_data_response_size = sync_instance_info.get("sync_data_response_size", None)
+                                sync_data_response_size = sync_instance_info.get("sync_data_response_size_gb", None)
                                 if consumed_write_capacity is not None and sync_data_response_size is not None:
                                     instance_summary[caller]["to_instance"][callee]["non_execution_info"][
                                         sync_to_from_instance
@@ -470,7 +475,9 @@ class WorkflowRetriever(DataRetriever):
                         if consumed_write_capacity != []:
                             consumed_write_capacity = sum(consumed_write_capacity) / len(consumed_write_capacity)
                             # Round to the nearest whole number
-                            non_execution_info[sync_call_from_to_instance]["consumed_write_capacity"] = math.ceil(consumed_write_capacity)
+                            non_execution_info[sync_call_from_to_instance]["consumed_write_capacity"] = math.ceil(
+                                consumed_write_capacity
+                            )
                         else:
                             non_execution_info[sync_call_from_to_instance]["consumed_write_capacity"] = 0.0
 
@@ -478,9 +485,9 @@ class WorkflowRetriever(DataRetriever):
                         if sync_data_response_size != []:
                             sync_data_response_size_gb = sum(sync_data_response_size) / len(sync_data_response_size)
                             # Round to the nearest kb
-                            non_execution_info[sync_call_from_to_instance]["sync_data_response_size_gb"] = self._round_to_kb(
-                                sync_data_response_size_gb, 1
-                            )
+                            non_execution_info[sync_call_from_to_instance][
+                                "sync_data_response_size_gb"
+                            ] = self._round_to_kb(sync_data_response_size_gb, 1)
                         else:
                             non_execution_info[sync_call_from_to_instance]["sync_data_response_size_gb"] = 0.0
 
