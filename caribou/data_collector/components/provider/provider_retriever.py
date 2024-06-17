@@ -182,75 +182,6 @@ class ProviderRetriever(DataRetriever):
             for region_key in aws_regions
         }
 
-    '''def _retrieve_aws_sns_cost(self, aws_regions: list[str]) -> dict[str, Any]:
-        sns_cost_dict = {}
-        for region_key in aws_regions:
-            region_code = region_key.split(":")[1]
-            product = "AmazonSNS"
-            service = "AmazonSNS"
-            operation = "Request"  
-            filters = [
-                {"Type": "TERM_MATCH", "Field": "location", "Value": f"AWS Region: {region_code}"},
-                {"Type": "TERM_MATCH", "Field": "productFamily", "Value": "Bundle"},
-            ]
-            price = self._get_aws_product_price(product, service, filters)
-            sns_cost_dict[region_key] = price
-        return sns_cost_dict
-
-    def _retrieve_aws_dynamodb_cost(self, aws_regions: list[str]) -> dict[str, Any]:
-        dynamodb_cost_dict = {}
-        for region_key in aws_regions:
-            region_code = region_key.split(":")[1]
-            product = "AmazonDynamoDB"
-            service = "AmazonDynamoDB"
-            filters = [
-                {"Type": "TERM_MATCH", "Field": "locationType", "Value": f"AWS Region: {region_code}"},
-            ]
-            storage_cost = self._get_aws_product_price(product, service, filters)
-
-            filters = [
-                {"Type": "TERM_MATCH", "Field": "location", "Value": f"AWS Region: {region_code}"},
-                {"Type": "TERM_MATCH", "Field": "productFamily", "Value": "Provisioned IOPS"},
-                {"Type": "TERM_MATCH", "Field": "operation", "Value": "DelegatedOperations"},
-            ]
-            read_capacity_cost = self._get_aws_product_price(product, service, filters)
-
-            filters = [
-                {"Type": "TERM_MATCH", "Field": "location", "Value": f"AWS Region: {region_code}"},
-                {"Type": "TERM_MATCH", "Field": "productFamily", "Value": "Database Storage"},
-                {"Type": "TERM_MATCH", "Field": "operation", "Value": "PayPerRequestThroughput"},
-            ]
-            write_capacity_cost = self._get_aws_product_price(product, service, filters)
-
-            dynamodb_cost_dict[region_key] = {
-                "storage_cost": storage_cost,
-                "read_capacity_cost": read_capacity_cost,
-                "write_capacity_cost": write_capacity_cost,
-            }
-        return dynamodb_cost_dict
-
-    def _retrieve_aws_ecr_cost(self, aws_regions: list[str]) -> dict[str, Any]:
-        ecr_cost_dict = {}
-        for region_key in aws_regions:
-            region_code = region_key.split(":")[1]
-            product = "AmazonECR"
-            service = "AmazonECR"
-            filters = [
-                {"Type": "termType", "Field": "location", "Value": f"AWS Region: {region_code}"},
-            ]
-            storage_cost = self._get_aws_product_price(product, service, filters)
-
-            filters = [
-                {"Type": "termType", "Field": "location", "Value": f"AWS Region: {region_code}"},
-                {"Type": "termType", "Field": "storageType", "Value": "S3"},
-            ]
-            pull_cost = self._get_aws_product_price(product, service, filters)
-
-            ecr_cost_dict[region_key] = {
-                "storage_cost": storage_cost,
-                "pull_cost": pull_cost,
-            }
-        return ecr_cost_dict   ''' 
 
     def _retrieve_provider_data_integrationtest(self, regions: list[str]) -> dict[str, Any]:
         execution_cost_dict = {
@@ -361,6 +292,8 @@ class ProviderRetriever(DataRetriever):
                 "pue": 1.15,
                 "cfe": 1,
                 "average_memory_power": 0.0003725,
+                "max_cpu_power_kWh": 0.0035,
+                "min_cpu_power_kWh": 0.00074,
                 "available_architectures": ["arm64", "x86_64"],
             }
             for region in regions
@@ -374,6 +307,7 @@ class ProviderRetriever(DataRetriever):
             available_architectures.append("x86_64")
         return available_architectures
     
+    '''this part is hardcoded because when using the api it only worked for us-east-1'''
     def _retrieve_aws_sns_cost(self, available_regions: list[str]) -> dict[str, Any]:
         result_sns_cost_dict = {}
 
@@ -410,25 +344,25 @@ class ProviderRetriever(DataRetriever):
             if region_code in exact_region_codes:
                 sns_cost = exact_region_codes[region_code]
             elif region_code.startswith("us-"):
-                sns_cost = 0.50
+                sns_cost = 0.50 / 1_000_000
             elif region_code.startswith("eu-"):
-                sns_cost = 0.55
+                sns_cost = 0.55 / 1_000_000
             elif region_code.startswith("ap-"):
-                sns_cost = 0.60
+                sns_cost = 0.60 / 1_000_000
             elif region_code.startswith("ca-"):
-                sns_cost = 0.55     
+                sns_cost = 0.55 / 1_000_000    
             elif region_code.startswith("sa-"):
-                sns_cost = 0.70
+                sns_cost = 0.70 / 1_000_000
             elif region_code.startswith("af-"):
-                sns_cost = 0.75
+                sns_cost = 0.75 / 1_000_000
             elif region_code.startswith("me-"):
-                sns_cost = 0.75
+                sns_cost = 0.75 / 1_000_000
             else:
                 raise ValueError(f"Unknown region code {region_code}")
 
             result_sns_cost_dict[region_key] = {
                 "sns_cost": sns_cost,
-                "unit": "USD/1M requests",
+                "unit": "USD/requests",
             }
 
         return result_sns_cost_dict 
@@ -476,7 +410,7 @@ class ProviderRetriever(DataRetriever):
             dynamodb_cost_dict[available_region_code_to_key[region_code]] = {
                 "read_cost": read_cost,
                 "write_cost": write_cost,
-                "unit": "USD per capacity unit"
+                "unit": "USD per GB"
             }
 
         if len(dynamodb_cost_dict) != len(available_regions):
@@ -595,30 +529,6 @@ class ProviderRetriever(DataRetriever):
             }
 
         return result_transmission_cost_dict
-
-    '''def _get_aws_product_price(self, product: str, service: str, filters: list[dict[str, str]]) -> float:
-        response = self._aws_pricing_client.get_products(
-            ServiceCode=service,
-            Filters=filters,
-            FormatVersion="aws_v1",
-        )
-
-        products = response.get("PriceList", [])
-        if not products:
-            raise ValueError(f"No pricing information found for {product}")
-
-        price_info = json.loads(products[0])  # chaîne JSON en dictionnaire
-        price_details = price_info.get("terms", {}).get("OnDemand", {})
-        if not price_details:
-            raise ValueError(f"No on-demand pricing information found for {product}")
-
-        for term in price_details.values():
-            price_dimensions = term.get("priceDimensions", {})
-            for dimension in price_dimensions.values():
-                price_per_unit = dimension.get("pricePerUnit", {}).get("USD", 0.0)
-                return float(price_per_unit)
-
-        raise ValueError(f"Could not parse pricing information for {product}") '''
     
 
     def _retrieve_aws_execution_cost(self, available_region: list[str]) -> dict[str, Any]:

@@ -270,6 +270,87 @@ class TestProviderRetriever(unittest.TestCase):
             result, {"aws:sa-east-1": {"global_data_transfer": 0.15, "provider_data_transfer": 0.138, "unit": "USD/GB"}}
         )
 
+    @patch('provider_retriever.ProviderRetriever._aws_pricing_client')
+    def test_retrieve_aws_sns_cost(self, mock_aws_pricing_client):
+        available_regions = ["region:us-east-1", "region:eu-west-1"]
+        result = self.provider_retriever._retrieve_aws_sns_cost(available_regions)
+        self.assertEqual(result["region:us-east-1"]["sns_cost"], 0.50)
+        self.assertEqual(result["region:eu-west-1"]["sns_cost"], 0.50)
+
+    @patch('provider_retriever.ProviderRetriever._aws_pricing_client')
+    def test_retrieve_aws_dynamodb_cost(self, mock_aws_pricing_client):
+        mock_aws_pricing_client.list_price_lists.return_value = {
+            "PriceLists": [
+                {
+                    "RegionCode": "us-east-1",
+                    "PriceListArn": "arn",
+                    "PriceList": {
+                        "products": {
+                            "product1": {
+                                "sku": "sku1",
+                                "attributes": {
+                                    "usagetype": "ReadCapacity"
+                                }
+                            }
+                        },
+                        "terms": {
+                            "OnDemand": {
+                                "sku1": {
+                                    "priceDimensions": {
+                                        "dimension1": {
+                                            "pricePerUnit": {
+                                                "USD": "0.5"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            ]
+        }
+        available_regions = ["region:us-east-1"]
+        result = self.provider_retriever._retrieve_aws_dynamodb_cost(available_regions)
+        self.assertEqual(result["region:us-east-1"]["read_cost"], 0.5)   
+
+    @patch('provider_retriever.ProviderRetriever._aws_pricing_client')
+    def test_retrieve_aws_ecr_cost(self, mock_aws_pricing_client):
+        mock_aws_pricing_client.list_price_lists.return_value = {
+            "PriceLists": [
+                {
+                    "RegionCode": "us-east-1",
+                    "PriceListArn": "arn",
+                    "PriceList": {
+                        "products": {
+                            "product1": {
+                                "sku": "sku1",
+                                "attributes": {
+                                    "usagetype": "storage"
+                                }
+                            }
+                        },
+                        "terms": {
+                            "OnDemand": {
+                                "sku1": {
+                                    "priceDimensions": {
+                                        "dimension1": {
+                                            "pricePerUnit": {
+                                                "USD": "0.5"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            ]
+        }
+        available_regions = ["region:us-east-1"]
+        result = self.provider_retriever._retrieve_aws_ecr_cost(available_regions)
+        self.assertEqual(result["region:us-east-1"]["storage_cost"], 0.5)             
+
     @patch("caribou.data_collector.components.provider.provider_retriever.requests.get")
     @patch("caribou.data_collector.components.provider.provider_retriever.boto3.client")
     def test_retrieve_aws_execution_cost_success(self, mock_boto3_client, mock_requests_get):
