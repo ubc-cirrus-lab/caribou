@@ -46,7 +46,8 @@ class WorkflowRetriever(DataRetriever):
     def _construct_summaries(self, logs: list[dict[str, Any]]) -> tuple[dict[str, Any], dict[str, Any], list[float]]:
         start_hop_summary: dict[str, Any] = {
             "workflow_placement_decision_size_gb": [],
-            "transfer_size_gb_to_transfer_latencies_s": {},
+            "transfer_sizes_gb": [],
+            "regions_to_regions": {},
         }
         instance_summary: dict[str, Any] = {}
         runtime_samples: list[float] = []
@@ -72,26 +73,32 @@ class WorkflowRetriever(DataRetriever):
         return start_hop_summary, instance_summary, runtime_samples
 
     def _extend_start_hop_summary(self, start_hop_summary: dict[str, Any], log: dict[str, Any]) -> None:
-        start_hop_size_latency_summary = start_hop_summary["transfer_size_gb_to_transfer_latencies_s"]
+        start_hop_size_latency_summary = start_hop_summary["regions_to_regions"]
         start_hop_log: dict[str, Any] = log.get("start_hop_info", None)
         if start_hop_log:
             start_hop_destination = start_hop_log.get("destination", None)
             if start_hop_destination:
                 if start_hop_destination not in start_hop_size_latency_summary:
-                    start_hop_size_latency_summary[start_hop_destination] = {}
+                    start_hop_size_latency_summary[start_hop_destination] = {
+                        "transfer_size_gb_to_transfer_latencies_s": {},
+                    }
 
                 start_hop_data_transfer_size = float(start_hop_log.get("data_transfer_size_gb", 0.0))
 
                 # Round start hop data transfer size to nearest 1 KB
                 start_hop_data_transfer_size = self._round_to_kb(start_hop_data_transfer_size, 1)
 
+                # Add the transfer size to the summary
+                start_hop_summary["transfer_sizes_gb"].append(start_hop_data_transfer_size)
+
+                # Round start hop data transfer size to nearest 10 KB
+                start_hop_data_transfer_size = self._round_to_kb(start_hop_data_transfer_size, 10)
                 if start_hop_data_transfer_size not in start_hop_size_latency_summary[start_hop_destination]:
-                    start_hop_size_latency_summary[start_hop_destination][start_hop_data_transfer_size] = []
-                start_hop_latency = start_hop_log.get("latency_s", None)
-                if start_hop_latency is not None and start_hop_latency > 0.0:
-                    start_hop_size_latency_summary[start_hop_destination][start_hop_data_transfer_size].append(
-                        start_hop_latency
-                    )
+                    start_hop_size_latency_summary[start_hop_destination]['transfer_size_gb_to_transfer_latencies_s'][start_hop_data_transfer_size] = []
+                start_hop_latency = start_hop_log.get("latency_s", 0.0)
+                start_hop_size_latency_summary[start_hop_destination]['transfer_size_gb_to_transfer_latencies_s'][start_hop_data_transfer_size].append(
+                    start_hop_latency
+                )
 
             # Add workflow_placement_decision size to the summary
             workflow_placement_decision_size = start_hop_log.get("workflow_placement_decision", {}).get(
@@ -374,13 +381,82 @@ class WorkflowRetriever(DataRetriever):
                 start_hop_summary["workflow_placement_decision_size_gb"], 1
             )
 
-        # Go through all the regions in transfer_size_gb_to_transfer_latencies_s
-        # And if the list is empty, simply change the value to [0.0]
-        # Used in the case that there are no valid latencies
-        for region_to_transfer_size_latencies in start_hop_summary["transfer_size_gb_to_transfer_latencies_s"].values():
-            for transfer_size, latencies in region_to_transfer_size_latencies.items():
-                if not latencies or latencies == []:
-                    region_to_transfer_size_latencies[transfer_size] = [0.0]
+        for at_region_info in start_hop_summary["regions_to_regions"].values():
+            transfer_size_to_transfer_latencies = at_region_info[
+                "transfer_size_gb_to_transfer_latencies_s"
+            ]
+
+            number_of_data_sizes = len(transfer_size_to_transfer_latencies)
+            if number_of_data_sizes == 0:
+                # Case where there are no data
+                continue
+            
+            at_region_info["best_fit_line"] = self._calculate_best_fit_line(transfer_size_to_transfer_latencies)
+
+        # # Go through all the regions in transfer_size_gb_to_transfer_latencies_s
+        # # And if the list is empty, simply change the value to [0.0]
+        # # Used in the case that there are no valid latencies
+        # for region_to_transfer_size_latencies in start_hop_summary["transfer_size_gb_to_transfer_latencies_s"].values():
+        #     for transfer_size, latencies in region_to_transfer_size_latencies.items():
+        #         if not latencies or latencies == []:
+        #             region_to_transfer_size_latencies[transfer_size] = [0.0]
+
+        # print(start_hop_summary["regions_to_regions"])
+        # for region_to_region_info in start_hop_summary["regions_to_regions"].values():
+        #     for region_to_region in region_to_region_info.values():
+        #         # Calculate the best fit line for the data (Used in case of missing data)
+        #         print(region_to_region)
+        #         transfer_size_to_transfer_latencies = region_to_region["transfer_size_gb_to_transfer_latencies_s"]
+
+        #         number_of_data_sizes = len(transfer_size_to_transfer_latencies)
+        #         if number_of_data_sizes == 0:
+        #             # Case where there are no data
+        #             continue
+
+        #         # Calculate the average latency for each transfer size
+        #         average_transfer_size_to_transfer_latencies = {}
+        #         for size, latencies in transfer_size_to_transfer_latencies.items():
+        #             average_transfer_size_to_transfer_latencies[size] = sum(latencies) / len(latencies)
+
+        #         # Calculate the averege transfer latency
+        #         average_transfer_latency = (
+        #             sum(average_transfer_size_to_transfer_latencies.values()) / number_of_data_sizes
+        #         )
+
+        #         slope = 0.0
+        #         intercept = average_transfer_latency
+        #         if number_of_data_sizes > 1:
+        #             # Prepare the data
+        #             transfer_sizes = []
+        #             transfer_latencies = []
+
+        #             for size, latencies in transfer_size_to_transfer_latencies.items():
+        #                 size = float(size)
+        #                 for latency in latencies:
+        #                     transfer_sizes.append(size)
+        #                     transfer_latencies.append(latency)
+
+        #             # Convert to numpy arrays
+        #             x = np.array(transfer_sizes)
+        #             y = np.array(transfer_latencies)
+
+        #             # Perform linear regression
+        #             potential_slope, potential_intercept, _, _, _ = stats.linregress(x, y)
+
+        #             # Check if the found slope and intercept
+        #             # are somewhat reasonable
+        #             if potential_intercept > 0.0 and potential_slope >= 0.0:
+        #                 slope = potential_slope
+        #                 intercept = potential_intercept
+
+        #         # Save the best fit line
+        #         # And add some limitations such as min and max latency
+        #         region_to_region["best_fit_line"] = {
+        #             "slope_s": slope,
+        #             "intercept_s": intercept,
+        #             "min_latency_s": average_transfer_latency * 0.7,
+        #             "max_latency_s": average_transfer_latency * 1.3,
+        #         }
 
     def _reorganize_instance_summary(self, instance_summary: dict[str, Any]) -> None:
         # Summarize the execution data (Duration, data transfer, etc.)
@@ -519,51 +595,58 @@ class WorkflowRetriever(DataRetriever):
                         if number_of_data_sizes == 0:
                             # Case where there are no data
                             continue
+                        
+                        to_region_information["best_fit_line"] = self._calculate_best_fit_line(transfer_size_to_transfer_latencies)
 
-                        # Calculate the average latency for each transfer size
-                        average_transfer_size_to_transfer_latencies = {}
-                        for size, latencies in transfer_size_to_transfer_latencies.items():
-                            average_transfer_size_to_transfer_latencies[size] = sum(latencies) / len(latencies)
+    def _calculate_best_fit_line(self, transfer_size_to_transfer_latencies: dict[str, Any]) -> dict[str, Any]:
+        number_of_data_sizes = len(transfer_size_to_transfer_latencies)
 
-                        # Calculate the averege transfer latency
-                        average_transfer_latency = (
-                            sum(average_transfer_size_to_transfer_latencies.values()) / number_of_data_sizes
-                        )
+        # Calculate the average latency for each transfer size
+        average_transfer_size_to_transfer_latencies = {}
+        for size, latencies in transfer_size_to_transfer_latencies.items():
+            average_transfer_size_to_transfer_latencies[size] = sum(latencies) / len(latencies)
 
-                        slope = 0.0
-                        intercept = average_transfer_latency
-                        if number_of_data_sizes > 1:
-                            # Prepare the data
-                            transfer_sizes = []
-                            transfer_latencies = []
+        # Calculate the averege transfer latency
+        average_transfer_latency = (
+            sum(average_transfer_size_to_transfer_latencies.values()) / number_of_data_sizes
+        )
 
-                            for size, latencies in transfer_size_to_transfer_latencies.items():
-                                size = float(size)
-                                for latency in latencies:
-                                    transfer_sizes.append(size)
-                                    transfer_latencies.append(latency)
+        slope = 0.0
+        intercept = average_transfer_latency
+        if number_of_data_sizes > 1:
+            # Prepare the data
+            transfer_sizes = []
+            transfer_latencies = []
 
-                            # Convert to numpy arrays
-                            x = np.array(transfer_sizes)
-                            y = np.array(transfer_latencies)
+            for size, latencies in transfer_size_to_transfer_latencies.items():
+                size = float(size)
+                for latency in latencies:
+                    transfer_sizes.append(size)
+                    transfer_latencies.append(latency)
 
-                            # Perform linear regression
-                            potential_slope, potential_intercept, _, _, _ = stats.linregress(x, y)
+            # Convert to numpy arrays
+            x = np.array(transfer_sizes)
+            y = np.array(transfer_latencies)
 
-                            # Check if the found slope and intercept
-                            # are somewhat reasonable
-                            if potential_intercept > 0.0 and potential_slope >= 0.0:
-                                slope = potential_slope
-                                intercept = potential_intercept
+            # Perform linear regression
+            potential_slope, potential_intercept, _, _, _ = stats.linregress(x, y)
 
-                        # Save the best fit line
-                        # And add some limitations such as min and max latency
-                        to_region_information["best_fit_line"] = {
-                            "slope_s": slope,
-                            "intercept_s": intercept,
-                            "min_latency_s": average_transfer_latency * 0.7,
-                            "max_latency_s": average_transfer_latency * 1.3,
-                        }
+            # Check if the found slope and intercept
+            # are somewhat reasonable
+            if potential_intercept > 0.0 and potential_slope >= 0.0:
+                slope = potential_slope
+                intercept = potential_intercept
+            
+        # Save the best fit line and add some
+        # limitations such as min and max latency
+        best_fit_line= {
+            "slope_s": slope,
+            "intercept_s": intercept,
+            "min_latency_s": average_transfer_latency * 0.7,
+            "max_latency_s": average_transfer_latency * 1.3,
+        }
+        
+        return best_fit_line
 
     def _round_to_kb(self, number: float, round_to: int = 10) -> float:
         """
