@@ -11,9 +11,12 @@ or a valid DNA sequence input from https://www.ncbi.nlm.nih.gov/genbank/.
 
 You can deploy the benchmark with the following command:
 
-```bash		
+```bash
 poetry run caribou deploy	
 ```
+
+And then run the benchmark with the following command:
+
 ```bash
 poetry run caribou run dna_visualization-version_number -a '{"gen_file_name": "small_sequence.gb"}'
 ```
