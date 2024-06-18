@@ -1,75 +1,136 @@
-import random
-from abc import ABC
 
-from caribou.common.constants import TAIL_LATENCY_THRESHOLD
+from typing import Optional
+import numpy as np
+
 from caribou.deployment_solver.deployment_input.input_manager import InputManager
-from caribou.deployment_solver.models.dag import DAG
-from caribou.deployment_solver.models.instance_indexer import InstanceIndexer
-from caribou.deployment_solver.models.region_indexer import RegionIndexer
-from caribou.deployment_solver.workflow_config import WorkflowConfig
-from caribou.deployment_solver.deployment_metrics_calculator.models.workflow_instance import WorkflowInstance
+# from caribou.deployment_solver.deployment_metrics_calculator.models.instance_node import InstanceNode
+# from caribou.deployment_solver.deployment_metrics_calculator.models.instance_edge import InstanceEdge
 
-class DeploymentMetricsCalculator(ABC):
-    def __init__(
-        self,
-        workflow_config: WorkflowConfig,
-        input_manager: InputManager,
-        region_indexer: RegionIndexer,
-        instance_indexer: InstanceIndexer,
-        tail_latency_threshold: int = TAIL_LATENCY_THRESHOLD,
-    ):
-        # Not all variables are relevant for other parts
+class InstanceEdge:
+    # If the edge is from the home region, from_instance_id 
+    # and from_region_id is None
+    from_instance_id: Optional[int]
+    from_region_id: Optional[int]
+
+    # Whether the edge is
+    # invoked conditionally.
+    invoked: bool
+    def __init__(self, to_instance_id: int) -> None:
+        self.from_instance_id = None
+        self.from_region_id = None
+
+        # Edge always goes to an instance
+        self.to_instance_id = to_instance_id
+
+class InstanceNode:
+    region_id: int
+
+    def __init__(self, instane_id: int) -> None:
+        # List of edges that go from this instance to another instance
+        self.from_edges: set[InstanceEdge] = []
+        self.to_edges: set[InstanceEdge] = []
+
+        # The instance index
+        self.instance_id = instane_id
+
+        # Denotes if it was invoked (Any of its incoming edges were invoked)
+        # Default is False
+        self.invoked: bool = False
+        
+class WorkflowInstance:
+    def __init__(self, input_manager: InputManager) -> None:
         self._input_manager: InputManager = input_manager
-        self._tail_latency_threshold: int = tail_latency_threshold
+        self._max_runtime: float = 0.0
 
-        # Set up the DAG structure and get the prerequisites and successor dictionaries
-        dag: DAG = DAG(list(workflow_config.instances.values()), instance_indexer)
-        self._prerequisites_dictionary = dag.get_prerequisites_dict()
-        self._successor_dictionary = dag.get_preceeding_dict()
-        self._topological_order = dag.topological_sort()
+        # The ID is the instance index
+        self._nodes: dict[int, InstanceNode] = {}
 
-        # Get the home region index -> this is the region that the workflow starts from
-        self._home_region_index = region_indexer.get_value_indices()[workflow_config.home_region]
+        # The ID is the to instance index
+        self._edges: dict[int, set[InstanceEdge]] = {}
 
-    def calculate_deployment_metrics(self, deployment: list[int]) -> dict[str, float]:
+        # # Start node ID
+        # self._start_node_id: int = -1
+
+    def add_start_hop(self, starting_instance_index: int) -> None:
+        # Create a new edge that goes from the home region to the starting instance
+        start_edge: InstanceEdge = self._get_edge(starting_instance_index)
+
+        # Add the edge to the edge dictionary
+        self._edges[starting_instance_index] = set([start_edge])
+
+        # # Denote that the the start node has the instance index
+        # self._start_node_id = starting_instance_index
+
+    def add_edge(self, from_instance_index: int, to_instance_index: int, invoked: bool) -> None:
+        # Get the from node
+        # We need this to determine if the edge is actually
+        # invoked or not, as if the from node is not invoked
+        # then the edge is not invoked.
+        from_node: InstanceNode = self._get_node(from_instance_index)
+        invoked = invoked and from_node.invoked
+
+        # Get the edge
+        current_edge: InstanceEdge = self._get_edge(to_instance_index)
+
+        # Add the other aspects of the edge
+        current_edge.from_instance_id = from_instance_index
+        current_edge.from_region_id = self._nodes[from_instance_index].region_id
+        current_edge.invoked = invoked
+
+        # Add the edge to the from edges of the from node
+        from_node.to_edges.add(current_edge)
+
+        # Add the edge to the edge dictionary
+        if to_instance_index not in self._edges:
+            self._edges[to_instance_index] = set()
+        self._edges[to_instance_index].add(current_edge)
+
+    def add_node(self, instance_index: int, region_index: int) -> None:
+        '''
+        Add a new node to the workflow instance.
+        This function will also link all the edges that go to this node.
+        And calculate and materialize the cumulative runtime of the node.
+        And also the cost and carbon of the edge to the node.
+        '''
+        # Create a new node
+        current_node = InstanceNode(instance_index, region_index)
+
+        # Link all the edges that go to this node
+        for incident_edge in self._edges.get(instance_index, []):
+            current_node.from_edges.add(incident_edge)
+
+        # Calculate the cumulative runtime of the node
+        self._nodes[instance_index] = current_node
+
+    def calculate_overall_cost_runtime_carbon(self, deployment: list[int]) -> dict[str, float]:
         # Get average and tail cost/carbon/runtime from Monte Carlo simulation
-        return self._perform_monte_carlo_simulation(deployment)
-
-    def _perform_monte_carlo_simulation(self, deployment: list[int]) -> dict[str, float]:
-        """
-        Perform a Monte Carlo simulation to get the average cost, runtime, and carbon footprint of the deployment.
-        """
-        raise NotImplementedError
-
-    def calculate_workflow(self, deployment: list[int]) -> dict[str, float]:
-        # Create an new workflow instance
-        workflow_instance = WorkflowInstance(self._input_manager)
-        for instance_index in self._topological_order:
-            region_index = deployment[instance_index]
-            predecessor_instance_indices = self._prerequisites_dictionary[instance_index]
-
-            # Add the start hop if this is the first instance
-            if len(predecessor_instance_indices) == 0:
-                # This is the first instance, add start hop
-                workflow_instance.add_start_hop(instance_index)
-
-            # Add the node to the workflow instance
-            workflow_instance.add_node(instance_index, region_index)
-
-            # Add the edges to the workflow
-            for successor_instance_index in self._successor_dictionary[instance_index]:
-                is_invoked: bool = self._is_invoked(instance_index, successor_instance_index)
-
-                # Add the edge to the workflow instance
-                workflow_instance.add_edge(instance_index, successor_instance_index, is_invoked)
-
-        # Calculate the overall cost, runtime, and carbon footprint of the deployment
-        cost, runtime, carbon = workflow_instance.calculate_overall_cost_runtime_carbon(deployment)
+        # return self._perform_monte_carlo_simulation(deployment)
+        cost = 0.0
+        carbon = 0.0
         return {
             "cost": cost,
-            "runtime": runtime,
+            "runtime": self._max_runtime,
             "carbon": carbon,
         }
+
+    def _get_node(self, instance_index: int) -> InstanceNode:
+        # Get node if exists, else create a new node
+        if instance_index not in self._nodes:
+            # Create new node
+            node = InstanceNode(instance_index)
+            self._nodes[instance_index] = node
+        
+        return self._nodes[instance_index]
+
+    def _get_edge(self, to_instance_index: int) -> InstanceEdge:
+        # Get edge if exists, else create a new edge
+        if to_instance_index not in self._edges:
+            # Create new edge
+            edge = InstanceEdge(to_instance_index)
+            self._edges[to_instance_index] = edge
+        
+        return self._edges[to_instance_index]
+
 
     # def calculate_workflow(self, deployment: list[int]) -> dict[str, float]:
     #     total_cost = 0.0
@@ -160,7 +221,3 @@ class DeploymentMetricsCalculator(ABC):
     #         "runtime": max(cumulative_runtime_of_instances),
     #         "carbon": total_carbon,
     #     }
-
-    def _is_invoked(self, from_instance_index: int, to_instance_index: int) -> bool:
-        invocation_probability = self._input_manager.get_invocation_probability(from_instance_index, to_instance_index)
-        return random.random() < invocation_probability

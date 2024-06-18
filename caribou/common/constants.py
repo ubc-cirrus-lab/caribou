@@ -89,6 +89,7 @@ MINIMAL_SOLVE_THRESHOLD = 10
 DISTANCE_FOR_POTENTIAL_MIGRATION = 4000
 
 # Logging
+# TODO: Change to 0.0.4
 LOG_VERSION = "0.0.4.dev.5"
 
 # Tail latency threshold
