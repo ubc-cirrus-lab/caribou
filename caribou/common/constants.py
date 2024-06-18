@@ -62,7 +62,7 @@ SOLVER_INPUT_TRANSMISSION_COST_DEFAULT = 100.0
 
 ## Performance Loader
 SOLVER_INPUT_RELATIVE_PERFORMANCE_DEFAULT = 1.0
-SOLVER_INPUT_TRANSMISSION_LATENCY_DEFAULT = 1000.0
+SOLVER_INPUT_TRANSMISSION_LATENCY_DEFAULT = 1000.0 # TODO: CHANGE THIS, this should be what the average transmission latency at home region is, not 1000ms
 
 ## Workflow Loader
 SOLVER_INPUT_RUNTIME_DEFAULT = -1.0  # Denotes that the runtime is not available
