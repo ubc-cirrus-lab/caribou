@@ -22,6 +22,7 @@ poetry run caribou run dna_visualization-version_number -a '{"gen_file_name": "s
 ```
 
 To remove the benchmark, you can use the following command:
+
 ```bash
 poetry run caribou remove dna_visualization-version_number
 ```
