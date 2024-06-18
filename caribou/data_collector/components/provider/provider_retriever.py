@@ -177,6 +177,8 @@ class ProviderRetriever(DataRetriever):
                 "pue": 1.11,
                 "cfe": 0.0,
                 "average_memory_power": 0.00000392,
+                "max_cpu_power_kWh": 0.0035,
+                "min_cpu_power_kWh": 0.00074,
                 "available_architectures": self._retrieve_aws_available_architectures(execution_cost_dict[region_key]),
             }
             for region_key in aws_regions
