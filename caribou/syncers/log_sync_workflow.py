@@ -383,7 +383,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         if not isinstance(consumed_write_capacity, float):
             raise ValueError(f"Invalid consumed_write_capacity: {consumed_write_capacity}")
 
-        # TODO: NEED TO LOOK INTO HOW TO ADDRESS THIS, 
+        # TODO: NEED TO LOOK INTO HOW TO ADDRESS THIS,
         # MAYBE WE WOULD NOT SET THE DESTINATION HERE
         destination_provider = self._extract_from_string(log_entry, r"PROVIDER \((.*?)\)")
         if not isinstance(destination_provider, str):

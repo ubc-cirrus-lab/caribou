@@ -60,7 +60,7 @@ class WorkflowRunSample:  # pylint: disable=too-many-instance-attributes
     def to_dict(self) -> tuple[datetime, dict[str, Any]]:
         if not self.log_start_time:
             raise ValueError("log_start_time is not set")
-        
+
         return (
             self.log_start_time,
             {

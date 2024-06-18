@@ -1,8 +1,8 @@
 import datetime
+import json
 import os
 from typing import Any
 
-import json
 import boto3
 import googlemaps
 import requests
@@ -150,10 +150,6 @@ class ProviderRetriever(DataRetriever):
                 provider_data.update(self._retrieve_provider_data_integrationtest(regions))
             else:
                 raise NotImplementedError(f"Provider {provider} not implemented")
-        # A loop to ensure all regions are included in the provider_data
-        for region_key in self._available_regions.keys():
-            if region_key not in provider_data:
-                provider_data[region_key] = {}
         return provider_data
 
     def _retrieve_provider_data_aws(self, aws_regions: list[str]) -> dict[str, Any]:
@@ -183,7 +179,6 @@ class ProviderRetriever(DataRetriever):
             }
             for region_key in aws_regions
         }
-
 
     def _retrieve_provider_data_integrationtest(self, regions: list[str]) -> dict[str, Any]:
         execution_cost_dict = {
@@ -232,55 +227,55 @@ class ProviderRetriever(DataRetriever):
         }
         sns_cost_dict = {
             f"{Provider.INTEGRATION_TEST_PROVIDER.value}:rivendell": {
-                "cost": 0.011,  
+                "cost": 0.011,
                 "unit": "USD",
             },
             f"{Provider.INTEGRATION_TEST_PROVIDER.value}:lothlorien": {
-                "cost": 0.012,  
+                "cost": 0.012,
                 "unit": "USD",
             },
             f"{Provider.INTEGRATION_TEST_PROVIDER.value}:anduin": {
-                "cost": 0.013,  
+                "cost": 0.013,
                 "unit": "USD",
             },
             f"{Provider.INTEGRATION_TEST_PROVIDER.value}:fangorn": {
-                "cost": 0.014,  
+                "cost": 0.014,
                 "unit": "USD",
             },
         }
         dynamodb_cost_dict = {
             f"{Provider.INTEGRATION_TEST_PROVIDER.value}:rivendell": {
-                "cost": 0.021,  
+                "cost": 0.021,
                 "unit": "USD",
             },
             f"{Provider.INTEGRATION_TEST_PROVIDER.value}:lothlorien": {
-                "cost": 0.022,  
+                "cost": 0.022,
                 "unit": "USD",
             },
             f"{Provider.INTEGRATION_TEST_PROVIDER.value}:anduin": {
-                "cost": 0.023,  
+                "cost": 0.023,
                 "unit": "USD",
             },
             f"{Provider.INTEGRATION_TEST_PROVIDER.value}:fangorn": {
-                "cost": 0.024,  
+                "cost": 0.024,
                 "unit": "USD",
             },
         }
         ecr_cost_dict = {
             f"{Provider.INTEGRATION_TEST_PROVIDER.value}:rivendell": {
-                "cost": 0.031,  
+                "cost": 0.031,
                 "unit": "USD",
             },
             f"{Provider.INTEGRATION_TEST_PROVIDER.value}:lothlorien": {
-                "cost": 0.032,  
+                "cost": 0.032,
                 "unit": "USD",
             },
             f"{Provider.INTEGRATION_TEST_PROVIDER.value}:anduin": {
-                "cost": 0.033,  
+                "cost": 0.033,
                 "unit": "USD",
             },
             f"{Provider.INTEGRATION_TEST_PROVIDER.value}:fangorn": {
-                "cost": 0.034,  
+                "cost": 0.034,
                 "unit": "USD",
             },
         }
@@ -290,7 +285,7 @@ class ProviderRetriever(DataRetriever):
                 "transmission_cost": transmission_cost_dict[region],
                 "sns_cost": sns_cost_dict[region],
                 "dynamodb_cost": dynamodb_cost_dict[region],
-                "ecr_cost": ecr_cost_dict[region], 
+                "ecr_cost": ecr_cost_dict[region],
                 "pue": 1.15,
                 "cfe": 1,
                 "average_memory_power": 0.0003725,
@@ -308,8 +303,9 @@ class ProviderRetriever(DataRetriever):
         if execution_cost["invocation_cost"]["x86_64"] > 0:
             available_architectures.append("x86_64")
         return available_architectures
-    
-    '''this part is hardcoded because when using the api it only worked for us-east-1'''
+
+    # this part is hardcoded because when using the api it only worked for us-east-1
+
     def _retrieve_aws_sns_cost(self, available_regions: list[str]) -> dict[str, Any]:
         result_sns_cost_dict = {}
 
@@ -352,7 +348,7 @@ class ProviderRetriever(DataRetriever):
             elif region_code.startswith("ap-"):
                 sns_cost = 0.60 / 1_000_000
             elif region_code.startswith("ca-"):
-                sns_cost = 0.55 / 1_000_000    
+                sns_cost = 0.55 / 1_000_000
             elif region_code.startswith("sa-"):
                 sns_cost = 0.70 / 1_000_000
             elif region_code.startswith("af-"):
@@ -367,8 +363,8 @@ class ProviderRetriever(DataRetriever):
                 "unit": "USD/requests",
             }
 
-        return result_sns_cost_dict 
-    
+        return result_sns_cost_dict
+
     def _retrieve_aws_dynamodb_cost(self, available_regions: list[str]) -> dict[str, Any]:
         dynamodb_cost_response = self._aws_pricing_client.list_price_lists(
             ServiceCode="AmazonDynamoDB", EffectiveDate=datetime.datetime.now(), CurrencyCode="USD"
@@ -377,6 +373,7 @@ class ProviderRetriever(DataRetriever):
         available_region_code_to_key = {region_key.split(":")[1]: region_key for region_key in available_regions}
 
         dynamodb_cost_dict = {}
+        # pylint: disable=too-many-nested-blocks
         for price_list in dynamodb_cost_response["PriceLists"]:
             region_code = price_list["RegionCode"]
 
@@ -395,10 +392,10 @@ class ProviderRetriever(DataRetriever):
             write_cost = 0.0
 
             for product in price_list_file_json["products"].values():
-                attributes = product.get("attributes", {}) 
+                attributes = product.get("attributes", {})
                 if "productFamily" not in attributes:
                     continue
-                if attributes["productFamily"]== "API Request":
+                if attributes["productFamily"] == "API Request":
                     sku = product["sku"]
                     cost_item = price_list_file_json["terms"]["OnDemand"].get(sku, {})
                     if cost_item:
@@ -412,14 +409,14 @@ class ProviderRetriever(DataRetriever):
             dynamodb_cost_dict[available_region_code_to_key[region_code]] = {
                 "read_cost": read_cost,
                 "write_cost": write_cost,
-                "unit": "USD per GB"
+                "unit": "USD per GB",
             }
 
         if len(dynamodb_cost_dict) != len(available_regions):
             raise ValueError("Not all regions have DynamoDB cost data")
-    
+
         return dynamodb_cost_dict
- 
+
     def _retrieve_aws_ecr_cost(self, available_regions: list[str]) -> dict[str, Any]:
         ecr_cost_response = self._aws_pricing_client.list_price_lists(
             ServiceCode="AmazonECR", EffectiveDate=datetime.datetime.now(), CurrencyCode="USD"
@@ -428,6 +425,7 @@ class ProviderRetriever(DataRetriever):
         available_region_code_to_key = {region_key.split(":")[1]: region_key for region_key in available_regions}
 
         ecr_cost_dict = {}
+        # pylint: disable=too-many-nested-blocks
         for price_list in ecr_cost_response["PriceLists"]:
             region_code = price_list["RegionCode"]
 
@@ -470,12 +468,12 @@ class ProviderRetriever(DataRetriever):
             ecr_cost_dict[available_region_code_to_key[region_code]] = {
                 "storage_cost": storage_cost,
                 "data_transfer_cost": data_transfer_cost,
-                "unit": "USD per GB"
+                "unit": "USD per GB",
             }
 
         if len(ecr_cost_dict) != len(available_regions):
             raise ValueError("Not all regions have ECR cost data")
-    
+
         return ecr_cost_dict
 
     def _retrieve_aws_transmission_cost(self, available_region: list[str]) -> dict[str, Any]:
@@ -531,7 +529,6 @@ class ProviderRetriever(DataRetriever):
             }
 
         return result_transmission_cost_dict
-    
 
     def _retrieve_aws_execution_cost(self, available_region: list[str]) -> dict[str, Any]:
         execution_cost_response = self._aws_pricing_client.list_price_lists(
