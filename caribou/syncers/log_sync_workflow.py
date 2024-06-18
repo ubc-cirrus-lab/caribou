@@ -670,8 +670,6 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         for function, execution_data in log["execution_data"].items():
             if function not in self._existing_data["execution_instance_region"]:
                 self._existing_data["execution_instance_region"][function] = {}
-
-            print(execution_data)
             provider_region = execution_data["provider_region"]
             if provider_region not in self._existing_data["execution_instance_region"][function]:
                 self._existing_data["execution_instance_region"][function][provider_region] = 0
