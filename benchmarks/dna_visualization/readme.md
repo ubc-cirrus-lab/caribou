@@ -11,7 +11,7 @@ or a valid DNA sequence input from https://www.ncbi.nlm.nih.gov/genbank/.
 
 You can deploy the benchmark with the following command:
 
-```bash		@@ -18,7 +13,7 @@ poetry run caribou deploy
+```bash		
 poetry run caribou deploy	
 ```
 ```bash
