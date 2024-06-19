@@ -172,6 +172,8 @@ Note: Data Transfer Cost and complexities of this warrant further investigation 
   "pue": 1.15,
   "cfe": 0.9,
   "average_memory_power": 3.92e-6,
+  "max_cpu_power_kWh": 0.0035,
+  "min_cpu_power_kWh": 0.00074,
   "available_architectures": ["arm64", "x86_64"]
 }
 ```

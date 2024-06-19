@@ -41,7 +41,8 @@ def run_data_collection():
 
     provider_region_data = remote_client.select_all_from_table(PROVIDER_REGION_TABLE)
 
-
+    assert len(provider_region_data) == 4
+    
     expected_provider_region_data = [
         (
             "IntegrationTestProvider:rivendell",
