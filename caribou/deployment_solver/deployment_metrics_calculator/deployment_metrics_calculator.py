@@ -64,12 +64,9 @@ class DeploymentMetricsCalculator(ABC):
                 workflow_instance.add_edge(instance_index, successor_instance_index, is_invoked)
 
         # Calculate the overall cost, runtime, and carbon footprint of the deployment
-        cost, runtime, carbon = workflow_instance.calculate_overall_cost_runtime_carbon(deployment)
-        return {
-            "cost": cost,
-            "runtime": runtime,
-            "carbon": carbon,
-        }
+        worklflow_metrics = workflow_instance.calculate_overall_cost_runtime_carbon()
+
+        return worklflow_metrics
 
     # def calculate_workflow(self, deployment: list[int]) -> dict[str, float]:
     #     total_cost = 0.0

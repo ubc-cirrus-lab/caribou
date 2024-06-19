@@ -262,6 +262,9 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
             carbon_data=state.get("_carbon_loader"),
         )
 
+
+
+
 ######### New functions #########
     def get_transmission_info(self, 
                               from_instance_index: int, 
@@ -270,6 +273,13 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
                               to_region_index: int,
                               calculate_alternative_latency: bool
                             ) -> dict[str, Any]:
+        return {
+            "latency": 0.0,
+            "data_transfer_size": 0.0,
+            "sync_size": 0.0,
+            "consumed_dynamodb_write_capacity_units": 0.0,
+        }
+
         # Convert the instance and region indices to their names
         from_instance_name: Optional[str] = None
         if from_instance_index != -1:
@@ -307,4 +317,53 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
                               from_region_index: int, 
                               to_region_index: int
                             ) -> dict[str, Any]:
-        return {}
+        # parsed_sync_to_from_instance = sync_to_from_instance.split(">")
+        # sync_predecessor_instance = parsed_sync_to_from_instance[0]
+        # sync_node_instance = parsed_sync_to_from_instance[1]        
+
+        return {
+            "non_execution_info": [
+                # {
+                #     "predecessor_instance_id": 0,
+                #     "sync_node_instance_id": 1,
+                #     "consumed_dynamodb_write_capacity_units": 0.0,
+                # }
+            ]
+        }
+    
+    def get_node_runtimes(self, 
+                              instance_index: int, 
+                              region_index: int,
+                              cumulative_runtime: float
+                            ) -> dict[str, Any]:
+        return {
+            "current": 0.0,
+            "sucessors": {
+                # The key is the instance index of the successor
+                # The value is the cumulative runtime of when this
+                # node invokes the successor
+            }
+        }
+    
+    def calculate_cost_and_carbon_of_instance(self,
+                            runtime: float,
+                            region_index: int,
+                            data_input_size: float,
+                            data_output_size: float,
+                            egress_size: float,
+                            dynamodb_read_capacity: float,
+                            dynamodb_write_capacity: float
+                            ) -> dict[str, float]:
+        # print("calculate_cost_and_carbon_of_instance")
+        # print(f"runtime: {runtime}")
+        # print(f"region_index: {region_index}")
+        # print(f"data_input_size: {data_input_size}")
+        # print(f"data_output_size: {data_output_size}")
+        # print(f"egress_size: {egress_size}")
+        # print(f"dynamodb_read_capacity: {dynamodb_read_capacity}")
+        # print(f"dynamodb_write_capacity: {dynamodb_write_capacity}")
+
+        return {
+            "cost": 0.0,
+            "carbon": 0.0
+        }
