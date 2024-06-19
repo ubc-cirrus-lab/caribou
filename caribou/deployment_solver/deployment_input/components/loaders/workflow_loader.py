@@ -7,6 +7,8 @@ from caribou.common.constants import (
     # SOLVER_INPUT_TRANSMISSION_LATENCY_DEFAULT,
     SOLVER_INPUT_VCPU_DEFAULT,
     WORKFLOW_INSTANCE_TABLE,
+    SYNC_SIZE_DEFAULT,
+    SNS_SIZE_DEFAULT
 )
 from caribou.common.models.remote_client.remote_client import RemoteClient
 from caribou.common.provider import Provider
@@ -284,6 +286,33 @@ class WorkflowLoader(InputLoader):
         # TODO: Handle the case where there are no latencies nor best fit line
 
         return latency_distribution
+
+    def get_non_execution_information(self, from_instance_name: str, to_instance_name: str) -> dict[str, Any]:
+        return (
+            self._workflow_data.get("instance_summary", {})
+            .get(from_instance_name, {})
+            .get("to_instance", {})
+            .get(to_instance_name, {})
+            .get("non_execution_info", {})
+        )
+
+    def get_sync_size(self, from_instance_name: str, to_instance_name: str) -> float:
+        return (
+            self._workflow_data.get("instance_summary", {})
+            .get(from_instance_name, {})
+            .get("to_instance", {})
+            .get(to_instance_name, {})
+            .get("sync_sizes_gb", SYNC_SIZE_DEFAULT)
+        )
+
+    def get_sns_only_size(self, from_instance_name: str, to_instance_name: str) -> float:
+        return (
+            self._workflow_data.get("instance_summary", {})
+            .get(from_instance_name, {})
+            .get("to_instance", {})
+            .get(to_instance_name, {})
+            .get("sns_only_sizes_gb", SNS_SIZE_DEFAULT)
+        )
 
     def get_vcpu(self, instance_name: str, provider_name: str) -> float:
         vcpu = (

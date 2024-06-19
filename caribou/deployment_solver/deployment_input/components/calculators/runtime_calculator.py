@@ -1,5 +1,5 @@
 import random
-from typing import Optional
+from typing import Any, Optional
 
 import numpy as np
 
@@ -161,3 +161,58 @@ class RuntimeCalculator(InputCalculator):
                 runtime_distribution.append(0.0)
 
         return runtime_distribution
+
+######### New functions #########
+    def calculate_transmission_size_and_latency(self,
+                                from_instance_name: Optional[str],
+                                from_region_name: Optional[str],
+                                to_instance_name: str,
+                                to_region_name: str,
+                                calculate_alternative_latency: bool,
+    ) -> tuple[float, float]:
+        # Here we pick a random data transfer size, then pick a random latency
+        # If calculate_alternative_latency is true, we also try to pick a distribution
+        # From this alternative latency distribution and see the max of the two latencies
+
+
+
+        # # Get the transmission size distribution
+        # transmission_size_distribution: list[float] = self._runtime_calculator.get_transmission_size_distribution(
+        #     from_instance_name, to_instance_name, from_region_name, to_region_name
+        # )
+
+        # # Pick a transmission size or default to None
+        # transmission_size: Optional[float] = None
+        # if len(transmission_size_distribution) > 0:
+        #     transmission_size = transmission_size_distribution[
+        #         int(random.random() * (len(transmission_size_distribution) - 1))
+        #     ]
+
+        # # Get the transmission latency distribution
+        # transmission_latency_distribution: list[float] = self._runtime_calculator.get_transmission_latency_distribution(
+        #     from_instance_name, to_instance_name, from_region_name, to_region_name, transmission_size
+        # )
+
+        # # # Now we can get a random sample from the distribution
+        # # transmission_latency: float = transmission_latency_distribution[
+        # #     int(random
+
+        return 0.0, 0.0
+
+
+    def calculate_node_runtimes_and_data_transfer(self, 
+                              instance_name: str, 
+                              region_name: str,
+                              previous_cumulative_runtime: float
+                            ) -> tuple[dict[str, Any], float]:
+        
+        return ({
+            "current": 0.0,
+            "sucessors": {
+                # The key is the instance index of the successor
+                # The value is the cumulative runtime of when this
+                # node invokes the successor
+            }
+        },
+        0.0
+        )

@@ -906,6 +906,8 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
             to_instance = transmission_data["to_instance"]
             from_region_str = transmission_data["from_region"]
             to_region_str = transmission_data["to_region"]
+            from_direct_successor = transmission_data.get(from_direct_successor, False)
+            successor_invoked = transmission_data.get(successor_invoked, False)
 
             # Create the necessary dictionaries if they do not exist
             if from_instance not in self._existing_data["transmission_from_instance_to_instance_region"]:
@@ -931,8 +933,10 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
 
             # Here we increment the count of the transmission ONLY for transmission data
             # that is 'from_direct_successor' as the other data is not relevant for the
-            # purpose of getting the direct successor transmission data
-            if transmission_data["from_direct_successor"]:
+            # purpose of getting the direct successor transmission data.
+            # Also we also only care for successor invoked cases as it is the only case
+            # Where transmission latency is recorded
+            if from_direct_successor and successor_invoked:
                 self._existing_data["transmission_from_instance_to_instance_region"][from_instance][to_instance][
                     from_region_str
                 ][to_region_str] += 1
