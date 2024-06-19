@@ -163,6 +163,33 @@ class RuntimeCalculator(InputCalculator):
         return runtime_distribution
 
 ######### New functions #########
+    def calculate_node_runtimes_and_data_transfer(self, 
+                              instance_name: str, 
+                              region_name: str,
+                              previous_cumulative_runtime: float
+                            ) -> tuple[dict[str, Any], float]:
+        
+        # Calculate the current runtime of this instance when executed in the given region
+
+
+        
+
+        return ({
+            "current": previous_cumulative_runtime + 1.0,
+            "sucessors": {
+                # The key is the instance index of the successor
+                # The value is the cumulative runtime of when this
+                # node invokes the successor
+            }
+        },
+        0.0
+        )
+
+
+
+
+
+
     def calculate_transmission_size_and_latency(self,
                                 from_instance_name: Optional[str],
                                 from_region_name: Optional[str],
@@ -198,21 +225,3 @@ class RuntimeCalculator(InputCalculator):
         # #     int(random
 
         return 0.0, 0.0
-
-
-    def calculate_node_runtimes_and_data_transfer(self, 
-                              instance_name: str, 
-                              region_name: str,
-                              previous_cumulative_runtime: float
-                            ) -> tuple[dict[str, Any], float]:
-        
-        return ({
-            "current": 0.0,
-            "sucessors": {
-                # The key is the instance index of the successor
-                # The value is the cumulative runtime of when this
-                # node invokes the successor
-            }
-        },
-        0.0
-        )
