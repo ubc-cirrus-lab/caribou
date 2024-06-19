@@ -261,3 +261,50 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
             requested_regions,
             carbon_data=state.get("_carbon_loader"),
         )
+
+######### New functions #########
+    def get_transmission_info(self, 
+                              from_instance_index: int, 
+                              to_instance_index: int, 
+                              from_region_index: int, 
+                              to_region_index: int,
+                              calculate_alternative_latency: bool
+                            ) -> dict[str, Any]:
+        # Convert the instance and region indices to their names
+        from_instance_name: Optional[str] = None
+        if from_instance_index != -1:
+            from_instance_name = self._instance_indexer.index_to_value(from_instance_index)
+        to_instance_name = self._instance_indexer.index_to_value(to_instance_index)
+        from_region_name = self._region_indexer.index_to_value(from_region_index)
+        to_region_name = self._region_indexer.index_to_value(to_region_index)
+
+        # Get the transmission size distribution
+        transmission_size_distribution: list[float] = self._runtime_calculator.get_transmission_size_distribution(
+            from_instance_name, to_instance_name, from_region_name, to_region_name
+        )
+
+        # Pick a transmission size or default to None
+        transmission_size: Optional[float] = None
+        if len(transmission_size_distribution) > 0:
+            transmission_size = transmission_size_distribution[
+                int(random.random() * (len(transmission_size_distribution) - 1))
+            ]
+
+        # Get the transmission latency distribution
+        transmission_latency_distribution: list[float] = self._runtime_calculator.get_transmission_latency_distribution(
+            from_instance_name, to_instance_name, from_region_name, to_region_name, transmission_size
+        )
+
+        # # Now we can get a random sample from the distribution
+        # transmission_latency: float = transmission_latency_distribution[
+        #     int(random
+
+        return {}
+
+    def get_non_execution_info(self, 
+                              from_instance_index: int, 
+                              to_instance_index: int, 
+                              from_region_index: int, 
+                              to_region_index: int
+                            ) -> dict[str, Any]:
+        return {}

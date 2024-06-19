@@ -200,11 +200,14 @@ class WorkflowRetriever(DataRetriever):
                                     sync_to_from_instance
                                     not in instance_summary[caller]["to_instance"][callee]["non_execution_info"]
                                 ):
-                                    sync_node_instance = sync_to_from_instance.split(">")[1]
+                                    # parsed_sync_to_from_instance = sync_to_from_instance.split(">")
+                                    # sync_predecessor_instance = parsed_sync_to_from_instance[0]
+                                    # sync_node_instance = parsed_sync_to_from_instance[1]
                                     instance_summary[caller]["to_instance"][callee]["non_execution_info"][
                                         sync_to_from_instance
                                     ] = {
-                                        "sync_node_instance": sync_node_instance,
+                                        # "sync_predecessor_instance": sync_predecessor_instance,
+                                        # "sync_node_instance": sync_node_instance,
                                         "consumed_write_capacity": [],
                                         "sync_data_response_size_gb": [],
                                     }
