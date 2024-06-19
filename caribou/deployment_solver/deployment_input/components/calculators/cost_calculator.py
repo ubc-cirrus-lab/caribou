@@ -83,3 +83,23 @@ class CostCalculator(InputCalculator):
         # Add the conversion ratio to the cache
         self._execution_conversion_ratio_cache[key] = (cost_from_compute_s, invocation_cost)
         return self._execution_conversion_ratio_cache[key]
+
+######### New functions #########
+    def calculate_instance_cost(
+        self,
+        runtime: float,
+        instance_name: str,
+        region_name: str,
+        data_output_sizes: dict[str, float],
+        sns_data_output_sizes: dict[str, float],
+        dynamodb_read_capacity: float,
+        dynamodb_write_capacity: float) -> float:
+            # Calculate execution cost of the instance itself
+
+            # Calculate the data transfer (egress cost) of the instance
+            
+            ## SNS may include intra-region data transfer, enable by setting
+
+            # Calculate the dynamodb read/write capacity cost
+
+            return 0.0

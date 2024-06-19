@@ -42,10 +42,11 @@ class DeploymentMetricsCalculator(ABC):
         raise NotImplementedError
 
     def calculate_workflow(self, deployment: list[int]) -> dict[str, float]:
-        # Create an new workflow instance
-        workflow_instance = WorkflowInstance(self._input_manager)
+        # Create an new workflow instance and configure regions
+        workflow_instance = WorkflowInstance(self._input_manager, deployment)
+        
+        # Build the partial workflow instance (Partial DAG)
         for instance_index in self._topological_order:
-            region_index = deployment[instance_index]
             predecessor_instance_indices = self._prerequisites_dictionary[instance_index]
 
             # Add the start hop if this is the first instance
@@ -54,7 +55,7 @@ class DeploymentMetricsCalculator(ABC):
                 workflow_instance.add_start_hop(instance_index)
 
             # Add the node to the workflow instance
-            workflow_instance.add_node(instance_index, region_index)
+            workflow_instance.add_node(instance_index)
 
             # Add the edges to the workflow
             for successor_instance_index in self._successor_dictionary[instance_index]:

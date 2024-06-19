@@ -200,3 +200,26 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
                 "video_analytics-0_0_1-Recognition:video_analytics-0_0_1-Decode_8_0:12": 0.5896474375591176,
             }
         return data[instance] if instance in data else 0.5
+
+
+######### New functions #########
+    def calculate_instance_carbon(
+            self,
+            runtime: float,
+            instance_name: str,
+            region_name: str,
+            data_input_sizes: dict[str, float],
+            data_output_sizes: dict[str, float],
+            data_transfer_during_execution: float,
+    ):
+        # Calculate the carbon from running the execution (solely for cpu and memory)
+
+        # Calculate the carbon from data transfer
+        ## Aggregate intra-region data transfer
+
+        ## Aggregate inter-region data transfer
+
+        ## Calculate the carbon from data transfer
+
+
+        return 0.0

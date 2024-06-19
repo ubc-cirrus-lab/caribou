@@ -183,6 +183,7 @@ class WorkflowRetriever(DataRetriever):
                                 "non_executions": 0,
                                 "invocation_probability": 0.0,
                                 "sync_sizes_gb": [],
+                                "sns_only_sizes_gb": [],
                                 "transfer_sizes_gb": [],
                                 "regions_to_regions": {},
                                 "non_execution_info": {},
@@ -252,6 +253,7 @@ class WorkflowRetriever(DataRetriever):
                     "non_executions": 0,
                     "invocation_probability": 0.0,
                     "sync_sizes_gb": [],
+                    "sns_only_sizes_gb": [],
                     "transfer_sizes_gb": [],
                     "regions_to_regions": {},
                     "non_execution_info": {},
@@ -292,7 +294,12 @@ class WorkflowRetriever(DataRetriever):
                 sync_information_upload_size = data.get("sync_information", {}).get("upload_size_gb", None)
                 sync_information_sync_size = data.get("sync_information", {}).get("sync_data_response_size_gb", None)
                 if sync_information_upload_size is not None:
-                    transmission_data_transfer_size += sync_information_upload_size
+                    instance_summary[from_instance]["to_instance"][to_instance]["sns_only_sizes_gb"].append(transmission_data_transfer_size)
+
+                    # In the case of sync upload, we want to set the data
+                    # transfer to be related only to upload size, as
+                    # the sns size should always be the same and should be small
+                    transmission_data_transfer_size = sync_information_upload_size
                 if sync_information_sync_size is not None:
                     instance_summary[from_instance]["to_instance"][to_instance]["sync_sizes_gb"].append(
                         sync_information_sync_size
@@ -340,6 +347,7 @@ class WorkflowRetriever(DataRetriever):
                         "non_executions": 0,
                         "invocation_probability": 0.0,
                         "sync_sizes_gb": [],
+                        "sns_only_sizes_gb": [],
                         "transfer_sizes_gb": [],
                         "regions_to_regions": {},
                         "non_execution_info": {},
@@ -470,7 +478,7 @@ class WorkflowRetriever(DataRetriever):
         self._summarize_non_execution_data(instance_summary)
 
         # Calculate the average sync table size
-        self._calculate_average_sync_table_size(instance_summary)
+        self._calculate_average_sync_table_and_sns_size(instance_summary)
 
         # Handle the missing region to region transmission data
         # This is done by calculating the best fit line for the data
@@ -570,7 +578,7 @@ class WorkflowRetriever(DataRetriever):
                         else:
                             non_execution_info[sync_call_from_to_instance]["sync_data_response_size_gb"] = 0.0
 
-    def _calculate_average_sync_table_size(self, instance_summary: dict[str, Any]) -> None:
+    def _calculate_average_sync_table_and_sns_size(self, instance_summary: dict[str, Any]) -> None:
         for from_instance in instance_summary.values():
             for to_instance in from_instance.get("to_instance", {}).values():
                 sync_sizes_gb = to_instance.get("sync_sizes_gb", [])
@@ -581,11 +589,21 @@ class WorkflowRetriever(DataRetriever):
                 else:
                     del to_instance["sync_sizes_gb"]
 
+                # Handle averaging the SNS only sizes
+                sns_only_sizes_gb = to_instance.get("sns_only_sizes_gb", [])
+                if sns_only_sizes_gb:
+                    average_sns_only_size = sum(sns_only_sizes_gb) / len(sns_only_sizes_gb)
+                    # Round to nearest 1 KB
+                    to_instance["sns_only_sizes_gb"] = self._round_to_kb(average_sns_only_size, 1)
+                else:
+                    del to_instance["sns_only_sizes_gb"]
+
     # Best fit line approach.
     def _handle_missing_region_to_region_transmission_data(self, instance_summary: dict[str, Any]) -> None:
         for instance_val in instance_summary.values():  # pylint: disable=too-many-nested-blocks
             to_instances = instance_val.get("to_instance", {})
             for to_instance_val in to_instances.values():
+                # Handle the missing region to region transmission data
                 regions_to_regions = to_instance_val.get("regions_to_regions", {})
                 for from_regions_information in regions_to_regions.values():
                     for to_region_information in from_regions_information.values():
@@ -600,6 +618,8 @@ class WorkflowRetriever(DataRetriever):
                             continue
                         
                         to_region_information["best_fit_line"] = self._calculate_best_fit_line(transfer_size_to_transfer_latencies)
+
+
 
     def _calculate_best_fit_line(self, transfer_size_to_transfer_latencies: dict[str, Any]) -> dict[str, Any]:
         number_of_data_sizes = len(transfer_size_to_transfer_latencies)
