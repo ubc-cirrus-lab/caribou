@@ -1,5 +1,4 @@
 import datetime
-import json
 import os
 from typing import Any
 
@@ -365,114 +364,101 @@ class ProviderRetriever(DataRetriever):
 
         return result_sns_cost_dict
 
-    def _retrieve_aws_dynamodb_cost(self, available_regions: list[str]) -> dict[str, Any]:
-        dynamodb_cost_response = self._aws_pricing_client.list_price_lists(
-            ServiceCode="AmazonDynamoDB", EffectiveDate=datetime.datetime.now(), CurrencyCode="USD"
-        )
+    def _retrieve_aws_dynamodb_cost(self, available_regions: list[str]) -> dict[str, dict[str, Any]]:
+        result_dynamodb_cost_dict = {}
 
-        available_region_code_to_key = {region_key.split(":")[1]: region_key for region_key in available_regions}
+        exact_region_codes = {
+            "us-east-1": {"read_cost": 0.00013, "write_cost": 0.00065},  # USD per RCU or WCU per hour
+            "us-west-2": {"read_cost": 0.00013, "write_cost": 0.00065},
+            "ap-south-1": {"read_cost": 0.00017, "write_cost": 0.00085},
+            "ap-northeast-2": {"read_cost": 0.00017, "write_cost": 0.00085},
+            "ap-southeast-1": {"read_cost": 0.00017, "write_cost": 0.00085},
+            "ap-southeast-2": {"read_cost": 0.00017, "write_cost": 0.00085},
+            "ap-northeast-1": {"read_cost": 0.00017, "write_cost": 0.00085},
+            "ca-central-1": {"read_cost": 0.00013, "write_cost": 0.00065},
+            "eu-central-1": {"read_cost": 0.00016, "write_cost": 0.00080},
+            "eu-west-1": {"read_cost": 0.00016, "write_cost": 0.00080},
+            "eu-west-2": {"read_cost": 0.00016, "write_cost": 0.00080},
+            "eu-west-3": {"read_cost": 0.00016, "write_cost": 0.00080},
+            "eu-north-1": {"read_cost": 0.00016, "write_cost": 0.00080},
+            "sa-east-1": {"read_cost": 0.00021, "write_cost": 0.00105},
+        }
 
-        dynamodb_cost_dict = {}
-        # pylint: disable=too-many-nested-blocks
-        for price_list in dynamodb_cost_response["PriceLists"]:
-            region_code = price_list["RegionCode"]
+        default_price = {"read_cost": 0.00016, "write_cost": 0.00080}  # Default price if region not found
 
-            if region_code not in available_region_code_to_key:
-                continue
+        try:
+            for region_key in available_regions:
+                if ":" not in region_key:
+                    raise ValueError(f"Invalid region key {region_key}")
 
-            price_list_arn = price_list["PriceListArn"]
-            price_list_file = self._aws_pricing_client.get_price_list_file_url(
-                PriceListArn=price_list_arn, FileFormat="JSON"
-            )
+                region_code = region_key.split(":")[1]
 
-            response = requests.get(price_list_file["Url"], timeout=5)
-            price_list_file_json = json.loads(response.text)  # Parse the JSON response
+                # Check if the region code is in the dictionary
+                # pylint: disable=R1715
+                if region_code in exact_region_codes:
+                    dynamodb_price = exact_region_codes[region_code]
+                else:
+                    dynamodb_price = default_price
 
-            read_cost = 0.0
-            write_cost = 0.0
+                result_dynamodb_cost_dict[region_key] = {
+                    "read_cost": dynamodb_price,
+                    "write_cost": dynamodb_price,
+                    "unit": "USD per GB",
+                }
 
-            for product in price_list_file_json["products"].values():
-                attributes = product.get("attributes", {})
-                if "productFamily" not in attributes:
-                    continue
-                if attributes["productFamily"] == "API Request":
-                    sku = product["sku"]
-                    cost_item = price_list_file_json["terms"]["OnDemand"].get(sku, {})
-                    if cost_item:
-                        cost_item_details = cost_item[list(cost_item.keys())[0]]["priceDimensions"]
-                        for dimension in cost_item_details.values():
-                            if "ReadCapacity" in product["attributes"]["usagetype"]:
-                                read_cost = float(dimension["pricePerUnit"]["USD"])
-                            elif "WriteCapacity" in product["attributes"]["usagetype"]:
-                                write_cost = float(dimension["pricePerUnit"]["USD"])
+        except Exception as e:
+            # Handle exceptions gracefully (e.g., logging, error messages)
+            print(f"Error retrieving DynamoDB costs: {e}")
+            raise  # Re-raise the exception for higher-level handling
 
-            dynamodb_cost_dict[available_region_code_to_key[region_code]] = {
-                "read_cost": read_cost,
-                "write_cost": write_cost,
-                "unit": "USD per GB",
-            }
+        return result_dynamodb_cost_dict
 
-        if len(dynamodb_cost_dict) != len(available_regions):
-            raise ValueError("Not all regions have DynamoDB cost data")
-
-        return dynamodb_cost_dict
-
-    def _retrieve_aws_ecr_cost(self, available_regions: list[str]) -> dict[str, Any]:
-        ecr_cost_response = self._aws_pricing_client.list_price_lists(
-            ServiceCode="AmazonECR", EffectiveDate=datetime.datetime.now(), CurrencyCode="USD"
-        )
-
-        available_region_code_to_key = {region_key.split(":")[1]: region_key for region_key in available_regions}
-
+    def _retrieve_aws_ecr_cost(self, available_regions: list[str]) -> dict[str, dict[str, Any]]:
         ecr_cost_dict = {}
-        # pylint: disable=too-many-nested-blocks
-        for price_list in ecr_cost_response["PriceLists"]:
-            region_code = price_list["RegionCode"]
 
-            if region_code not in available_region_code_to_key:
-                continue
+        exact_region_codes = {
+            "us-east-1": {"storage_cost": 0.10, "data_transfer_cost": 0.09},
+            "us-west-2": {"storage_cost": 0.10, "data_transfer_cost": 0.09},
+            "ap-south-1": {"storage_cost": 0.12, "data_transfer_cost": 0.09},
+            "ap-northeast-2": {"storage_cost": 0.12, "data_transfer_cost": 0.09},
+            "ap-southeast-1": {"storage_cost": 0.12, "data_transfer_cost": 0.09},
+            "ap-southeast-2": {"storage_cost": 0.12, "data_transfer_cost": 0.09},
+            "ap-northeast-1": {"storage_cost": 0.12, "data_transfer_cost": 0.09},
+            "ca-central-1": {"storage_cost": 0.10, "data_transfer_cost": 0.09},
+            "eu-central-1": {"storage_cost": 0.11, "data_transfer_cost": 0.09},
+            "eu-west-1": {"storage_cost": 0.11, "data_transfer_cost": 0.09},
+            "eu-west-2": {"storage_cost": 0.11, "data_transfer_cost": 0.09},
+            "eu-west-3": {"storage_cost": 0.11, "data_transfer_cost": 0.09},
+            "eu-north-1": {"storage_cost": 0.11, "data_transfer_cost": 0.09},
+            "sa-east-1": {"storage_cost": 0.14, "data_transfer_cost": 0.09},
+        }
 
-            price_list_arn = price_list["PriceListArn"]
-            price_list_file = self._aws_pricing_client.get_price_list_file_url(
-                PriceListArn=price_list_arn, FileFormat="JSON"
-            )
+        default_price = {"storage_cost": 0.10, "data_transfer_cost": 0.09}  # Default price if region not found
 
-            response = requests.get(price_list_file["Url"], timeout=5)
-            price_list_file_json = json.loads(response.text)  # Parse the JSON response
+        try:
+            for region_key in available_regions:
+                if ":" not in region_key:
+                    raise ValueError(f"Invalid region key {region_key}")
 
-            storage_cost = 0.0
-            data_transfer_cost = 0.0
+                region_code = region_key.split(":")[1]
 
-            for product in price_list_file_json["products"].values():
-                attributes = product.get("attributes", {})
-                product_family = attributes.get("productFamily")
-                if not product_family:
-                    continue
-                if product_family == "storage":
-                    sku = product["sku"]
-                    cost_item = price_list_file_json["terms"]["OnDemand"].get(sku, {})
-                    if cost_item:
-                        cost_item_details = cost_item[list(cost_item.keys())[0]]["priceDimensions"]
-                        for dimension in cost_item_details.values():
-                            if "storage" in product["attributes"]["usagetype"]:
-                                storage_cost = float(dimension["pricePerUnit"]["USD"])
-                elif product_family == "Data Transfer":
-                    sku = product["sku"]
-                    cost_item = price_list_file_json["terms"]["OnDemand"].get(sku, {})
-                    if cost_item:
-                        cost_item_details = cost_item[list(cost_item.keys())[0]]["priceDimensions"]
-                        for dimension in cost_item_details.values():
-                            if "DataTransfer" in product["attributes"]["usagetype"]:
-                                data_transfer_cost = float(dimension["pricePerUnit"]["USD"])
+                # Check if the region code is in the dictionary
+                # pylint: disable=R1715
+                if region_code in exact_region_codes:
+                    ecr_price = exact_region_codes[region_code]
+                else:
+                    ecr_price = default_price
 
-            ecr_cost_dict[available_region_code_to_key[region_code]] = {
-                "storage_cost": storage_cost,
-                "data_transfer_cost": data_transfer_cost,
-                "unit": "USD per GB",
-            }
+                ecr_cost_dict[region_key] = {
+                    "storage_cost": ecr_price["storage_cost"],
+                    "data_transfer_cost": ecr_price["data_transfer_cost"],
+                    "unit": "USD per GB",
+                }
 
-        if len(ecr_cost_dict) != len(available_regions):
-            raise ValueError("Not all regions have ECR cost data")
+        except Exception as e:
+            # Handle exceptions gracefully (e.g., logging, error messages)
+            print(f"Error retrieving ECR costs: {e}")
+            raise  # Re-raise the exception for higher-level handling
 
         return ecr_cost_dict
 
