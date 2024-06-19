@@ -113,6 +113,8 @@ class InstanceNode:
         # based on the input/output size and dynamodb
         # read/write capacity
         # print(f'Calculating cost and carbon for node: {self.instance_id}')
+        # print(f"cumulative_runtimes: {self.cumulative_runtimes}")
+        
         calculated_metrics = self._input_manager.calculate_cost_and_carbon_of_instance(
             self.cumulative_runtimes['current'],
             self.instance_id,
@@ -124,7 +126,7 @@ class InstanceNode:
             self.tracked_dynamodb_read_capacity,
             self.tracked_dynamodb_write_capacity,
         )
-        # print()
+        # print(calculated_metrics)
 
         return {
             "cost": calculated_metrics['cost'],
@@ -135,7 +137,7 @@ class InstanceNode:
 class WorkflowInstance:
     def __init__(self, input_manager: InputManager, instance_deployment_regions: list[int]) -> None:
         self._input_manager: InputManager = input_manager
-        self._max_runtime: float = 0.0
+        # self._max_runtime: float = 0.0
 
         # The ID is the at instance index
         self._nodes: dict[int, InstanceNode] = {}
@@ -285,6 +287,8 @@ class WorkflowInstance:
                         # Data of sync_data_response_size is moved from the sync node to the current node
                         self._manage_data_transfer_dict(sync_node.tracked_data_output_sizes, current_node.region_id, sync_data_response_size)
                         self._manage_data_transfer_dict(current_node.tracked_data_input_sizes, sync_node.region_id, sync_data_response_size)
+
+                    # TODO: Consider the cumulative runtime of the node edge, since its possible it is the critical path!
             else:
                 real_node = incident_edge.from_instance_node.invoked if incident_edge.from_instance_node else False
                 if real_node:
@@ -307,8 +311,8 @@ class WorkflowInstance:
         # Calculate the cumulative runtime of the node
         # Only if the node was invoked
         if node_invoked:
-            self.cumulative_runtimes, data_transfer_during_execution = self._input_manager.get_node_runtimes_and_data_transfer(instance_index, current_node.region_id, cumulative_runtime)
-            
+            current_node.cumulative_runtimes, data_transfer_during_execution = self._input_manager.get_node_runtimes_and_data_transfer(instance_index, current_node.region_id, cumulative_runtime)
+
             # Handle the data transfer during execution
             # We will asume the data comes from the same region as the node
             current_node.data_transfer_during_execution += data_transfer_during_execution
