@@ -364,54 +364,92 @@ class ProviderRetriever(DataRetriever):
 
         return result_sns_cost_dict
 
-    def _retrieve_aws_dynamodb_cost(self, available_regions: list[str]) -> dict[str, dict[str, Any]]:
-        result_dynamodb_cost_dict = {}
+    def _retrieve_dynamodb_cost(self, available_region: list[str]) -> dict[str, Any]:
+        dynamodb_cost_response = self._aws_pricing_client.list_price_lists(
+            ServiceCode="AmazonDynamoDB", EffectiveDate=datetime.datetime.now(GLOBAL_TIME_ZONE), CurrencyCode="USD"
+        )
 
-        exact_region_codes = {
-            "us-east-1": {"read_cost": 0.00013, "write_cost": 0.00065},  # USD per RCU or WCU per hour
-            "us-west-2": {"read_cost": 0.00013, "write_cost": 0.00065},
-            "ap-south-1": {"read_cost": 0.00017, "write_cost": 0.00085},
-            "ap-northeast-2": {"read_cost": 0.00017, "write_cost": 0.00085},
-            "ap-southeast-1": {"read_cost": 0.00017, "write_cost": 0.00085},
-            "ap-southeast-2": {"read_cost": 0.00017, "write_cost": 0.00085},
-            "ap-northeast-1": {"read_cost": 0.00017, "write_cost": 0.00085},
-            "ca-central-1": {"read_cost": 0.00013, "write_cost": 0.00065},
-            "eu-central-1": {"read_cost": 0.00016, "write_cost": 0.00080},
-            "eu-west-1": {"read_cost": 0.00016, "write_cost": 0.00080},
-            "eu-west-2": {"read_cost": 0.00016, "write_cost": 0.00080},
-            "eu-west-3": {"read_cost": 0.00016, "write_cost": 0.00080},
-            "eu-north-1": {"read_cost": 0.00016, "write_cost": 0.00080},
-            "sa-east-1": {"read_cost": 0.00021, "write_cost": 0.00105},
-        }
+        available_region_code_to_key = {region_key.split(":")[1]: region_key for region_key in available_region}
 
-        default_price = {"read_cost": 0.00016, "write_cost": 0.00080}  # Default price if region not found
+        dynamodb_cost_dict = {}
+        for price_list in dynamodb_cost_response["PriceLists"]:
+            region_code = price_list["RegionCode"]
 
-        try:
-            for region_key in available_regions:
-                if ":" not in region_key:
-                    raise ValueError(f"Invalid region key {region_key}")
+            if region_code not in available_region_code_to_key:
+                continue
 
-                region_code = region_key.split(":")[1]
+            price_list_arn = price_list["PriceListArn"]
+            price_list_file = self._aws_pricing_client.get_price_list_file_url(
+                PriceListArn=price_list_arn, FileFormat="JSON"
+            )
 
-                # Check if the region code is in the dictionary
-                # pylint: disable=R1715
-                if region_code in exact_region_codes:
-                    dynamodb_price = exact_region_codes[region_code]
-                else:
-                    dynamodb_price = default_price
+            response = requests.get(price_list_file["Url"], timeout=5)
+            price_list_file_json = response.json()
 
-                result_dynamodb_cost_dict[region_key] = {
-                    "read_cost": dynamodb_price,
-                    "write_cost": dynamodb_price,
-                    "unit": "USD per GB",
-                }
+            (
+                read_request_sku,
+                write_request_sku,
+                storage_sku,
+            ) = self.get_dynamodb_on_demand_skus(price_list_file_json)
 
-        except Exception as e:
-            # Handle exceptions gracefully (e.g., logging, error messages)
-            print(f"Error retrieving DynamoDB costs: {e}")
-            raise  # Re-raise the exception for higher-level handling
+            read_request_cost = 0.0
+            if read_request_sku:
+                read_request_item = price_list_file_json["terms"]["OnDemand"][read_request_sku][
+                    list(price_list_file_json["terms"]["OnDemand"][read_request_sku].keys())[0]
+                ]
+                read_request_cost = float(
+                    read_request_item["priceDimensions"][
+                        list(read_request_item["priceDimensions"].keys())[0]
+                    ]["pricePerUnit"]["USD"]
+                )
 
-        return result_dynamodb_cost_dict
+            write_request_cost = 0.0
+            if write_request_sku:
+                write_request_item = price_list_file_json["terms"]["OnDemand"][write_request_sku][
+                    list(price_list_file_json["terms"]["OnDemand"][write_request_sku].keys())[0]
+                ]
+                write_request_cost = float(
+                    write_request_item["priceDimensions"][
+                        list(write_request_item["priceDimensions"].keys())[0]
+                    ]["pricePerUnit"]["USD"]
+                )
+
+            storage_cost = 0.0
+            if storage_sku:
+                storage_item = price_list_file_json["terms"]["OnDemand"][storage_sku][
+                    list(price_list_file_json["terms"]["OnDemand"][storage_sku].keys())[0]
+                ]
+                storage_cost = float(
+                    storage_item["priceDimensions"][
+                        list(storage_item["priceDimensions"].keys())[0]
+                    ]["pricePerUnit"]["USD"]
+                )
+
+            dynamodb_cost_dict[available_region_code_to_key[region_code]] = {
+                "read_request_cost": read_request_cost,
+                "write_request_cost": write_request_cost,
+                "storage_cost": storage_cost,
+                "unit": "USD",
+            }
+
+        if len(dynamodb_cost_dict) != len(available_region):
+            raise ValueError("Not all regions have DynamoDB cost data")
+        return dynamodb_cost_dict
+
+    def get_dynamodb_on_demand_skus(self, price_list_file_json):
+        read_request_sku = ""
+        write_request_sku = ""
+        storage_sku = ""
+
+        for sku, product in price_list_file_json["products"].items():
+            if product["productFamily"] == "DynamoDB Read Request Units":
+                read_request_sku = sku
+            elif product["productFamily"] == "DynamoDB Write Request Units":
+                write_request_sku = sku
+            elif product["productFamily"] == "DynamoDB Storage":
+                storage_sku = sku
+
+        return read_request_sku, write_request_sku, storage_sku
 
     def _retrieve_aws_ecr_cost(self, available_regions: list[str]) -> dict[str, dict[str, Any]]:
         ecr_cost_dict = {}

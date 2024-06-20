@@ -1,12 +1,12 @@
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from caribou.common.models.remote_client.integration_test_remote_client import IntegrationTestRemoteClient
 
 
 class TestIntegrationTestRemoteClient(unittest.TestCase):
     @patch("caribou.common.models.remote_client.integration_test_remote_client.sqlite3")
-    def test_select_all_from_table(self, mock_sqlite3):
+    def test_select_all_from_table(self, mock_sqlite3: Mock) -> None:
         # Arrange
         conn_mock = mock_sqlite3.Connection.return_value
         cursor_mock = conn_mock.cursor.return_value
