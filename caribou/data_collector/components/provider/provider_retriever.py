@@ -1,6 +1,6 @@
 import datetime
 import os
-from typing import Any
+from typing import Any, Dict, List
 
 import boto3
 import googlemaps
@@ -156,14 +156,24 @@ class ProviderRetriever(DataRetriever):
 
         execution_cost_dict = self._retrieve_aws_execution_cost(aws_regions)
 
+        sns_cost_dict = self._retrieve_aws_sns_cost(aws_regions)
+
+        dynamodb_cost_dict = self._retrieve_aws_dynamodb_cost(aws_regions)
+
+        ecr_cost_dict = self._retrieve_aws_ecr_cost(aws_regions)
+
         return {
             region_key: {
                 "execution_cost": execution_cost_dict[region_key],
                 "transmission_cost": transmission_cost_dict[region_key],
+                "sns_cost": sns_cost_dict[region_key],
+                "dynamodb_cost": dynamodb_cost_dict[region_key],
+                "ecr_cost": ecr_cost_dict[region_key],
                 "pue": 1.11,
                 "cfe": 0.0,
                 "average_memory_power": 0.00000392,
-                "average_cpu_power": (0.74 + 0.5 * (3.5 - 0.74)) / 1000,
+                "max_cpu_power_kWh": 0.0035,
+                "min_cpu_power_kWh": 0.00074,
                 "available_architectures": self._retrieve_aws_available_architectures(execution_cost_dict[region_key]),
             }
             for region_key in aws_regions
@@ -214,14 +224,72 @@ class ProviderRetriever(DataRetriever):
                 "unit": "USD/GB",
             },
         }
+        sns_cost_dict = {
+            f"{Provider.INTEGRATION_TEST_PROVIDER.value}:rivendell": {
+                "cost": 0.011,
+                "unit": "USD",
+            },
+            f"{Provider.INTEGRATION_TEST_PROVIDER.value}:lothlorien": {
+                "cost": 0.012,
+                "unit": "USD",
+            },
+            f"{Provider.INTEGRATION_TEST_PROVIDER.value}:anduin": {
+                "cost": 0.013,
+                "unit": "USD",
+            },
+            f"{Provider.INTEGRATION_TEST_PROVIDER.value}:fangorn": {
+                "cost": 0.014,
+                "unit": "USD",
+            },
+        }
+        dynamodb_cost_dict = {
+            f"{Provider.INTEGRATION_TEST_PROVIDER.value}:rivendell": {
+                "cost": 0.021,
+                "unit": "USD",
+            },
+            f"{Provider.INTEGRATION_TEST_PROVIDER.value}:lothlorien": {
+                "cost": 0.022,
+                "unit": "USD",
+            },
+            f"{Provider.INTEGRATION_TEST_PROVIDER.value}:anduin": {
+                "cost": 0.023,
+                "unit": "USD",
+            },
+            f"{Provider.INTEGRATION_TEST_PROVIDER.value}:fangorn": {
+                "cost": 0.024,
+                "unit": "USD",
+            },
+        }
+        ecr_cost_dict = {
+            f"{Provider.INTEGRATION_TEST_PROVIDER.value}:rivendell": {
+                "cost": 0.031,
+                "unit": "USD",
+            },
+            f"{Provider.INTEGRATION_TEST_PROVIDER.value}:lothlorien": {
+                "cost": 0.032,
+                "unit": "USD",
+            },
+            f"{Provider.INTEGRATION_TEST_PROVIDER.value}:anduin": {
+                "cost": 0.033,
+                "unit": "USD",
+            },
+            f"{Provider.INTEGRATION_TEST_PROVIDER.value}:fangorn": {
+                "cost": 0.034,
+                "unit": "USD",
+            },
+        }
         return {
             region: {
                 "execution_cost": execution_cost_dict[region],
                 "transmission_cost": transmission_cost_dict[region],
+                "sns_cost": sns_cost_dict[region],
+                "dynamodb_cost": dynamodb_cost_dict[region],
+                "ecr_cost": ecr_cost_dict[region],
                 "pue": 1.15,
                 "cfe": 1,
                 "average_memory_power": 0.0003725,
-                "average_cpu_power": (0.74 + 0.5 * (3.5 - 0.74)) / 1000,
+                "max_cpu_power_kWh": 0.0035,
+                "min_cpu_power_kWh": 0.00074,
                 "available_architectures": ["arm64", "x86_64"],
             }
             for region in regions
@@ -234,6 +302,221 @@ class ProviderRetriever(DataRetriever):
         if execution_cost["invocation_cost"]["x86_64"] > 0:
             available_architectures.append("x86_64")
         return available_architectures
+
+    # this part is hardcoded because when using the api it only worked for us-east-1
+
+    def _retrieve_aws_sns_cost(self, available_regions: list[str]) -> dict[str, Any]:
+        result_sns_cost_dict = {}
+
+        exact_region_codes = {
+            "us-east-1": 0.50,
+            "us-west-1": 0.60,
+            "us-west-2": 0.50,
+            "us-east-2": 0.50,
+            "ca-central-1": 0.50,
+            "eu-west-1": 0.50,
+            "eu-central-1": 0.55,
+            "ca-west-1": 0.55,
+            "eu-west-2": 0.55,
+            "eu-west-3": 0.55,
+            "eu-north-1": 0.55,
+            "ap-southeast-1": 0.60,
+            "ap-southeast-2": 0.60,
+            "ap-northeast-1": 0.55,
+            "ap-northeast-2": 0.55,
+            "ap-south-1": 0.60,
+            "sa-east-1": 0.70,
+            "af-south-1": 0.75,
+            "me-south-1": 0.75,
+            "il-central-1": 0.55,
+        }
+
+        for region_key in available_regions:
+            if ":" not in region_key:
+                raise ValueError(f"Invalid region key {region_key}")
+
+            region_code = region_key.split(":")[1]
+
+            # Check if the region code is in the dictionary
+            if region_code in exact_region_codes:
+                sns_cost = exact_region_codes[region_code]
+            elif region_code.startswith("us-"):
+                sns_cost = 0.50 / 1_000_000
+            elif region_code.startswith("eu-"):
+                sns_cost = 0.55 / 1_000_000
+            elif region_code.startswith("ap-"):
+                sns_cost = 0.60 / 1_000_000
+            elif region_code.startswith("ca-"):
+                sns_cost = 0.55 / 1_000_000
+            elif region_code.startswith("sa-"):
+                sns_cost = 0.70 / 1_000_000
+            elif region_code.startswith("af-"):
+                sns_cost = 0.75 / 1_000_000
+            elif region_code.startswith("me-"):
+                sns_cost = 0.75 / 1_000_000
+            else:
+                raise ValueError(f"Unknown region code {region_code}")
+
+            result_sns_cost_dict[region_key] = {
+                "sns_cost": sns_cost,
+                "unit": "USD/requests",
+            }
+
+        return result_sns_cost_dict
+
+    def _retrieve_aws_dynamodb_cost(self, available_region: List[str]) -> Dict[str, Any]:
+        dynamodb_cost_response = self._aws_pricing_client.list_price_lists(
+            ServiceCode="AmazonDynamoDB", EffectiveDate=datetime.datetime.now(GLOBAL_TIME_ZONE), CurrencyCode="USD"
+        )
+
+        available_region_code_to_key = {region_key.split(":")[1]: region_key for region_key in available_region}
+
+        dynamodb_cost_dict = {}
+        for price_list in dynamodb_cost_response["PriceLists"]:
+            region_code = price_list["RegionCode"]
+
+            if region_code not in available_region_code_to_key:
+                continue
+
+            price_list_arn = price_list["PriceListArn"]
+            price_list_file = self._aws_pricing_client.get_price_list_file_url(
+                PriceListArn=price_list_arn, FileFormat="JSON"
+            )
+
+            response = requests.get(price_list_file["Url"], timeout=5)
+            price_list_file_json = response.json()
+
+            (
+                read_request_sku,
+                write_request_sku,
+                storage_sku,
+            ) = self.get_dynamodb_on_demand_skus(price_list_file_json)
+
+            read_request_cost = 0.0
+            if read_request_sku:
+                read_request_item = price_list_file_json["terms"]["OnDemand"][read_request_sku][
+                    list(price_list_file_json["terms"]["OnDemand"][read_request_sku].keys())[0]
+                ]
+                read_request_cost = float(
+                    read_request_item["priceDimensions"][list(read_request_item["priceDimensions"].keys())[0]][
+                        "pricePerUnit"
+                    ]["USD"]
+                )
+
+            write_request_cost = 0.0
+            if write_request_sku:
+                write_request_item = price_list_file_json["terms"]["OnDemand"][write_request_sku][
+                    list(price_list_file_json["terms"]["OnDemand"][write_request_sku].keys())[0]
+                ]
+                write_request_cost = float(
+                    write_request_item["priceDimensions"][list(write_request_item["priceDimensions"].keys())[0]][
+                        "pricePerUnit"
+                    ]["USD"]
+                )
+
+            storage_cost = 0.0
+            if storage_sku:
+                storage_item = price_list_file_json["terms"]["OnDemand"][storage_sku][
+                    list(price_list_file_json["terms"]["OnDemand"][storage_sku].keys())[0]
+                ]
+                storage_cost = float(
+                    storage_item["priceDimensions"][list(storage_item["priceDimensions"].keys())[0]]["pricePerUnit"][
+                        "USD"
+                    ]
+                )
+
+            dynamodb_cost_dict[available_region_code_to_key[region_code]] = {
+                "read_request_cost": read_request_cost,
+                "write_request_cost": write_request_cost,
+                "storage_cost": storage_cost,
+                "unit": "USD",
+            }
+
+        return dynamodb_cost_dict
+
+    def get_dynamodb_on_demand_skus(self, price_list_file_json: Dict[str, Any]) -> tuple[str, str, str]:
+        read_request_sku = ""
+        write_request_sku = ""
+        storage_sku = ""
+
+        for sku, product in price_list_file_json["products"].items():
+            product_family = product.get("productFamily", "")
+            if product_family == "Amazon DynamoDB PayPerRequest Throughput":
+                read_request_sku = sku
+            elif product_family == "DDB-Operation-ReplicatedWrite":
+                write_request_sku = sku
+            elif product_family == "Database Storage":
+                storage_sku = sku
+
+        return read_request_sku, write_request_sku, storage_sku
+
+    def _retrieve_aws_ecr_cost(self, available_region: List[str]) -> Dict[str, Any]:
+        ecr_cost_response = self._aws_pricing_client.list_price_lists(
+            ServiceCode="AmazonECR", EffectiveDate=datetime.datetime.now(GLOBAL_TIME_ZONE), CurrencyCode="USD"
+        )
+
+        available_region_code_to_key = {region_key.split(":")[1]: region_key for region_key in available_region}
+
+        ecr_cost_dict = {}
+        for price_list in ecr_cost_response["PriceLists"]:
+            region_code = price_list["RegionCode"]
+
+            if region_code not in available_region_code_to_key:
+                continue
+
+            price_list_arn = price_list["PriceListArn"]
+            price_list_file = self._aws_pricing_client.get_price_list_file_url(
+                PriceListArn=price_list_arn, FileFormat="JSON"
+            )
+
+            response = requests.get(price_list_file["Url"], timeout=5)
+            price_list_file_json = response.json()
+
+            storage_sku, data_transfer_sku = self.get_ecr_skus(price_list_file_json)
+
+            storage_cost = 0.0
+            if storage_sku:
+                storage_item = price_list_file_json["terms"]["OnDemand"][storage_sku][
+                    list(price_list_file_json["terms"]["OnDemand"][storage_sku].keys())[0]
+                ]
+                storage_cost = float(
+                    storage_item["priceDimensions"][list(storage_item["priceDimensions"].keys())[0]]["pricePerUnit"][
+                        "USD"
+                    ]
+                )
+
+            data_transfer_cost = 0.0
+            if data_transfer_sku:
+                data_transfer_item = price_list_file_json["terms"]["OnDemand"][data_transfer_sku][
+                    list(price_list_file_json["terms"]["OnDemand"][data_transfer_sku].keys())[0]
+                ]
+                data_transfer_cost = float(
+                    data_transfer_item["priceDimensions"][list(data_transfer_item["priceDimensions"].keys())[0]][
+                        "pricePerUnit"
+                    ]["USD"]
+                )
+
+            ecr_cost_dict[available_region_code_to_key[region_code]] = {
+                "storage_cost": storage_cost,
+                "data_transfer_cost": data_transfer_cost,
+                "unit": "USD",
+            }
+
+        return ecr_cost_dict
+
+    def get_ecr_skus(self, price_list_file_json: Dict[str, Any]) -> tuple[str, str]:
+        storage_sku = ""
+        data_transfer_sku = ""
+
+        for sku, product in price_list_file_json["products"].items():
+            attributes = product.get("attributes", {})
+            if attributes.get("servicecode") == "AmazonECR":
+                if "Storage" in attributes.get("usagetype", ""):
+                    storage_sku = sku
+                elif "DataTransfer" in attributes.get("usagetype", ""):
+                    data_transfer_sku = sku
+
+        return storage_sku, data_transfer_sku
 
     def _retrieve_aws_transmission_cost(self, available_region: list[str]) -> dict[str, Any]:
         result_transmission_cost_dict = {}

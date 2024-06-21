@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import Mock, patch, MagicMock
 from caribou.data_collector.components.provider.provider_retriever import ProviderRetriever
 from caribou.common.models.remote_client.remote_client import RemoteClient
 import requests
@@ -17,6 +17,66 @@ class TestProviderRetriever(unittest.TestCase):
             mock_os_environ_get.return_value = "test_key"
             mock_str_to_bool.return_value = False
             self.provider_retriever = ProviderRetriever(self.remote_client)
+
+    @patch.dict(os.environ, {"AWS_REGION": "us-east-1"})
+    def test_retrieve_aws_sns_cost(self):
+        available_regions = ["aws:us-east-1", "aws:eu-west-1", "aws:ap-southeast-1"]
+        expected_sns_cost = {
+            "aws:us-east-1": {"sns_cost": 0.50, "unit": "USD/requests"},
+            "aws:eu-west-1": {"sns_cost": 0.50, "unit": "USD/requests"},
+            "aws:ap-southeast-1": {"sns_cost": 0.60, "unit": "USD/requests"},
+        }
+
+        actual_sns_cost = self.provider_retriever._retrieve_aws_sns_cost(available_regions)
+
+        self.assertEqual(actual_sns_cost, expected_sns_cost)
+
+    @patch("requests.get")
+    @patch("caribou.data_collector.components.provider.provider_retriever.boto3.client")
+    def test_retrieve_aws_dynamodb_cost(self, mock_pricing_client, mock_requests_get):
+        # Set up mock objects
+        mock_pricing_client.list_price_lists.return_value = {
+            "PriceLists": [{"RegionCode": "aws:us-east-1", "PriceListArn": "arn1"}]
+        }
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "terms": {
+                "OnDemand": {
+                    "read_request_sku": {
+                        "offerTermCode": "JRTCKXETXF",
+                        "priceDimensions": {
+                            "read_request_sku.JRTCKXETXF.6YS6EN2CT7": {"pricePerUnit": {"USD": "0.25"}}
+                        },
+                    },
+                    "write_request_sku": {
+                        "offerTermCode": "JRTCKXETXF",
+                        "priceDimensions": {
+                            "write_request_sku.JRTCKXETXF.6YS6EN2CT7": {"pricePerUnit": {"USD": "0.25"}}
+                        },
+                    },
+                    "storage_sku": {
+                        "offerTermCode": "JRTCKXETXF",
+                        "priceDimensions": {"storage_sku.JRTCKXETXF.6YS6EN2CT7": {"pricePerUnit": {"USD": "0.25"}}},
+                    },
+                }
+            }
+        }
+        mock_requests_get.return_value = mock_response
+        self.provider_retriever._aws_pricing_client = mock_pricing_client
+
+        # Act
+        result = self.provider_retriever._retrieve_aws_dynamodb_cost(["aws:us-east-1"])
+
+        # Assert
+        expected_result = {
+            "aws:us-east-1": {
+                "read_request_cost": 0.25,
+                "write_request_cost": 0.25,
+                "storage_cost": 0.25,
+                "unit": "USD",
+            }
+        }
+        assert result == expected_result
 
     @patch("googlemaps.Client")
     def test_retrieve_location(self, mock_googlemaps_client):
@@ -142,22 +202,33 @@ class TestProviderRetriever(unittest.TestCase):
         self, mock_retrieve_aws_execution_cost, mock_retrieve_aws_transmission_cost
     ):
         mock_retrieve_aws_execution_cost.return_value = {
-            "aws:dummy_region": {
+            "aws:us-east-1": {
                 "compute_cost": {"arm64": 0.0001, "x86": 0.00006},
                 "invocation_cost": {"arm64": 0.002, "x86_64": 0.003},
+                "sns_cost": 0.5,
+                "dynamodb_cost": {"read": 0.01, "write": 0.05},  # Example costs for DynamoDB
+                # "ecr_cost": 0.10  # Example cost for ECR
             }
         }
-        mock_retrieve_aws_transmission_cost.return_value = {"aws:dummy_region": {"global_data_transfer": 0.002}}
+        mock_retrieve_aws_transmission_cost.return_value = {"aws:us-east-1": {"global_data_transfer": 0.002}}
 
-        self.provider_retriever._available_regions = {"aws:dummy_region": {"provider": "aws"}}
+        self.provider_retriever._available_regions = {"aws:us-east-1": {"provider": "aws"}}
 
         result = self.provider_retriever.retrieve_provider_region_data()
-        self.assertIn("aws:dummy_region", result)
+        self.assertIn("aws:us-east-1", result)
         self.assertEqual(
-            result["aws:dummy_region"]["execution_cost"],
-            {"compute_cost": {"arm64": 0.0001, "x86": 0.00006}, "invocation_cost": {"arm64": 0.002, "x86_64": 0.003}},
+            result["aws:us-east-1"]["execution_cost"],
+            {
+                "compute_cost": {"arm64": 0.0001, "x86": 0.00006},
+                "invocation_cost": {"arm64": 0.002, "x86_64": 0.003},
+                "sns_cost": 0.5,
+                "dynamodb_cost": {"read": 0.01, "write": 0.05},
+            },
         )
-        self.assertEqual(result["aws:dummy_region"]["transmission_cost"], {"global_data_transfer": 0.002})
+        self.assertEqual(result["aws:us-east-1"]["transmission_cost"], {"global_data_transfer": 0.002})
+        self.assertEqual(result["aws:us-east-1"]["execution_cost"]["sns_cost"], 0.5)
+        self.assertEqual(result["aws:us-east-1"]["execution_cost"]["dynamodb_cost"], {"read": 0.01, "write": 0.05})
+        # self.assertEqual(result["aws:us-east-1"]["execution_cost"]["ecr_cost"], 0.10)
 
     def test_retrieve_aws_transmission_cost(self):
         result = self.provider_retriever._retrieve_aws_transmission_cost(["aws:us-west-1"])
