@@ -233,7 +233,8 @@ class WorkflowInstance:
         sync_edge_upload_data: list[tuple[float, float]] = []
         edge_reached_time_to_sns_data: list[tuple[float, dict[str, Any]]] = []
         for current_edge in real_predecessor_edges:
-            node_invoked = self._handle_real_edge(current_edge, is_sync_node, sync_edge_upload_data, edge_reached_time_to_sns_data)
+            current_node_invoked = self._handle_real_edge(current_edge, is_sync_node, sync_edge_upload_data, edge_reached_time_to_sns_data)
+            node_invoked = node_invoked or current_node_invoked
 
         # Handle sync upload auxiliary data
         ## This the write capacity unit of the sync node
@@ -252,6 +253,7 @@ class WorkflowInstance:
             # As it determines the actual runtime of the node (and represent SNS call)
             simulated_predecessor_edges: list[SimulatedInstanceEdge] = self._get_predecessor_edges(instance_index, True)
             for simulated_edge in simulated_predecessor_edges:
+                print(f"Simulated Edge: {simulated_edge.from_instance_node.instance_id} -> {simulated_edge.to_instance_node.instance_id}")
                 self._handle_simulated_edge(simulated_edge, edge_reached_time_to_sns_data)
 
             # Calculate the cumulative runtime of the node and the data transfer during execution
@@ -373,6 +375,7 @@ class WorkflowInstance:
                 # For the non-execution case, we should get the instances that the sync node will write to
                 # This will increment the consumed write capacity of the sync node, and also the data transfer size
                 non_execution_infos = transmission_info['non_execution_info']
+                print(non_execution_infos)
                 for non_execution_info in non_execution_infos:
                     simulated_predecessor_instance_id = non_execution_info["predecessor_instance_id"]
                     sync_node_instance_id = non_execution_info["sync_node_instance_id"]
@@ -453,6 +456,8 @@ class WorkflowInstance:
         if sync_node_id not in self._simulated_edges:
             self._simulated_edges[sync_node_id] = {}
         self._simulated_edges[sync_node_id][from_instance_id] = simulated_edge
+
+        print(f"Created edge on {sync_node_id} from {from_instance_id} to {sync_node_id} (Uninvoked: {uninvoked_instance_id}, Sync Predecessor: {simulated_sync_predecessor_id})")
 
         return simulated_edge
 
