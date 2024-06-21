@@ -44,6 +44,8 @@ class SimulatedInstanceEdge:
             # parent node calling the uninvoked node
             cumulative_runtime += self.from_instance_node.get_cumulative_runtime(uninvoked_instance_id)
 
+        print(f"SIE: FI: {from_instance_id}, UII: {uninvoked_instance_id}, Cumulative Runtime: {cumulative_runtime} s")
+
         # Those edges are not apart of the workflow
         # and are only used to handle latencies of non-execution of ancestor nodes
         transmission_info = self._input_manager.get_simulated_transmission_info(from_instance_id, uninvoked_instance_id, simulated_sync_predecessor_id, sync_node_id, from_region_id, to_region_id, cumulative_runtime)

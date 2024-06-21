@@ -219,22 +219,23 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
             data_input_sizes: dict[str, float],
             data_output_sizes: dict[str, float],
             data_transfer_during_execution: float,
-            is_invoked: bool) -> float:
-        total_carbon = 0.0
+            is_invoked: bool) -> tuple[float, float]:
+        execution_carbon = 0.0
+        transmission_carbon = 0.0
 
-        print(f"instance_name: {instance_name}, at region: {region_name}")
+        # print(f"instance_name: {instance_name}, at region: {region_name}")
 
         # If the function is actually invoked
         if is_invoked:
             # Calculate the carbon from running the execution
-            total_carbon += self._calculate_execution_carbon(instance_name, region_name, runtime)
+            execution_carbon += self._calculate_execution_carbon(instance_name, region_name, runtime)
 
         # Even if the function is not invoked, we model
         # Each node as an abstract instance to consider
         # data transfer carbon
-        total_carbon += self._calculate_data_transfer_carbon(region_name, data_input_sizes, data_output_sizes, data_transfer_during_execution)
+        transmission_carbon += self._calculate_data_transfer_carbon(region_name, data_input_sizes, data_output_sizes, data_transfer_during_execution)
 
-        return total_carbon
+        return execution_carbon, transmission_carbon
     
     def _calculate_data_transfer_carbon(self, current_region_name: str,
                                         data_input_sizes: dict[str, float],
@@ -279,7 +280,8 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
         # Calculate the carbon from data transfer
         # Of data that we CANNOT track represented by data_transfer_during_execution
         # Right now we are just assuming they are from the home region
-        if not ((current_region_name == other_region_name) and not self.consider_home_region_for_transmission):
+        # if not ((current_region_name == self._workflow_loader.get_home_region()) and not ):
+        if (self.consider_home_region_for_transmission or (current_region_name != self._workflow_loader.get_home_region())):
             # Perhaps use global carbon intensity
             total_transmission_carbon += data_transfer_during_execution * self.energy_factor_of_transmission * current_region_carbon_intensity
 

@@ -217,12 +217,13 @@ class WorkflowInstance:
         current_edge.conditionally_invoked = invoked and from_node.invoked
 
 
-    def add_node(self, instance_index: int) -> None:
+    def add_node(self, instance_index: int) -> bool:
         '''
         Add a new node to the workflow instance.
         This function will also link all the edges that go to this node.
         And calculate and materialize the cumulative runtime of the node.
         And also the cost and carbon of the edge to the node.
+        Return if the workflow instance was invoked.
         '''
         # Create a new node (This will always create a new node if
         # this class is configured correctly)
@@ -237,6 +238,9 @@ class WorkflowInstance:
         for current_edge in real_predecessor_edges:
             current_node_invoked = self._handle_real_edge(current_edge, is_sync_node, sync_edge_upload_data, edge_reached_time_to_sns_data)
             node_invoked = node_invoked or current_node_invoked
+
+            from_instance_id = current_edge.from_instance_node.instance_id if current_edge.from_instance_node else -1
+            print(f"WI: Processing Real Edge, from: {from_instance_id} -> {current_edge.to_instance_node.instance_id} -> {current_node_invoked}")
 
         # Handle sync upload auxiliary data
         ## This the write capacity unit of the sync node
@@ -256,11 +260,15 @@ class WorkflowInstance:
             simulated_predecessor_edges: list[SimulatedInstanceEdge] = self._get_predecessor_edges(instance_index, True)
             for simulated_edge in simulated_predecessor_edges:
                 # print(f"Simulated Edge: {simulated_edge.from_instance_node.instance_id} -> {simulated_edge.to_instance_node.instance_id}")
+                print(f"WI: Processing Simulated Edge, from: {simulated_edge.from_instance_node.instance_id} -> {simulated_edge.to_instance_node.instance_id}")
                 self._handle_simulated_edge(simulated_edge, edge_reached_time_to_sns_data)
+
 
             # Calculate the cumulative runtime of the node and the data transfer during execution
             cumulative_runtime = self._handle_sns_invocation(edge_reached_time_to_sns_data)
+            print(f"WI: Runtime before execution: {cumulative_runtime} s")
             current_node.cumulative_runtimes, data_transfer_during_execution = self._input_manager.get_node_runtimes_and_data_transfer(instance_index, current_node.region_id, cumulative_runtime)
+            print(f"WI: Runtimes after execution: {current_node.cumulative_runtimes} s")
 
             # Handle the data transfer during execution
             # We will asume the data comes from the same region as the node
@@ -269,19 +277,30 @@ class WorkflowInstance:
         # Set the node invoked flag
         current_node.invoked = node_invoked
 
+        return node_invoked
+
     def _handle_sns_invocation(self, edge_reached_time_to_sns_data: list[tuple[float, dict[str, Any]]]) -> float:
         # Sort the sns data by the starting runtime, aka when it
         # was invoked, we only want the one with the longest runtime
         # As that is the one that will actually cause the SNS invocation
         edge_reached_time_to_sns_data.sort(key=lambda x: x[0], reverse=True)
+
+        parsed_dict: list[tuple[int, int]] = []
+        for _, (start_runtime, sns_data) in enumerate(edge_reached_time_to_sns_data):
+            from_instance_id = sns_data["from_instance_node"].instance_id if sns_data["from_instance_node"] else -1
+            to_instance_id = sns_data["to_instance_node"].instance_id
+            parsed_dict.append((f'{from_instance_id}>{to_instance_id}',start_runtime, sns_data["cumulative_runtime"]))
+        print(f"WIT: Edge Reached Time to SNS Data: {parsed_dict}")
+
+
         if len(edge_reached_time_to_sns_data) > 0:
             # Get the edge that will invoke the SNS
             sns_edge_data = edge_reached_time_to_sns_data[0][1]
             cumulative_runtime: float = sns_edge_data["cumulative_runtime"]
             sns_data_transfer_size: float = sns_edge_data["sns_data_transfer_size"]
-            from_instance_node: InstanceNode = sns_edge_data["from_instance_node"]
+            from_instance_node: Optional[InstanceNode] = sns_edge_data["from_instance_node"]
             to_instance_node: InstanceNode = sns_edge_data["to_instance_node"]
-
+            
             ## This means that the predecessor node should have the data output size incremented
             ## If the predecessor node exists (Aka not the start node)
             from_region_id = -1
@@ -304,8 +323,6 @@ class WorkflowInstance:
         return 0.0
 
     def _handle_simulated_edge(self, current_edge: SimulatedInstanceEdge, edge_reached_time_to_sns_data: list[tuple[float, dict[str, Any]]]) -> None:
-        edge_reached_time_to_sns_data: list[tuple[float, dict[str, Any]]] = []
-
         # Get the transmission information of the edge
         transmission_info = current_edge.get_simulated_transmission_information()
         starting_runtime = transmission_info["starting_runtime"]
@@ -411,18 +428,27 @@ class WorkflowInstance:
 
     def calculate_overall_cost_runtime_carbon(self) -> dict[str, float]:
         cumulative_cost = 0.0
-        cumulative_carbon = 0.0
         max_runtime = 0.0
+        cumulative_execution_carbon = 0.0
+        cumulative_transmission_carbon = 0.0
         for node in self._nodes.values():
             node_carbon_cost_runtime = node.calculate_carbon_cost_runtime()
             cumulative_cost += node_carbon_cost_runtime["cost"]
-            cumulative_carbon += node_carbon_cost_runtime["carbon"]
+            cumulative_execution_carbon += node_carbon_cost_runtime["execution_carbon"]
+            cumulative_transmission_carbon += node_carbon_cost_runtime["transmission_carbon"]
             max_runtime = max(max_runtime, node_carbon_cost_runtime["runtime"])
+
+        print("\nFinal Results:")
+        print(f"Cost: {cumulative_cost}")
+        print(f"Runtime: {max_runtime}")
+        print(f"Carbon: EX- {cumulative_execution_carbon}, TR- {cumulative_transmission_carbon}, overall- {cumulative_execution_carbon + cumulative_transmission_carbon}")
 
         return {
             "cost": cumulative_cost,
             "runtime": max_runtime,
-            "carbon": cumulative_carbon,
+            "carbon": cumulative_execution_carbon + cumulative_transmission_carbon,
+            "execution_carbon": cumulative_execution_carbon,
+            "transmission_carbon": cumulative_transmission_carbon,
         }
 
     def _get_node(self, instance_index: int) -> InstanceNode:
@@ -459,7 +485,7 @@ class WorkflowInstance:
             self._simulated_edges[sync_node_id] = {}
         self._simulated_edges[sync_node_id][from_instance_id] = simulated_edge
 
-        print(f"Created edge on {sync_node_id} from {from_instance_id} to {sync_node_id} (Uninvoked: {uninvoked_instance_id}, Sync Predecessor: {simulated_sync_predecessor_id})")
+        # print(f"Created edge on {sync_node_id} from {from_instance_id} to {sync_node_id} (Uninvoked: {uninvoked_instance_id}, Sync Predecessor: {simulated_sync_predecessor_id})")
 
         return simulated_edge
 

@@ -364,7 +364,7 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         to_region_name: str = self._region_indexer.index_to_value(to_region_index)
 
         # Get a transmission size and latency sample
-        print(f"SIMULATED from_instance_name: {from_instance_name}, uninvoked_instance_name: {uninvoked_instance_name}, simulated_sync_predecessor_name: {simulated_sync_predecessor_name}, sync_node_name: {sync_node_name}, from_region_name: {from_region_name}, to_region_name: {to_region_name}")
+        # print(f"SIMULATED from_instance_name: {from_instance_name}, uninvoked_instance_name: {uninvoked_instance_name}, simulated_sync_predecessor_name: {simulated_sync_predecessor_name}, sync_node_name: {sync_node_name}, from_region_name: {from_region_name}, to_region_name: {to_region_name}")
         sns_transmission_size, transmission_latency = self._runtime_calculator.calculate_simulated_transmission_size_and_latency(
             from_instance_name, uninvoked_instance_name, simulated_sync_predecessor_name, sync_node_name, from_region_name, to_region_name
         )
