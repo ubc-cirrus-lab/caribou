@@ -17,6 +17,7 @@ class DeploymentMetricsCalculator(ABC):
         region_indexer: RegionIndexer,
         instance_indexer: InstanceIndexer,
         tail_latency_threshold: int = TAIL_LATENCY_THRESHOLD,
+        record_transmission_execution_carbon: bool = False,
     ):
         # Not all variables are relevant for other parts
         self._input_manager: InputManager = input_manager
@@ -30,6 +31,9 @@ class DeploymentMetricsCalculator(ABC):
 
         # Get the home region index -> this is the region that the workflow starts from
         self._home_region_index = region_indexer.get_value_indices()[workflow_config.home_region]
+
+        # Set the record transmission execution carbon flag
+        self._record_transmission_execution_carbon = record_transmission_execution_carbon
 
     def calculate_deployment_metrics(self, deployment: list[int]) -> dict[str, float]:
         # Get average and tail cost/carbon/runtime from Monte Carlo simulation
@@ -55,22 +59,27 @@ class DeploymentMetricsCalculator(ABC):
                 workflow_instance.add_start_hop(instance_index)
 
             # Add the node to the workflow instance
-            print(f"\nDEBUG: Add Instance Name: {self._input_manager._instance_indexer.index_to_value(instance_index)}")
-            workflow_instance.add_node(instance_index)
+            print(f"\nWORKFLOW: Instantialized Instance: {instance_index} ({self._input_manager._instance_indexer.index_to_value(instance_index)})")
+            node_invoked: bool = workflow_instance.add_node(instance_index)
+
+            print(f"WORKFLOW: Instance Invoked: {node_invoked}")
 
             # Add the edges to the workflow
             for successor_instance_index in self._successor_dictionary[instance_index]:
-                is_invoked: bool = self._is_invoked(instance_index, successor_instance_index)
+                # If node was not invoked, it will not invoke the successor edges, but
+                # we still need to add the edge to the workflow instance (for data transfer calculations)
+                is_invoked: bool = self._is_invoked(instance_index, successor_instance_index) if node_invoked else False
 
-                print(f"DEBUG: Invoked: {is_invoked} -> {self._input_manager._instance_indexer.index_to_value(successor_instance_index)}")
+                print(f"WORKFLOW: Successor Invoked: {is_invoked} -> {successor_instance_index}")
 
                 # Add the edge to the workflow instance
                 workflow_instance.add_edge(instance_index, successor_instance_index, is_invoked)
-
+            
         # Calculate the overall cost, runtime, and carbon footprint of the deployment
+        print("\n\nCalculating Metrics for the Workflow Instance:")
         worklflow_metrics = workflow_instance.calculate_overall_cost_runtime_carbon()
 
-        print("\n\n________________________________________________")
+        print("\n________________________________________________")
 
         return worklflow_metrics
 

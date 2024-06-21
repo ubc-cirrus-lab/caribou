@@ -66,11 +66,14 @@ class InstanceNode:
             self.invoked
         )
         # print(calculated_metrics)
-        
+        execution_carbon, transmission_carbon = calculated_metrics['carbon']
+
         # We only care about the runtime if the node was invoked
         runtime = self.cumulative_runtimes['current'] if self.invoked else 0.0
         return {
             "cost": calculated_metrics['cost'],
-            "carbon": calculated_metrics['carbon'],
+            # "carbon": calculated_metrics['carbon'],
             "runtime": runtime,
+            "execution_carbon": execution_carbon,
+            "transmission_carbon": transmission_carbon
         }

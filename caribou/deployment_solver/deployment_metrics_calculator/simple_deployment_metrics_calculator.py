@@ -64,6 +64,7 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
         instance_indexer: InstanceIndexer,
         tail_latency_threshold: int = TAIL_LATENCY_THRESHOLD,
         n_processes: int = 4,
+        record_transmission_execution_carbon: bool = False,
     ):
         super().__init__(
             workflow_config,
@@ -71,6 +72,7 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
             region_indexer,
             instance_indexer,
             tail_latency_threshold,
+            record_transmission_execution_carbon,
         )
         self.n_processes = n_processes
         self.batch_size = 10
@@ -84,6 +86,7 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
                 tail_latency_threshold,
                 n_processes,
             )
+
 
     def _setup(
         self,
@@ -140,10 +143,12 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
             pool.append(p)
         return pool
 
-    def calculate_workflow_loop(self, deployment: list) -> Tuple[list[float], list[float], list[float]]:
+    def calculate_workflow_loop(self, deployment: list) -> Tuple[list[float], list[float], list[float], list[float], list[float]]:
         costs_distribution_list: list[float] = []
         runtimes_distribution_list: list[float] = []
         carbons_distribution_list: list[float] = []
+        transmission_carbon_list: list[float] = []
+        execution_carbon_list: list[float] = []
         if self.n_processes > 1:
             for _ in range(self.n_processes):
                 self._input_queue.put(deployment)
@@ -161,7 +166,11 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
                 runtimes_distribution_list.append(results["runtime"])
                 carbons_distribution_list.append(results["carbon"])
 
-        return costs_distribution_list, runtimes_distribution_list, carbons_distribution_list
+                if self._record_transmission_execution_carbon:
+                    transmission_carbon_list.append(results["transmission_carbon"])
+                    execution_carbon_list.append(results["execution_carbon"])
+
+        return costs_distribution_list, runtimes_distribution_list, carbons_distribution_list, transmission_carbon_list, execution_carbon_list
 
     def _perform_monte_carlo_simulation(self, deployment: list[int]) -> dict[str, float]:
         """
@@ -172,6 +181,9 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
         runtimes_distribution_list: list[float] = []
         carbons_distribution_list: list[float] = []
 
+        execution_carbon_list: list[float] = []
+        transmission_carbon_list: list[float] = []
+
         max_number_of_iterations = 10
         # max_number_of_iterations = 2000
         threshold = 0.05
@@ -181,6 +193,10 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
             costs_distribution_list.extend(results[0])
             runtimes_distribution_list.extend(results[1])
             carbons_distribution_list.extend(results[2])
+
+            if self._record_transmission_execution_carbon:
+                transmission_carbon_list.extend(results[3])
+                execution_carbon_list.extend(results[4])
 
             number_of_iterations += self.batch_size
 
@@ -211,6 +227,10 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
             "tail_runtime": float(np.percentile(runtimes_distribution_list, self._tail_latency_threshold)),
             "tail_carbon": float(np.percentile(carbons_distribution_list, self._tail_latency_threshold)),
         }
+
+        if self._record_transmission_execution_carbon:
+            result["average_execution_carbon"] = float(statistics.mean(execution_carbon_list))
+            result["average_transmission_carbon"] = float(statistics.mean(transmission_carbon_list))
 
         return result
 

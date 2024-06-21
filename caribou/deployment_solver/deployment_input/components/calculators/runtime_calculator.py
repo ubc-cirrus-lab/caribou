@@ -197,7 +197,7 @@ class RuntimeCalculator(InputCalculator):
                 simulated_sync_predecessor_name, from_region_name, sync_node_name, to_region_name, transmission_size
             )
             
-        print(f'SIMULATED transmission_latency_distribution: {transmission_latency_distribution[:5]}\n')
+        # print(f'SIMULATED transmission_latency_distribution: {transmission_latency_distribution[:5]}\n')
 
         # Pick a transmission latency
         transmission_latency: float = transmission_latency_distribution[
@@ -224,18 +224,18 @@ class RuntimeCalculator(InputCalculator):
         transmission_size: float = transmission_size_distribution[
             int(random.random() * (len(transmission_size_distribution) - 1))
         ]
-        # TODO: Remove print statements
-        if not from_instance_name:
-            print("Instance Name: Start Hop")
+        # # TODO: Remove print statements
+        # if not from_instance_name:
+        #     print("Instance Name: Start Hop")
 
-        print(f"transmission_size_distribution: {transmission_size_distribution}")
+        # print(f"transmission_size_distribution: {transmission_size_distribution}")
 
-        print(from_instance_name, to_instance_name, from_region_name, to_region_name, transmission_size)
+        # print(from_instance_name, to_instance_name, from_region_name, to_region_name, transmission_size)
         # Get the transmission latency distribution of the input size
         transmission_latency_distribution: list[float] = self._get_transmission_latency_distribution(
             from_instance_name, from_region_name, to_instance_name, to_region_name, transmission_size
         )
-        print(f'transmission_latency_distribution: {transmission_latency_distribution[:5]}\n')
+        # print(f'transmission_latency_distribution: {transmission_latency_distribution[:5]}\n')
 
         # Pick a transmission latency
         transmission_latency: float = transmission_latency_distribution[
@@ -412,8 +412,8 @@ class RuntimeCalculator(InputCalculator):
             original_runtime_region_name = home_region
 
         # print(f"Instance Name: {instance_name}")
-        print(f"Original Region: {original_runtime_region_name}", f"Desired Region: {desired_runtime_region_name}")
-        print(f"Runtime Distribution: {runtime_distribution[:5]}")
+        # print(f"Original Region: {original_runtime_region_name}", f"Desired Region: {desired_runtime_region_name}")
+        # print(f"Runtime Distribution: {runtime_distribution[:5]}")
 
         # Pick a random runtime from the distribution
         runtime: float = runtime_distribution[int(random.random() * (len(runtime_distribution) - 1))]
@@ -448,7 +448,7 @@ class RuntimeCalculator(InputCalculator):
         successors_runtime_data = {}
         for key, index in auxiliary_index_translation.items():
             if key != "data_transfer_during_execution_gb":
-                successors_runtime_data[key] = auxiliary_data[index] * relative_region_performance
+                successors_runtime_data[key] = previous_cumulative_runtime + auxiliary_data[index] * relative_region_performance
 
         # The key is the instance index of the successor
         # This need to be translated from index to instance name in the
