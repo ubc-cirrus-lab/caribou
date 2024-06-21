@@ -469,7 +469,8 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         sns_data_output_sizes: dict[int, float],
         data_transfer_during_execution: float,
         dynamodb_read_capacity: float,
-        dynamodb_write_capacity: float
+        dynamodb_write_capacity: float,
+        is_invoked: bool
         ) -> dict[str, float]:
 
         # Convert the instance and region indices to their names
@@ -488,10 +489,10 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         data_output_sizes_str_dict = self._get_converted_region_name_dict(data_output_sizes)
         return {
             "cost": self._cost_calculator.calculate_instance_cost(
-                runtime, instance_name, region_name, data_output_sizes_str_dict, self._get_converted_region_name_dict(sns_data_output_sizes), dynamodb_read_capacity, dynamodb_write_capacity
+                runtime, instance_name, region_name, data_output_sizes_str_dict, self._get_converted_region_name_dict(sns_data_output_sizes), dynamodb_read_capacity, dynamodb_write_capacity, is_invoked
             ),
             "carbon": self._carbon_calculator.calculate_instance_carbon(
-                runtime, instance_name, region_name, self._get_converted_region_name_dict(data_input_sizes), data_output_sizes_str_dict, data_transfer_during_execution
+                runtime, instance_name, region_name, self._get_converted_region_name_dict(data_input_sizes), data_output_sizes_str_dict, data_transfer_during_execution, is_invoked
             )
         }
 

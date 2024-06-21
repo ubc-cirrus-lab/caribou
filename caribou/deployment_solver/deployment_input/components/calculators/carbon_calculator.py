@@ -211,15 +211,35 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
             data_input_sizes: dict[str, float],
             data_output_sizes: dict[str, float],
             data_transfer_during_execution: float,
-    ):
-        # Calculate the carbon from running the execution (solely for cpu and memory)
+            is_invoked: bool) -> float:
+        total_carbon = 0.0
 
+        # If the function is actually invoked
+        if is_invoked:
+            # Calculate the carbon from running the execution
+            total_carbon += self._calculate_execution_carbon(instance_name, region_name, runtime)
+
+        # Even if the function is not invoked, we model
+        # Each node as an abstract instance to consider
+        # data transfer carbon
+        total_carbon += self._calculate_data_transfer_carbon(region_name, data_input_sizes, data_output_sizes, data_transfer_during_execution)
+
+        return total_carbon
+    
+    def _calculate_data_transfer_carbon(self, current_region_name: str, data_input_sizes: dict[str, float],
+            data_output_sizes: dict[str, float],
+            data_transfer_during_execution: float) -> float:
         # Calculate the carbon from data transfer
         ## Aggregate intra-region data transfer
 
         ## Aggregate inter-region data transfer
 
         ## Calculate the carbon from data transfer
+
+        return 0.0
+
+    def _calculate_execution_carbon(self, instance_name: str, region_name: str, execution_latency: float) -> float:
+        # Calculate the carbon from running the execution (solely for cpu and memory)
 
 
         return 0.0
