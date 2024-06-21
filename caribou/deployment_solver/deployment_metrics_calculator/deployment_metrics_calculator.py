@@ -55,11 +55,14 @@ class DeploymentMetricsCalculator(ABC):
                 workflow_instance.add_start_hop(instance_index)
 
             # Add the node to the workflow instance
+            print(f"\nDEBUG: Add Instance Name: {self._input_manager._instance_indexer.index_to_value(instance_index)}")
             workflow_instance.add_node(instance_index)
 
             # Add the edges to the workflow
             for successor_instance_index in self._successor_dictionary[instance_index]:
                 is_invoked: bool = self._is_invoked(instance_index, successor_instance_index)
+
+                print(f"DEBUG: Invoked: {is_invoked} -> {self._input_manager._instance_indexer.index_to_value(successor_instance_index)}")
 
                 # Add the edge to the workflow instance
                 workflow_instance.add_edge(instance_index, successor_instance_index, is_invoked)

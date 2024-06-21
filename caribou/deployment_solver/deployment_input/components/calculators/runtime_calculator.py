@@ -197,7 +197,7 @@ class RuntimeCalculator(InputCalculator):
                 simulated_sync_predecessor_name, from_region_name, sync_node_name, to_region_name, transmission_size
             )
             
-        print(f'SIMULATED transmission_latency_distribution: {transmission_latency_distribution}\n')
+        print(f'SIMULATED transmission_latency_distribution: {transmission_latency_distribution[:5]}\n')
 
         # Pick a transmission latency
         transmission_latency: float = transmission_latency_distribution[
@@ -235,7 +235,7 @@ class RuntimeCalculator(InputCalculator):
         transmission_latency_distribution: list[float] = self._get_transmission_latency_distribution(
             from_instance_name, from_region_name, to_instance_name, to_region_name, transmission_size
         )
-        print(f'transmission_latency_distribution: {transmission_latency_distribution}\n')
+        print(f'transmission_latency_distribution: {transmission_latency_distribution[:5]}\n')
 
         # Pick a transmission latency
         transmission_latency: float = transmission_latency_distribution[
@@ -411,9 +411,9 @@ class RuntimeCalculator(InputCalculator):
             runtime_distribution = self._workflow_loader.get_runtime_distribution(instance_name, home_region)
             original_runtime_region_name = home_region
 
-        print(f"Instance Name: {instance_name}")
+        # print(f"Instance Name: {instance_name}")
         print(f"Original Region: {original_runtime_region_name}", f"Desired Region: {desired_runtime_region_name}")
-        print(f"Runtime Distribution: {runtime_distribution}")
+        print(f"Runtime Distribution: {runtime_distribution[:5]}")
 
         # Pick a random runtime from the distribution
         runtime: float = runtime_distribution[int(random.random() * (len(runtime_distribution) - 1))]
