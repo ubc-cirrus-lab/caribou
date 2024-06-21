@@ -73,7 +73,8 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
             tail_latency_threshold,
         )
         self.n_processes = n_processes
-        self.batch_size = 200
+        self.batch_size = 10
+        # self.batch_size = 200
         if n_processes > 1:
             self._setup(
                 workflow_config,
@@ -171,7 +172,8 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
         runtimes_distribution_list: list[float] = []
         carbons_distribution_list: list[float] = []
 
-        max_number_of_iterations = 2000
+        max_number_of_iterations = 10
+        # max_number_of_iterations = 2000
         threshold = 0.05
         number_of_iterations = 0
         while number_of_iterations < max_number_of_iterations:
@@ -199,6 +201,8 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
                 elif all_within_threshold:
                     break
 
+        print("Min Run Time: ", min(runtimes_distribution_list))
+        print("Max Run Time: ", max(runtimes_distribution_list))
         result = {
             "average_cost": float(statistics.mean(costs_distribution_list)),
             "average_runtime": float(statistics.mean(runtimes_distribution_list)),
