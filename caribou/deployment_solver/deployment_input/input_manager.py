@@ -85,91 +85,91 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         self._invocation_probability_cache: dict[str, float] = {}
         self._execution_latency_distribution_cache: dict[str, list[float]] = {}
 
-    def get_execution_cost_carbon_latency(self, instance_index: int, region_index: int) -> tuple[float, float, float]:
-        # Convert the instance and region indices to their names
-        instance_name = self._instance_indexer.index_to_value(instance_index)
-        region_name = self._region_indexer.index_to_value(region_index)
+    # def get_execution_cost_carbon_latency(self, instance_index: int, region_index: int) -> tuple[float, float, float]:
+    #     # Convert the instance and region indices to their names
+    #     instance_name = self._instance_indexer.index_to_value(instance_index)
+    #     region_name = self._region_indexer.index_to_value(region_index)
 
-        # For this we would need the excecution latency.
-        ## First check if the value is already in the cache
-        key = f"{instance_index}_{region_index}"
-        if key in self._execution_latency_distribution_cache:
-            execution_latency_distribution = self._execution_latency_distribution_cache[key]
-        else:
-            # If not, calculate the value and store it in the cache
-            execution_latency_distribution = self._runtime_calculator.calculate_runtime_distribution(
-                instance_name, region_name
-            )
-            self._execution_latency_distribution_cache[key] = execution_latency_distribution
+    #     # For this we would need the excecution latency.
+    #     ## First check if the value is already in the cache
+    #     key = f"{instance_index}_{region_index}"
+    #     if key in self._execution_latency_distribution_cache:
+    #         execution_latency_distribution = self._execution_latency_distribution_cache[key]
+    #     else:
+    #         # If not, calculate the value and store it in the cache
+    #         execution_latency_distribution = self._runtime_calculator.calculate_runtime_distribution(
+    #             instance_name, region_name
+    #         )
+    #         self._execution_latency_distribution_cache[key] = execution_latency_distribution
 
-        # Now we can get a random sample from the distribution
-        execution_latency = execution_latency_distribution[
-            int(random.random() * (len(execution_latency_distribution) - 1))
-        ]
+    #     # Now we can get a random sample from the distribution
+    #     execution_latency = execution_latency_distribution[
+    #         int(random.random() * (len(execution_latency_distribution) - 1))
+    #     ]
 
-        # Now we can calculate the cost and carbon
-        cost = self._cost_calculator.calculate_execution_cost(instance_name, region_name, execution_latency)
-        carbon = self._carbon_calculator.calculate_execution_carbon(instance_name, region_name, execution_latency)
+    #     # Now we can calculate the cost and carbon
+    #     cost = self._cost_calculator.calculate_execution_cost(instance_name, region_name, execution_latency)
+    #     carbon = self._carbon_calculator.calculate_execution_carbon(instance_name, region_name, execution_latency)
 
-        return (cost, carbon, execution_latency)
+    #     return (cost, carbon, execution_latency)
 
-    def get_transmission_cost_carbon_latency(
-        self,
-        from_instance_index: int,
-        to_instance_index: int,
-        from_region_index: int,
-        to_region_index: int,
-    ) -> tuple[float, float, float]:
-        # Convert the instance and region indices to their names
-        from_instance_name: Optional[str] = None
-        if from_instance_index != -1:
-            from_instance_name = self._instance_indexer.index_to_value(from_instance_index)
-        to_instance_name = self._instance_indexer.index_to_value(to_instance_index)
-        from_region_name = self._region_indexer.index_to_value(from_region_index)
-        to_region_name = self._region_indexer.index_to_value(to_region_index)
+    # def get_transmission_cost_carbon_latency(
+    #     self,
+    #     from_instance_index: int,
+    #     to_instance_index: int,
+    #     from_region_index: int,
+    #     to_region_index: int,
+    # ) -> tuple[float, float, float]:
+    #     # Convert the instance and region indices to their names
+    #     from_instance_name: Optional[str] = None
+    #     if from_instance_index != -1:
+    #         from_instance_name = self._instance_indexer.index_to_value(from_instance_index)
+    #     to_instance_name = self._instance_indexer.index_to_value(to_instance_index)
+    #     from_region_name = self._region_indexer.index_to_value(from_region_index)
+    #     to_region_name = self._region_indexer.index_to_value(to_region_index)
 
-        # Get the transmission size distribution
-        transmission_size_distribution: list[float] = self._runtime_calculator.get_transmission_size_distribution(
-            from_instance_name, to_instance_name, from_region_name, to_region_name
-        )
+    #     # Get the transmission size distribution
+    #     transmission_size_distribution: list[float] = self._runtime_calculator.get_transmission_size_distribution(
+    #         from_instance_name, to_instance_name, from_region_name, to_region_name
+    #     )
 
-        # Pick a transmission size or default to None
-        transmission_size: Optional[float] = None
-        if len(transmission_size_distribution) > 0:
-            transmission_size = transmission_size_distribution[
-                int(random.random() * (len(transmission_size_distribution) - 1))
-            ]
+    #     # Pick a transmission size or default to None
+    #     transmission_size: Optional[float] = None
+    #     if len(transmission_size_distribution) > 0:
+    #         transmission_size = transmission_size_distribution[
+    #             int(random.random() * (len(transmission_size_distribution) - 1))
+    #         ]
 
-        # Get the transmission latency distribution
-        transmission_latency_distribution: list[float] = self._runtime_calculator.get_transmission_latency_distribution(
-            from_instance_name, to_instance_name, from_region_name, to_region_name, transmission_size
-        )
+    #     # Get the transmission latency distribution
+    #     transmission_latency_distribution: list[float] = self._runtime_calculator.get_transmission_latency_distribution(
+    #         from_instance_name, to_instance_name, from_region_name, to_region_name, transmission_size
+    #     )
 
-        # Now we can get a random sample from the distribution
-        transmission_latency: float = transmission_latency_distribution[
-            int(random.random() * (len(transmission_latency_distribution) - 1))
-        ]
+    #     # Now we can get a random sample from the distribution
+    #     transmission_latency: float = transmission_latency_distribution[
+    #         int(random.random() * (len(transmission_latency_distribution) - 1))
+    #     ]
 
-        if (
-            transmission_size is None
-        ):  # At this point we can assume that the transmission size is 0 for any missing data
-            transmission_size = 0.0
+    #     if (
+    #         transmission_size is None
+    #     ):  # At this point we can assume that the transmission size is 0 for any missing data
+    #         transmission_size = 0.0
 
-        # Now we can calculate the cost and carbon
-        # If start hop, no transmission cost
-        cost = 0.0
-        if from_instance_name is not None:  # Start hop should not incur transmission cost
-            cost = self._cost_calculator.calculate_transmission_cost(
-                from_region_name,
-                to_region_name,
-                transmission_size,
-            )
+    #     # Now we can calculate the cost and carbon
+    #     # If start hop, no transmission cost
+    #     cost = 0.0
+    #     if from_instance_name is not None:  # Start hop should not incur transmission cost
+    #         cost = self._cost_calculator.calculate_transmission_cost(
+    #             from_region_name,
+    #             to_region_name,
+    #             transmission_size,
+    #         )
 
-        carbon = self._carbon_calculator.calculate_transmission_carbon(
-            from_region_name, to_region_name, transmission_size
-        )
+    #     carbon = self._carbon_calculator.calculate_transmission_carbon(
+    #         from_region_name, to_region_name, transmission_size
+    #     )
 
-        return (cost, carbon, transmission_latency)
+    #     return (cost, carbon, transmission_latency)
 
     def alter_carbon_setting(self, carbon_setting: Optional[str]) -> None:
         """
@@ -218,7 +218,7 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         state["_workflow_loader"] = self._workflow_loader.get_workflow_data()
         state["_carbon_calculator"] = {
             "small_or_large": self._carbon_calculator.small_or_large,
-            "energy_factor": self._carbon_calculator.energy_factor,
+            "energy_factor": self._carbon_calculator.energy_factor_of_transmission,
             "home_base_case": self._carbon_calculator.home_base_case,
         }
         return state
@@ -240,7 +240,7 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         )
         self._cost_calculator = CostCalculator(self._datacenter_loader, self._workflow_loader, self._runtime_calculator)
         self._carbon_calculator.small_or_large = state.get("_carbon_calculator").get("small_or_large")
-        self._carbon_calculator.energy_factor = state.get("_carbon_calculator").get("energy_factor")
+        self._carbon_calculator.energy_factor_of_transmission = state.get("_carbon_calculator").get("energy_factor")
         self._carbon_calculator.home_base_case = state.get("_carbon_calculator").get("home_base_case")
         requested_regions: set[str] = set(self._region_indexer.get_value_indices().keys())
 
