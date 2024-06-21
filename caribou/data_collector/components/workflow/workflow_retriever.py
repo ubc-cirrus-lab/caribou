@@ -182,8 +182,8 @@ class WorkflowRetriever(DataRetriever):
                                 "invoked": 0,
                                 "non_executions": 0,
                                 "invocation_probability": 0.0,
-                                "sync_sizes_gb": [],
-                                "sns_only_sizes_gb": [],
+                                "sync_size_gb": [],
+                                "sns_only_size_gb": [],
                                 "transfer_sizes_gb": [],
                                 "regions_to_regions": {},
                                 "non_execution_info": {},
@@ -207,19 +207,26 @@ class WorkflowRetriever(DataRetriever):
                                     instance_summary[caller]["to_instance"][callee]["non_execution_info"][
                                         sync_to_from_instance
                                     ] = {
-                                        # "sync_predecessor_instance": sync_predecessor_instance,
-                                        # "sync_node_instance": sync_node_instance,
-                                        "consumed_write_capacity": [],
+                                        # "consumed_write_capacity": [],
                                         "sync_data_response_size_gb": [],
+                                        "sns_transfer_size_gb": [],
+                                        "regions_to_regions": {}
                                     }
 
+                                # # Get the consumed write capacity and sync data response size
+                                # consumed_write_capacity = sync_instance_info.get("consumed_write_capacity", None)
+                                # sync_data_response_size = sync_instance_info.get("sync_data_response_size_gb", None)
+                                # if consumed_write_capacity is not None and sync_data_response_size is not None:
+                                #     instance_summary[caller]["to_instance"][callee]["non_execution_info"][
+                                #         sync_to_from_instance
+                                #     ]["consumed_write_capacity"].append(consumed_write_capacity)
+                                #     instance_summary[caller]["to_instance"][callee]["non_execution_info"][
+                                #         sync_to_from_instance
+                                #     ]["sync_data_response_size_gb"].append(sync_data_response_size)
+
                                 # Get the consumed write capacity and sync data response size
-                                consumed_write_capacity = sync_instance_info.get("consumed_write_capacity", None)
                                 sync_data_response_size = sync_instance_info.get("sync_data_response_size_gb", None)
-                                if consumed_write_capacity is not None and sync_data_response_size is not None:
-                                    instance_summary[caller]["to_instance"][callee]["non_execution_info"][
-                                        sync_to_from_instance
-                                    ]["consumed_write_capacity"].append(consumed_write_capacity)
+                                if sync_data_response_size is not None:
                                     instance_summary[caller]["to_instance"][callee]["non_execution_info"][
                                         sync_to_from_instance
                                     ]["sync_data_response_size_gb"].append(sync_data_response_size)
@@ -235,32 +242,32 @@ class WorkflowRetriever(DataRetriever):
             successor_invoked = data["successor_invoked"]
             from_direct_successor = data["from_direct_successor"]
 
-            # Get the intended origin and destination instances
-            # To create a common dictionary entry
-            origin_instance = from_instance
-            intended_destination_instance = to_instance
-            if not from_direct_successor:
-                intended_destination_instance = uninvoked_instance
-
-            # Create the missing dictionary entries (Common)
-            if origin_instance not in instance_summary:
-                instance_summary[origin_instance] = {}
-            if "to_instance" not in instance_summary[origin_instance]:
-                instance_summary[origin_instance]["to_instance"] = {}
-            if intended_destination_instance not in instance_summary[origin_instance]["to_instance"]:
-                instance_summary[origin_instance]["to_instance"][intended_destination_instance] = {
-                    "invoked": 0,
-                    "non_executions": 0,
-                    "invocation_probability": 0.0,
-                    "sync_sizes_gb": [],
-                    "sns_only_sizes_gb": [],
-                    "transfer_sizes_gb": [],
-                    "regions_to_regions": {},
-                    "non_execution_info": {},
-                }
-
             if from_direct_successor:
                 # This is the case where the transmission is from a direct successor
+
+                # Get the intended origin and destination instances
+                # To create a common dictionary entry
+                origin_instance = from_instance
+                intended_destination_instance = to_instance
+                if not from_direct_successor:
+                    intended_destination_instance = uninvoked_instance
+
+                # Create the missing dictionary entries (Common)
+                if origin_instance not in instance_summary:
+                    instance_summary[origin_instance] = {}
+                if "to_instance" not in instance_summary[origin_instance]:
+                    instance_summary[origin_instance]["to_instance"] = {}
+                if intended_destination_instance not in instance_summary[origin_instance]["to_instance"]:
+                    instance_summary[origin_instance]["to_instance"][intended_destination_instance] = {
+                        "invoked": 0,
+                        "non_executions": 0,
+                        "invocation_probability": 0.0,
+                        "sync_size_gb": [],
+                        "sns_only_size_gb": [],
+                        "transfer_sizes_gb": [],
+                        "regions_to_regions": {},
+                        "non_execution_info": {},
+                    }
 
                 # Increment invoked count (Even if not directly invoked)
                 instance_summary[from_instance]["to_instance"][to_instance]["invoked"] += 1
@@ -280,7 +287,7 @@ class WorkflowRetriever(DataRetriever):
                     ] = {
                         "transfer_size_gb_to_transfer_latencies_s": {},
                         "best_fit_line": {},
-                        "simulated_transfer_latencies_s": [],
+                        # "simulated_transfer_latencies_s": [],
                     }
 
                 # Add an entry for the transfer size
@@ -291,17 +298,17 @@ class WorkflowRetriever(DataRetriever):
 
                 # Check if the transmission data also contain sync_information
                 # Denoting if it uploads or recieves data from synchronization
-                sync_information_upload_size = data.get("sync_information", {}).get("upload_size_gb", None)
+                sync_data_upload_size = data.get("sync_information", {}).get("upload_size_gb", None)
                 sync_information_sync_size = data.get("sync_information", {}).get("sync_data_response_size_gb", None)
-                if sync_information_upload_size is not None:
-                    instance_summary[from_instance]["to_instance"][to_instance]["sns_only_sizes_gb"].append(transmission_data_transfer_size)
+                if sync_data_upload_size is not None:
+                    instance_summary[from_instance]["to_instance"][to_instance]["sns_only_size_gb"].append(transmission_data_transfer_size)
 
                     # In the case of sync upload, we want to set the data
                     # transfer to be related only to upload size, as
                     # the sns size should always be the same and should be small
-                    transmission_data_transfer_size = sync_information_upload_size
+                    transmission_data_transfer_size = sync_data_upload_size
                 if sync_information_sync_size is not None:
-                    instance_summary[from_instance]["to_instance"][to_instance]["sync_sizes_gb"].append(
+                    instance_summary[from_instance]["to_instance"][to_instance]["sync_size_gb"].append(
                         sync_information_sync_size
                     )
 
@@ -336,49 +343,91 @@ class WorkflowRetriever(DataRetriever):
                 simulated_sync_predecessor = data.get("simulated_sync_predecessor", None)
                 sync_node_insance = to_instance
 
-                # Create the missing dictionary entries (For from simulated_sync_predecessor to sync_node_insance)
-                if simulated_sync_predecessor not in instance_summary:
-                    instance_summary[simulated_sync_predecessor] = {}
-                if "to_instance" not in instance_summary[simulated_sync_predecessor]:
-                    instance_summary[simulated_sync_predecessor]["to_instance"] = {}
-                if sync_node_insance not in instance_summary[simulated_sync_predecessor]["to_instance"]:
-                    instance_summary[simulated_sync_predecessor]["to_instance"][sync_node_insance] = {
-                        "invoked": 0,
-                        "non_executions": 0,
-                        "invocation_probability": 0.0,
-                        "sync_sizes_gb": [],
-                        "sns_only_sizes_gb": [],
-                        "transfer_sizes_gb": [],
-                        "regions_to_regions": {},
-                        "non_execution_info": {},
+                # # Create the missing dictionary entries (For from simulated_sync_predecessor to sync_node_insance)
+                # if simulated_sync_predecessor not in instance_summary:
+                #     instance_summary[simulated_sync_predecessor] = {}
+                # if "to_instance" not in instance_summary[simulated_sync_predecessor]:
+                #     instance_summary[simulated_sync_predecessor]["to_instance"] = {}
+                # if sync_node_insance not in instance_summary[simulated_sync_predecessor]["to_instance"]:
+                #     instance_summary[simulated_sync_predecessor]["to_instance"][sync_node_insance] = {
+                #         "invoked": 0,
+                #         "non_executions": 0,
+                #         "invocation_probability": 0.0,
+                #         "sync_sizes_gb": [],
+                #         "sns_only_size_gb": [],
+                #         "transfer_sizes_gb": [],
+                #         "regions_to_regions": {},
+                #         "non_execution_info": {},
+                #     }
+                # if (
+                #     from_region
+                #     not in instance_summary[simulated_sync_predecessor]["to_instance"][sync_node_insance][
+                #         "regions_to_regions"
+                #     ]
+                # ):
+                #     instance_summary[simulated_sync_predecessor]["to_instance"][sync_node_insance][
+                #         "regions_to_regions"
+                #     ][from_region] = {}
+                # if (
+                #     to_region
+                #     not in instance_summary[simulated_sync_predecessor]["to_instance"][sync_node_insance][
+                #         "regions_to_regions"
+                #     ][from_region]
+                # ):
+                #     instance_summary[simulated_sync_predecessor]["to_instance"][sync_node_insance][
+                #         "regions_to_regions"
+                #     ][from_region][to_region] = {
+                #         "transfer_size_gb_to_transfer_latencies_s": {},
+                #         "best_fit_line": {},
+                #         "simulated_transfer_latencies_s": [],
+                #     }
+
+                # # Add an entry to the simulated_transfer_latencies_s
+                # instance_summary[simulated_sync_predecessor]["to_instance"][sync_node_insance]["regions_to_regions"][
+                #     from_region
+                # ][to_region]["simulated_transfer_latencies_s"].append(data["transmission_latency_s"])
+
+                sync_to_from_instance = f"{simulated_sync_predecessor}>{sync_node_insance}"
+                # Add dictionary entries
+                if (
+                    sync_to_from_instance
+                    not in instance_summary[from_instance]["to_instance"][uninvoked_instance]["non_execution_info"]
+                ):
+
+                    instance_summary[from_instance]["to_instance"][uninvoked_instance]["non_execution_info"][
+                        sync_to_from_instance
+                    ] = {
+                        # "consumed_write_capacity": [],
+                        "sync_data_response_size_gb": [],
+                        "sns_transfer_size_gb": [],
+                        "regions_to_regions": {}
                     }
-                if (
-                    from_region
-                    not in instance_summary[simulated_sync_predecessor]["to_instance"][sync_node_insance][
-                        "regions_to_regions"
-                    ]
-                ):
-                    instance_summary[simulated_sync_predecessor]["to_instance"][sync_node_insance][
-                        "regions_to_regions"
-                    ][from_region] = {}
-                if (
-                    to_region
-                    not in instance_summary[simulated_sync_predecessor]["to_instance"][sync_node_insance][
-                        "regions_to_regions"
-                    ][from_region]
-                ):
-                    instance_summary[simulated_sync_predecessor]["to_instance"][sync_node_insance][
-                        "regions_to_regions"
-                    ][from_region][to_region] = {
-                        "transfer_size_gb_to_transfer_latencies_s": {},
-                        "best_fit_line": {},
-                        "simulated_transfer_latencies_s": [],
+                if from_region not in instance_summary[from_instance]["to_instance"][uninvoked_instance]["non_execution_info"][sync_to_from_instance]["regions_to_regions"]:
+                    instance_summary[from_instance]["to_instance"][uninvoked_instance]["non_execution_info"][sync_to_from_instance]["regions_to_regions"][from_region] = {}
+                if to_region not in instance_summary[from_instance]["to_instance"][uninvoked_instance]["non_execution_info"][sync_to_from_instance]["regions_to_regions"][from_region]:
+                    instance_summary[from_instance]["to_instance"][uninvoked_instance]["non_execution_info"][sync_to_from_instance]["regions_to_regions"][from_region][to_region] = {
+                        "transfer_latencies_s": [],
                     }
 
-                # Add an entry to the simulated_transfer_latencies_s
-                instance_summary[simulated_sync_predecessor]["to_instance"][sync_node_insance]["regions_to_regions"][
-                    from_region
-                ][to_region]["simulated_transfer_latencies_s"].append(data["transmission_latency_s"])
+                # Add an entry for the sns transfer size
+                transmission_data_transfer_size = float(data["transmission_size_gb"])
+                instance_summary[from_instance]["to_instance"][uninvoked_instance]["non_execution_info"][sync_to_from_instance]["sns_transfer_size_gb"].append(
+                    transmission_data_transfer_size
+                )
+
+                # Add an entry for the transfer latency
+                instance_summary[from_instance]["to_instance"][uninvoked_instance]["non_execution_info"][sync_to_from_instance]["regions_to_regions"][from_region][to_region]["transfer_latencies_s"].append(data["transmission_latency_s"])
+
+                # # Get the consumed write capacity and sync data response size
+                # consumed_write_capacity = sync_instance_info.get("consumed_write_capacity", None)
+                # sync_data_response_size = sync_instance_info.get("sync_data_response_size_gb", None)
+                # if consumed_write_capacity is not None and sync_data_response_size is not None:
+                #     instance_summary[caller]["to_instance"][callee]["non_execution_info"][
+                #         sync_to_from_instance
+                #     ]["consumed_write_capacity"].append(consumed_write_capacity)
+                #     instance_summary[caller]["to_instance"][callee]["non_execution_info"][
+                #         sync_to_from_instance
+                #     ]["sync_data_response_size_gb"].append(sync_data_response_size)
 
     def _reorganize_start_hop_summary(self, start_hop_summary: dict[str, Any]) -> None:
         # Here we simply average the workflow_placement_decision_size_gb
@@ -558,15 +607,13 @@ class WorkflowRetriever(DataRetriever):
                 if non_execution_info is not None:
                     # Summarize the consumed write capacity and sync data response size
                     for sync_call_from_to_instance, sync_call_entry in non_execution_info.items():
-                        consumed_write_capacity = sync_call_entry.get("consumed_write_capacity", [])
-                        if consumed_write_capacity != []:
-                            consumed_write_capacity = sum(consumed_write_capacity) / len(consumed_write_capacity)
-                            # Round to the nearest whole number
-                            non_execution_info[sync_call_from_to_instance]["consumed_write_capacity"] = math.ceil(
-                                consumed_write_capacity
-                            )
-                        else:
-                            non_execution_info[sync_call_from_to_instance]["consumed_write_capacity"] = 0.0
+                        # consumed_write_capacity = sync_call_entry.get("consumed_write_capacity", [])
+                        # if consumed_write_capacity != []:
+                        #     consumed_write_capacity = sum(consumed_write_capacity) / len(consumed_write_capacity)
+                        #     # Round to the nearest whole number
+                        #     non_execution_info[sync_call_from_to_instance]["consumed_write_capacity"] = consumed_write_capacity
+                        # else:
+                        #     non_execution_info[sync_call_from_to_instance]["consumed_write_capacity"] = 0.0
 
                         sync_data_response_size = sync_call_entry.get("sync_data_response_size_gb", [])
                         if sync_data_response_size != []:
@@ -574,29 +621,39 @@ class WorkflowRetriever(DataRetriever):
                             # Round to the nearest kb
                             non_execution_info[sync_call_from_to_instance][
                                 "sync_data_response_size_gb"
-                            ] = self._round_to_kb(sync_data_response_size_gb, 1)
+                            ] = self._round_to_kb(sync_data_response_size_gb, 1, False)
                         else:
                             non_execution_info[sync_call_from_to_instance]["sync_data_response_size_gb"] = 0.0
+                        
+                        sns_transfer_size = sync_call_entry.get("sns_transfer_size_gb", [])
+                        if sns_transfer_size != []:
+                            sns_transfer_size_gb = sum(sns_transfer_size) / len(sns_transfer_size)
+                            # Round to the nearest kb
+                            non_execution_info[sync_call_from_to_instance][
+                                "sns_transfer_size_gb"
+                            ] = self._round_to_kb(sns_transfer_size_gb, 1, False)
+                        else:
+                            non_execution_info[sync_call_from_to_instance]["sns_transfer_size_gb"] = 0.0
 
     def _calculate_average_sync_table_and_sns_size(self, instance_summary: dict[str, Any]) -> None:
         for from_instance in instance_summary.values():
             for to_instance in from_instance.get("to_instance", {}).values():
-                sync_sizes_gb = to_instance.get("sync_sizes_gb", [])
+                sync_sizes_gb = to_instance.get("sync_size_gb", [])
                 if sync_sizes_gb:
                     average_sync_size = sum(sync_sizes_gb) / len(sync_sizes_gb)
                     # Round to nearest 1 KB
-                    to_instance["sync_sizes_gb"] = self._round_to_kb(average_sync_size, 1)
+                    to_instance["sync_size_gb"] = self._round_to_kb(average_sync_size, 1, False)
                 else:
-                    del to_instance["sync_sizes_gb"]
+                    del to_instance["sync_size_gb"]
 
                 # Handle averaging the SNS only sizes
-                sns_only_sizes_gb = to_instance.get("sns_only_sizes_gb", [])
-                if sns_only_sizes_gb:
-                    average_sns_only_size = sum(sns_only_sizes_gb) / len(sns_only_sizes_gb)
+                sns_only_size_gb = to_instance.get("sns_only_size_gb", [])
+                if sns_only_size_gb:
+                    average_sns_only_size = sum(sns_only_size_gb) / len(sns_only_size_gb)
                     # Round to nearest 1 KB
-                    to_instance["sns_only_sizes_gb"] = self._round_to_kb(average_sns_only_size, 1)
+                    to_instance["sns_only_size_gb"] = self._round_to_kb(average_sns_only_size, 1, False)
                 else:
-                    del to_instance["sns_only_sizes_gb"]
+                    del to_instance["sns_only_size_gb"]
 
     # Best fit line approach.
     def _handle_missing_region_to_region_transmission_data(self, instance_summary: dict[str, Any]) -> None:
@@ -671,22 +728,49 @@ class WorkflowRetriever(DataRetriever):
         
         return best_fit_line
 
-    def _round_to_kb(self, number: float, round_to: int = 10) -> float:
+    def _round_to_kb(self, number: float, round_to: int = 10, round_up: bool = True) -> float:
         """
-        Rounds the input number (in GB) to the nearest KB or 10 KB in base 2, rounding up.
+        Rounds the input number (in GB) to the nearest KB or 10 KB in base 2, rounding up
+        or to the nearest non_zero.
 
         :param number: The input number in GB.
         :param round_to: The value to round to (1 for nearest KB, 10 for nearest 10 KB).
+        :param round_up: Whether to round up or to nearest non-zero KB.
         :return: The rounded number in GB.
         """
-        return math.ceil(number * (1024**2) / round_to) * round_to / (1024**2)
+        rounded_kb = number * (1024**2) / round_to
+        if round_up:
+            rounded_kb = math.ceil(rounded_kb)
+        else:
+            # Round to the nearest non-zero
+            rounded_kb = math.floor(rounded_kb + 0.5)
+            if rounded_kb == 0:
+                rounded_kb = 1
 
-    def _round_to_ms(self, number: float, round_to: int = 1) -> float:
+        return rounded_kb * round_to / (1024**2)
+        # return math.ceil(number * (1024**2) / round_to) * round_to / (1024**2)
+
+
+
+    def _round_to_ms(self, number: float, round_to: int = 1, round_up: bool = True) -> float:
         """
-        Rounds the input number (in seconds) to the nearest ms, rounding up.
+        Rounds the input number (in seconds) to the nearest ms, rounding up
+        or to the nearest non_zero.
 
         :param number: The input number in seconds.
         :param round_to: The value to round to (1 for nearest ms, 10 for nearest 10 ms).
+        :param round_up: Whether to round up or to nearest non-zero ms.
         :return: The rounded number in seconds.
         """
-        return math.ceil(number * 1000 / round_to) * round_to / 1000
+        # return math.ceil(number * 1000 / round_to) * round_to / 1000
+
+        rounded_ms = number * 1000 / round_to
+        if round_up:
+            rounded_ms = math.ceil(rounded_ms)
+        else:
+            # Round to the nearest non-zero
+            rounded_ms = math.floor(rounded_ms + 0.5)
+            if rounded_ms == 0:
+                rounded_ms = 1
+
+        return rounded_ms * round_to / 1000

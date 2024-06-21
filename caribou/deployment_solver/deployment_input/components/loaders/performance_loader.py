@@ -3,7 +3,7 @@ from typing import Any
 from caribou.common.constants import (
     PERFORMANCE_REGION_TABLE,
     SOLVER_INPUT_RELATIVE_PERFORMANCE_DEFAULT,
-    SOLVER_INPUT_TRANSMISSION_LATENCY_DEFAULT,
+    SOLVER_HOME_REGION_TRANSMISSION_LATENCY_DEFAULT,
 )
 from caribou.common.models.remote_client.remote_client import RemoteClient
 from caribou.deployment_solver.deployment_input.components.loader import InputLoader
@@ -28,7 +28,7 @@ class PerformanceLoader(InputLoader):
             self._performance_data.get(from_region_name, {})
             .get("transmission_latency", {})
             .get(to_region_name, {})
-            .get("latency_distribution", [SOLVER_INPUT_TRANSMISSION_LATENCY_DEFAULT])
+            .get("latency_distribution", [SOLVER_HOME_REGION_TRANSMISSION_LATENCY_DEFAULT])
         )
 
     def get_performance_data(self) -> dict[str, Any]:

@@ -65,7 +65,7 @@ class WorkflowLoader(InputLoader):
         return self._workflow_data.get("start_hop_summary", {}).get("transfer_sizes_gb", [self.get_wpd_size()])
 
     def get_start_hop_best_fit_line(self, to_region_name: str) -> Optional[dict[str, float]]:
-        best_fit_line = self._workflow_data.get("start_hop_summary", {}).get("best_fit_line", {}).get(to_region_name, None)
+        best_fit_line = self._workflow_data.get("start_hop_summary", {}).get("regions_to_regions", {}).get(to_region_name, {}).get("best_fit_line", None)
         return best_fit_line
 
     def get_start_hop_latency_distribution(self, to_region_name: str, data_transfer_size: float) -> list[float]:
@@ -77,13 +77,13 @@ class WorkflowLoader(InputLoader):
         data_transfer_size = self._round_to_kb(data_transfer_size, 10)
 
         start_hop_latency_distribution = (
-            self._workflow_data.get("start_hop_summary", {}).get("regions_to_regions", {}).get(to_region_name, {}).get(str(data_transfer_size), [])
+            self._workflow_data.get("start_hop_summary", {}).get("regions_to_regions", {}).get(to_region_name, {}).get("transfer_size_gb_to_transfer_latencies_s", {}).get(str(data_transfer_size), [])
         )
 
         if len(start_hop_latency_distribution) == 0:
             # Atempt to use the best fit line size
             best_fit_line = self.get_start_hop_best_fit_line(to_region_name)
-            if best_fit_line is not None:
+            if best_fit_line is not None and best_fit_line != {}:
                 # Estimate the latency using the best fit line
                 estimated_latency = best_fit_line["slope_s"] * data_transfer_size + best_fit_line["intercept_s"]
 
@@ -92,8 +92,6 @@ class WorkflowLoader(InputLoader):
 
                 start_hop_latency_distribution = [estimated_latency]
         
-        # TODO: Handle the case where there are no latencies nor best fit line
-
         self._start_hop_latency_distribution_cache[cache_key] = start_hop_latency_distribution
         return start_hop_latency_distribution
 
@@ -179,7 +177,7 @@ class WorkflowLoader(InputLoader):
         auxiliary_index_translation: dict[str, int] = (self._workflow_data.get("instance_summary", {})
             .get(instance_name, {})
             .get("executions", {})
-            .get("auxiliary_data_index", {}))
+            .get("auxiliary_index_translation", {}))
 
         return auxiliary_index_translation
 
@@ -245,7 +243,15 @@ class WorkflowLoader(InputLoader):
         to_instance_name: str,
         from_region_name: str,
         to_region_name: str) -> Optional[dict[str, float]]:
-        best_fit_line = self._workflow_data.get("instance_summary", {}).get(from_instance_name, {}).get("to_instance", {}).get(to_instance_name, {}).get("regions_to_regions", {}).get(from_region_name, {}).get(to_region_name, {}).get("best_fit_line", None)
+        best_fit_line = (
+            self._workflow_data.get("instance_summary", {})
+            .get(from_instance_name, {})
+            .get("to_instance", {})
+            .get(to_instance_name, {})
+            .get("regions_to_regions", {})
+            .get(from_region_name, {})
+            .get(to_region_name, {})
+            .get("best_fit_line", None))
         return best_fit_line
 
     def get_latency_distribution(
@@ -267,14 +273,14 @@ class WorkflowLoader(InputLoader):
             .get("regions_to_regions", {})
             .get(from_region_name, {})
             .get(to_region_name, {})
-            .get("transfer_size_to_transfer_latencies", {})
+            .get("transfer_size_gb_to_transfer_latencies_s", {})
             .get(str(data_transfer_size), [])
         )
 
         if len(latency_distribution) == 0:
             # Attempt to use the best fit line size
-            best_fit_line = self.get_latency_distribution_best_fit_line(to_region_name)
-            if best_fit_line is not None:
+            best_fit_line = self.get_latency_distribution_best_fit_line(from_instance_name, to_instance_name, from_region_name, to_region_name)
+            if best_fit_line is not None and best_fit_line != {}:
                 # Estimate the latency using the best fit line
                 estimated_latency = best_fit_line["slope_s"] * data_transfer_size + best_fit_line["intercept_s"]
 
@@ -283,17 +289,64 @@ class WorkflowLoader(InputLoader):
 
                 latency_distribution = [estimated_latency]
 
-        # TODO: Handle the case where there are no latencies nor best fit line
-
         return latency_distribution
 
     def get_non_execution_information(self, from_instance_name: str, to_instance_name: str) -> dict[str, Any]:
+        # "non_execution_info": {
+        #     "simple_join-0_0_1-left:simple_join-0_0_1-start_0_0:1>simple_join-0_0_1-join:sync:": {
+        #         "consumed_write_capacity": 2,
+        #         "sync_data_response_size_gb": 9.5367431640625e-07,
+        #         "sns_transfer_size_gb": 0.0,
+        #         "regions_to_regions": {}
+        #     }
+        # }
+        # return (
+        #     self._workflow_data.get("instance_summary", {})
+        #     .get(from_instance_name, {})
+        #     .get("to_instance", {})
+        #     .get(to_instance_name, {})
+        #     .get("non_execution_info", {})
+        # )
+
+        # Should return only the name of each entry of non_execution_info
+        # And the sync_data_response_size_gb
+        non_execution_info_dict: dict[str, float] = {}
+        for key, value in self._workflow_data.get("instance_summary", {}).get(from_instance_name, {}).get("to_instance", {}).get(to_instance_name, {}).get("non_execution_info", {}).items():
+            non_execution_info_dict[key] = value.get("sync_data_response_size_gb", 0.0)
+
+        return non_execution_info_dict
+
+    def get_non_execution_sns_transfer_size(self, from_instance_name: str, to_instance_name: str, sync_to_from_instance: str) -> float:
+        # Round to the nearest non-zero KB
+        # (At least 1 byte of data is transferred for sns)
+        return self._round_to_kb((
+            self._workflow_data.get("instance_summary", {})
+            .get(from_instance_name, {})
+            .get("to_instance", {})
+            .get(to_instance_name, {})
+            .get("non_execution_info", {})
+            .get(sync_to_from_instance, {})
+            .get("sns_transfer_size_gb", 0.0)
+        ), 1, False)
+
+    def get_non_execution_transfer_latency_distribution(
+        self,
+        from_instance_name: str,
+        to_instance_name: str,
+        sync_to_from_instance: str,
+        from_region_name: str,
+        to_region_name: str) -> list[float]:
         return (
             self._workflow_data.get("instance_summary", {})
             .get(from_instance_name, {})
             .get("to_instance", {})
             .get(to_instance_name, {})
             .get("non_execution_info", {})
+            .get(sync_to_from_instance, {})
+            .get("regions_to_regions", {})
+            .get(from_region_name, {})
+            .get(to_region_name, {})
+            .get("transfer_latencies_s", [])
         )
 
     def get_sync_size(self, from_instance_name: str, to_instance_name: str) -> float:
@@ -354,22 +407,47 @@ class WorkflowLoader(InputLoader):
     def _retrieve_workflow_data(self, workflow_id: str) -> dict[str, Any]:
         return self._retrieve_data(self._primary_table, workflow_id)
 
-    def _round_to_kb(self, number: float, round_to: int = 10) -> float:
+    def _round_to_kb(self, number: float, round_to: int = 10, round_up: bool = True) -> float:
         """
-        Rounds the input number (in GB) to the nearest KB or 10 KB in base 2, rounding up.
+        Rounds the input number (in GB) to the nearest KB or 10 KB in base 2, rounding up
+        or to the nearest non_zero.
 
         :param number: The input number in GB.
         :param round_to: The value to round to (1 for nearest KB, 10 for nearest 10 KB).
+        :param round_up: Whether to round up or to nearest non-zero KB.
         :return: The rounded number in GB.
         """
-        return math.ceil(number * (1024**2) / round_to) * round_to / (1024**2)
+        rounded_kb = number * (1024**2) / round_to
+        if round_up:
+            rounded_kb = math.ceil(rounded_kb)
+        else:
+            # Round to the nearest non-zero
+            rounded_kb = math.floor(rounded_kb + 0.5)
+            if rounded_kb == 0:
+                rounded_kb = 1
 
-    def _round_to_ms(self, number: float, round_to: int = 1) -> float:
+        return rounded_kb * round_to / (1024**2)
+        # return math.ceil(number * (1024**2) / round_to) * round_to / (1024**2)
+
+    def _round_to_ms(self, number: float, round_to: int = 1, round_up: bool = True) -> float:
         """
-        Rounds the input number (in seconds) to the nearest ms, rounding up.
+        Rounds the input number (in seconds) to the nearest ms, rounding up
+        or to the nearest non_zero.
 
         :param number: The input number in seconds.
         :param round_to: The value to round to (1 for nearest ms, 10 for nearest 10 ms).
+        :param round_up: Whether to round up or to nearest non-zero ms.
         :return: The rounded number in seconds.
         """
-        return math.ceil(number * 1000 / round_to) * round_to / 1000
+        # return math.ceil(number * 1000 / round_to) * round_to / 1000
+
+        rounded_ms = number * 1000 / round_to
+        if round_up:
+            rounded_ms = math.ceil(rounded_ms)
+        else:
+            # Round to the nearest non-zero
+            rounded_ms = math.floor(rounded_ms + 0.5)
+            if rounded_ms == 0:
+                rounded_ms = 1
+
+        return rounded_ms * round_to / 1000
