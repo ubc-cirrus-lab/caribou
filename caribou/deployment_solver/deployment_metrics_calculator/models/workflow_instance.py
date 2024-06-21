@@ -160,6 +160,7 @@ class InstanceNode:
             self.data_transfer_during_execution,
             self.tracked_dynamodb_read_capacity,
             self.tracked_dynamodb_write_capacity,
+            self.invoked
         )
         # print(calculated_metrics)
         
