@@ -472,7 +472,7 @@ class ProviderRetriever(DataRetriever):
             response = requests.get(price_list_file["Url"], timeout=5)
             price_list_file_json = response.json()
 
-            storage_sku, data_transfer_sku = self.get_ecr_skus(price_list_file_json)
+            storage_sku = self.get_ecr_skus(price_list_file_json)
 
             storage_cost = 0.0
             if storage_sku:
@@ -485,38 +485,24 @@ class ProviderRetriever(DataRetriever):
                     ]
                 )
 
-            data_transfer_cost = 0.0
-            if data_transfer_sku:
-                data_transfer_item = price_list_file_json["terms"]["OnDemand"][data_transfer_sku][
-                    list(price_list_file_json["terms"]["OnDemand"][data_transfer_sku].keys())[0]
-                ]
-                data_transfer_cost = float(
-                    data_transfer_item["priceDimensions"][list(data_transfer_item["priceDimensions"].keys())[0]][
-                        "pricePerUnit"
-                    ]["USD"]
-                )
-
             ecr_cost_dict[available_region_code_to_key[region_code]] = {
                 "storage_cost": storage_cost,
-                "data_transfer_cost": data_transfer_cost,
                 "unit": "USD",
             }
 
         return ecr_cost_dict
 
-    def get_ecr_skus(self, price_list_file_json: Dict[str, Any]) -> tuple[str, str]:
+    def get_ecr_skus(self, price_list_file_json: Dict[str, Any]) -> str:
         storage_sku = ""
-        data_transfer_sku = ""
 
         for sku, product in price_list_file_json["products"].items():
             attributes = product.get("attributes", {})
             if attributes.get("servicecode") == "AmazonECR":
                 if "Storage" in attributes.get("usagetype", ""):
                     storage_sku = sku
-                elif "DataTransfer" in attributes.get("usagetype", ""):
-                    data_transfer_sku = sku
+                    break
 
-        return storage_sku, data_transfer_sku
+        return storage_sku
 
     def _retrieve_aws_transmission_cost(self, available_region: list[str]) -> dict[str, Any]:
         result_transmission_cost_dict = {}
