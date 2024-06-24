@@ -17,7 +17,10 @@ poetry run caribou deploy
 And then run the benchmark with the following command:
 
 ```bash
-poetry run caribou run image_processing-version_number -a '{"image_name": "image_name.jpeg"}'
+poetry run caribou run image_processing-0.0.1 -a '{"image_name": "downsized_best_painting.jpg"}'
+poetry run caribou run image_processing-0.0.1 -a '{"image_name": "best_painting.jpg"}'
+
+poetry run caribou run image_processing-version_number -a '{"image_name": "best_painting.jpg"}'
 ```
 
 To remove the benchmark, you can use the following command:

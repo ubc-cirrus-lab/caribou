@@ -16,8 +16,17 @@ from torchvision import models
 
 FANOUT_NUM = 4
 
+# Change the following bucket name and region to match your setup
+s3_bucket_name = "dn-caribou-video-analytics"
+s3_bucket_region_name = "us-west-2"
+
 workflow = CaribouWorkflow(name="video_analytics", version="0.0.1")
 
+# Setup the torch home directory path
+model_storage_path = '/tmp/model_storage'
+if not os.path.exists(model_storage_path):
+    os.makedirs(model_storage_path)
+os.environ['TORCH_HOME'] = model_storage_path
 
 @workflow.serverless_function(
     name="GetInput",
@@ -96,8 +105,8 @@ def recognition(event: dict[str, Any]) -> dict[str, Any]:
     request_id = event["request_id"]
     print(f"Recognizing video: {decoded_filename}")
 
-    s3 = boto3.client("s3", region_name='us-west-2')
-    response = s3.get_object(Bucket="caribou-video-analytics", Key=decoded_filename)
+    s3 = boto3.client("s3", region_name=s3_bucket_region_name)
+    response = s3.get_object(Bucket=s3_bucket_name, Key=decoded_filename)
     image_bytes = response["Body"].read()
 
     # Perform inference
@@ -105,7 +114,7 @@ def recognition(event: dict[str, Any]) -> dict[str, Any]:
 
     # Upload the result to S3
     result_key = f"output/{request_id}-{decoded_filename}-result.txt"
-    s3.put_object(Bucket="caribou-video-analytics", Key=result_key, Body=result.encode("utf-8"))
+    s3.put_object(Bucket=s3_bucket_name, Key=result_key, Body=result.encode("utf-8"))
 
     return {"status": 200, "result_key": result_key}
 
@@ -119,15 +128,15 @@ def video_analytics_streaming(filename: str, request_id: int) -> str:
         # Make sure the directory exists
         os.makedirs(os.path.dirname(local_filename), exist_ok=True)
 
-        s3 = boto3.client("s3", region_name='us-west-2')
+        s3 = boto3.client("s3", region_name=s3_bucket_region_name)
 
-        s3.download_file("caribou-video-analytics", filename, local_filename)
+        s3.download_file(s3_bucket_name, filename, local_filename)
 
         resized_local_filename = resize_and_store(local_filename, tmp_dir)
 
         streaming_filename = f"output/streaming-{request_id}-{filename}"
 
-        s3.upload_file(resized_local_filename, "caribou-video-analytics", streaming_filename)
+        s3.upload_file(resized_local_filename, s3_bucket_name, streaming_filename)
 
         return streaming_filename
 
@@ -155,10 +164,10 @@ def video_analytics_decode(filename: str, request_id: int) -> str:
         # Make sure the directory exists
         os.makedirs(os.path.dirname(local_filename), exist_ok=True)
 
-        s3 = boto3.client("s3", region_name='us-west-2')
+        s3 = boto3.client("s3", region_name=s3_bucket_region_name)
 
         # Download the video file from S3
-        s3.download_file("caribou-video-analytics", filename, local_filename)
+        s3.download_file(s3_bucket_name, filename, local_filename)
 
         # Open the video file
         cap = cv2.VideoCapture(local_filename)
@@ -194,7 +203,7 @@ def video_analytics_decode(filename: str, request_id: int) -> str:
             cv2.imwrite(decoded_local_path, image)
 
             # Upload the frame to S3
-            s3.upload_file(decoded_local_path, "caribou-video-analytics", decoded_filename)
+            s3.upload_file(decoded_local_path, s3_bucket_name, decoded_filename)
 
         # Return the name of the last uploaded frame as an example
         return decoded_filename
@@ -224,21 +233,18 @@ def preprocess_image(image_bytes):
 
 def infer(image_bytes):
     # Load model labels
-    s3 = boto3.client("s3", region_name='us-west-2')
-    response = s3.get_object(Bucket="caribou-video-analytics", Key="imagenet_labels.txt")
+    s3 = boto3.client("s3", region_name=s3_bucket_region_name)
+    response = s3.get_object(Bucket=s3_bucket_name, Key="imagenet_labels.txt")
     labels = response["Body"].read().decode("utf-8").splitlines()
 
-    with TemporaryDirectory() as tmp_dir:
-        os.environ['TORCH_HOME'] = tmp_dir
+    # Load the model
+    model = models.squeezenet1_1(pretrained=True)
 
-        # Load the model
-        model = models.squeezenet1_1(pretrained=True)
+    frame = preprocess_image(image_bytes)
+    model.eval()
+    with torch.no_grad():
+        out = model(frame)
+    _, indices = torch.sort(out, descending=True)
+    percentages = torch.nn.functional.softmax(out, dim=1)[0] * 100
 
-        frame = preprocess_image(image_bytes)
-        model.eval()
-        with torch.no_grad():
-            out = model(frame)
-        _, indices = torch.sort(out, descending=True)
-        percentages = torch.nn.functional.softmax(out, dim=1)[0] * 100
-
-        return ",".join([f"{labels[idx]}: {percentages[idx].item()}%" for idx in indices[0][:5]]).strip()
+    return ",".join([f"{labels[idx]}: {percentages[idx].item()}%" for idx in indices[0][:5]]).strip()

@@ -10,6 +10,10 @@ import math
 
 from caribou.deployment.client import CaribouWorkflow
 
+# Change the following bucket name and region to match your setup
+s3_bucket_name = "dn-caribou-map-reduce"
+s3_bucket_region_name = "us-west-2"
+
 workflow = CaribouWorkflow(name="map_reduce", version="0.0.1")
 
 logger = logging.getLogger()
@@ -85,7 +89,7 @@ def mapper(event: dict[str, Any]) -> dict[str, Any]:
 
     run_id = workflow.get_run_id()
 
-    s3 = boto3.client("s3", region_name='us-west-2')
+    s3 = boto3.client("s3", region_name=s3_bucket_region_name)
     with TemporaryDirectory() as tmp_dir:
 
         start_index = worker_index * shards_per_worker
@@ -97,7 +101,7 @@ def mapper(event: dict[str, Any]) -> dict[str, Any]:
         for chunk_index in range(start_index, end_index):
             chunk_file_path = f"input/{input_base_dir}/chunk_{chunk_index}.txt"
 
-            s3.download_file("caribou-map-reduce", chunk_file_path, local_file_path)
+            s3.download_file(s3_bucket_name, chunk_file_path, local_file_path)
 
             with open(local_file_path, "r") as file:
                 data = file.read()
@@ -121,7 +125,7 @@ def mapper(event: dict[str, Any]) -> dict[str, Any]:
 
         remote_word_count_file_path = f"word_counts/word_count_{chunk_index}_{run_id}.json"
 
-        s3.upload_file(word_count_file_path, "caribou-map-reduce", remote_word_count_file_path)
+        s3.upload_file(word_count_file_path, s3_bucket_name, remote_word_count_file_path)
 
         payload = {
             "word_count_file_path": remote_word_count_file_path,
@@ -177,12 +181,12 @@ def reducer(event: dict[str, Any]) -> dict[str, Any]:
 
     merged_word_counts = {}
 
-    s3 = boto3.client("s3", region_name='us-west-2')
+    s3 = boto3.client("s3", region_name=s3_bucket_region_name)
 
     with TemporaryDirectory() as tmp_dir:
         if word_count_file_path_1 is not None:
             local_file_path1 = f"{tmp_dir}/word_count1.json"
-            s3.download_file("caribou-map-reduce", word_count_file_path_1, local_file_path1)
+            s3.download_file(s3_bucket_name, word_count_file_path_1, local_file_path1)
             with open(local_file_path1, "r") as file:
                 mapper_result1 = json.load(file)
             for word, count in mapper_result1.items():
@@ -193,7 +197,7 @@ def reducer(event: dict[str, Any]) -> dict[str, Any]:
 
         if word_count_file_path_2 is not None:
             local_file_path2 = f"{tmp_dir}/word_count2.json"
-            s3.download_file("caribou-map-reduce", word_count_file_path_2, local_file_path2)
+            s3.download_file(s3_bucket_name, word_count_file_path_2, local_file_path2)
             with open(local_file_path2, "r") as file:
                 mapper_result2 = json.load(file)
             for word, count in mapper_result2.items():
@@ -213,7 +217,7 @@ def reducer(event: dict[str, Any]) -> dict[str, Any]:
             f"sorted_word_counts/sorted_word_count_{reducer_index}_{workflow.get_run_id()}.json"
         )
 
-        s3.upload_file(sorted_word_count_file_path, "caribou-map-reduce", remote_sorted_word_count_file_path)
+        s3.upload_file(sorted_word_count_file_path, s3_bucket_name, remote_sorted_word_count_file_path)
 
         payload = {
             "sorted_word_count_file_path": remote_sorted_word_count_file_path,
@@ -232,13 +236,13 @@ def output_processor(event: dict[str, Any]) -> dict[str, Any]:
 
     final_word_counts = {}
 
-    s3 = boto3.client("s3", region_name='us-west-2')
+    s3 = boto3.client("s3", region_name=s3_bucket_region_name)
 
     with TemporaryDirectory() as tmp_dir:
 
         for result in results:
             local_file_path = f"{tmp_dir}/sorted_word_count.json"
-            s3.download_file("caribou-map-reduce", result["sorted_word_count_file_path"], local_file_path)
+            s3.download_file(s3_bucket_name, result["sorted_word_count_file_path"], local_file_path)
             with open(local_file_path, "r") as file:
                 result = json.load(file)
 
@@ -255,6 +259,6 @@ def output_processor(event: dict[str, Any]) -> dict[str, Any]:
             for word, count in final_word_counts.items():
                 file.write(f"{word}: {count}\n")
 
-        s3.upload_file(local_file_path, "caribou-map-reduce", f"output/{file_name}")
+        s3.upload_file(local_file_path, s3_bucket_name, f"output/{file_name}")
 
     return {"status": 200}

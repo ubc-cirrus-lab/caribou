@@ -18,6 +18,9 @@ poetry run caribou deploy
 And then run the benchmark with the following command:
 
 ```bash
+poetry run caribou run dna_visualization-0.0.1 -a '{"gen_file_name": "special_tiny_sequence.gb"}'
+poetry run caribou run dna_visualization-0.0.1 -a '{"gen_file_name": "small_sequence.gb"}'
+
 poetry run caribou run dna_visualization-version_number -a '{"gen_file_name": "small_sequence.gb"}'
 ```
 
