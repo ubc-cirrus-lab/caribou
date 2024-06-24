@@ -906,8 +906,8 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
             to_instance = transmission_data["to_instance"]
             from_region_str = transmission_data["from_region"]
             to_region_str = transmission_data["to_region"]
-            from_direct_successor = transmission_data.get(from_direct_successor, False)
-            successor_invoked = transmission_data.get(successor_invoked, False)
+            from_direct_successor = transmission_data.get("from_direct_successor", False)
+            successor_invoked = transmission_data.get("successor_invoked", False)
 
             # Create the necessary dictionaries if they do not exist
             if from_instance not in self._existing_data["transmission_from_instance_to_instance_region"]:

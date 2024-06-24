@@ -23,7 +23,7 @@
       },
       {
         "Action": ["s3:GetObject", "s3:PutObject"],
-        "Resource": "arn:aws:s3:::caribou-video-analytics/*",
+        "Resource": "arn:aws:s3:::dn-caribou-video-analytics/*",
         "Effect": "Allow"
       }
     ]

@@ -17,7 +17,11 @@ poetry run caribou deploy
 And then run the benchmark with the following command:
 
 ```bash
-poetry run caribou run video_analytics-version_number -a '{"video_name": "video_name.mp4"}'
+poetry run caribou run video_analytics-0.0.1 -a '{"video_name": "evening_parking.mp4"}'
+poetry run caribou run video_analytics-0.0.1 -a '{"video_name": "ino_group_fight.mp4"}'
+
+
+poetry run caribou run video_analytics-version_number -a '{"video_name": "evening_parking.mp4"}'
 ```
 
 To remove the benchmark, you can use the following command:
