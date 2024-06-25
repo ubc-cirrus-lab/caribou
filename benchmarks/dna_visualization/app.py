@@ -9,7 +9,7 @@ import os
 
 # Change the following bucket name and region to match your setup
 s3_bucket_name = "dn-caribou-dna-visualization"
-s3_bucket_region_name = "us-west-2"
+s3_bucket_region_name = "us-east-1"
 
 workflow = CaribouWorkflow(name="dna_visualization", version="0.0.1")
 
