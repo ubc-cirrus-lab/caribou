@@ -23,7 +23,7 @@
       },
       {
         "Action": ["s3:GetObject", "s3:PutObject"],
-        "Resource":"arn:aws:s3:::dn-caribou-dna-visualization/*",
+        "Resource":"arn:aws:s3:::dn1-caribou-dna-visualization/*",
         "Effect": "Allow"
       }
     ]

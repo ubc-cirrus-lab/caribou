@@ -17,7 +17,7 @@ from torchvision import models
 FANOUT_NUM = 4
 
 # Change the following bucket name and region to match your setup
-s3_bucket_name = "dn-caribou-video-analytics"
+s3_bucket_name = "dn1-caribou-video-analytics"
 s3_bucket_region_name = "us-east-1"
 
 workflow = CaribouWorkflow(name="video_analytics", version="0.0.1")
