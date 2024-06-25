@@ -21,11 +21,23 @@ class TestProviderRetriever(unittest.TestCase):
 
     @patch.dict(os.environ, {"AWS_REGION": "us-east-1"})
     def test_retrieve_aws_sns_cost(self):
-        available_regions = ["aws:us-east-1", "aws:eu-west-1", "aws:ap-southeast-1"]
+        available_regions = [
+            "aws:us-east-1",
+            "aws:eu-west-1",
+            "aws:ap-southeast-1",
+            "aws:us-east-2",
+            "aws:eu-west-3",
+            "aws:ap-southeast-2",
+            "aws:ap-northeast-1",
+        ]
         expected_sns_cost = {
             "aws:us-east-1": {"sns_cost": 0.50, "unit": "USD/requests"},
             "aws:eu-west-1": {"sns_cost": 0.50, "unit": "USD/requests"},
             "aws:ap-southeast-1": {"sns_cost": 0.60, "unit": "USD/requests"},
+            "aws:us-east-2": {"sns_cost": 0.50, "unit": "USD/requests"},
+            "aws:eu-west-3": {"sns_cost": 0.55, "unit": "USD/requests"},
+            "aws:ap-southeast-2": {"sns_cost": 0.60, "unit": "USD/requests"},
+            "aws:ap-northeast-1": {"sns_cost": 0.55, "unit": "USD/requests"},
         }
 
         actual_sns_cost = self.provider_retriever._retrieve_aws_sns_cost(available_regions)
@@ -61,6 +73,15 @@ class TestProviderRetriever(unittest.TestCase):
                 {
                     "RegionCode": "eu-central-1",
                     "PriceListArn": "arn:aws:pricing::price-list/AmazonDynamoDB/eu-central-1",
+                },
+                {
+                    "RegionCode": "ap-southeast-1",
+                    "PriceListArn": "arn:aws:pricing::price-list/AmazonDynamoDB/ap-southeast-1",
+                },
+                {"RegionCode": "ap-east-1", "PriceListArn": "arn:aws:pricing::price-list/AmazonDynamoDB/ap-east-1"},
+                {
+                    "RegionCode": "ap-southeast-4",
+                    "PriceListArn": "arn:aws:pricing::price-list/AmazonDynamoDB/ap-southeast-4",
                 },
             ]
         }
@@ -110,7 +131,9 @@ class TestProviderRetriever(unittest.TestCase):
         provider_retriever = ProviderRetriever(client=mock_aws_pricing_client)
 
         # Define the input and expected output
-        available_regions = ["aws:us-east-1"]
+        available_regions = [
+            "aws:us-east-1",
+        ]
         expected_dynamodb_cost = {
             "aws:us-east-1": {
                 "read_request_cost": 2.5e-07,
@@ -124,41 +147,30 @@ class TestProviderRetriever(unittest.TestCase):
         actual_dynamodb_cost = provider_retriever._retrieve_aws_dynamodb_cost(available_regions)
         self.assertEqual(actual_dynamodb_cost, expected_dynamodb_cost)
 
-        @patch.dict(os.environ, {"AWS_REGION": "us-east-1"})
-        @patch("caribou.data_collector.components.provider.provider_retriever.boto3.client")
-        def test_retrieve_aws_dynamodb_cost_api_failure(self, mock_boto3_client):
-            # Simulate an AWS API error by having the mock raise an exception
-            mock_boto3_client.side_effect = Exception("AWS API Error")
+    @patch.dict(os.environ, {"AWS_REGION": "us-east-1"})
+    def test_retrieve_aws_dynamodb_cost_with_no_regions(self):
+        expected_dynamodb_cost = {}  # Assuming no regions results in no costs
 
-            with self.assertRaises(Exception) as context:
-                self.provider_retriever._retrieve_aws_dynamodb_cost(["aws:us-east-1"])
+        actual_dynamodb_cost = self.provider_retriever._retrieve_aws_dynamodb_cost([])
+        self.assertEqual(actual_dynamodb_cost, expected_dynamodb_cost)
 
-            self.assertTrue("AWS API Error" in str(context.exception))
+    @patch("requests.get")
+    @patch("caribou.data_collector.components.provider.provider_retriever.boto3.client")
+    def test_retrieve_aws_dynamodb_cost_invalid_region(self, mock_boto3_client, mock_requests_get):
+        # Setup mocks
+        mock_aws_pricing_client = MagicMock()
+        mock_boto3_client.return_value = mock_aws_pricing_client
+        mock_requests_get.return_value.json.return_value = {}  # Assume empty response for invalid region
 
-        @patch.dict(os.environ, {"AWS_REGION": "us-east-1"})
-        def test_retrieve_aws_dynamodb_cost_with_no_regions(self):
-            expected_dynamodb_cost = {}  # Assuming no regions results in no costs
+        provider_retriever = ProviderRetriever(client=mock_aws_pricing_client)
+        invalid_regions = ["aws:invalid-region"]
+        expected_result = {}  # Expecting empty result for invalid region
 
-            actual_dynamodb_cost = self.provider_retriever._retrieve_aws_dynamodb_cost([])
-            self.assertEqual(actual_dynamodb_cost, expected_dynamodb_cost)
+        # Act
+        actual_result = provider_retriever._retrieve_aws_dynamodb_cost(invalid_regions)
 
-        @patch("requests.get")
-        @patch("caribou.data_collector.components.provider.provider_retriever.boto3.client")
-        def test_retrieve_aws_dynamodb_cost_invalid_region(self, mock_boto3_client, mock_requests_get):
-            # Setup mocks
-            mock_aws_pricing_client = MagicMock()
-            mock_boto3_client.return_value = mock_aws_pricing_client
-            mock_requests_get.return_value.json.return_value = {}  # Assume empty response for invalid region
-
-            provider_retriever = ProviderRetriever(client=mock_aws_pricing_client)
-            invalid_regions = ["aws:invalid-region"]
-            expected_result = {}  # Expecting empty result for invalid region
-
-            # Act
-            actual_result = provider_retriever._retrieve_aws_dynamodb_cost(invalid_regions)
-
-            # Assert
-            self.assertEqual(actual_result, expected_result)
+        # Assert
+        self.assertEqual(actual_result, expected_result)
 
     @patch("requests.get")
     @patch("caribou.data_collector.components.provider.provider_retriever.boto3.client")
@@ -287,6 +299,22 @@ class TestProviderRetriever(unittest.TestCase):
         provider_retriever = ProviderRetriever(client=mock_aws_pricing_client)
         available_regions = ["aws:us-east-1"]
         expected_ecr_cost = {}  # Expecting an empty result due to empty response
+
+        actual_ecr_cost = provider_retriever._retrieve_aws_ecr_cost(available_regions)
+        self.assertEqual(actual_ecr_cost, expected_ecr_cost)
+
+    @patch("requests.get")
+    @patch("caribou.data_collector.components.provider.provider_retriever.boto3.client")
+    def test_retrieve_aws_ecr_cost_invalid_region(self, mock_boto3_client, mock_requests_get):
+        mock_aws_pricing_client = MagicMock()
+        mock_boto3_client.return_value = mock_aws_pricing_client
+
+        # Mock the list_price_lists response for an invalid region
+        mock_aws_pricing_client.list_price_lists.return_value = {"PriceLists": []}  # No price lists for invalid regions
+
+        provider_retriever = ProviderRetriever(client=mock_aws_pricing_client)
+        available_regions = ["aws:invalid-region"]
+        expected_ecr_cost = {}  # Expecting an empty result for invalid region
 
         actual_ecr_cost = provider_retriever._retrieve_aws_ecr_cost(available_regions)
         self.assertEqual(actual_ecr_cost, expected_ecr_cost)
