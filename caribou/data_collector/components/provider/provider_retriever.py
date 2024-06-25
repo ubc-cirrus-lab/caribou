@@ -366,7 +366,7 @@ class ProviderRetriever(DataRetriever):
 
     def _retrieve_aws_dynamodb_cost(self, available_region: List[str]) -> Dict[str, Any]:
         dynamodb_cost_response = self._aws_pricing_client.list_price_lists(
-            ServiceCode="AmazonDynamoDB", EffectiveDate=datetime.datetime.now(GLOBAL_TIME_ZONE), CurrencyCode="USD"
+            ServiceCode="AmazonDynamoDB", EffectiveDate=datetime.datetime.now(), CurrencyCode="USD"
         )
 
         available_region_code_to_key = {region_key.split(":")[1]: region_key for region_key in available_region}
@@ -386,44 +386,11 @@ class ProviderRetriever(DataRetriever):
             response = requests.get(price_list_file["Url"], timeout=5)
             price_list_file_json = response.json()
 
-            (
-                read_request_sku,
-                write_request_sku,
-                storage_sku,
-            ) = self.get_dynamodb_on_demand_skus(price_list_file_json)
+            read_request_sku, write_request_sku, storage_sku = self.get_dynamodb_on_demand_skus(price_list_file_json)
 
-            read_request_cost = 0.0
-            if read_request_sku:
-                read_request_item = price_list_file_json["terms"]["OnDemand"][read_request_sku][
-                    list(price_list_file_json["terms"]["OnDemand"][read_request_sku].keys())[0]
-                ]
-                read_request_cost = float(
-                    read_request_item["priceDimensions"][list(read_request_item["priceDimensions"].keys())[0]][
-                        "pricePerUnit"
-                    ]["USD"]
-                )
-
-            write_request_cost = 0.0
-            if write_request_sku:
-                write_request_item = price_list_file_json["terms"]["OnDemand"][write_request_sku][
-                    list(price_list_file_json["terms"]["OnDemand"][write_request_sku].keys())[0]
-                ]
-                write_request_cost = float(
-                    write_request_item["priceDimensions"][list(write_request_item["priceDimensions"].keys())[0]][
-                        "pricePerUnit"
-                    ]["USD"]
-                )
-
-            storage_cost = 0.0
-            if storage_sku:
-                storage_item = price_list_file_json["terms"]["OnDemand"][storage_sku][
-                    list(price_list_file_json["terms"]["OnDemand"][storage_sku].keys())[0]
-                ]
-                storage_cost = float(
-                    storage_item["priceDimensions"][list(storage_item["priceDimensions"].keys())[0]]["pricePerUnit"][
-                        "USD"
-                    ]
-                )
+            read_request_cost = self.get_cost(price_list_file_json, read_request_sku)
+            write_request_cost = self.get_cost(price_list_file_json, write_request_sku)
+            storage_cost = self.get_cost(price_list_file_json, storage_sku)
 
             dynamodb_cost_dict[available_region_code_to_key[region_code]] = {
                 "read_request_cost": read_request_cost,
@@ -439,16 +406,30 @@ class ProviderRetriever(DataRetriever):
         write_request_sku = ""
         storage_sku = ""
 
-        for sku, product in price_list_file_json["products"].items():
-            product_family = product.get("productFamily", "")
-            if product_family == "Amazon DynamoDB PayPerRequest Throughput":
-                read_request_sku = sku
-            elif product_family == "DDB-Operation-ReplicatedWrite":
-                write_request_sku = sku
-            elif product_family == "Database Storage":
+        for sku, product_info in price_list_file_json["products"].items():
+            product = product_info.get("product", product_info)
+            if product.get("productFamily") == "Amazon DynamoDB PayPerRequest Throughput":
+                attributes = product.get("attributes", {})
+                group = attributes.get("group", "")
+                if group == "DDB-ReadUnits":
+                    read_request_sku = sku
+                elif group == "DDB-WriteUnits":
+                    write_request_sku = sku
+            elif product.get("productFamily") == "Database Storage":
                 storage_sku = sku
 
         return read_request_sku, write_request_sku, storage_sku
+
+    def get_cost(self, price_list_file_json: Dict[str, Any], sku: str) -> float:
+        if sku:
+            price_item = price_list_file_json["terms"]["OnDemand"][sku][
+                list(price_list_file_json["terms"]["OnDemand"][sku].keys())[0]
+            ]
+            cost = float(
+                price_item["priceDimensions"][list(price_item["priceDimensions"].keys())[0]]["pricePerUnit"]["USD"]
+            )
+            return cost
+        return 0.0
 
     def _retrieve_aws_ecr_cost(self, available_region: List[str]) -> Dict[str, Any]:
         ecr_cost_response = self._aws_pricing_client.list_price_lists(
