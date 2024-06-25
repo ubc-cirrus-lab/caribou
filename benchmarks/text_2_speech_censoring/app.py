@@ -14,7 +14,7 @@ from tempfile import TemporaryDirectory
 
 # Change the following bucket name and region to match your setup
 s3_bucket_name = "dn-caribou-text-2-speech-censoring"
-s3_bucket_region_name = "us-west-2"
+s3_bucket_region_name = "us-east-1"
 
 workflow = CaribouWorkflow(name="text_2_speech_censoring", version="0.0.1")
 
