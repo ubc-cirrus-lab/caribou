@@ -11,7 +11,7 @@ import math
 from caribou.deployment.client import CaribouWorkflow
 
 # Change the following bucket name and region to match your setup
-s3_bucket_name = "dn-caribou-map-reduce"
+s3_bucket_name = "dn1-caribou-map-reduce"
 s3_bucket_region_name = "us-east-1"
 
 workflow = CaribouWorkflow(name="map_reduce", version="0.0.1")
