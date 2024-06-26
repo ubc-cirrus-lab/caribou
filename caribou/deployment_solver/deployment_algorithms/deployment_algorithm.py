@@ -30,6 +30,7 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
         workflow_config: WorkflowConfig,
         expiry_time_delta_seconds: int = DEFAULT_MONITOR_COOLDOWN,
         n_workers: int = 1,
+        record_transmission_execution_carbon: bool = False,
     ):
         self._workflow_config = workflow_config
 
@@ -44,7 +45,7 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
         self._input_manager.setup(self._region_indexer, self._instance_indexer)
 
         self._deployment_metrics_calculator: DeploymentMetricsCalculator = SimpleDeploymentMetricsCalculator(
-            workflow_config, self._input_manager, self._region_indexer, self._instance_indexer, n_processes=n_workers
+            workflow_config, self._input_manager, self._region_indexer, self._instance_indexer, n_processes=n_workers, record_transmission_execution_carbon=record_transmission_execution_carbon
         )
 
         self._home_region_index = self._region_indexer.value_to_index(self._workflow_config.home_region)
@@ -88,8 +89,8 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
         self._add_expiry_date_to_results(hour_to_run_to_result)
 
         # TODO: Return the result
-        # self._upload_result(hour_to_run_to_result)
-        print(json.dumps(hour_to_run_to_result, indent=4))
+        self._upload_result(hour_to_run_to_result)
+        # print(json.dumps(hour_to_run_to_result, indent=4))
 
     def _update_data_for_new_hour(self, hour_to_run: str) -> None:
         self._input_manager.alter_carbon_setting(hour_to_run)

@@ -184,7 +184,7 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
         execution_carbon_list: list[float] = []
         transmission_carbon_list: list[float] = []
 
-        max_number_of_iterations = 10
+        max_number_of_iterations = 100
         # max_number_of_iterations = 2000
         threshold = 0.05
         number_of_iterations = 0

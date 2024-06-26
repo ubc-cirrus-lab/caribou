@@ -18,14 +18,16 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
         carbon_loader: CarbonLoader,
         datacenter_loader: DatacenterLoader,
         workflow_loader: WorkflowLoader,
-        runtime_calculator: RuntimeCalculator,
+        # runtime_calculator: RuntimeCalculator, # TODO: Potentially remove this 
+        energy_factor_of_transmission: float = 0.005,
+        consider_home_region_for_transmission: bool = True,
         consider_cfe: bool = False,
     ) -> None:
         super().__init__()
         self._carbon_loader: CarbonLoader = carbon_loader
         self._datacenter_loader: DatacenterLoader = datacenter_loader
         self._workflow_loader: WorkflowLoader = workflow_loader
-        self._runtime_calculator: RuntimeCalculator = runtime_calculator
+        # self._runtime_calculator: RuntimeCalculator = runtime_calculator
         self._consider_cfe: bool = consider_cfe
 
         # Conversion ratio cache
@@ -36,12 +38,12 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
         self._hourly_carbon_setting: Optional[str] = None  # None indicates the default setting -> Average everything
 
         # Energy factor and if considering home region for transmission carbon calculation
-        self.energy_factor_of_transmission = 0.005
+        self._energy_factor_of_transmission: float = energy_factor_of_transmission
 
         # This denotes if we should consider the home region for transmission carbon calculation
         # Meaning that if this is true, we consider data transfer within the same region as incrring
         # transmission carbon.
-        self.consider_home_region_for_transmission = True
+        self._consider_home_region_for_transmission: bool = consider_home_region_for_transmission
 
     def alter_carbon_setting(self, carbon_setting: Optional[str]) -> None:
         self._hourly_carbon_setting = carbon_setting
@@ -262,7 +264,7 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
             # data transfer within the same region.
             # Otherwise, we skip the data transfer within the same region
             if current_region_name == other_region_name:
-                if not self.consider_home_region_for_transmission:
+                if not self._consider_home_region_for_transmission:
                     continue
 
             carbon_intensity_of_transmission_route = current_region_carbon_intensity
@@ -275,15 +277,15 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
                 # TODO: Look into changing this if its not appropriate
                 carbon_intensity_of_transmission_route = (other_region_carbon_intensity + current_region_carbon_intensity) / 2
             
-            total_transmission_carbon += data_transfer_gb * self.energy_factor_of_transmission * carbon_intensity_of_transmission_route
+            total_transmission_carbon += data_transfer_gb * self._energy_factor_of_transmission * carbon_intensity_of_transmission_route
 
         # Calculate the carbon from data transfer
         # Of data that we CANNOT track represented by data_transfer_during_execution
         # Right now we are just assuming they are from the home region
         # if not ((current_region_name == self._workflow_loader.get_home_region()) and not ):
-        if (self.consider_home_region_for_transmission or (current_region_name != self._workflow_loader.get_home_region())):
+        if (self._consider_home_region_for_transmission or (current_region_name != self._workflow_loader.get_home_region())):
             # Perhaps use global carbon intensity
-            total_transmission_carbon += data_transfer_during_execution * self.energy_factor_of_transmission * current_region_carbon_intensity
+            total_transmission_carbon += data_transfer_during_execution * self._energy_factor_of_transmission * current_region_carbon_intensity
 
         return total_transmission_carbon
 

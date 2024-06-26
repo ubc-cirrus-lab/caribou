@@ -8,9 +8,9 @@ from caribou.deployment_solver.workflow_config import WorkflowConfig
 
 class StochasticHeuristicDeploymentAlgorithm(DeploymentAlgorithm):
     def __init__(
-        self, workflow_config: WorkflowConfig, expiry_time_delta_seconds: int = 604800, n_workers: int = 1
+        self, workflow_config: WorkflowConfig, expiry_time_delta_seconds: int = 604800, n_workers: int = 1, record_transmission_execution_carbon: bool = False
     ) -> None:
-        super().__init__(workflow_config, expiry_time_delta_seconds, n_workers)
+        super().__init__(workflow_config, expiry_time_delta_seconds, n_workers, record_transmission_execution_carbon)
         self._setup()
 
     def _setup(self) -> None:
