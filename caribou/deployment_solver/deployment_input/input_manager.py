@@ -54,9 +54,9 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         # Setup the calculator
         self._runtime_calculator = RuntimeCalculator(self._performance_loader, self._workflow_loader)
         self._carbon_calculator = CarbonCalculator(
-            self._carbon_loader, self._datacenter_loader, self._workflow_loader, self._runtime_calculator
+            self._carbon_loader, self._datacenter_loader, self._workflow_loader
         )
-        self._cost_calculator = CostCalculator(self._datacenter_loader, self._workflow_loader, self._runtime_calculator)
+        self._cost_calculator = CostCalculator(self._datacenter_loader, self._workflow_loader)
 
     def setup(self, regions_indexer: RegionIndexer, instance_indexer: InstanceIndexer) -> None:
         self._region_indexer = regions_indexer
@@ -218,7 +218,7 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         state["_workflow_loader"] = self._workflow_loader.get_workflow_data()
         state["_carbon_calculator"] = {
             "small_or_large": self._carbon_calculator.small_or_large,
-            "energy_factor": self._carbon_calculator.energy_factor_of_transmission,
+            "energy_factor": self._carbon_calculator._energy_factor_of_transmission,
             "home_base_case": self._carbon_calculator.home_base_case,
         }
         return state
@@ -240,7 +240,7 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         )
         self._cost_calculator = CostCalculator(self._datacenter_loader, self._workflow_loader, self._runtime_calculator)
         self._carbon_calculator.small_or_large = state.get("_carbon_calculator").get("small_or_large")
-        self._carbon_calculator.energy_factor_of_transmission = state.get("_carbon_calculator").get("energy_factor")
+        self._carbon_calculator._energy_factor_of_transmission = state.get("_carbon_calculator").get("energy_factor")
         self._carbon_calculator.home_base_case = state.get("_carbon_calculator").get("home_base_case")
         requested_regions: set[str] = set(self._region_indexer.get_value_indices().keys())
 

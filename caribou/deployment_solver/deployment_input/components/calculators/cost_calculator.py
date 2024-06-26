@@ -9,19 +9,18 @@ class CostCalculator(InputCalculator):
         self,
         datacenter_loader: DatacenterLoader,
         workflow_loader: WorkflowLoader,
-        runtime_calculator: RuntimeCalculator,
+        # runtime_calculator: RuntimeCalculator, # Possibly remove this
+        consider_intra_region_transfer_for_sns: bool = False
     ) -> None:
         super().__init__()
         self._datacenter_loader: DatacenterLoader = datacenter_loader
         self._workflow_loader: WorkflowLoader = workflow_loader
-        self._runtime_calculator: RuntimeCalculator = runtime_calculator
+        # self._runtime_calculator: RuntimeCalculator = runtime_calculator
 
         # Conversion ratio cache
         self._execution_conversion_ratio_cache: dict[str, tuple[float, float]] = {}
         self._transmission_conversion_ratio_cache: dict[str, float] = {}
-        
-        # TODO: Make this a variable or something
-        self._consider_intra_region_transfer_for_sns: bool = False
+        self._consider_intra_region_transfer_for_sns: bool = consider_intra_region_transfer_for_sns
 
     # def calculate_transmission_cost(
     #     self,

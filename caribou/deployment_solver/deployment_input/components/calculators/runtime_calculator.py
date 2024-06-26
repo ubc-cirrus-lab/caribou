@@ -242,6 +242,9 @@ class RuntimeCalculator(InputCalculator):
             int(random.random() * (len(transmission_latency_distribution) - 1))
         ]
 
+        # # TODO: Remove this
+        # transmission_latency = 1.0
+
         return transmission_size, transmission_latency
     
     def _get_transmission_latency_distribution(
@@ -333,6 +336,9 @@ class RuntimeCalculator(InputCalculator):
 
         # Calculate the underestimation factor
         underestimation_factor = home_region_latency_measured / home_region_latency_performance
+
+        # # TODO: Remove this
+        # underestimation_factor = 1.0
 
         assert isinstance(underestimation_factor, float), "Underestimation factor must be a float."
 
