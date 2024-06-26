@@ -1,5 +1,6 @@
+import datetime
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import Mock, patch, MagicMock
 from caribou.data_collector.components.provider.provider_retriever import ProviderRetriever
 from caribou.common.models.remote_client.remote_client import RemoteClient
 import requests
@@ -17,6 +18,180 @@ class TestProviderRetriever(unittest.TestCase):
             mock_os_environ_get.return_value = "test_key"
             mock_str_to_bool.return_value = False
             self.provider_retriever = ProviderRetriever(self.remote_client)
+
+    @patch.dict(os.environ, {"AWS_REGION": "us-east-1"})
+    def test_retrieve_aws_sns_cost(self):
+        available_regions = [
+            "aws:us-east-1",
+            "aws:eu-west-1",
+            "aws:ap-southeast-1",
+            "aws:us-east-2",
+            "aws:eu-west-3",
+            "aws:ap-southeast-2",
+            "aws:ap-northeast-1",
+        ]
+        expected_sns_cost = {
+            "aws:us-east-1": {"request_cost": 0.50 / 1_000_000, "unit": "USD/requests"},
+            "aws:eu-west-1": {"request_cost": 0.50 / 1_000_000, "unit": "USD/requests"},
+            "aws:ap-southeast-1": {"request_cost": 0.60 / 1_000_000, "unit": "USD/requests"},
+            "aws:us-east-2": {"request_cost": 0.50 / 1_000_000, "unit": "USD/requests"},
+            "aws:eu-west-3": {"request_cost": 0.55 / 1_000_000, "unit": "USD/requests"},
+            "aws:ap-southeast-2": {"request_cost": 0.60 / 1_000_000, "unit": "USD/requests"},
+            "aws:ap-northeast-1": {"request_cost": 0.55 / 1_000_000, "unit": "USD/requests"},
+        }
+
+        actual_sns_cost = self.provider_retriever._retrieve_aws_sns_cost(available_regions)
+
+        self.assertEqual(actual_sns_cost, expected_sns_cost)
+
+    @patch.dict(os.environ, {"AWS_REGION": "us-east-1"})
+    def test_retrieve_aws_sns_cost_with_invalid_region(self):
+        with self.assertRaises(ValueError) as context:
+            self.provider_retriever._retrieve_aws_sns_cost(["aws:invalid-region"])
+
+        self.assertTrue("Unknown region code invalid-region" in str(context.exception))
+
+    @patch("requests.get")
+    @patch("caribou.data_collector.components.provider.provider_retriever.boto3.client")
+    @patch.dict(os.environ, {"GOOGLE_API_KEY": "mocked_api_key_value", "AWS_REGION": "us-east-1"})
+    def test_retrieve_aws_dynamodb_cost(self, mock_boto3_client, mock_requests_get):
+        # Mock AWS pricing client
+        mock_aws_pricing_client = MagicMock()
+        mock_boto3_client.return_value = mock_aws_pricing_client
+
+        # Mock the list_price_lists response
+        mock_aws_pricing_client.list_price_lists.return_value = {
+            "PriceLists": [
+                {
+                    "RegionCode": "us-east-1",
+                    "PriceListArn": "arn:aws:pricing::price-list/AmazonDynamoDB/us-east-1",
+                },
+                {
+                    "RegionCode": "us-west-2",
+                    "PriceListArn": "arn:aws:pricing::price-list/AmazonDynamoDB/us-west-2",
+                },
+                {
+                    "RegionCode": "eu-central-1",
+                    "PriceListArn": "arn:aws:pricing::price-list/AmazonDynamoDB/eu-central-1",
+                },
+                {
+                    "RegionCode": "ap-southeast-1",
+                    "PriceListArn": "arn:aws:pricing::price-list/AmazonDynamoDB/ap-southeast-1",
+                },
+                {"RegionCode": "ap-east-1", "PriceListArn": "arn:aws:pricing::price-list/AmazonDynamoDB/ap-east-1"},
+                {
+                    "RegionCode": "ap-southeast-4",
+                    "PriceListArn": "arn:aws:pricing::price-list/AmazonDynamoDB/ap-southeast-4",
+                },
+            ]
+        }
+
+        # Mock the get_price_list_file_url response
+        mock_aws_pricing_client.get_price_list_file_url.return_value = {
+            "Url": "http://example.com/dynamodb_price_list.json"
+        }
+
+        # Mock the requests.get response
+        mock_price_list_response = {
+            "products": {
+                "read_sku": {
+                    "productFamily": "Amazon DynamoDB PayPerRequest Throughput",
+                    "attributes": {"group": "DDB-ReadUnits"},
+                },
+                "write_sku": {
+                    "productFamily": "Amazon DynamoDB PayPerRequest Throughput",
+                    "attributes": {"group": "DDB-WriteUnits"},
+                },
+                "storage_sku": {"productFamily": "Database Storage"},
+            },
+            "terms": {
+                "OnDemand": {
+                    "read_sku": {
+                        "read_sku.terms": {
+                            "priceDimensions": {"read_sku.priceDimension": {"pricePerUnit": {"USD": "0.00000025"}}}
+                        }
+                    },
+                    "write_sku": {
+                        "write_sku.terms": {
+                            "priceDimensions": {"write_sku.priceDimension": {"pricePerUnit": {"USD": "0.00000125"}}}
+                        }
+                    },
+                    "storage_sku": {
+                        "storage_sku.terms": {
+                            "priceDimensions": {"storage_sku.priceDimension": {"pricePerUnit": {"USD": "0.1"}}}
+                        }
+                    },
+                }
+            },
+        }
+
+        mock_requests_get.return_value.json.return_value = mock_price_list_response
+
+        # Initialize the AWSPricingRetriever with the mocked client
+        provider_retriever = ProviderRetriever(client=mock_aws_pricing_client)
+
+        # Define the input and expected output
+        available_regions = [
+            "aws:us-east-1",
+        ]
+        expected_dynamodb_cost = {
+            "aws:us-east-1": {
+                "read_request_cost": 2.5e-07,
+                "write_request_cost": 1.25e-06,
+                "storage_cost": 0.1,
+                "unit": "USD",
+            }
+        }
+
+        # Call the method and check the result
+        actual_dynamodb_cost = provider_retriever._retrieve_aws_dynamodb_cost(available_regions)
+        self.assertEqual(actual_dynamodb_cost, expected_dynamodb_cost)
+
+    @patch.dict(os.environ, {"AWS_REGION": "us-east-1"})
+    @patch.dict(os.environ, {"GOOGLE_API_KEY": "mocked_api_key_value", "AWS_REGION": "us-east-1"})
+    def test_retrieve_aws_dynamodb_cost_with_no_regions(self):
+        expected_dynamodb_cost = {}  # Assuming no regions results in no costs
+
+        actual_dynamodb_cost = self.provider_retriever._retrieve_aws_dynamodb_cost([])
+        self.assertEqual(actual_dynamodb_cost, expected_dynamodb_cost)
+
+    @patch("requests.get")
+    @patch("caribou.data_collector.components.provider.provider_retriever.boto3.client")
+    @patch.dict(os.environ, {"GOOGLE_API_KEY": "mocked_api_key_value", "AWS_REGION": "us-east-1"})
+    def test_retrieve_aws_dynamodb_cost_invalid_region(self, mock_boto3_client, mock_requests_get):
+        # Setup mocks
+        mock_aws_pricing_client = MagicMock()
+        mock_boto3_client.return_value = mock_aws_pricing_client
+        mock_requests_get.return_value.json.return_value = {}  # Assume empty response for invalid region
+
+        provider_retriever = ProviderRetriever(client=mock_aws_pricing_client)
+        invalid_regions = ["aws:invalid-region"]
+        expected_result = {}  # Expecting empty result for invalid region
+
+        # Act
+        actual_result = provider_retriever._retrieve_aws_dynamodb_cost(invalid_regions)
+
+        # Assert
+        self.assertEqual(actual_result, expected_result)
+
+    @patch("requests.get")
+    @patch("caribou.data_collector.components.provider.provider_retriever.boto3.client")
+    @patch.dict(os.environ, {"GOOGLE_API_KEY": "mocked_api_key_value", "AWS_REGION": "us-east-1"})
+    def test_retrieve_aws_dynamodb_cost_empty_price_list(self, mock_boto3_client, mock_requests_get):
+        # Setup mocks for empty price list response
+        mock_aws_pricing_client = MagicMock()
+        mock_boto3_client.return_value = mock_aws_pricing_client
+        mock_aws_pricing_client.list_price_lists.return_value = {"PriceLists": []}  # Empty price list
+
+        provider_retriever = ProviderRetriever(client=mock_aws_pricing_client)
+        regions = ["aws:us-east-1"]
+        expected_result = {}  # Expecting empty result for empty price list
+
+        # Act
+        actual_result = provider_retriever._retrieve_aws_dynamodb_cost(regions)
+
+        # Assert
+        self.assertEqual(actual_result, expected_result)
 
     @patch("googlemaps.Client")
     def test_retrieve_location(self, mock_googlemaps_client):
@@ -63,6 +238,91 @@ class TestProviderRetriever(unittest.TestCase):
         self.assertEqual(regions["aws:us-east-1"]["name"], "US East (N. Virginia)")
         self.assertEqual(regions["aws:us-east-1"]["latitude"], 37.7749)
         self.assertEqual(regions["aws:us-east-1"]["longitude"], -122.4194)
+
+    @patch("requests.get")
+    @patch("caribou.data_collector.components.provider.provider_retriever.boto3.client")
+    @patch.dict(os.environ, {"GOOGLE_API_KEY": "mocked_api_key_value", "AWS_REGION": "us-east-1"})
+    def test_retrieve_aws_ecr_cost(self, mock_boto3_client, mock_requests_get):
+        # Mock AWS pricing client
+        mock_aws_pricing_client = MagicMock()
+        mock_boto3_client.return_value = mock_aws_pricing_client
+
+        # Mock the list_price_lists response
+        mock_aws_pricing_client.list_price_lists.return_value = {
+            "PriceLists": [
+                {
+                    "RegionCode": "us-east-1",
+                    "PriceListArn": "arn:aws:pricing::price-list/1",
+                }
+            ]
+        }
+
+        # Mock the get_price_list_file_url response
+        mock_aws_pricing_client.get_price_list_file_url.return_value = {"Url": "http://example.com/price_list.json"}
+
+        # Mock the requests.get response
+        mock_price_list_response = {
+            "products": {
+                "sku-1": {"attributes": {"servicecode": "AmazonECR", "usagetype": "EC2-Other-Storage"}},
+            },
+            "terms": {
+                "OnDemand": {
+                    "sku-1": {"sku-1-term": {"priceDimensions": {"sku-1-term-dim": {"pricePerUnit": {"USD": "0.10"}}}}},
+                }
+            },
+        }
+
+        mock_requests_get.return_value.json.return_value = mock_price_list_response
+
+        # Initialize the ProviderRetriever with the mocked client
+        provider_retriever = ProviderRetriever(client=mock_aws_pricing_client)
+
+        # Define the input and expected output
+        available_regions = ["aws:us-east-1"]
+        expected_ecr_cost = {
+            "aws:us-east-1": {
+                "storage_cost": 0.10,
+                "unit": "USD",
+            }
+        }
+
+        # Call the method and check the result
+        actual_ecr_cost = provider_retriever._retrieve_aws_ecr_cost(available_regions)
+        self.assertEqual(actual_ecr_cost, expected_ecr_cost)
+
+    @patch("requests.get")
+    @patch("caribou.data_collector.components.provider.provider_retriever.boto3.client")
+    @patch.dict(os.environ, {"GOOGLE_API_KEY": "mocked_api_key_value", "AWS_REGION": "us-east-1"})
+    def test_retrieve_aws_ecr_cost_empty_response(self, mock_boto3_client, mock_requests_get):
+        mock_aws_pricing_client = MagicMock()
+        mock_boto3_client.return_value = mock_aws_pricing_client
+
+        mock_aws_pricing_client.list_price_lists.return_value = {"PriceLists": []}  # Empty response
+        mock_requests_get.return_value.json.return_value = {}
+
+        provider_retriever = ProviderRetriever(client=mock_aws_pricing_client)
+        available_regions = ["aws:us-east-1"]
+        expected_ecr_cost = {}  # Expecting an empty result due to empty response
+
+        actual_ecr_cost = provider_retriever._retrieve_aws_ecr_cost(available_regions)
+        self.assertEqual(actual_ecr_cost, expected_ecr_cost)
+
+    @patch("requests.get")
+    @patch("caribou.data_collector.components.provider.provider_retriever.boto3.client")
+    @patch.dict(os.environ, {"GOOGLE_API_KEY": "mocked_api_key_value", "AWS_REGION": "us-east-1"})
+    def test_retrieve_aws_ecr_cost_invalid_region(self, mock_boto3_client, mock_requests_get):
+        mock_aws_pricing_client = MagicMock()
+        mock_boto3_client.return_value = mock_aws_pricing_client
+
+        # Mock the list_price_lists response for an invalid region
+        mock_aws_pricing_client.list_price_lists.return_value = {"PriceLists": []}  # No price lists for invalid regions
+
+        provider_retriever = ProviderRetriever(client=mock_aws_pricing_client)
+        available_regions = ["aws:invalid-region"]
+        expected_ecr_cost = {}  # Expecting an empty result for invalid region
+
+        actual_ecr_cost = provider_retriever._retrieve_aws_ecr_cost(available_regions)
+        self.assertEqual(actual_ecr_cost, expected_ecr_cost)
 
     @patch("requests.get")
     @patch("bs4.BeautifulSoup")
@@ -138,26 +398,116 @@ class TestProviderRetriever(unittest.TestCase):
     @patch(
         "caribou.data_collector.components.provider.provider_retriever.ProviderRetriever._retrieve_aws_execution_cost"
     )
-    def test_retrieve_provider_region_data_aws(
-        self, mock_retrieve_aws_execution_cost, mock_retrieve_aws_transmission_cost
+    @patch("caribou.data_collector.components.provider.provider_retriever.ProviderRetriever._retrieve_aws_sns_cost")
+    @patch(
+        "caribou.data_collector.components.provider.provider_retriever.ProviderRetriever._retrieve_aws_dynamodb_cost"
+    )
+    @patch("caribou.data_collector.components.provider.provider_retriever.ProviderRetriever._retrieve_aws_ecr_cost")
+    @patch(
+        "caribou.data_collector.components.provider.provider_retriever.ProviderRetriever._retrieve_aws_available_architectures"
+    )
+    def test_retrieve_provider_data_aws(
+        self,
+        mock_retrieve_aws_available_architectures,
+        mock_retrieve_aws_ecr_cost,
+        mock_retrieve_aws_dynamodb_cost,
+        mock_retrieve_aws_sns_cost,
+        mock_retrieve_aws_execution_cost,
+        mock_retrieve_aws_transmission_cost,
     ):
+        aws_regions = ["aws:us-east-1", "aws:eu-west-1"]
+
+        mock_retrieve_aws_transmission_cost.return_value = {
+            "aws:us-east-1": {"global_data_transfer": 0.002},
+            "aws:eu-west-1": {"global_data_transfer": 0.003},
+        }
         mock_retrieve_aws_execution_cost.return_value = {
-            "aws:dummy_region": {
+            "aws:us-east-1": {
                 "compute_cost": {"arm64": 0.0001, "x86": 0.00006},
                 "invocation_cost": {"arm64": 0.002, "x86_64": 0.003},
-            }
+            },
+            "aws:eu-west-1": {
+                "compute_cost": {"arm64": 0.0002, "x86": 0.00008},
+                "invocation_cost": {"arm64": 0.0025, "x86_64": 0.0035},
+            },
         }
-        mock_retrieve_aws_transmission_cost.return_value = {"aws:dummy_region": {"global_data_transfer": 0.002}}
+        mock_retrieve_aws_sns_cost.return_value = {
+            "aws:us-east-1": {"request_cost": 0.5, "unit": "USD/requests"},
+            "aws:eu-west-1": {"request_cost": 0.55, "unit": "USD/requests"},
+        }
+        mock_retrieve_aws_dynamodb_cost.return_value = {
+            "aws:us-east-1": {
+                "read_request_cost": 0.01,
+                "write_request_cost": 0.05,
+                "storage_cost": 0.1,
+                "unit": "USD",
+            },
+            "aws:eu-west-1": {
+                "read_request_cost": 0.015,
+                "write_request_cost": 0.055,
+                "storage_cost": 0.15,
+                "unit": "USD",
+            },
+        }
+        mock_retrieve_aws_ecr_cost.return_value = {
+            "aws:us-east-1": {"ecr_cost": 0.1},
+            "aws:eu-west-1": {"ecr_cost": 0.15},
+        }
+        mock_retrieve_aws_available_architectures.return_value = ["arm64", "x86"]
 
-        self.provider_retriever._available_regions = {"aws:dummy_region": {"provider": "aws"}}
+        self.provider_retriever._available_regions = {
+            "aws:us-east-1": {"provider": "aws"},
+            "aws:eu-west-1": {"provider": "aws"},
+        }
 
-        result = self.provider_retriever.retrieve_provider_region_data()
-        self.assertIn("aws:dummy_region", result)
-        self.assertEqual(
-            result["aws:dummy_region"]["execution_cost"],
-            {"compute_cost": {"arm64": 0.0001, "x86": 0.00006}, "invocation_cost": {"arm64": 0.002, "x86_64": 0.003}},
-        )
-        self.assertEqual(result["aws:dummy_region"]["transmission_cost"], {"global_data_transfer": 0.002})
+        expected_result = {
+            "aws:us-east-1": {
+                "execution_cost": {
+                    "compute_cost": {"arm64": 0.0001, "x86": 0.00006},
+                    "invocation_cost": {"arm64": 0.002, "x86_64": 0.003},
+                },
+                "transmission_cost": {"global_data_transfer": 0.002},
+                "sns_cost": {"request_cost": 0.5, "unit": "USD/requests"},
+                "dynamodb_cost": {
+                    "read_request_cost": 0.01,
+                    "write_request_cost": 0.05,
+                    "storage_cost": 0.1,
+                    "unit": "USD",
+                },
+                "ecr_cost": {"ecr_cost": 0.1},
+                "pue": 1.11,
+                "cfe": 0.0,
+                "average_memory_power": 0.00000392,
+                "max_cpu_power_kWh": 0.0035,
+                "min_cpu_power_kWh": 0.00074,
+                "available_architectures": ["arm64", "x86"],
+            },
+            "aws:eu-west-1": {
+                "execution_cost": {
+                    "compute_cost": {"arm64": 0.0002, "x86": 0.00008},
+                    "invocation_cost": {"arm64": 0.0025, "x86_64": 0.0035},
+                },
+                "transmission_cost": {"global_data_transfer": 0.003},
+                "sns_cost": {"request_cost": 0.55, "unit": "USD/requests"},
+                "dynamodb_cost": {
+                    "read_request_cost": 0.015,
+                    "write_request_cost": 0.055,
+                    "storage_cost": 0.15,
+                    "unit": "USD",
+                },
+                "ecr_cost": {"ecr_cost": 0.15},
+                "pue": 1.11,
+                "cfe": 0.0,
+                "average_memory_power": 0.00000392,
+                "max_cpu_power_kWh": 0.0035,
+                "min_cpu_power_kWh": 0.00074,
+                "available_architectures": ["arm64", "x86"],
+            },
+        }
+
+        result = self.provider_retriever._retrieve_provider_data_aws(aws_regions)
+
+        self.assertEqual(result, expected_result)
 
     def test_retrieve_aws_transmission_cost(self):
         result = self.provider_retriever._retrieve_aws_transmission_cost(["aws:us-west-1"])
