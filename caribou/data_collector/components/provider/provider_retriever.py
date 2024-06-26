@@ -341,24 +341,24 @@ class ProviderRetriever(DataRetriever):
             if region_code in exact_region_codes:
                 sns_cost = exact_region_codes[region_code]
             elif region_code.startswith("us-"):
-                sns_cost = 0.50 / 1_000_000
+                sns_cost = 0.50
             elif region_code.startswith("eu-"):
-                sns_cost = 0.55 / 1_000_000
+                sns_cost = 0.55
             elif region_code.startswith("ap-"):
-                sns_cost = 0.60 / 1_000_000
+                sns_cost = 0.60
             elif region_code.startswith("ca-"):
-                sns_cost = 0.55 / 1_000_000
+                sns_cost = 0.55
             elif region_code.startswith("sa-"):
-                sns_cost = 0.70 / 1_000_000
+                sns_cost = 0.70
             elif region_code.startswith("af-"):
-                sns_cost = 0.75 / 1_000_000
+                sns_cost = 0.75
             elif region_code.startswith("me-"):
-                sns_cost = 0.75 / 1_000_000
+                sns_cost = 0.75
             else:
                 raise ValueError(f"Unknown region code {region_code}")
 
             result_sns_cost_dict[region_key] = {
-                "sns_cost": sns_cost,
+                "request_cost": sns_cost / 1_000_000,
                 "unit": "USD/requests",
             }
 

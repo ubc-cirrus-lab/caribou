@@ -31,13 +31,13 @@ class TestProviderRetriever(unittest.TestCase):
             "aws:ap-northeast-1",
         ]
         expected_sns_cost = {
-            "aws:us-east-1": {"sns_cost": 0.50, "unit": "USD/requests"},
-            "aws:eu-west-1": {"sns_cost": 0.50, "unit": "USD/requests"},
-            "aws:ap-southeast-1": {"sns_cost": 0.60, "unit": "USD/requests"},
-            "aws:us-east-2": {"sns_cost": 0.50, "unit": "USD/requests"},
-            "aws:eu-west-3": {"sns_cost": 0.55, "unit": "USD/requests"},
-            "aws:ap-southeast-2": {"sns_cost": 0.60, "unit": "USD/requests"},
-            "aws:ap-northeast-1": {"sns_cost": 0.55, "unit": "USD/requests"},
+            "aws:us-east-1": {"request_cost": 0.50 / 1_000_000, "unit": "USD/requests"},
+            "aws:eu-west-1": {"request_cost": 0.50 / 1_000_000, "unit": "USD/requests"},
+            "aws:ap-southeast-1": {"request_cost": 0.60 / 1_000_000, "unit": "USD/requests"},
+            "aws:us-east-2": {"request_cost": 0.50 / 1_000_000, "unit": "USD/requests"},
+            "aws:eu-west-3": {"request_cost": 0.55 / 1_000_000, "unit": "USD/requests"},
+            "aws:ap-southeast-2": {"request_cost": 0.60 / 1_000_000, "unit": "USD/requests"},
+            "aws:ap-northeast-1": {"request_cost": 0.55 / 1_000_000, "unit": "USD/requests"},
         }
 
         actual_sns_cost = self.provider_retriever._retrieve_aws_sns_cost(available_regions)
@@ -427,8 +427,8 @@ class TestProviderRetriever(unittest.TestCase):
             },
         }
         mock_retrieve_aws_sns_cost.return_value = {
-            "aws:us-east-1": {"sns_cost": 0.5, "unit": "USD/requests"},
-            "aws:eu-west-1": {"sns_cost": 0.55, "unit": "USD/requests"},
+            "aws:us-east-1": {"request_cost": 0.5, "unit": "USD/requests"},
+            "aws:eu-west-1": {"request_cost": 0.55, "unit": "USD/requests"},
         }
         mock_retrieve_aws_dynamodb_cost.return_value = {
             "aws:us-east-1": {
@@ -462,7 +462,7 @@ class TestProviderRetriever(unittest.TestCase):
                     "invocation_cost": {"arm64": 0.002, "x86_64": 0.003},
                 },
                 "transmission_cost": {"global_data_transfer": 0.002},
-                "sns_cost": {"sns_cost": 0.5, "unit": "USD/requests"},
+                "sns_cost": {"request_cost": 0.5, "unit": "USD/requests"},
                 "dynamodb_cost": {
                     "read_request_cost": 0.01,
                     "write_request_cost": 0.05,
@@ -483,7 +483,7 @@ class TestProviderRetriever(unittest.TestCase):
                     "invocation_cost": {"arm64": 0.0025, "x86_64": 0.0035},
                 },
                 "transmission_cost": {"global_data_transfer": 0.003},
-                "sns_cost": {"sns_cost": 0.55, "unit": "USD/requests"},
+                "sns_cost": {"request_cost": 0.55, "unit": "USD/requests"},
                 "dynamodb_cost": {
                     "read_request_cost": 0.015,
                     "write_request_cost": 0.055,
