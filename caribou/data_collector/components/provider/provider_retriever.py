@@ -1,6 +1,6 @@
 import datetime
 import os
-from typing import Any, Dict, List
+from typing import Any
 
 import boto3
 import googlemaps
@@ -341,30 +341,30 @@ class ProviderRetriever(DataRetriever):
             if region_code in exact_region_codes:
                 sns_cost = exact_region_codes[region_code]
             elif region_code.startswith("us-"):
-                sns_cost = 0.50 / 1_000_000
+                sns_cost = 0.50
             elif region_code.startswith("eu-"):
-                sns_cost = 0.55 / 1_000_000
+                sns_cost = 0.55
             elif region_code.startswith("ap-"):
-                sns_cost = 0.60 / 1_000_000
+                sns_cost = 0.60
             elif region_code.startswith("ca-"):
-                sns_cost = 0.55 / 1_000_000
+                sns_cost = 0.55
             elif region_code.startswith("sa-"):
-                sns_cost = 0.70 / 1_000_000
+                sns_cost = 0.70
             elif region_code.startswith("af-"):
-                sns_cost = 0.75 / 1_000_000
+                sns_cost = 0.75
             elif region_code.startswith("me-"):
-                sns_cost = 0.75 / 1_000_000
+                sns_cost = 0.75
             else:
                 raise ValueError(f"Unknown region code {region_code}")
 
             result_sns_cost_dict[region_key] = {
-                "sns_cost": sns_cost,
+                "request_cost": sns_cost / 1_000_000,
                 "unit": "USD/requests",
             }
 
         return result_sns_cost_dict
 
-    def _retrieve_aws_dynamodb_cost(self, available_region: List[str]) -> Dict[str, Any]:
+    def _retrieve_aws_dynamodb_cost(self, available_region: list[str]) -> dict[str, Any]:
         dynamodb_cost_response = self._aws_pricing_client.list_price_lists(
             ServiceCode="AmazonDynamoDB", EffectiveDate=datetime.datetime.now(), CurrencyCode="USD"
         )
@@ -401,7 +401,7 @@ class ProviderRetriever(DataRetriever):
 
         return dynamodb_cost_dict
 
-    def get_dynamodb_on_demand_skus(self, price_list_file_json: Dict[str, Any]) -> tuple[str, str, str]:
+    def get_dynamodb_on_demand_skus(self, price_list_file_json: dict[str, Any]) -> tuple[str, str, str]:
         read_request_sku = ""
         write_request_sku = ""
         storage_sku = ""
@@ -420,7 +420,7 @@ class ProviderRetriever(DataRetriever):
 
         return read_request_sku, write_request_sku, storage_sku
 
-    def get_cost(self, price_list_file_json: Dict[str, Any], sku: str) -> float:
+    def get_cost(self, price_list_file_json: dict[str, Any], sku: str) -> float:
         if sku:
             price_item = price_list_file_json["terms"]["OnDemand"][sku][
                 list(price_list_file_json["terms"]["OnDemand"][sku].keys())[0]
@@ -431,7 +431,7 @@ class ProviderRetriever(DataRetriever):
             return cost
         return 0.0
 
-    def _retrieve_aws_ecr_cost(self, available_region: List[str]) -> Dict[str, Any]:
+    def _retrieve_aws_ecr_cost(self, available_region: list[str]) -> dict[str, Any]:
         ecr_cost_response = self._aws_pricing_client.list_price_lists(
             ServiceCode="AmazonECR", EffectiveDate=datetime.datetime.now(GLOBAL_TIME_ZONE), CurrencyCode="USD"
         )
@@ -473,7 +473,7 @@ class ProviderRetriever(DataRetriever):
 
         return ecr_cost_dict
 
-    def get_ecr_skus(self, price_list_file_json: Dict[str, Any]) -> str:
+    def get_ecr_skus(self, price_list_file_json: dict[str, Any]) -> str:
         storage_sku = ""
 
         for sku, product in price_list_file_json["products"].items():
