@@ -7,15 +7,15 @@ from caribou.common.constants import (
     SOLVER_INPUT_AVERAGE_MEMORY_POWER_DEFAULT,
     SOLVER_INPUT_CFE_DEFAULT,
     SOLVER_INPUT_COMPUTE_COST_DEFAULT,
-    SOLVER_INPUT_INVOCATION_COST_DEFAULT,
-    SOLVER_INPUT_PUE_DEFAULT,
-    SOLVER_INPUT_TRANSMISSION_COST_DEFAULT,
-    SOLVER_INPUT_MIN_CPU_POWER_DEFAULT,
-    SOLVER_INPUT_MAX_CPU_POWER_DEFAULT,
-    SOLVER_INPUT_SNS_REQUEST_COST_DEFAULT,
     SOLVER_INPUT_DYNAMODB_READ_COST_DEFAULT,
     SOLVER_INPUT_DYNAMODB_WRITE_COST_DEFAULT,
     SOLVER_INPUT_ECR_MONTHLY_STORAGE_COST_DEFAULT,
+    SOLVER_INPUT_INVOCATION_COST_DEFAULT,
+    SOLVER_INPUT_MAX_CPU_POWER_DEFAULT,
+    SOLVER_INPUT_MIN_CPU_POWER_DEFAULT,
+    SOLVER_INPUT_PUE_DEFAULT,
+    SOLVER_INPUT_SNS_REQUEST_COST_DEFAULT,
+    SOLVER_INPUT_TRANSMISSION_COST_DEFAULT,
 )
 from caribou.common.models.remote_client.remote_client import RemoteClient
 from caribou.deployment_solver.deployment_input.components.loader import InputLoader
@@ -64,14 +64,24 @@ class DatacenterLoader(InputLoader):
         return self._datacenter_data.get(region_name, {}).get("min_cpu_power_kWh", SOLVER_INPUT_MIN_CPU_POWER_DEFAULT)
 
     def get_sns_request_cost(self, region_name: str) -> float:
-        return self._datacenter_data.get(region_name, {}).get("sns_cost", {}).get("sns_cost", SOLVER_INPUT_SNS_REQUEST_COST_DEFAULT)
+        return (
+            self._datacenter_data.get(region_name, {})
+            .get("sns_cost", {})
+            .get("sns_cost", SOLVER_INPUT_SNS_REQUEST_COST_DEFAULT)
+        )
 
     def get_dynamodb_read_write_cost(self, region_name: str) -> tuple[float, float]:
         dynamodb_costs = self._datacenter_data.get(region_name, {}).get("dynamodb_cost", {})
-        return dynamodb_costs.get("read_cost", SOLVER_INPUT_DYNAMODB_READ_COST_DEFAULT), dynamodb_costs.get("write_cost", SOLVER_INPUT_DYNAMODB_WRITE_COST_DEFAULT)
+        return dynamodb_costs.get("read_cost", SOLVER_INPUT_DYNAMODB_READ_COST_DEFAULT), dynamodb_costs.get(
+            "write_cost", SOLVER_INPUT_DYNAMODB_WRITE_COST_DEFAULT
+        )
 
     def get_ecr_storage_cost(self, region_name: str) -> float:
-        return self._datacenter_data.get(region_name, {}).get("ecr_cost", {}).get("storage_cost", SOLVER_INPUT_ECR_MONTHLY_STORAGE_COST_DEFAULT)
+        return (
+            self._datacenter_data.get(region_name, {})
+            .get("ecr_cost", {})
+            .get("storage_cost", SOLVER_INPUT_ECR_MONTHLY_STORAGE_COST_DEFAULT)
+        )
 
     def get_compute_cost(self, region_name: str, architecture: str) -> float:
         return (

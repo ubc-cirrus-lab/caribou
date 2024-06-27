@@ -87,7 +87,6 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
                 n_processes,
             )
 
-
     def _setup(
         self,
         workflow_config: WorkflowConfig,
@@ -143,7 +142,9 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
             pool.append(p)
         return pool
 
-    def calculate_workflow_loop(self, deployment: list) -> Tuple[list[float], list[float], list[float], list[float], list[float]]:
+    def calculate_workflow_loop(
+        self, deployment: list
+    ) -> Tuple[list[float], list[float], list[float], list[float], list[float]]:
         costs_distribution_list: list[float] = []
         runtimes_distribution_list: list[float] = []
         carbons_distribution_list: list[float] = []
@@ -170,7 +171,13 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
                     transmission_carbon_list.append(results["transmission_carbon"])
                     execution_carbon_list.append(results["execution_carbon"])
 
-        return costs_distribution_list, runtimes_distribution_list, carbons_distribution_list, transmission_carbon_list, execution_carbon_list
+        return (
+            costs_distribution_list,
+            runtimes_distribution_list,
+            carbons_distribution_list,
+            transmission_carbon_list,
+            execution_carbon_list,
+        )
 
     def _perform_monte_carlo_simulation(self, deployment: list[int]) -> dict[str, float]:
         """
@@ -217,8 +224,8 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
                 elif all_within_threshold:
                     break
 
-        print("Min Run Time: ", min(runtimes_distribution_list))
-        print("Max Run Time: ", max(runtimes_distribution_list))
+        # print("Min Run Time: ", min(runtimes_distribution_list))
+        # print("Max Run Time: ", max(runtimes_distribution_list))
         result = {
             "average_cost": float(statistics.mean(costs_distribution_list)),
             "average_runtime": float(statistics.mean(runtimes_distribution_list)),

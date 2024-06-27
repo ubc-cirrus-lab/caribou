@@ -3,22 +3,24 @@ from typing import Any, Optional
 from caribou.deployment_solver.deployment_input.input_manager import InputManager
 from caribou.deployment_solver.deployment_metrics_calculator.models.instance_node import InstanceNode
 
+
 class SimulatedInstanceEdge:
-    def __init__(self,
-                input_manager: InputManager,
-                from_instance_node: InstanceNode,
-                to_instance_node: InstanceNode,
-                uninvoked_instance_id: int,
-                simulated_sync_predecessor_id: int,
-                ) -> None:
+    def __init__(
+        self,
+        input_manager: InputManager,
+        from_instance_node: InstanceNode,
+        to_instance_node: InstanceNode,
+        uninvoked_instance_id: int,
+        simulated_sync_predecessor_id: int,
+    ) -> None:
         self._input_manager: InputManager = input_manager
 
-        # Edge always goes to an instance 
+        # Edge always goes to an instance
         self.from_instance_node: InstanceNode = from_instance_node
 
         # To instance is also the sync_node
         self.to_instance_node: InstanceNode = to_instance_node
-        
+
         self.uninvoked_instance_id: int = uninvoked_instance_id
         self.simulated_sync_predecessor_instance_id: int = simulated_sync_predecessor_id
 
@@ -48,6 +50,14 @@ class SimulatedInstanceEdge:
 
         # Those edges are not apart of the workflow
         # and are only used to handle latencies of non-execution of ancestor nodes
-        transmission_info = self._input_manager.get_simulated_transmission_info(from_instance_id, uninvoked_instance_id, simulated_sync_predecessor_id, sync_node_id, from_region_id, to_region_id, cumulative_runtime)
+        transmission_info = self._input_manager.get_simulated_transmission_info(
+            from_instance_id,
+            uninvoked_instance_id,
+            simulated_sync_predecessor_id,
+            sync_node_id,
+            from_region_id,
+            to_region_id,
+            cumulative_runtime,
+        )
 
         return transmission_info

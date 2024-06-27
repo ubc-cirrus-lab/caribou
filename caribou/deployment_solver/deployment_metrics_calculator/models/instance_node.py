@@ -1,5 +1,7 @@
 from typing import Any, Optional
+
 from caribou.deployment_solver.deployment_input.input_manager import InputManager
+
 
 class InstanceNode:
     def __init__(self, input_manager: InputManager, instane_id: int) -> None:
@@ -19,7 +21,7 @@ class InstanceNode:
         # output size of the node (Include sns_data_output_sizes as well)
         self.tracked_data_input_sizes: dict[int, float] = {}
         self.tracked_data_output_sizes: dict[int, float] = {}
-        
+
         ## This stores the data_transfer during execution where
         # we CANNOT account for where its from or to
         self.data_transfer_during_execution: float = 0.0
@@ -36,10 +38,7 @@ class InstanceNode:
         # The key is the instance index of the successor
         # The value is the cumulative runtime of when this
         # node invokes the successor
-        self.cumulative_runtimes: dict[str, Any] = {
-            "current": 0.0,
-            "successors": {}
-        }
+        self.cumulative_runtimes: dict[str, Any] = {"current": 0.0, "successors": {}}
 
     def get_cumulative_runtime(self, successor_instance_index: int) -> float:
         # Get the cumulative runtime of the successor edge
@@ -54,7 +53,7 @@ class InstanceNode:
         # print(f'Calculating cost and carbon for node: {self.instance_id}')
         # print(f"cumulative_runtimes: {self.cumulative_runtimes}")
         calculated_metrics = self._input_manager.calculate_cost_and_carbon_of_instance(
-            self.cumulative_runtimes['current'],
+            self.cumulative_runtimes["current"],
             self.instance_id,
             self.region_id,
             self.tracked_data_input_sizes,
@@ -63,17 +62,17 @@ class InstanceNode:
             self.data_transfer_during_execution,
             self.tracked_dynamodb_read_capacity,
             self.tracked_dynamodb_write_capacity,
-            self.invoked
+            self.invoked,
         )
         # print(calculated_metrics)
-        execution_carbon, transmission_carbon = calculated_metrics['carbon']
+        execution_carbon, transmission_carbon = calculated_metrics["carbon"]
 
         # We only care about the runtime if the node was invoked
-        runtime = self.cumulative_runtimes['current'] if self.invoked else 0.0
+        runtime = self.cumulative_runtimes["current"] if self.invoked else 0.0
         return {
-            "cost": calculated_metrics['cost'],
+            "cost": calculated_metrics["cost"],
             # "carbon": calculated_metrics['carbon'],
             "runtime": runtime,
             "execution_carbon": execution_carbon,
-            "transmission_carbon": transmission_carbon
+            "transmission_carbon": transmission_carbon,
         }
