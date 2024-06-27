@@ -25,7 +25,7 @@ class InstanceNode:
         self.data_transfer_during_execution: float = 0.0
 
         # Store the cumulative data output size of only SNS
-        self.sns_data_output_sizes: dict[int, float] = {}
+        self.sns_data_call_and_output_sizes: dict[str, list[float]] = {}
 
         # Store the cumulative dynamodb read and
         # write capacity of the node
@@ -59,7 +59,7 @@ class InstanceNode:
             self.region_id,
             self.tracked_data_input_sizes,
             self.tracked_data_output_sizes,
-            self.sns_data_output_sizes,
+            self.sns_data_call_and_output_sizes,
             self.data_transfer_during_execution,
             self.tracked_dynamodb_read_capacity,
             self.tracked_dynamodb_write_capacity,

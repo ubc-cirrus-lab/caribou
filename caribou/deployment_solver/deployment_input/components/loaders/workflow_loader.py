@@ -21,7 +21,6 @@ class WorkflowLoader(InputLoader):
     _workflow_data: dict[str, Any]
     _instances_regions_and_providers: dict[str, Any]
     _home_region: str
-    # _performance_loader: PerformanceLoader
 
     def __init__(self, client: RemoteClient, workflow_config: WorkflowConfig) -> None:
         super().__init__(client, WORKFLOW_INSTANCE_TABLE)
@@ -95,50 +94,6 @@ class WorkflowLoader(InputLoader):
         self._start_hop_latency_distribution_cache[cache_key] = start_hop_latency_distribution
         return start_hop_latency_distribution
 
-    # Modified with performance loader
-    # def get_start_hop_latency_distribution(self, to_region_name: str, data_transfer_size: float) -> list[float]:
-    #     cache_key = f"{to_region_name}_{data_transfer_size}"
-    #     if cache_key in self._start_hop_latency_distribution_cache:
-    #         return self._start_hop_latency_distribution_cache[cache_key]
-        
-    #     # Round data transfer size translation to nearest 10 KB
-    #     data_transfer_size = self._round_to_kb(data_transfer_size, 10)
-
-    #     start_hop_latency_distribution = (
-    #         self._workflow_data.get("start_hop_summary", {}).get("regions_to_regions", {}).get(to_region_name, {}).get(str(data_transfer_size), [])
-    #     )
-
-    #     if len(start_hop_latency_distribution) == 0:
-    #         # Atempt to use the best fit line size
-    #         best_fit_line = self.get_start_hop_best_fit_line(to_region_name)
-    #         if best_fit_line is not None:
-    #             # Estimate the latency using the best fit line
-    #             estimated_latency = best_fit_line["slope_s"] * data_transfer_size + best_fit_line["intercept_s"]
-
-    #             # Limit the estimated latency to the min and max latency
-    #             estimated_latency = min(best_fit_line["max_latency_s"], max(best_fit_line["min_latency_s"], estimated_latency))
-
-    #             start_hop_latency_distribution = [estimated_latency]
-    #         elif to_region_name != self.get_home_region():
-    #             # In the absence of a best fit line, try to estimate the latency using the transmission latency
-    #             # Based on the transmission latency distribution, here we assume that we can estimate the latency
-    #             # By adding estimated transmission latency (cloud ping) to the start hop latency
-    #             home_region_latency_distribution = self.get_start_hop_latency_distribution(self.get_home_region(), data_transfer_size)
-    #             transmission_latency_distribution = self._performance_loader.get_transmission_latency_distribution(
-    #                 self.get_home_region(), to_region_name
-    #             )
-    #             start_hop_latency_distribution = [
-    #                 latency + transmission_latency_distribution[i % len(transmission_latency_distribution)]
-    #                 for i, latency in enumerate(home_region_latency_distribution)
-    #             ]
-    #         else:
-    #             # If the destination is the home region, we cannot estimate the latency
-    #             # So we default to the transmission latency default for same region transfer
-    #             start_hop_latency_distribution = [SOLVER_INPUT_TRANSMISSION_LATENCY_DEFAULT]
-        
-    #     self._start_hop_latency_distribution_cache[cache_key] = start_hop_latency_distribution
-    #     return start_hop_latency_distribution
-
     def get_average_cpu_utilization(self, instance_name: str) -> float:
         # Get the average CPU utilization for the instance
         # If not available, default to 0.5 (Average cpu utilization of
@@ -192,30 +147,6 @@ class WorkflowLoader(InputLoader):
             .get(to_instance_name, {})
             .get("invocation_probability", SOLVER_INPUT_INVOCATION_PROBABILITY_DEFAULT)
         )
-
-    # def get_data_transfer_size_distribution(
-    #     self,
-    #     from_instance_name: str,
-    #     to_instance_name: str,
-    #     from_region_name: str,
-    #     to_region_name: str,
-    # ) -> list[float]:
-    #     cache_key = f"{from_instance_name}_{to_instance_name}_{from_region_name}_{to_region_name}"
-    #     if cache_key in self._data_transfer_size_cache:
-    #         return self._data_transfer_size_cache[cache_key]
-    #     resulting_size = [
-    #         float(size)
-    #         for size in self._workflow_data.get("instance_summary", {})
-    #         .get(from_instance_name, {})
-    #         .get("to_instance", {})
-    #         .get(to_instance_name, {})
-    #         .get("regions_to_regions", {})
-    #         .get(from_region_name, {})
-    #         .get(to_region_name, {})
-    #         .get("transfer_sizes", [])
-    #     ]
-    #     self._data_transfer_size_cache[cache_key] = resulting_size
-    #     return resulting_size
 
     def get_data_transfer_size_distribution(
         self,
@@ -292,22 +223,6 @@ class WorkflowLoader(InputLoader):
         return latency_distribution
 
     def get_non_execution_information(self, from_instance_name: str, to_instance_name: str) -> dict[str, Any]:
-        # "non_execution_info": {
-        #     "simple_join-0_0_1-left:simple_join-0_0_1-start_0_0:1>simple_join-0_0_1-join:sync:": {
-        #         "consumed_write_capacity": 2,
-        #         "sync_data_response_size_gb": 9.5367431640625e-07,
-        #         "sns_transfer_size_gb": 0.0,
-        #         "regions_to_regions": {}
-        #     }
-        # }
-        # return (
-        #     self._workflow_data.get("instance_summary", {})
-        #     .get(from_instance_name, {})
-        #     .get("to_instance", {})
-        #     .get(to_instance_name, {})
-        #     .get("non_execution_info", {})
-        # )
-
         # Should return only the name of each entry of non_execution_info
         # And the sync_data_response_size_gb
         non_execution_info_dict: dict[str, float] = {}

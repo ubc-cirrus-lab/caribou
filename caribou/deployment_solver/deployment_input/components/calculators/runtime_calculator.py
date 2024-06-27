@@ -15,7 +15,6 @@ class RuntimeCalculator(InputCalculator):
         super().__init__()
         self._performance_loader: PerformanceLoader = performance_loader
         self._workflow_loader: WorkflowLoader = workflow_loader
-        # self._workflow_loader._performance_loader = performance_loader
         self._transmission_latency_distribution_cache: dict[str, list[float]] = {}
         self._transmission_size_distribution_cache: dict[str, list[float]] = {}
 
@@ -23,149 +22,6 @@ class RuntimeCalculator(InputCalculator):
         self._transmission_latency_distribution_cache = {}
         self._transmission_size_distribution_cache = {}
 
-    # def get_transmission_size_distribution(
-    #     self,
-    #     from_instance_name: Optional[str],
-    #     to_instance_name: str,
-    #     from_region_name: str,
-    #     to_region_name: str,
-    # ) -> list[float]:
-    #     cache_key = f"{from_instance_name}-{to_instance_name}-{from_region_name}-{to_region_name}"
-    #     if cache_key in self._transmission_size_distribution_cache:
-    #         return self._transmission_size_distribution_cache[cache_key]
-    #     # Get the data transfer size distribution
-    #     if from_instance_name:
-    #         transmission_size_distribution = self._workflow_loader.get_data_transfer_size_distribution(
-    #             from_instance_name, to_instance_name, from_region_name, to_region_name
-    #         )
-    #         if len(transmission_size_distribution) == 0:
-    #             # If the size distribution is empty, we default to the home region size distribution
-    #             transmission_size_distribution = self._workflow_loader.get_data_transfer_size_distribution(
-    #                 from_instance_name,
-    #                 to_instance_name,
-    #                 self._workflow_loader.get_home_region(),
-    #                 self._workflow_loader.get_home_region(),
-    #             )
-    #     else:
-    #         transmission_size_distribution = self._workflow_loader.get_start_hop_size_distribution(to_region_name)
-
-    #     self._transmission_size_distribution_cache[cache_key] = transmission_size_distribution
-    #     return transmission_size_distribution
-
-    # def get_transmission_latency_distribution(
-    #     self,
-    #     from_instance_name: Optional[str],
-    #     to_instance_name: str,
-    #     from_region_name: str,
-    #     to_region_name: str,
-    #     data_transfer_size: Optional[float],
-    # ) -> list[float]:
-    #     cache_key = f"{from_instance_name}-{to_instance_name}-{from_region_name}-{to_region_name}-{data_transfer_size}"
-    #     if cache_key in self._transmission_latency_distribution_cache:
-    #         return self._transmission_latency_distribution_cache[cache_key]
-    #     if data_transfer_size is not None:
-    #         if from_instance_name:
-    #             # Not for start hop
-    #             # Get the data transfer size distribution
-    #             transmission_latency_distribution = self._workflow_loader.get_latency_distribution(
-    #                 from_instance_name, to_instance_name, from_region_name, to_region_name, data_transfer_size
-    #             )
-
-    #             if len(transmission_latency_distribution) == 0:
-    #                 transmission_latency_distribution = self.get_performance_loader_transmission_latency_distribution(
-    #                     from_region_name, to_region_name, from_instance_name, to_instance_name, data_transfer_size
-    #                 )
-    #         else:
-    #             transmission_latency_distribution = self._workflow_loader.get_start_hop_latency_distribution(
-    #                 to_region_name, data_transfer_size
-    #             )
-    #     else:
-    #         assert (
-    #             from_instance_name is not None
-    #         ), "From instance name must be provided for underestimation factor, something went wrong."
-    #         transmission_latency_distribution = self.get_performance_loader_transmission_latency_distribution(
-    #             from_region_name, to_region_name, from_instance_name, to_instance_name
-    #         )
-
-    #     self._transmission_latency_distribution_cache[cache_key] = transmission_latency_distribution
-    #     return transmission_latency_distribution
-
-    # def calculate_runtime_distribution(self, instance_name: str, region_name: str) -> list[float]:
-    #     runtime_distribution: list[float] = self._workflow_loader.get_runtime_distribution(instance_name, region_name)
-
-    #     # If the runtime is not found, then we simply default to home region runtime
-    #     if len(runtime_distribution) == 0:
-    #         home_region = self._workflow_loader.get_home_region()
-
-    #         # Currently we do not consider relative performance such that we
-    #         # Simply assume it runs the same in all regions to its home region
-    #         # At least for bootstrapping purposes
-    #         runtime_distribution = self._workflow_loader.get_runtime_distribution(instance_name, home_region)
-
-    #         # It is possible for a workflow to have no runtime distribution for a specific instance
-    #         # This happens if the instance was never invoked in the workflow so far
-    #         # such that they have no runtime data, in this case we assume the runtime is 0
-    #         if len(runtime_distribution) == 0:
-    #             runtime_distribution.append(0.0)
-
-    #     return runtime_distribution
-
-    # # Old performance loader approach
-    # def get_performance_loader_transmission_latency_distribution(
-    #     self,
-    #     from_region_name: str,
-    #     to_region_name: str,
-    #     from_instance_name: str,
-    #     to_instance_name: str,
-    #     data_transfer_size: Optional[float] = None,
-    # ) -> list[float]:
-    #     # No size information, we default to performance loader
-    #     transmission_latency_distribution = self._performance_loader.get_transmission_latency_distribution(
-    #         from_region_name, to_region_name
-    #     )
-
-    #     # Since this will underestimate the latency, we multiply by the
-    #     # underestimation factor retrieved from home region
-    #     home_region_name = self._workflow_loader.get_home_region()
-    #     home_region_latency_distribution_performance = self._performance_loader.get_transmission_latency_distribution(
-    #         home_region_name, home_region_name
-    #     )
-
-    #     # Calculate average latency
-    #     home_region_latency_performance = np.mean(home_region_latency_distribution_performance)
-
-    #     home_region_transmission_size_distribution = self._workflow_loader.get_data_transfer_size_distribution(
-    #         from_instance_name, to_instance_name, home_region_name, home_region_name
-    #     )
-
-    #     if data_transfer_size is None or data_transfer_size not in home_region_transmission_size_distribution:
-    #         # Select a random size from the distribution
-    #         home_region_transmission_size = home_region_transmission_size_distribution[
-    #             int(random.random() * (len(home_region_transmission_size_distribution) - 1))
-    #         ]
-    #     else:
-    #         home_region_transmission_size = data_transfer_size
-
-    #     home_region_latency_distribution_measured = self._workflow_loader.get_latency_distribution(
-    #         from_instance_name, to_instance_name, home_region_name, home_region_name, home_region_transmission_size
-    #     )
-
-    #     # Calculate the average latency
-    #     home_region_latency_measured = np.mean(home_region_latency_distribution_measured)
-
-    #     # Calculate the underestimation factor
-    #     underestimation_factor = home_region_latency_measured / home_region_latency_performance
-
-    #     assert isinstance(underestimation_factor, float), "Underestimation factor must be a float."
-
-    #     # Apply the underestimation factor
-    #     transmission_latency_distribution = [
-    #         latency * underestimation_factor for latency in transmission_latency_distribution
-    #     ]
-
-    #     return transmission_latency_distribution
-
-######### New functions #########
     def calculate_simulated_transmission_size_and_latency(self,
                 from_instance_name: str,
                 uninvoked_instance_name: str,
@@ -193,8 +49,9 @@ class RuntimeCalculator(InputCalculator):
             # TODO: MAKE SURE THIS WORKS IF NOT THEN USE AN ALTERNATIVE METHOD!!!
             # Default to transmission latency distribution of what happens when simulated_sync_predecessor_name
             # Calls sync_node_name as a normal transmission
+            ## This type of transmission will always go to a sync node
             transmission_latency_distribution: list[float] = self._get_transmission_latency_distribution(
-                simulated_sync_predecessor_name, from_region_name, sync_node_name, to_region_name, transmission_size
+                simulated_sync_predecessor_name, from_region_name, sync_node_name, to_region_name, transmission_size, True
             )
             
         # print(f'SIMULATED transmission_latency_distribution: {transmission_latency_distribution[:5]}\n')
@@ -212,6 +69,7 @@ class RuntimeCalculator(InputCalculator):
                                 from_region_name: Optional[str],
                                 to_instance_name: str,
                                 to_region_name: str,
+                                is_sync_predecessor: bool
     ) -> tuple[float, float]:
         # Here we pick a random data transfer size, then pick a random latency
 
@@ -233,9 +91,9 @@ class RuntimeCalculator(InputCalculator):
         # print(from_instance_name, to_instance_name, from_region_name, to_region_name, transmission_size)
         # Get the transmission latency distribution of the input size
         transmission_latency_distribution: list[float] = self._get_transmission_latency_distribution(
-            from_instance_name, from_region_name, to_instance_name, to_region_name, transmission_size
+            from_instance_name, from_region_name, to_instance_name, to_region_name, transmission_size, is_sync_predecessor
         )
-        # print(f'transmission_latency_distribution: {transmission_latency_distribution[:5]}\n')
+        print(f'transmission_latency_distribution: {transmission_latency_distribution[:5]}\n')
 
         # Pick a transmission latency
         transmission_latency: float = transmission_latency_distribution[
@@ -254,6 +112,7 @@ class RuntimeCalculator(InputCalculator):
         to_instance_name: str,
         to_region_name: str,
         data_transfer_size: float,
+        is_sync_predecessor: bool,
     ) -> list[float]:
         cache_key = f"{from_instance_name}-{to_instance_name}-{from_region_name}-{to_region_name}-{data_transfer_size}"
         if cache_key in self._transmission_latency_distribution_cache:
@@ -265,7 +124,15 @@ class RuntimeCalculator(InputCalculator):
             )
             if len(transmission_latency_distribution) == 0:
                 transmission_latency_distribution = self._handle_missing_transmission_latency_distribution(
+                    from_instance_name, from_region_name, to_instance_name, to_region_name, data_transfer_size, is_sync_predecessor)
+                
+
+                old_transmission_latency_distribution = self._get_performance_loader_transmission_latency_distribution(
                     from_instance_name, from_region_name, to_instance_name, to_region_name, data_transfer_size)
+                
+                print(f"Old Transmission Latency Distribution: {old_transmission_latency_distribution[:5]}")
+                print(f"New Transmission Latency Distribution: {transmission_latency_distribution[:5]}")
+
         else:
             transmission_latency_distribution = self._workflow_loader.get_start_hop_latency_distribution(
                 to_region_name, data_transfer_size
@@ -273,6 +140,7 @@ class RuntimeCalculator(InputCalculator):
             if len(transmission_latency_distribution) == 0:
                 transmission_latency_distribution = self._handle_missing_start_hop_latency_distribution(to_region_name, data_transfer_size)
 
+        print(f"transmission_latency_distribution: {transmission_latency_distribution[:5]}, From: {from_instance_name}, To: {to_instance_name}, From Region: {from_region_name}, To Region: {to_region_name}, Size: {data_transfer_size}")
 
         if len(transmission_latency_distribution) == 0:
             # There should never be a case where the size distribution is empty
@@ -288,39 +156,25 @@ class RuntimeCalculator(InputCalculator):
             from_region_name: str, 
             to_instance_name: str, 
             to_region_name: str, 
-            data_transfer_size: float
+            data_transfer_size: float,
+            is_sync_predecessor: bool,
         ) -> list[float]:
-        # Temporarily use the old function for now
-        # TODO: Implement the new function
-        return self._get_performance_loader_transmission_latency_distribution(
-            from_instance_name, from_region_name, to_instance_name, to_region_name, data_transfer_size
-        )
-
-    def _get_performance_loader_transmission_latency_distribution(
-        self,
-        from_instance_name: str,
-        from_region_name: str,
-        to_instance_name: str,
-        to_region_name: str,
-        data_transfer_size: float,
-    ) -> list[float]:
-        # Adapted from the old function
-        # TODO: Replace this function if it is found to be incorrect
-
-        # No size information, we default to performance loader
-        transmission_latency_distribution = self._performance_loader.get_transmission_latency_distribution(
+        # No size information, we rely on performance loader to get the transmission latency
+        # between two regions from cloud ping.
+        cloud_ping_transmission_latency_distribution = self._performance_loader.get_transmission_latency_distribution(
             from_region_name, to_region_name
         )
+        average_cloud_ping_transmission_latency_performance: float = float(np.mean(cloud_ping_transmission_latency_distribution))
 
-        # Since this will underestimate the latency, we multiply by the
-        # underestimation factor retrieved from home region
         home_region_name = self._workflow_loader.get_home_region()
-        home_region_latency_distribution_performance = self._performance_loader.get_transmission_latency_distribution(home_region_name, home_region_name)
+        cloud_ping_home_region_latency_distribution_performance = self._performance_loader.get_transmission_latency_distribution(home_region_name, home_region_name)
+        average_cloud_ping_home_region_latency_performance: float = float(np.mean(cloud_ping_home_region_latency_distribution_performance))
 
-        # Calculate average latency
-        home_region_latency_performance: float = float(np.mean(home_region_latency_distribution_performance))
+        # Calculate the difference in latency between the home region and the current region (Should never be below 0)
+        average_cloud_ping_latency_difference = max(average_cloud_ping_transmission_latency_performance - average_cloud_ping_home_region_latency_performance, 0.0)
+        print(f"Average Cloud Ping Latency Difference: {average_cloud_ping_latency_difference}")
 
-        # Get the measure latency from the home region
+        # Get the measure latency from the home region (actual latency)
         home_region_latency_distribution_measured = self._workflow_loader.get_latency_distribution(
             from_instance_name, to_instance_name, home_region_name, home_region_name, data_transfer_size
         )
@@ -331,23 +185,21 @@ class RuntimeCalculator(InputCalculator):
             # TODO: Verify or find a better solution
             home_region_latency_distribution_measured = [SOLVER_HOME_REGION_TRANSMISSION_LATENCY_DEFAULT]
 
-        # Calculate the average measured latency of the home region
-        home_region_latency_measured: float = float(np.mean(home_region_latency_distribution_measured))
+        # Calculate the multiplier to apply to the added latency
+        # For sync nodes this would be x(1 + 4), as it involves one update to sync_decision_table
+        # and one upload to s3, which is 4 times the latency of a normal transmission
+        multiplier = 1.0
+        if is_sync_predecessor:
+            multiplier += 4.0
 
-        # Calculate the underestimation factor
-        underestimation_factor = home_region_latency_measured / home_region_latency_performance
-
-        # # TODO: Remove this
-        # underestimation_factor = 1.0
-
-        assert isinstance(underestimation_factor, float), "Underestimation factor must be a float."
-
-        # Apply the underestimation factor
-        transmission_latency_distribution = [
-            latency * underestimation_factor for latency in transmission_latency_distribution
+        # Estimate the actual transmission latency distribution by adding the difference in latency
+        # between the home region and the current region to the cloud ping latency
+        added_latency_distribution = [
+            latency + average_cloud_ping_latency_difference * multiplier
+            for latency in home_region_latency_distribution_measured
         ]
 
-        return transmission_latency_distribution
+        return added_latency_distribution
 
     def _handle_missing_start_hop_latency_distribution(self, to_region_name: str,
         data_transfer_size: float) -> list[float]:
@@ -467,3 +319,61 @@ class RuntimeCalculator(InputCalculator):
         },
         auxiliary_data[auxiliary_index_translation["data_transfer_during_execution_gb"]]
         )
+
+
+
+
+
+    # OLD METHOD, please ignore
+    def _get_performance_loader_transmission_latency_distribution(
+        self,
+        from_instance_name: str,
+        from_region_name: str,
+        to_instance_name: str,
+        to_region_name: str,
+        data_transfer_size: float,
+    ) -> list[float]:
+        # Adapted from the old function
+        # TODO: Replace this function if it is found to be incorrect
+
+        # No size information, we default to performance loader
+        transmission_latency_distribution = self._performance_loader.get_transmission_latency_distribution(
+            from_region_name, to_region_name
+        )
+
+        # Since this will underestimate the latency, we multiply by the
+        # underestimation factor retrieved from home region
+        home_region_name = self._workflow_loader.get_home_region()
+        home_region_latency_distribution_performance = self._performance_loader.get_transmission_latency_distribution(home_region_name, home_region_name)
+
+        # Calculate average latency
+        home_region_latency_performance: float = float(np.mean(home_region_latency_distribution_performance))
+
+        # Get the measure latency from the home region
+        home_region_latency_distribution_measured = self._workflow_loader.get_latency_distribution(
+            from_instance_name, to_instance_name, home_region_name, home_region_name, data_transfer_size
+        )
+        if len(home_region_latency_distribution_measured) == 0:
+            # For cases where its a sync predecessor, there might be no latency data
+            # even for the home region, in this case we default to the average latency between
+            # two of the same region (A default value)
+            # TODO: Verify or find a better solution
+            home_region_latency_distribution_measured = [SOLVER_HOME_REGION_TRANSMISSION_LATENCY_DEFAULT]
+
+        # Calculate the average measured latency of the home region
+        home_region_latency_measured: float = float(np.mean(home_region_latency_distribution_measured))
+
+        # Calculate the underestimation factor
+        underestimation_factor = home_region_latency_measured / home_region_latency_performance
+
+        # # TODO: Remove this
+        # underestimation_factor = 1.0
+
+        assert isinstance(underestimation_factor, float), "Underestimation factor must be a float."
+
+        # Apply the underestimation factor
+        transmission_latency_distribution = [
+            latency * underestimation_factor for latency in transmission_latency_distribution
+        ]
+
+        return transmission_latency_distribution
