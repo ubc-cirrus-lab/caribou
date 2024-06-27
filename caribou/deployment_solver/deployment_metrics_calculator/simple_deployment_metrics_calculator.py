@@ -75,7 +75,7 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
             record_transmission_execution_carbon,
         )
         self.n_processes = n_processes
-        self.batch_size = 10
+        self.batch_size = 1
         # self.batch_size = 200
         if n_processes > 1:
             self._setup(
@@ -184,7 +184,7 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
         execution_carbon_list: list[float] = []
         transmission_carbon_list: list[float] = []
 
-        max_number_of_iterations = 100
+        max_number_of_iterations = 1
         # max_number_of_iterations = 2000
         threshold = 0.05
         number_of_iterations = 0

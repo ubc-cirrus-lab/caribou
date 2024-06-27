@@ -7,172 +7,6 @@ from caribou.deployment_solver.deployment_metrics_calculator.models.instance_nod
 from caribou.deployment_solver.deployment_metrics_calculator.models.instance_edge import InstanceEdge
 from caribou.deployment_solver.deployment_metrics_calculator.models.simulated_instance_edge import SimulatedInstanceEdge
 
-# class InstanceNode:
-#     pass
-
-# class InstanceEdge:
-#     def __init__(self, input_manager: InputManager, from_instance_node: Optional[InstanceNode], to_instance_node: InstanceNode) -> None:
-#         self._input_manager: InputManager = input_manager
-
-#         # Edge always goes to an instance, but it may not come from an instance (start hop)
-#         self.from_instance_node: Optional[InstanceNode] = from_instance_node
-#         self.to_instance_node: InstanceNode = to_instance_node
-
-#         # Whether the edge is
-#         # invoked conditionally.
-#         self.conditionally_invoked: bool = False
-
-#     def get_transmission_information(self, successor_is_sync_node: bool) -> Optional[dict[str, Any]]:
-#         # Check the edge if it is a real edge
-#         # First get the parent node
-#         # If the parent node is invoked, then the edge is real
-#         # If the parent node is not invoked, then the edge is not real
-#         # If the edge is NOT real, then we should return None
-#         if (self.from_instance_node and not self.from_instance_node.invoked):
-#             return None
-
-#         from_instance_id = self.from_instance_node.instance_id if self.from_instance_node else -1
-#         to_instance_id = self.to_instance_node.instance_id
-#         from_region_id = self.from_instance_node.region_id if self.from_instance_node else -1
-#         to_region_id = self.to_instance_node.region_id
-        
-#         # Those edges are actually apart of the workflow
-#         if self.conditionally_invoked:
-#             # This is the case where the edge is invoked conditionally
-#             cumulative_runtime = 0.0
-#             # For non-starting edges, we should add the cumulative runtime of the parent node
-#             if self.from_instance_node is not None:
-#                 cumulative_runtime += self.from_instance_node.get_cumulative_runtime(to_instance_id)
-
-#             transmission_info = self._input_manager.get_transmission_info(from_instance_id, from_region_id, to_instance_id, to_region_id, cumulative_runtime, successor_is_sync_node)
-#         else:
-#             # This is the case where the edge is conditionally NOT invoked, and thus
-#             # will need to look at the non-execution information.
-#             transmission_info = self._input_manager.get_non_execution_info(from_instance_id, to_instance_id)
-
-#         return transmission_info
-
-# class SimulatedInstanceEdge:
-#     def __init__(self,
-#                 input_manager: InputManager,
-#                 from_instance_node: InstanceNode,
-#                 to_instance_node: InstanceNode,
-#                 uninvoked_instance_id: int,
-#                 simulated_sync_predecessor_id: int,
-#                 ) -> None:
-#         self._input_manager: InputManager = input_manager
-
-#         # Edge always goes to an instance 
-#         self.from_instance_node: InstanceNode = from_instance_node
-
-#         # To instance is also the sync_node
-#         self.to_instance_node: InstanceNode = to_instance_node
-        
-#         self.uninvoked_instance_id: int = uninvoked_instance_id
-#         self.simulated_sync_predecessor_instance_id: int = simulated_sync_predecessor_id
-
-#     def get_simulated_transmission_information(self) -> Optional[dict[str, Any]]:
-#         # Check the edge if it is a simulated edge
-#         # If the edge is simulated, then we should return the transmission information
-#         # If the edge is NOT simulated, then we should return None
-#         if (self.from_instance_node and not self.from_instance_node.invoked) or not self.to_instance_node:
-#             return None
-
-#         from_instance_id = self.from_instance_node.instance_id
-#         uninvoked_instance_id = self.uninvoked_instance_id
-#         simulated_sync_predecessor_id = self.simulated_sync_predecessor_instance_id
-#         sync_node_id = self.to_instance_node.instance_id
-
-#         from_region_id = self.from_instance_node.region_id
-#         to_region_id = self.to_instance_node.region_id
-
-#         cumulative_runtime = 0.0
-#         # For non-starting edges, we should add the cumulative runtime of the parent node
-#         if self.from_instance_node is not None:
-#             # The time to call successor node is actually the cumulative time of the
-#             # parent node calling the uninvoked node
-#             cumulative_runtime += self.from_instance_node.get_cumulative_runtime(uninvoked_instance_id)
-
-#         # Those edges are not apart of the workflow
-#         # and are only used to handle latencies of non-execution of ancestor nodes
-#         transmission_info = self._input_manager.get_simulated_transmission_info(from_instance_id, uninvoked_instance_id, simulated_sync_predecessor_id, sync_node_id, from_region_id, to_region_id, cumulative_runtime)
-
-#         return transmission_info
-    
-# class InstanceNode:
-#     def __init__(self, input_manager: InputManager, instane_id: int) -> None:
-#         self._input_manager: InputManager = input_manager
-
-#         # The region ID of the current location of the node
-#         self.region_id: int = -1
-
-#         # The instance index
-#         self.instance_id = instane_id
-
-#         # Denotes if it was invoked (Any of its incoming edges were invoked)
-#         # Default is False
-#         self.invoked: bool = False
-
-#         # Store the cumulative data input and
-#         # output size of the node (Include sns_data_output_sizes as well)
-#         self.tracked_data_input_sizes: dict[int, float] = {}
-#         self.tracked_data_output_sizes: dict[int, float] = {}
-        
-#         ## This stores the data_transfer during execution where
-#         # we CANNOT account for where its from or to
-#         self.data_transfer_during_execution: float = 0.0
-
-#         # Store the cumulative data output size of only SNS
-#         self.sns_data_output_sizes: dict[int, float] = {}
-
-#         # Store the cumulative dynamodb read and
-#         # write capacity of the node
-#         self.tracked_dynamodb_read_capacity: float = 0.0
-#         self.tracked_dynamodb_write_capacity: float = 0.0
-
-#         # Store the cumulative runtime of the node
-#         # The key is the instance index of the successor
-#         # The value is the cumulative runtime of when this
-#         # node invokes the successor
-#         self.cumulative_runtimes: dict[str, Any] = {
-#             "current": 0.0,
-#             "successors": {}
-#         }
-
-#     def get_cumulative_runtime(self, successor_instance_index: int) -> float:
-#         # Get the cumulative runtime of the successor edge
-#         # If there are no specifiec runtime for the successor
-#         # then return the current runtime of the node (Worse case scenario)
-#         return self.cumulative_runtimes["successors"].get(successor_instance_index, self.cumulative_runtimes["current"])
-
-#     def calculate_carbon_cost_runtime(self) -> dict[str, float]:
-#         # Calculate the cost and carbon of the node
-#         # based on the input/output size and dynamodb
-#         # read/write capacity
-#         # print(f'Calculating cost and carbon for node: {self.instance_id}')
-#         # print(f"cumulative_runtimes: {self.cumulative_runtimes}")
-#         calculated_metrics = self._input_manager.calculate_cost_and_carbon_of_instance(
-#             self.cumulative_runtimes['current'],
-#             self.instance_id,
-#             self.region_id,
-#             self.tracked_data_input_sizes,
-#             self.tracked_data_output_sizes,
-#             self.sns_data_output_sizes,
-#             self.data_transfer_during_execution,
-#             self.tracked_dynamodb_read_capacity,
-#             self.tracked_dynamodb_write_capacity,
-#             self.invoked
-#         )
-#         # print(calculated_metrics)
-        
-#         # We only care about the runtime if the node was invoked
-#         runtime = self.cumulative_runtimes['current'] if self.invoked else 0.0
-#         return {
-#             "cost": calculated_metrics['cost'],
-#             "carbon": calculated_metrics['carbon'],
-#             "runtime": runtime,
-#         }
-
 class WorkflowInstance:
     def __init__(self, input_manager: InputManager, instance_deployment_regions: list[int]) -> None:
         self._input_manager: InputManager = input_manager
@@ -312,7 +146,7 @@ class WorkflowInstance:
                 self._manage_data_transfer_dict(from_instance_node.tracked_data_output_sizes, from_region_id, sns_data_transfer_size)
 
                 # Payload is uploaded to the SNS
-                self._manage_data_transfer_dict(from_instance_node.sns_data_output_sizes, from_region_id, sns_data_transfer_size)
+                self._manage_sns_invocation_data_transfer_dict(from_instance_node.sns_data_call_and_output_sizes, from_region_id, sns_data_transfer_size)
 
             # Data move from the predecessor node to the current node
             ## This means that the current node should have the data input size incremented
@@ -495,6 +329,11 @@ class WorkflowInstance:
         
         data_transfer_dict[region_id] += data_transfer_size
     
+    def _manage_sns_invocation_data_transfer_dict(self, sns_data_transfer_dict: dict[str, list[float]], region_id: int, data_transfer_size: float) -> None:
+        if region_id not in sns_data_transfer_dict:
+            sns_data_transfer_dict[region_id] = []
+        sns_data_transfer_dict[region_id].append(data_transfer_size)
+
     def _get_predecessor_edges(self, instance_index: int, simulated_edges: bool) -> list[Union[InstanceEdge, SimulatedInstanceEdge]]:
         edge_dict = self._edges
         if simulated_edges:
