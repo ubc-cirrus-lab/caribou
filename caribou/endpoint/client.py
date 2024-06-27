@@ -45,7 +45,7 @@ class Client:
             raise RuntimeError("No workflow id provided")
 
         (
-            result,
+            raw_wpd,
             consumed_read_capacity,
         ) = self._endpoints.get_deployment_algorithm_workflow_placement_decision_client().get_value_from_table(
             WORKFLOW_PLACEMENT_DECISION_TABLE, self._workflow_id
@@ -54,15 +54,14 @@ class Client:
         if input_data is None:
             input_data = ""
 
-        if result is None or result == "":
+        if raw_wpd is None or raw_wpd == "":
             raise RuntimeError(
                 f"No workflow placement decision found for workflow, did you deploy the workflow and is the workflow id ({self._workflow_id}) correct?"  # pylint: disable=line-too-long
             )
 
-        # Get the size of the data
-        data_size = len(input_data.encode("utf-8")) / (1024**3)
-
-        workflow_placement_decision = json.loads(result)
+        # Get the WPD size
+        wpd_data_size = len(raw_wpd.encode("utf-8")) / (1024**3)
+        workflow_placement_decision = json.loads(raw_wpd)
 
         send_to_home_region = random.random() < self._home_region_threshold
 
@@ -82,7 +81,7 @@ class Client:
             "input_data": input_data,
             "time_request_sent": current_time,
             "workflow_placement_decision": workflow_placement_decision,
-            "wpd_data_size": data_size,
+            "wpd_data_size": wpd_data_size,
             "wpd_consumed_read_capacity": consumed_read_capacity,
             "run_id": run_id,
         }
