@@ -53,9 +53,7 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
 
         # Setup the calculator
         self._runtime_calculator = RuntimeCalculator(self._performance_loader, self._workflow_loader)
-        self._carbon_calculator = CarbonCalculator(
-            self._carbon_loader, self._datacenter_loader, self._workflow_loader
-        )
+        self._carbon_calculator = CarbonCalculator(self._carbon_loader, self._datacenter_loader, self._workflow_loader)
         self._cost_calculator = CostCalculator(self._datacenter_loader, self._workflow_loader)
 
     def setup(self, regions_indexer: RegionIndexer, instance_indexer: InstanceIndexer) -> None:
@@ -177,16 +175,16 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
             carbon_data=state.get("_carbon_loader"),
         )
 
-######### New functions #########
-    def get_transmission_info(self, 
-                              from_instance_index: int, 
-                              from_region_index: int, 
-                              to_instance_index: int, 
-                              to_region_index: int,
-                              cumulative_runtime: float,
-                              to_instance_is_sync_node: bool,
-                            ) -> dict[str, Any]:
-        
+    ######### New functions #########
+    def get_transmission_info(
+        self,
+        from_instance_index: int,
+        from_region_index: int,
+        to_instance_index: int,
+        to_region_index: int,
+        cumulative_runtime: float,
+        to_instance_is_sync_node: bool,
+    ) -> dict[str, Any]:
         # Convert the instance and region indices to their names
         ## For start hop, from_instance_index and from_region_index will be -1
         from_instance_name: Optional[str] = None
@@ -208,34 +206,31 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         sns_transmission_size = transmission_size
         sync_info: Optional[dict[str, Any]] = None
         if to_instance_is_sync_node:
-            # If to instance is a sync node, then at the same time, 
+            # If to instance is a sync node, then at the same time,
             # we can retrieve the sync_sizes_gb and sns_only_sizes_gb
             # And then calculate the sync node related information.
-            sns_only_size, sync_size, wcu = self._get_upload_sync_size_and_wcu(
-                from_instance_name, to_instance_name
-            )
+            sns_only_size, sync_size, wcu = self._get_upload_sync_size_and_wcu(from_instance_name, to_instance_name)
             sns_transmission_size = sns_only_size
             sync_info = {
                 "dynamodb_upload_size": transmission_size,
                 "sync_size": sync_size,
                 "consumed_dynamodb_write_capacity_units": wcu,
-                "sync_upload_auxiliary_info": (cumulative_runtime, transmission_size)
+                "sync_upload_auxiliary_info": (cumulative_runtime, transmission_size),
             }
 
-        # If to instance is a sync node, then at the same time, 
+        # If to instance is a sync node, then at the same time,
         # # we can retrieve the sync_sizes_gb and sns_only_sizes_gb
         # And then calculate the sync node related information.
         return {
             "starting_runtime": cumulative_runtime,
             "cumulative_runtime": cumulative_runtime + transmission_latency,
             "sns_data_transfer_size": sns_transmission_size,
-            "sync_info": sync_info
+            "sync_info": sync_info,
         }
 
-    def _get_upload_sync_size_and_wcu(self,
-                            from_instance_name: str,
-                            to_instance_name: str) -> tuple[float, float, float]:
-        
+    def _get_upload_sync_size_and_wcu(
+        self, from_instance_name: str, to_instance_name: str
+    ) -> tuple[float, float, float]:
         # If to instance is a sync node, then at the same time,
         # we can retrieve the sync_sizes_gb and sns_only_sizes_gb
         sns_only_size = self._workflow_loader.get_sns_only_size(from_instance_name, to_instance_name)
@@ -246,8 +241,7 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
 
         return sns_only_size, sync_size, dynamodb_write_capacity_units
 
-    def _calculate_write_capacity_units(self,
-                                        data_size_gb: float) -> float:
+    def _calculate_write_capacity_units(self, data_size_gb: float) -> float:
         # We can calculate the write capacity units for the data size
         # DynamoDB charges 1 WCU for 1 KB of data written for On-Demand capacity mode
         # https://aws.amazon.com/dynamodb/pricing/on-demand/
@@ -259,18 +253,18 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
 
         return write_capacity_units
 
-    def get_simulated_transmission_info(self,
-                                from_instance_index: int,
-                                uninvoked_instance_index: int,
-                                simulated_sync_predecessor_index: int,
-                                sync_node_index: int,
-                                from_region_index: int,
-                                to_region_index: int,
-                                cumulative_runtime: float
-                                ) -> dict[str, Any]:
-
+    def get_simulated_transmission_info(
+        self,
+        from_instance_index: int,
+        uninvoked_instance_index: int,
+        simulated_sync_predecessor_index: int,
+        sync_node_index: int,
+        from_region_index: int,
+        to_region_index: int,
+        cumulative_runtime: float,
+    ) -> dict[str, Any]:
         # Convert the instance and region indices to their names
-        from_instance_name: str =  self._instance_indexer.index_to_value(from_instance_index)
+        from_instance_name: str = self._instance_indexer.index_to_value(from_instance_index)
         uninvoked_instance_name: str = self._instance_indexer.index_to_value(uninvoked_instance_index)
         simulated_sync_predecessor_name: str = self._instance_indexer.index_to_value(simulated_sync_predecessor_index)
         sync_node_name: str = self._instance_indexer.index_to_value(sync_node_index)
@@ -279,82 +273,71 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
 
         # Get a transmission size and latency sample
         # print(f"SIMULATED from_instance_name: {from_instance_name}, uninvoked_instance_name: {uninvoked_instance_name}, simulated_sync_predecessor_name: {simulated_sync_predecessor_name}, sync_node_name: {sync_node_name}, from_region_name: {from_region_name}, to_region_name: {to_region_name}")
-        sns_transmission_size, transmission_latency = self._runtime_calculator.calculate_simulated_transmission_size_and_latency(
-            from_instance_name, uninvoked_instance_name, simulated_sync_predecessor_name, sync_node_name, from_region_name, to_region_name
+        (
+            sns_transmission_size,
+            transmission_latency,
+        ) = self._runtime_calculator.calculate_simulated_transmission_size_and_latency(
+            from_instance_name,
+            uninvoked_instance_name,
+            simulated_sync_predecessor_name,
+            sync_node_name,
+            from_region_name,
+            to_region_name,
         )
-        
+
         return {
             "starting_runtime": cumulative_runtime,
             "cumulative_runtime": cumulative_runtime + transmission_latency,
             "sns_data_transfer_size": sns_transmission_size,
         }
 
-    def get_non_execution_info(self, 
-                              from_instance_index: int, 
-                              to_instance_index: int,
-                            ) -> dict[str, Any]:
-        
+    def get_non_execution_info(
+        self,
+        from_instance_index: int,
+        to_instance_index: int,
+    ) -> dict[str, Any]:
         # Convert the instance and region indices to their names
         # Start hop will never get non-execution info
         from_instance_name: str = self._instance_indexer.index_to_value(from_instance_index)
         to_instance_name: str = self._instance_indexer.index_to_value(to_instance_index)
 
         non_execution_info_list: dict[str, Any] = []
-        for sync_to_from_instance, sync_size in self._workflow_loader.get_non_execution_information(from_instance_name, to_instance_name).items():
+        for sync_to_from_instance, sync_size in self._workflow_loader.get_non_execution_information(
+            from_instance_name, to_instance_name
+        ).items():
             parsed_sync_to_from_instance = sync_to_from_instance.split(">")
             sync_predecessor_instance = parsed_sync_to_from_instance[0]
             sync_node_instance = parsed_sync_to_from_instance[1]
-             
-            non_execution_info_list.append({
-                "predecessor_instance_id": self._instance_indexer.value_to_index(sync_predecessor_instance),
-                "sync_node_instance_id": self._instance_indexer.value_to_index(sync_node_instance),
-                "sync_size": sync_size,
-                "consumed_dynamodb_write_capacity_units": self._calculate_write_capacity_units(sync_size) * 2 # We have to get sync_size * 2, as our wrapper does 2 update operations
-            }) 
 
-        return {
-            "non_execution_info": non_execution_info_list
-        }
-    
-    def get_node_runtimes_and_data_transfer(self, 
-                              instance_index: int, 
-                              region_index: int,
-                              previous_cumulative_runtime: float
-                            ) -> tuple[dict[str, Any], float]:
-        
+            non_execution_info_list.append(
+                {
+                    "predecessor_instance_id": self._instance_indexer.value_to_index(sync_predecessor_instance),
+                    "sync_node_instance_id": self._instance_indexer.value_to_index(sync_node_instance),
+                    "sync_size": sync_size,
+                    "consumed_dynamodb_write_capacity_units": self._calculate_write_capacity_units(sync_size)
+                    * 2,  # We have to get sync_size * 2, as our wrapper does 2 update operations
+                }
+            )
+
+        return {"non_execution_info": non_execution_info_list}
+
+    def get_node_runtimes_and_data_transfer(
+        self, instance_index: int, region_index: int, previous_cumulative_runtime: float
+    ) -> tuple[dict[str, Any], float]:
         # Convert the instance and region indices to their names
         instance_name: str = self._instance_indexer.index_to_value(instance_index)
         region_name: str = self._region_indexer.index_to_value(region_index)
 
         # Get the node runtimes and data transfer information
         node_runtime_data_transfer_data = self._runtime_calculator.calculate_node_runtimes_and_data_transfer(
-            instance_name, region_name, previous_cumulative_runtime
+            instance_name, region_name, previous_cumulative_runtime, self._instance_indexer
         )
 
-        # This has an successor dictionary that contains the runtime data of the successors
-        # However the key of this dictionary is the name of the successor
-        # We need to convert this to the index of the successor
-        # TODO: Optimize this
-        node_runtime_data_transfer_data[0]['successors'] = self._get_converted_instance_index_dict(node_runtime_data_transfer_data[0]['successors'])
-        
-        # # The key is the instance index of the successor
-        # # This need to be translated from index to instance name in the
-        # # input manager
-        # # The value is the cumulative runtime of when this
-        # # node invokes the successor
-        # return ({
-        #     "current": previous_cumulative_runtime + (runtime * relative_region_performance),
-        #     "successors": successors_runtime_data
-        # },
-        # auxiliary_data[auxiliary_index_translation["data_transfer_during_execution_gb"]]
-        # )
-        # print(node_runtime_data_transfer_data)
         return node_runtime_data_transfer_data
-    
-    def _get_converted_instance_index_dict(self, input_instance_index_dict: dict[str, float]) -> dict[int, float]:
-        return {self._instance_indexer.value_to_index(instance_name): value for instance_name, value in input_instance_index_dict.items()}
 
-    def calculate_cost_and_carbon_of_instance(self,
+
+    def calculate_cost_and_carbon_of_instance(
+        self,
         runtime: float,
         instance_index: int,
         region_index: int,
@@ -364,9 +347,8 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         data_transfer_during_execution: float,
         dynamodb_read_capacity: float,
         dynamodb_write_capacity: float,
-        is_invoked: bool
-        ) -> dict[str, float]:
-
+        is_invoked: bool,
+    ) -> dict[str, float]:
         # Convert the instance and region indices to their names
         instance_name: str = self._instance_indexer.index_to_value(instance_index)
         region_name: str = self._region_indexer.index_to_value(region_index)
@@ -383,19 +365,37 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         data_output_sizes_str_dict = self._get_converted_region_name_dict(data_output_sizes)
         return {
             "cost": self._cost_calculator.calculate_instance_cost(
-                runtime, instance_name, region_name, data_output_sizes_str_dict, self._get_converted_region_name_dict(sns_data_call_and_output_sizes), dynamodb_read_capacity, dynamodb_write_capacity, is_invoked
+                runtime,
+                instance_name,
+                region_name,
+                data_output_sizes_str_dict,
+                self._get_converted_region_name_dict(sns_data_call_and_output_sizes),
+                dynamodb_read_capacity,
+                dynamodb_write_capacity,
+                is_invoked,
             ),
             "carbon": self._carbon_calculator.calculate_instance_carbon(
-                runtime, instance_name, region_name, self._get_converted_region_name_dict(data_input_sizes), data_output_sizes_str_dict, data_transfer_during_execution, is_invoked
-            )
+                runtime,
+                instance_name,
+                region_name,
+                self._get_converted_region_name_dict(data_input_sizes),
+                data_output_sizes_str_dict,
+                data_transfer_during_execution,
+                is_invoked,
+            ),
         }
 
-    def _get_converted_region_name_dict(self, input_region_index_dict: dict[int, tuple[int, float]]) -> dict[str, tuple[int, float]]:
-        return {self._region_indexer.index_to_value(region_index) if region_index != -1 else None: value for region_index, value in input_region_index_dict.items()}
+    def _get_converted_region_name_dict(
+        self, input_region_index_dict: dict[int, tuple[int, float]]
+    ) -> dict[str, tuple[int, float]]:
+        return {
+            self._region_indexer.index_to_value(region_index) if region_index != -1 else None: value
+            for region_index, value in input_region_index_dict.items()
+        }
 
-    def calculate_dynamodb_capacity_unit_of_sync_edges(self,
-            sync_edge_upload_edges_auxiliary_data: list[tuple[float, float]]
-        ) -> dict[str, float]:
+    def calculate_dynamodb_capacity_unit_of_sync_edges(
+        self, sync_edge_upload_edges_auxiliary_data: list[tuple[float, float]]
+    ) -> dict[str, float]:
         # Each entry of the sync_edge_upload_edges_auxiliary_data is a tuple
         # Where the first element is when a node reaches the invoke_call
         # Where the second element is the size of the sync uploads
@@ -415,5 +415,5 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
 
         return {
             "read_capacity_units": self._calculate_write_capacity_units(cumulative_data_size),
-            "write_capacity_units": write_capacity_units
+            "write_capacity_units": write_capacity_units,
         }

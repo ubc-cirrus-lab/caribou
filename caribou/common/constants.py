@@ -61,14 +61,16 @@ SOLVER_INPUT_INVOCATION_COST_DEFAULT = 100.0
 SOLVER_INPUT_TRANSMISSION_COST_DEFAULT = 100.0
 SOLVER_INPUT_MIN_CPU_POWER_DEFAULT = 0.00074
 SOLVER_INPUT_MAX_CPU_POWER_DEFAULT = 0.0035
-SOLVER_INPUT_SNS_REQUEST_COST_DEFAULT = 0.50 / 1000000 # 0.50 USD per 1 million requests (At Ohio region)
-SOLVER_INPUT_DYNAMODB_READ_COST_DEFAULT = 0.25 / 1000000 # 0.25 USD per 1 million read request unit (At Ohio region)
-SOLVER_INPUT_DYNAMODB_WRITE_COST_DEFAULT = 1.25 / 1000000 # 1.25 USD per 1 million write request unit (At Ohio region)
-SOLVER_INPUT_ECR_MONTHLY_STORAGE_COST_DEFAULT = 0.10 # 0.10 USD per 1 GB per month (At Ohio region)
+SOLVER_INPUT_SNS_REQUEST_COST_DEFAULT = 0.50 / 1000000  # 0.50 USD per 1 million requests (At Ohio region)
+SOLVER_INPUT_DYNAMODB_READ_COST_DEFAULT = 0.25 / 1000000  # 0.25 USD per 1 million read request unit (At Ohio region)
+SOLVER_INPUT_DYNAMODB_WRITE_COST_DEFAULT = 1.25 / 1000000  # 1.25 USD per 1 million write request unit (At Ohio region)
+SOLVER_INPUT_ECR_MONTHLY_STORAGE_COST_DEFAULT = 0.10  # 0.10 USD per 1 GB per month (At Ohio region)
 
 ## Performance Loader
 SOLVER_INPUT_RELATIVE_PERFORMANCE_DEFAULT = 1.0
-SOLVER_HOME_REGION_TRANSMISSION_LATENCY_DEFAULT = 0.22 # TODO: CHANGE THIS, this should be what the average transmission latency at home region between 2 SNS calls
+SOLVER_HOME_REGION_TRANSMISSION_LATENCY_DEFAULT = (
+    0.22  # TODO: CHANGE THIS, this should be what the average transmission latency at home region between 2 SNS calls
+)
 
 ## Workflow Loader
 SOLVER_INPUT_RUNTIME_DEFAULT = -1.0  # Denotes that the runtime is not available
@@ -77,8 +79,8 @@ SOLVER_INPUT_LATENCY_DEFAULT = -1.0  # Denotes that the latency is not available
 SOLVER_INPUT_DATA_TRANSFER_SIZE_DEFAULT = 0.0
 SOLVER_INPUT_INVOCATION_PROBABILITY_DEFAULT = 0.0  # If it is missing, the invocation is never called in the workflow
 SOLVER_INPUT_PROJECTED_MONTHLY_INVOCATIONS_DEFAULT = 0.0
-SYNC_SIZE_DEFAULT = 1.0 / 1024**2 # 1 KB in GB
-SNS_SIZE_DEFAULT = 1.0 / 1024**2 # 1 KB in GB
+SYNC_SIZE_DEFAULT = 1.0 / 1024**2  # 1 KB in GB
+SNS_SIZE_DEFAULT = 1.0 / 1024**2  # 1 KB in GB
 
 
 SOLVER_INPUT_VCPU_DEFAULT = -1.0  # Denotes that the vCPU is not available

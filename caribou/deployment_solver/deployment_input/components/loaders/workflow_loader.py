@@ -1,14 +1,13 @@
-from typing import Any, Optional
 import math
+from typing import Any, Optional
 
-from caribou.common.constants import (
+from caribou.common.constants import (  # SOLVER_INPUT_TRANSMISSION_LATENCY_DEFAULT,
+    SNS_SIZE_DEFAULT,
     SOLVER_INPUT_ARCHITECTURE_DEFAULT,
     SOLVER_INPUT_INVOCATION_PROBABILITY_DEFAULT,
-    # SOLVER_INPUT_TRANSMISSION_LATENCY_DEFAULT,
     SOLVER_INPUT_VCPU_DEFAULT,
-    WORKFLOW_INSTANCE_TABLE,
     SYNC_SIZE_DEFAULT,
-    SNS_SIZE_DEFAULT
+    WORKFLOW_INSTANCE_TABLE,
 )
 from caribou.common.models.remote_client.remote_client import RemoteClient
 from caribou.common.provider import Provider
@@ -64,19 +63,28 @@ class WorkflowLoader(InputLoader):
         return self._workflow_data.get("start_hop_summary", {}).get("transfer_sizes_gb", [self.get_wpd_size()])
 
     def get_start_hop_best_fit_line(self, to_region_name: str) -> Optional[dict[str, float]]:
-        best_fit_line = self._workflow_data.get("start_hop_summary", {}).get("regions_to_regions", {}).get(to_region_name, {}).get("best_fit_line", None)
+        best_fit_line = (
+            self._workflow_data.get("start_hop_summary", {})
+            .get("regions_to_regions", {})
+            .get(to_region_name, {})
+            .get("best_fit_line", None)
+        )
         return best_fit_line
 
     def get_start_hop_latency_distribution(self, to_region_name: str, data_transfer_size: float) -> list[float]:
         cache_key = f"{to_region_name}_{data_transfer_size}"
         if cache_key in self._start_hop_latency_distribution_cache:
             return self._start_hop_latency_distribution_cache[cache_key]
-        
+
         # Round data transfer size translation to nearest 10 KB
         data_transfer_size = self._round_to_kb(data_transfer_size, 10)
 
         start_hop_latency_distribution = (
-            self._workflow_data.get("start_hop_summary", {}).get("regions_to_regions", {}).get(to_region_name, {}).get("transfer_size_gb_to_transfer_latencies_s", {}).get(str(data_transfer_size), [])
+            self._workflow_data.get("start_hop_summary", {})
+            .get("regions_to_regions", {})
+            .get(to_region_name, {})
+            .get("transfer_size_gb_to_transfer_latencies_s", {})
+            .get(str(data_transfer_size), [])
         )
 
         if len(start_hop_latency_distribution) == 0:
@@ -87,10 +95,12 @@ class WorkflowLoader(InputLoader):
                 estimated_latency = best_fit_line["slope_s"] * data_transfer_size + best_fit_line["intercept_s"]
 
                 # Limit the estimated latency to the min and max latency
-                estimated_latency = min(best_fit_line["max_latency_s"], max(best_fit_line["min_latency_s"], estimated_latency))
+                estimated_latency = min(
+                    best_fit_line["max_latency_s"], max(best_fit_line["min_latency_s"], estimated_latency)
+                )
 
                 start_hop_latency_distribution = [estimated_latency]
-        
+
         self._start_hop_latency_distribution_cache[cache_key] = start_hop_latency_distribution
         return start_hop_latency_distribution
 
@@ -98,11 +108,7 @@ class WorkflowLoader(InputLoader):
         # Get the average CPU utilization for the instance
         # If not available, default to 0.5 (Average cpu utilization of
         # hyperscale cloud providers)
-        return (
-            self._workflow_data.get("instance_summary", {})
-            .get(instance_name, {})
-            .get("cpu_utilization", 0.5)
-        )
+        return self._workflow_data.get("instance_summary", {}).get(instance_name, {}).get("cpu_utilization", 0.5)
 
     def get_runtime_distribution(self, instance_name: str, region_name: str) -> list[float]:
         return (
@@ -113,26 +119,30 @@ class WorkflowLoader(InputLoader):
             .get(region_name, {})
             .get("durations_s", [])
         )
-    
+
     def get_auxiliary_data_distribution(self, instance_name: str, region_name: str, runtime: float) -> list[float]:
         # Round the duration to the nearest 10 ms
         runtime = self._round_to_ms(runtime, 10)
 
-        auxiliary_data_distribution: list[float] = (self._workflow_data.get("instance_summary", {})
+        auxiliary_data_distribution: list[float] = (
+            self._workflow_data.get("instance_summary", {})
             .get(instance_name, {})
             .get("executions", {})
             .get("at_region", {})
             .get(region_name, {})
             .get("auxiliary_data", {})
-            .get(str(runtime), []))
+            .get(str(runtime), [])
+        )
 
         return auxiliary_data_distribution
 
     def get_auxiliary_index_translation(self, instance_name) -> dict[str, int]:
-        auxiliary_index_translation: dict[str, int] = (self._workflow_data.get("instance_summary", {})
+        auxiliary_index_translation: dict[str, int] = (
+            self._workflow_data.get("instance_summary", {})
             .get(instance_name, {})
             .get("executions", {})
-            .get("auxiliary_index_translation", {}))
+            .get("auxiliary_index_translation", {})
+        )
 
         return auxiliary_index_translation
 
@@ -156,7 +166,7 @@ class WorkflowLoader(InputLoader):
         cache_key = f"{from_instance_name}_{to_instance_name}"
         if cache_key in self._data_transfer_size_cache:
             return self._data_transfer_size_cache[cache_key]
-        
+
         resulting_size = [
             float(size)
             for size in self._workflow_data.get("instance_summary", {})
@@ -169,11 +179,9 @@ class WorkflowLoader(InputLoader):
         self._data_transfer_size_cache[cache_key] = resulting_size
         return resulting_size
 
-    def get_latency_distribution_best_fit_line(self,
-        from_instance_name: str,
-        to_instance_name: str,
-        from_region_name: str,
-        to_region_name: str) -> Optional[dict[str, float]]:
+    def get_latency_distribution_best_fit_line(
+        self, from_instance_name: str, to_instance_name: str, from_region_name: str, to_region_name: str
+    ) -> Optional[dict[str, float]]:
         best_fit_line = (
             self._workflow_data.get("instance_summary", {})
             .get(from_instance_name, {})
@@ -182,7 +190,8 @@ class WorkflowLoader(InputLoader):
             .get("regions_to_regions", {})
             .get(from_region_name, {})
             .get(to_region_name, {})
-            .get("best_fit_line", None))
+            .get("best_fit_line", None)
+        )
         return best_fit_line
 
     def get_latency_distribution(
@@ -210,13 +219,17 @@ class WorkflowLoader(InputLoader):
 
         if len(latency_distribution) == 0:
             # Attempt to use the best fit line size
-            best_fit_line = self.get_latency_distribution_best_fit_line(from_instance_name, to_instance_name, from_region_name, to_region_name)
+            best_fit_line = self.get_latency_distribution_best_fit_line(
+                from_instance_name, to_instance_name, from_region_name, to_region_name
+            )
             if best_fit_line is not None and best_fit_line != {}:
                 # Estimate the latency using the best fit line
                 estimated_latency = best_fit_line["slope_s"] * data_transfer_size + best_fit_line["intercept_s"]
 
                 # Limit the estimated latency to the min and max latency
-                estimated_latency = min(best_fit_line["max_latency_s"], max(best_fit_line["min_latency_s"], estimated_latency))
+                estimated_latency = min(
+                    best_fit_line["max_latency_s"], max(best_fit_line["min_latency_s"], estimated_latency)
+                )
 
                 latency_distribution = [estimated_latency]
 
@@ -226,23 +239,36 @@ class WorkflowLoader(InputLoader):
         # Should return only the name of each entry of non_execution_info
         # And the sync_data_response_size_gb
         non_execution_info_dict: dict[str, float] = {}
-        for key, value in self._workflow_data.get("instance_summary", {}).get(from_instance_name, {}).get("to_instance", {}).get(to_instance_name, {}).get("non_execution_info", {}).items():
-            non_execution_info_dict[key] = value.get("sync_data_response_size_gb", 0.0)
-
-        return non_execution_info_dict
-
-    def get_non_execution_sns_transfer_size(self, from_instance_name: str, to_instance_name: str, sync_to_from_instance: str) -> float:
-        # Round to the nearest non-zero KB
-        # (At least 1 byte of data is transferred for sns)
-        return self._round_to_kb((
+        for key, value in (
             self._workflow_data.get("instance_summary", {})
             .get(from_instance_name, {})
             .get("to_instance", {})
             .get(to_instance_name, {})
             .get("non_execution_info", {})
-            .get(sync_to_from_instance, {})
-            .get("sns_transfer_size_gb", 0.0)
-        ), 1, False)
+            .items()
+        ):
+            non_execution_info_dict[key] = value.get("sync_data_response_size_gb", 0.0)
+
+        return non_execution_info_dict
+
+    def get_non_execution_sns_transfer_size(
+        self, from_instance_name: str, to_instance_name: str, sync_to_from_instance: str
+    ) -> float:
+        # Round to the nearest non-zero KB
+        # (At least 1 byte of data is transferred for sns)
+        return self._round_to_kb(
+            (
+                self._workflow_data.get("instance_summary", {})
+                .get(from_instance_name, {})
+                .get("to_instance", {})
+                .get(to_instance_name, {})
+                .get("non_execution_info", {})
+                .get(sync_to_from_instance, {})
+                .get("sns_transfer_size_gb", 0.0)
+            ),
+            1,
+            False,
+        )
 
     def get_non_execution_transfer_latency_distribution(
         self,
@@ -250,7 +276,8 @@ class WorkflowLoader(InputLoader):
         to_instance_name: str,
         sync_to_from_instance: str,
         from_region_name: str,
-        to_region_name: str) -> list[float]:
+        to_region_name: str,
+    ) -> list[float]:
         return (
             self._workflow_data.get("instance_summary", {})
             .get(from_instance_name, {})

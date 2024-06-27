@@ -1,4 +1,5 @@
 import math
+
 from caribou.deployment_solver.deployment_input.components.calculator import InputCalculator
 from caribou.deployment_solver.deployment_input.components.calculators.runtime_calculator import RuntimeCalculator
 from caribou.deployment_solver.deployment_input.components.loaders.datacenter_loader import DatacenterLoader
@@ -10,7 +11,7 @@ class CostCalculator(InputCalculator):
         self,
         datacenter_loader: DatacenterLoader,
         workflow_loader: WorkflowLoader,
-        consider_intra_region_transfer_for_sns: bool = False
+        consider_intra_region_transfer_for_sns: bool = False,
     ) -> None:
         super().__init__()
         self._datacenter_loader: DatacenterLoader = datacenter_loader
@@ -30,110 +31,98 @@ class CostCalculator(InputCalculator):
         sns_data_call_and_output_sizes: dict[str, list[float]],
         dynamodb_read_capacity: float,
         dynamodb_write_capacity: float,
-        is_invoked: bool) -> float:
-            total_cost = 0.0
+        is_invoked: bool,
+    ) -> float:
+        total_cost = 0.0
 
-            # If the function is actually invoked then
-            # We must consider the cost of execution and SNS
-            if is_invoked:
-                # Calculate execution cost of the instance itself
-                total_cost += self._calculate_execution_cost(instance_name, current_region_name, runtime)
+        # If the function is actually invoked then
+        # We must consider the cost of execution and SNS
+        if is_invoked:
+            # Calculate execution cost of the instance itself
+            total_cost += self._calculate_execution_cost(instance_name, current_region_name, runtime)
 
-                # Add the cost of SNS (Our current orchastration service)
-                total_cost += self._calculate_sns_cost(current_region_name, sns_data_call_and_output_sizes)
+            # Add the cost of SNS (Our current orchastration service)
+            total_cost += self._calculate_sns_cost(current_region_name, sns_data_call_and_output_sizes)
 
-            # Even if the function is not invoked, we model
-            # Each node as an abstract instance to consider
-            # data transfer and dynamodb costs
+        # Even if the function is not invoked, we model
+        # Each node as an abstract instance to consider
+        # data transfer and dynamodb costs
 
-            # Calculate the data transfer (egress cost) of the instance
-            total_cost += self._calculate_data_transfer_cost(current_region_name, data_output_sizes)
-            
-            # Calculate the dynamodb read/write capacity cost
-            total_cost += self._calculate_dynamodb_cost(current_region_name, dynamodb_read_capacity, dynamodb_write_capacity)
+        # Calculate the data transfer (egress cost) of the instance
+        total_cost += self._calculate_data_transfer_cost(current_region_name, data_output_sizes)
 
-            return total_cost
-    
+        # Calculate the dynamodb read/write capacity cost
+        total_cost += self._calculate_dynamodb_cost(
+            current_region_name, dynamodb_read_capacity, dynamodb_write_capacity
+        )
+
+        return total_cost
+
     def _calculate_dynamodb_cost(
-        self,
-        current_region_name: str,
-        dynamodb_read_capacity: float,
-        dynamodb_write_capacity: float) -> float:
-            total_dynamodb_cost = 0.0
+        self, current_region_name: str, dynamodb_read_capacity: float, dynamodb_write_capacity: float
+    ) -> float:
+        total_dynamodb_cost = 0.0
 
-            # Get the cost of dynamodb read/write capacity
-            read_cost, write_cost = self._datacenter_loader.get_dynamodb_read_write_cost(current_region_name)
+        # Get the cost of dynamodb read/write capacity
+        read_cost, write_cost = self._datacenter_loader.get_dynamodb_read_write_cost(current_region_name)
 
-            total_dynamodb_cost += dynamodb_read_capacity * read_cost
-            total_dynamodb_cost += dynamodb_write_capacity * write_cost
+        total_dynamodb_cost += dynamodb_read_capacity * read_cost
+        total_dynamodb_cost += dynamodb_write_capacity * write_cost
 
-            return total_dynamodb_cost
-
+        return total_dynamodb_cost
 
     def _calculate_sns_cost(
-        self,
-        current_region_name: str,
-        sns_data_call_and_output_sizes: dict[str, list[float]]) -> float:
-            total_sns_cost = 0.0
+        self, current_region_name: str, sns_data_call_and_output_sizes: dict[str, list[float]]
+    ) -> float:
+        total_sns_cost = 0.0
 
-            # If assume SNS intra region data transfer is NOT free
-            # We need to additionally add all SNS data transfer
-            # INSIDE the current region (As data_output_size already
-            # includes data transfer outside the region and contains 
-            # sns_data_output_sizes)
-            if self._consider_intra_region_transfer_for_sns:
-                _, total_data_output_size = sns_data_call_and_output_sizes.get(current_region_name, (0, 0.0))
-
-                # Calculate the cost of data transfer
-                # This is simply the egress cost of data transfer
-                # In a region
-                # Get the cost of transmission
-                transmission_cost_gb: float = self._datacenter_loader.get_transmission_cost(
-                    current_region_name, True
-                )
-
-                total_sns_cost += total_data_output_size * transmission_cost_gb
-
-            # Get the cost of SNS invocations (Request cost of destination region)
-            for region_name, sns_invocation_sizes in sns_data_call_and_output_sizes.items():
-                # Calculate the cost of invocation
-                for sns_invocation_size_gb in sns_invocation_sizes:
-                    # According to AWS documentation, each 64KB chunk of delivered data is billed as 1 request
-                    # https://aws.amazon.com/sns/pricing/
-                    # Convert gb to kb and divide by 64 rounded up
-                    requests = math.ceil(sns_invocation_size_gb * 1024**2 / 64)
-                    total_sns_cost += self._datacenter_loader.get_sns_request_cost(region_name) * requests
-
-            return total_sns_cost
-
-    def _calculate_data_transfer_cost(
-        self,
-        current_region_name: str,
-        data_output_sizes: dict[str, float]) -> float:
-            # Calculate the amount of data output from the instance
-            # This will be the data output going out of the current region
-            total_data_output_size = 0.0
-            for data_name, data_size in data_output_sizes.items():
-                if not data_name.startswith(current_region_name):
-                    total_data_output_size += data_size
+        # If assume SNS intra region data transfer is NOT free
+        # We need to additionally add all SNS data transfer
+        # INSIDE the current region (As data_output_size already
+        # includes data transfer outside the region and contains
+        # sns_data_output_sizes)
+        if self._consider_intra_region_transfer_for_sns:
+            _, total_data_output_size = sns_data_call_and_output_sizes.get(current_region_name, (0, 0.0))
 
             # Calculate the cost of data transfer
             # This is simply the egress cost of data transfer
             # In a region
             # Get the cost of transmission
-            transmission_cost_gb: float = self._datacenter_loader.get_transmission_cost(
-                current_region_name, True
-            )
-    
-            return total_data_output_size * transmission_cost_gb
+            transmission_cost_gb: float = self._datacenter_loader.get_transmission_cost(current_region_name, True)
 
-    def _calculate_execution_cost(
-        self,
-        instance_name: str,
-        region_name: str,
-        runtime: float) -> float:
-            cost_from_compute_s, invocation_cost = self._get_execution_conversion_ratio(instance_name, region_name)
-            return cost_from_compute_s * runtime + invocation_cost
+            total_sns_cost += total_data_output_size * transmission_cost_gb
+
+        # Get the cost of SNS invocations (Request cost of destination region)
+        for region_name, sns_invocation_sizes in sns_data_call_and_output_sizes.items():
+            # Calculate the cost of invocation
+            for sns_invocation_size_gb in sns_invocation_sizes:
+                # According to AWS documentation, each 64KB chunk of delivered data is billed as 1 request
+                # https://aws.amazon.com/sns/pricing/
+                # Convert gb to kb and divide by 64 rounded up
+                requests = math.ceil(sns_invocation_size_gb * 1024**2 / 64)
+                total_sns_cost += self._datacenter_loader.get_sns_request_cost(region_name) * requests
+
+        return total_sns_cost
+
+    def _calculate_data_transfer_cost(self, current_region_name: str, data_output_sizes: dict[str, float]) -> float:
+        # Calculate the amount of data output from the instance
+        # This will be the data output going out of the current region
+        total_data_output_size = 0.0
+        for data_name, data_size in data_output_sizes.items():
+            if not data_name.startswith(current_region_name):
+                total_data_output_size += data_size
+
+        # Calculate the cost of data transfer
+        # This is simply the egress cost of data transfer
+        # In a region
+        # Get the cost of transmission
+        transmission_cost_gb: float = self._datacenter_loader.get_transmission_cost(current_region_name, True)
+
+        return total_data_output_size * transmission_cost_gb
+
+    def _calculate_execution_cost(self, instance_name: str, region_name: str, runtime: float) -> float:
+        cost_from_compute_s, invocation_cost = self._get_execution_conversion_ratio(instance_name, region_name)
+        return cost_from_compute_s * runtime + invocation_cost
 
     def _get_execution_conversion_ratio(self, instance_name: str, region_name: str) -> tuple[float, float]:
         # Check if the conversion ratio is in the cache

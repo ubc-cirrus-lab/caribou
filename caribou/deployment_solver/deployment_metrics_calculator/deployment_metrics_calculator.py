@@ -3,11 +3,12 @@ from abc import ABC
 
 from caribou.common.constants import TAIL_LATENCY_THRESHOLD
 from caribou.deployment_solver.deployment_input.input_manager import InputManager
+from caribou.deployment_solver.deployment_metrics_calculator.models.workflow_instance import WorkflowInstance
 from caribou.deployment_solver.models.dag import DAG
 from caribou.deployment_solver.models.instance_indexer import InstanceIndexer
 from caribou.deployment_solver.models.region_indexer import RegionIndexer
 from caribou.deployment_solver.workflow_config import WorkflowConfig
-from caribou.deployment_solver.deployment_metrics_calculator.models.workflow_instance import WorkflowInstance
+
 
 class DeploymentMetricsCalculator(ABC):
     def __init__(
@@ -48,7 +49,7 @@ class DeploymentMetricsCalculator(ABC):
     def calculate_workflow(self, deployment: list[int]) -> dict[str, float]:
         # Create an new workflow instance and configure regions
         workflow_instance = WorkflowInstance(self._input_manager, deployment)
-        
+
         # Build the partial workflow instance (Partial DAG)
         for instance_index in self._topological_order:
             predecessor_instance_indices = self._prerequisites_dictionary[instance_index]
@@ -59,10 +60,12 @@ class DeploymentMetricsCalculator(ABC):
                 workflow_instance.add_start_hop(instance_index)
 
             # Add the node to the workflow instance
-            print(f"\nWORKFLOW: Instantialized Instance: {instance_index} ({self._input_manager._instance_indexer.index_to_value(instance_index)})")
+            # print(
+            #     f"\nWORKFLOW: Instantialized Instance: {instance_index} ({self._input_manager._instance_indexer.index_to_value(instance_index)})"
+            # )
             node_invoked: bool = workflow_instance.add_node(instance_index)
 
-            print(f"WORKFLOW: Instance Invoked: {node_invoked}")
+            # print(f"WORKFLOW: Instance Invoked: {node_invoked}")
 
             # Add the edges to the workflow
             for successor_instance_index in self._successor_dictionary[instance_index]:
@@ -70,16 +73,16 @@ class DeploymentMetricsCalculator(ABC):
                 # we still need to add the edge to the workflow instance (for data transfer calculations)
                 is_invoked: bool = self._is_invoked(instance_index, successor_instance_index) if node_invoked else False
 
-                print(f"WORKFLOW: Successor Invoked: {is_invoked} -> {successor_instance_index}")
+                # print(f"WORKFLOW: Successor Invoked: {is_invoked} -> {successor_instance_index}")
 
                 # Add the edge to the workflow instance
                 workflow_instance.add_edge(instance_index, successor_instance_index, is_invoked)
-            
+
         # Calculate the overall cost, runtime, and carbon footprint of the deployment
-        print("\n\nCalculating Metrics for the Workflow Instance:")
+        # print("\n\nCalculating Metrics for the Workflow Instance:")
         worklflow_metrics = workflow_instance.calculate_overall_cost_runtime_carbon()
 
-        print("\n________________________________________________")
+        # print("\n________________________________________________")
 
         return worklflow_metrics
 

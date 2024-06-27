@@ -47,14 +47,15 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
         self._transmission_conversion_ratio_cache = {}
 
     def calculate_instance_carbon(
-            self,
-            runtime: float,
-            instance_name: str,
-            region_name: str,
-            data_input_sizes: dict[str, float],
-            data_output_sizes: dict[str, float],
-            data_transfer_during_execution: float,
-            is_invoked: bool) -> tuple[float, float]:
+        self,
+        runtime: float,
+        instance_name: str,
+        region_name: str,
+        data_input_sizes: dict[str, float],
+        data_output_sizes: dict[str, float],
+        data_transfer_during_execution: float,
+        is_invoked: bool,
+    ) -> tuple[float, float]:
         execution_carbon = 0.0
         transmission_carbon = 0.0
 
@@ -68,14 +69,19 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
         # Even if the function is not invoked, we model
         # Each node as an abstract instance to consider
         # data transfer carbon
-        transmission_carbon += self._calculate_data_transfer_carbon(region_name, data_input_sizes, data_output_sizes, data_transfer_during_execution)
+        transmission_carbon += self._calculate_data_transfer_carbon(
+            region_name, data_input_sizes, data_output_sizes, data_transfer_during_execution
+        )
 
         return execution_carbon, transmission_carbon
-    
-    def _calculate_data_transfer_carbon(self, current_region_name: str,
-                                        data_input_sizes: dict[str, float],
-                                        data_output_sizes: dict[str, float],
-                                        data_transfer_during_execution: float) -> float:
+
+    def _calculate_data_transfer_carbon(
+        self,
+        current_region_name: str,
+        data_input_sizes: dict[str, float],
+        data_output_sizes: dict[str, float],
+        data_transfer_during_execution: float,
+    ) -> float:
         total_transmission_carbon: float = 0.0
         current_region_carbon_intensity = self._carbon_loader.get_grid_carbon_intensity(
             current_region_name, self._hourly_carbon_setting
@@ -84,8 +90,11 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
         # Make a new dictionary where the key is other region name
         # and the value is the data transfer size (If data_input sizes
         # and data_output sizes have the same key, we add the values)
-        data_transfer_sizes = {k: data_input_sizes.get(k, 0) + data_output_sizes.get(k, 0) for k in set(data_input_sizes) | set(data_output_sizes)}
-        
+        data_transfer_sizes = {
+            k: data_input_sizes.get(k, 0) + data_output_sizes.get(k, 0)
+            for k in set(data_input_sizes) | set(data_output_sizes)
+        }
+
         # print(f'data_input_sizes: {data_input_sizes}')
         # print(f'data_output_sizes: {data_output_sizes}')
         # print(f'data_transfer_sizes: {data_transfer_sizes}\n')
@@ -108,17 +117,25 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
 
                 # Calculate the carbon from data transfer of the carbon intensity of the route
                 # TODO: Look into changing this if its not appropriate
-                carbon_intensity_of_transmission_route = (other_region_carbon_intensity + current_region_carbon_intensity) / 2
-            
-            total_transmission_carbon += data_transfer_gb * self._energy_factor_of_transmission * carbon_intensity_of_transmission_route
+                carbon_intensity_of_transmission_route = (
+                    other_region_carbon_intensity + current_region_carbon_intensity
+                ) / 2
+
+            total_transmission_carbon += (
+                data_transfer_gb * self._energy_factor_of_transmission * carbon_intensity_of_transmission_route
+            )
 
         # Calculate the carbon from data transfer
         # Of data that we CANNOT track represented by data_transfer_during_execution
         # Right now we are just assuming they are from the home region
         # if not ((current_region_name == self._workflow_loader.get_home_region()) and not ):
-        if (self._consider_home_region_for_transmission or (current_region_name != self._workflow_loader.get_home_region())):
+        if self._consider_home_region_for_transmission or (
+            current_region_name != self._workflow_loader.get_home_region()
+        ):
             # Perhaps use global carbon intensity
-            total_transmission_carbon += data_transfer_during_execution * self._energy_factor_of_transmission * current_region_carbon_intensity
+            total_transmission_carbon += (
+                data_transfer_during_execution * self._energy_factor_of_transmission * current_region_carbon_intensity
+            )
 
         return total_transmission_carbon
 
@@ -129,7 +146,7 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
         execution_carbon = cloud_provider_usage_kwh * power_factor
 
         return execution_carbon
-    
+
     def _get_execution_conversion_ratio(self, instance_name: str, region_name: str) -> tuple[float, float, float]:
         # Check if the conversion ratio is in the cache
         cache_key = f"{instance_name}_{region_name}"

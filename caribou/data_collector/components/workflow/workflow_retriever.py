@@ -93,15 +93,22 @@ class WorkflowRetriever(DataRetriever):
 
                 # Round start hop data transfer size to nearest 10 KB
                 start_hop_data_transfer_size = self._round_to_kb(start_hop_data_transfer_size, 10)
-                if start_hop_data_transfer_size not in start_hop_size_latency_summary[start_hop_destination]['transfer_size_gb_to_transfer_latencies_s']:
-                    start_hop_size_latency_summary[start_hop_destination]['transfer_size_gb_to_transfer_latencies_s'][start_hop_data_transfer_size] = []
+                if (
+                    start_hop_data_transfer_size
+                    not in start_hop_size_latency_summary[start_hop_destination][
+                        "transfer_size_gb_to_transfer_latencies_s"
+                    ]
+                ):
+                    start_hop_size_latency_summary[start_hop_destination]["transfer_size_gb_to_transfer_latencies_s"][
+                        start_hop_data_transfer_size
+                    ] = []
                 start_hop_latency = start_hop_log.get("latency_s", 0.0)
-                # If start hop is greater than 3 seconds, its likely that 
+                # If start hop is greater than 3 seconds, its likely that
                 # the user clock is desynced and we may discard the data
                 if start_hop_latency < 3.0 and start_hop_latency > 0.0:
-                    start_hop_size_latency_summary[start_hop_destination]['transfer_size_gb_to_transfer_latencies_s'][start_hop_data_transfer_size].append(
-                        start_hop_latency
-                    )
+                    start_hop_size_latency_summary[start_hop_destination]["transfer_size_gb_to_transfer_latencies_s"][
+                        start_hop_data_transfer_size
+                    ].append(start_hop_latency)
 
             # Add workflow_placement_decision size to the summary
             workflow_placement_decision_size = start_hop_log.get("workflow_placement_decision", {}).get(
@@ -213,7 +220,7 @@ class WorkflowRetriever(DataRetriever):
                                         # "consumed_write_capacity": [],
                                         "sync_data_response_size_gb": [],
                                         "sns_transfer_size_gb": [],
-                                        "regions_to_regions": {}
+                                        "regions_to_regions": {},
                                     }
 
                                 # # Get the consumed write capacity and sync data response size
@@ -304,7 +311,9 @@ class WorkflowRetriever(DataRetriever):
                 sync_data_upload_size = data.get("sync_information", {}).get("upload_size_gb", None)
                 sync_information_sync_size = data.get("sync_information", {}).get("sync_data_response_size_gb", None)
                 if sync_data_upload_size is not None:
-                    instance_summary[from_instance]["to_instance"][to_instance]["sns_only_size_gb"].append(transmission_data_transfer_size)
+                    instance_summary[from_instance]["to_instance"][to_instance]["sns_only_size_gb"].append(
+                        transmission_data_transfer_size
+                    )
 
                     # In the case of sync upload, we want to set the data
                     # transfer to be related only to upload size, as
@@ -396,30 +405,47 @@ class WorkflowRetriever(DataRetriever):
                     sync_to_from_instance
                     not in instance_summary[from_instance]["to_instance"][uninvoked_instance]["non_execution_info"]
                 ):
-
                     instance_summary[from_instance]["to_instance"][uninvoked_instance]["non_execution_info"][
                         sync_to_from_instance
                     ] = {
                         # "consumed_write_capacity": [],
                         "sync_data_response_size_gb": [],
                         "sns_transfer_size_gb": [],
-                        "regions_to_regions": {}
+                        "regions_to_regions": {},
                     }
-                if from_region not in instance_summary[from_instance]["to_instance"][uninvoked_instance]["non_execution_info"][sync_to_from_instance]["regions_to_regions"]:
-                    instance_summary[from_instance]["to_instance"][uninvoked_instance]["non_execution_info"][sync_to_from_instance]["regions_to_regions"][from_region] = {}
-                if to_region not in instance_summary[from_instance]["to_instance"][uninvoked_instance]["non_execution_info"][sync_to_from_instance]["regions_to_regions"][from_region]:
-                    instance_summary[from_instance]["to_instance"][uninvoked_instance]["non_execution_info"][sync_to_from_instance]["regions_to_regions"][from_region][to_region] = {
+                if (
+                    from_region
+                    not in instance_summary[from_instance]["to_instance"][uninvoked_instance]["non_execution_info"][
+                        sync_to_from_instance
+                    ]["regions_to_regions"]
+                ):
+                    instance_summary[from_instance]["to_instance"][uninvoked_instance]["non_execution_info"][
+                        sync_to_from_instance
+                    ]["regions_to_regions"][from_region] = {}
+                if (
+                    to_region
+                    not in instance_summary[from_instance]["to_instance"][uninvoked_instance]["non_execution_info"][
+                        sync_to_from_instance
+                    ]["regions_to_regions"][from_region]
+                ):
+                    instance_summary[from_instance]["to_instance"][uninvoked_instance]["non_execution_info"][
+                        sync_to_from_instance
+                    ]["regions_to_regions"][from_region][to_region] = {
                         "transfer_latencies_s": [],
                     }
 
                 # Add an entry for the sns transfer size
                 transmission_data_transfer_size = float(data["transmission_size_gb"])
-                instance_summary[from_instance]["to_instance"][uninvoked_instance]["non_execution_info"][sync_to_from_instance]["sns_transfer_size_gb"].append(
-                    transmission_data_transfer_size
-                )
+                instance_summary[from_instance]["to_instance"][uninvoked_instance]["non_execution_info"][
+                    sync_to_from_instance
+                ]["sns_transfer_size_gb"].append(transmission_data_transfer_size)
 
                 # Add an entry for the transfer latency
-                instance_summary[from_instance]["to_instance"][uninvoked_instance]["non_execution_info"][sync_to_from_instance]["regions_to_regions"][from_region][to_region]["transfer_latencies_s"].append(data["transmission_latency_s"])
+                instance_summary[from_instance]["to_instance"][uninvoked_instance]["non_execution_info"][
+                    sync_to_from_instance
+                ]["regions_to_regions"][from_region][to_region]["transfer_latencies_s"].append(
+                    data["transmission_latency_s"]
+                )
 
                 # # Get the consumed write capacity and sync data response size
                 # consumed_write_capacity = sync_instance_info.get("consumed_write_capacity", None)
@@ -445,17 +471,14 @@ class WorkflowRetriever(DataRetriever):
             )
 
         for at_region_info in start_hop_summary["regions_to_regions"].values():
-            transfer_size_to_transfer_latencies = at_region_info[
-                "transfer_size_gb_to_transfer_latencies_s"
-            ]
+            transfer_size_to_transfer_latencies = at_region_info["transfer_size_gb_to_transfer_latencies_s"]
 
             number_of_data_sizes = len(transfer_size_to_transfer_latencies)
             if number_of_data_sizes == 0:
                 # Case where there are no data
                 continue
-            
-            at_region_info["best_fit_line"] = self._calculate_best_fit_line(transfer_size_to_transfer_latencies)
 
+            at_region_info["best_fit_line"] = self._calculate_best_fit_line(transfer_size_to_transfer_latencies)
 
     def _reorganize_instance_summary(self, instance_summary: dict[str, Any]) -> None:
         # Summarize the execution data (Duration, data transfer, etc.)
@@ -563,14 +586,14 @@ class WorkflowRetriever(DataRetriever):
                             ] = self._round_to_kb(sync_data_response_size_gb, 1, False)
                         else:
                             non_execution_info[sync_call_from_to_instance]["sync_data_response_size_gb"] = 0.0
-                        
+
                         sns_transfer_size = sync_call_entry.get("sns_transfer_size_gb", [])
                         if sns_transfer_size != []:
                             sns_transfer_size_gb = sum(sns_transfer_size) / len(sns_transfer_size)
                             # Round to the nearest kb
-                            non_execution_info[sync_call_from_to_instance][
-                                "sns_transfer_size_gb"
-                            ] = self._round_to_kb(sns_transfer_size_gb, 1, False)
+                            non_execution_info[sync_call_from_to_instance]["sns_transfer_size_gb"] = self._round_to_kb(
+                                sns_transfer_size_gb, 1, False
+                            )
                         else:
                             non_execution_info[sync_call_from_to_instance]["sns_transfer_size_gb"] = 0.0
 
@@ -612,10 +635,10 @@ class WorkflowRetriever(DataRetriever):
                         if number_of_data_sizes == 0:
                             # Case where there are no data
                             continue
-                        
-                        to_region_information["best_fit_line"] = self._calculate_best_fit_line(transfer_size_to_transfer_latencies)
 
-
+                        to_region_information["best_fit_line"] = self._calculate_best_fit_line(
+                            transfer_size_to_transfer_latencies
+                        )
 
     def _calculate_best_fit_line(self, transfer_size_to_transfer_latencies: dict[str, Any]) -> dict[str, Any]:
         number_of_data_sizes = len(transfer_size_to_transfer_latencies)
@@ -625,13 +648,11 @@ class WorkflowRetriever(DataRetriever):
         for size, latencies in transfer_size_to_transfer_latencies.items():
             if len(latencies) == 0:
                 latencies.append(0.0)
-                
+
             average_transfer_size_to_transfer_latencies[size] = sum(latencies) / len(latencies)
 
         # Calculate the averege transfer latency
-        average_transfer_latency = (
-            sum(average_transfer_size_to_transfer_latencies.values()) / number_of_data_sizes
-        )
+        average_transfer_latency = sum(average_transfer_size_to_transfer_latencies.values()) / number_of_data_sizes
 
         slope = 0.0
         intercept = average_transfer_latency
@@ -658,16 +679,16 @@ class WorkflowRetriever(DataRetriever):
             if potential_intercept > 0.0 and potential_slope >= 0.0:
                 slope = potential_slope
                 intercept = potential_intercept
-            
+
         # Save the best fit line and add some
         # limitations such as min and max latency
-        best_fit_line= {
+        best_fit_line = {
             "slope_s": slope,
             "intercept_s": intercept,
             "min_latency_s": average_transfer_latency * 0.7,
             "max_latency_s": average_transfer_latency * 1.3,
         }
-        
+
         return best_fit_line
 
     def _round_to_kb(self, number: float, round_to: int = 10, round_up: bool = True) -> float:
@@ -691,8 +712,6 @@ class WorkflowRetriever(DataRetriever):
 
         return rounded_kb * round_to / (1024**2)
         # return math.ceil(number * (1024**2) / round_to) * round_to / (1024**2)
-
-
 
     def _round_to_ms(self, number: float, round_to: int = 1, round_up: bool = True) -> float:
         """

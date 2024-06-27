@@ -45,7 +45,12 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
         self._input_manager.setup(self._region_indexer, self._instance_indexer)
 
         self._deployment_metrics_calculator: DeploymentMetricsCalculator = SimpleDeploymentMetricsCalculator(
-            workflow_config, self._input_manager, self._region_indexer, self._instance_indexer, n_processes=n_workers, record_transmission_execution_carbon=record_transmission_execution_carbon
+            workflow_config,
+            self._input_manager,
+            self._region_indexer,
+            self._instance_indexer,
+            n_processes=n_workers,
+            record_transmission_execution_carbon=record_transmission_execution_carbon,
         )
 
         self._home_region_index = self._region_indexer.value_to_index(self._workflow_config.home_region)
