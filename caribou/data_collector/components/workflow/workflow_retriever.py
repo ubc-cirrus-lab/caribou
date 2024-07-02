@@ -103,9 +103,10 @@ class WorkflowRetriever(DataRetriever):
                         start_hop_data_transfer_size
                     ] = []
                 start_hop_latency = start_hop_log.get("latency_s", 0.0)
+
                 # If start hop is greater than 3 seconds, its likely that
                 # the user clock is desynced and we may discard the data
-                if start_hop_latency < 3.0 and start_hop_latency > 0.0:
+                if 0 < start_hop_latency < 3.0:
                     start_hop_size_latency_summary[start_hop_destination]["transfer_size_gb_to_transfer_latencies_s"][
                         start_hop_data_transfer_size
                     ].append(start_hop_latency)
@@ -573,7 +574,8 @@ class WorkflowRetriever(DataRetriever):
                         # if consumed_write_capacity != []:
                         #     consumed_write_capacity = sum(consumed_write_capacity) / len(consumed_write_capacity)
                         #     # Round to the nearest whole number
-                        #     non_execution_info[sync_call_from_to_instance]["consumed_write_capacity"] = consumed_write_capacity
+                        #     non_execution_info[sync_call_from_to_instance]["consumed_write_capacity"]
+                        #  = consumed_write_capacity
                         # else:
                         #     non_execution_info[sync_call_from_to_instance]["consumed_write_capacity"] = 0.0
 
@@ -658,13 +660,13 @@ class WorkflowRetriever(DataRetriever):
         intercept = average_transfer_latency
         if number_of_data_sizes > 1:
             # Prepare the data
-            transfer_sizes = []
-            transfer_latencies = []
+            transfer_sizes: list[float] = []
+            transfer_latencies: list[float] = []
 
             for size, latencies in transfer_size_to_transfer_latencies.items():
-                size = float(size)
+                size_fl = float(size)
                 for latency in latencies:
-                    transfer_sizes.append(size)
+                    transfer_sizes.append(size_fl)
                     transfer_latencies.append(latency)
 
             # Convert to numpy arrays

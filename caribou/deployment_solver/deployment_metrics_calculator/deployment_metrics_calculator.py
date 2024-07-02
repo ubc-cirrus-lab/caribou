@@ -61,7 +61,8 @@ class DeploymentMetricsCalculator(ABC):
 
             # Add the node to the workflow instance
             # print(
-            #     f"\nWORKFLOW: Instantialized Instance: {instance_index} ({self._input_manager._instance_indexer.index_to_value(instance_index)})"
+            #     f"\nWORKFLOW: Instantialized Instance: {instance_index}
+            # ({self._input_manager._instance_indexer.index_to_value(instance_index)})"
             # )
             node_invoked: bool = workflow_instance.add_node(instance_index)
 

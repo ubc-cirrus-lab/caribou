@@ -129,9 +129,8 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         state["_carbon_loader"] = self._carbon_loader.get_carbon_data()
         state["_workflow_loader"] = self._workflow_loader.get_workflow_data()
         state["_carbon_calculator"] = {
-            "small_or_large": self._carbon_calculator.small_or_large,
-            "energy_factor": self._carbon_calculator._energy_factor_of_transmission,
-            "home_base_case": self._carbon_calculator.home_base_case,
+            "_energy_factor_of_transmission": self._carbon_calculator._energy_factor_of_transmission,
+            "_consider_home_region_for_transmission": self._carbon_calculator._consider_home_region_for_transmission,
         }
         return state
 
@@ -147,13 +146,14 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
 
         # Setup the calculator
         self._runtime_calculator = RuntimeCalculator(self._performance_loader, self._workflow_loader)
-        self._carbon_calculator = CarbonCalculator(
-            self._carbon_loader, self._datacenter_loader, self._workflow_loader, self._runtime_calculator
+        self._carbon_calculator = CarbonCalculator(self._carbon_loader, self._datacenter_loader, self._workflow_loader)
+        self._cost_calculator = CostCalculator(self._datacenter_loader, self._workflow_loader)
+        self._carbon_calculator._energy_factor_of_transmission = state.get("_carbon_calculator").get(
+            "_energy_factor_of_transmission"
         )
-        self._cost_calculator = CostCalculator(self._datacenter_loader, self._workflow_loader, self._runtime_calculator)
-        self._carbon_calculator.small_or_large = state.get("_carbon_calculator").get("small_or_large")
-        self._carbon_calculator._energy_factor_of_transmission = state.get("_carbon_calculator").get("energy_factor")
-        self._carbon_calculator.home_base_case = state.get("_carbon_calculator").get("home_base_case")
+        self._carbon_calculator._consider_home_region_for_transmission = state.get("_carbon_calculator").get(
+            "_consider_home_region_for_transmission"
+        )
         requested_regions: set[str] = set(self._region_indexer.get_value_indices().keys())
 
         # Load the workflow loader
@@ -206,6 +206,9 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         sns_transmission_size = transmission_size
         sync_info: Optional[dict[str, Any]] = None
         if to_instance_is_sync_node:
+            if not from_instance_name:
+                raise ValueError("Start hop cannot have a sync node as a successor")
+
             # If to instance is a sync node, then at the same time,
             # we can retrieve the sync_sizes_gb and sns_only_sizes_gb
             # And then calculate the sync node related information.
@@ -272,7 +275,10 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         to_region_name: str = self._region_indexer.index_to_value(to_region_index)
 
         # Get a transmission size and latency sample
-        # print(f"SIMULATED from_instance_name: {from_instance_name}, uninvoked_instance_name: {uninvoked_instance_name}, simulated_sync_predecessor_name: {simulated_sync_predecessor_name}, sync_node_name: {sync_node_name}, from_region_name: {from_region_name}, to_region_name: {to_region_name}")
+        # print(f"SIMULATED from_instance_name: {from_instance_name}, uninvoked_instance_name:
+        # {uninvoked_instance_name}, simulated_sync_predecessor_name: {simulated_sync_predecessor_name},
+        # sync_node_name: {sync_node_name}, from_region_name: {from_region_name},
+        # to_region_name: {to_region_name}")
         (
             sns_transmission_size,
             transmission_latency,
@@ -295,13 +301,13 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         self,
         from_instance_index: int,
         to_instance_index: int,
-    ) -> dict[str, Any]:
+    ) -> dict[str, list[dict[str, Any]]]:
         # Convert the instance and region indices to their names
         # Start hop will never get non-execution info
         from_instance_name: str = self._instance_indexer.index_to_value(from_instance_index)
         to_instance_name: str = self._instance_indexer.index_to_value(to_instance_index)
 
-        non_execution_info_list: dict[str, Any] = []
+        non_execution_info_list: list[dict[str, Any]] = []
         for sync_to_from_instance, sync_size in self._workflow_loader.get_non_execution_information(
             from_instance_name, to_instance_name
         ).items():
@@ -335,7 +341,6 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
 
         return node_runtime_data_transfer_data
 
-
     def calculate_cost_and_carbon_of_instance(
         self,
         runtime: float,
@@ -343,7 +348,7 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         region_index: int,
         data_input_sizes: dict[int, float],
         data_output_sizes: dict[int, float],
-        sns_data_call_and_output_sizes: dict[str, list[float]],
+        sns_data_call_and_output_sizes: dict[int, list[float]],
         data_transfer_during_execution: float,
         dynamodb_read_capacity: float,
         dynamodb_write_capacity: float,
@@ -363,6 +368,15 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         # print(f"dynamodb_read_capacity: {dynamodb_read_capacity}")
         # print(f"dynamodb_write_capacity: {dynamodb_write_capacity}\n")
         data_output_sizes_str_dict = self._get_converted_region_name_dict(data_output_sizes)
+        execution_carbon, transmission_carbon = self._carbon_calculator.calculate_instance_carbon(
+            runtime,
+            instance_name,
+            region_name,
+            self._get_converted_region_name_dict(data_input_sizes),
+            data_output_sizes_str_dict,
+            data_transfer_during_execution,
+            is_invoked,
+        )
         return {
             "cost": self._cost_calculator.calculate_instance_cost(
                 runtime,
@@ -374,20 +388,11 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
                 dynamodb_write_capacity,
                 is_invoked,
             ),
-            "carbon": self._carbon_calculator.calculate_instance_carbon(
-                runtime,
-                instance_name,
-                region_name,
-                self._get_converted_region_name_dict(data_input_sizes),
-                data_output_sizes_str_dict,
-                data_transfer_during_execution,
-                is_invoked,
-            ),
+            "execution_carbon": execution_carbon,
+            "transmission_carbon": transmission_carbon,
         }
 
-    def _get_converted_region_name_dict(
-        self, input_region_index_dict: dict[int, tuple[int, float]]
-    ) -> dict[str, tuple[int, float]]:
+    def _get_converted_region_name_dict(self, input_region_index_dict: dict[int, Any]) -> dict[Optional[str], Any]:
         return {
             self._region_indexer.index_to_value(region_index) if region_index != -1 else None: value
             for region_index, value in input_region_index_dict.items()

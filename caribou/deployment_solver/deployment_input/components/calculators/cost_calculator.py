@@ -1,7 +1,7 @@
 import math
+from typing import Optional
 
 from caribou.deployment_solver.deployment_input.components.calculator import InputCalculator
-from caribou.deployment_solver.deployment_input.components.calculators.runtime_calculator import RuntimeCalculator
 from caribou.deployment_solver.deployment_input.components.loaders.datacenter_loader import DatacenterLoader
 from caribou.deployment_solver.deployment_input.components.loaders.workflow_loader import WorkflowLoader
 
@@ -27,8 +27,8 @@ class CostCalculator(InputCalculator):
         runtime: float,
         instance_name: str,
         current_region_name: str,
-        data_output_sizes: dict[str, float],
-        sns_data_call_and_output_sizes: dict[str, list[float]],
+        data_output_sizes: dict[Optional[str], float],
+        sns_data_call_and_output_sizes: dict[Optional[str], list[float]],
         dynamodb_read_capacity: float,
         dynamodb_write_capacity: float,
         is_invoked: bool,
@@ -72,7 +72,7 @@ class CostCalculator(InputCalculator):
         return total_dynamodb_cost
 
     def _calculate_sns_cost(
-        self, current_region_name: str, sns_data_call_and_output_sizes: dict[str, list[float]]
+        self, current_region_name: str, sns_data_call_and_output_sizes: dict[Optional[str], list[float]]
     ) -> float:
         total_sns_cost = 0.0
 
@@ -94,6 +94,9 @@ class CostCalculator(InputCalculator):
 
         # Get the cost of SNS invocations (Request cost of destination region)
         for region_name, sns_invocation_sizes in sns_data_call_and_output_sizes.items():
+            if not region_name:
+                raise ValueError("Region name cannot be None")
+
             # Calculate the cost of invocation
             for sns_invocation_size_gb in sns_invocation_sizes:
                 # According to AWS documentation, each 64KB chunk of delivered data is billed as 1 request
@@ -104,12 +107,14 @@ class CostCalculator(InputCalculator):
 
         return total_sns_cost
 
-    def _calculate_data_transfer_cost(self, current_region_name: str, data_output_sizes: dict[str, float]) -> float:
+    def _calculate_data_transfer_cost(
+        self, current_region_name: str, data_output_sizes: dict[Optional[str], float]
+    ) -> float:
         # Calculate the amount of data output from the instance
         # This will be the data output going out of the current region
         total_data_output_size = 0.0
-        for data_name, data_size in data_output_sizes.items():
-            if not data_name.startswith(current_region_name):
+        for region_name, data_size in data_output_sizes.items():
+            if not region_name or not region_name.startswith(current_region_name):
                 total_data_output_size += data_size
 
         # Calculate the cost of data transfer
