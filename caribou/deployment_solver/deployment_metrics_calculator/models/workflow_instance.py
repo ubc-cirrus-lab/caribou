@@ -1,6 +1,4 @@
-from typing import Any, Optional, Union
-
-import numpy as np
+from typing import Any, Optional
 
 from caribou.deployment_solver.deployment_input.input_manager import InputManager
 from caribou.deployment_solver.deployment_metrics_calculator.models.instance_edge import InstanceEdge
@@ -26,8 +24,11 @@ class WorkflowInstance:
         self._configure_node_regions(instance_deployment_regions)
 
     def _configure_node_regions(self, instance_deployment_regions: list[int]) -> None:
-        for instance_index in range(len(instance_deployment_regions)):
-            region_index = instance_deployment_regions[instance_index]
+        # for instance_index in range(len(instance_deployment_regions)):
+        #     region_index = instance_deployment_regions[instance_index]
+        #     current_node = self._get_node(instance_index)
+        #     current_node.region_id = region_index
+        for instance_index, region_index in enumerate(instance_deployment_regions):
             current_node = self._get_node(instance_index)
             current_node.region_id = region_index
 
@@ -74,9 +75,11 @@ class WorkflowInstance:
             )
             node_invoked = node_invoked or current_node_invoked
 
-            from_instance_id = current_edge.from_instance_node.instance_id if current_edge.from_instance_node else -1
+            # from_instance_id = current_edge.from_instance_node.instance_id if
+            # current_edge.from_instance_node else -1
             # print(
-            #     f"WI: Processing Real Edge, from: {from_instance_id} -> {current_edge.to_instance_node.instance_id} -> {current_node_invoked}"
+            #     f"WI: Processing Real Edge, from: {from_instance_id} ->
+            # {current_edge.to_instance_node.instance_id} -> {current_node_invoked}"
             # )
 
         # Handle sync upload auxiliary data
@@ -97,7 +100,9 @@ class WorkflowInstance:
             simulated_predecessor_edges: list[SimulatedInstanceEdge] = self._get_predecessor_edges(instance_index, True)
             for simulated_edge in simulated_predecessor_edges:
                 # print(
-                #     f"WI: Processing Simulated Edge, from: {simulated_edge.from_instance_node.instance_id} -> {simulated_edge.to_instance_node.instance_id}"
+                #     f"WI: Processing Simulated Edge, from:
+                # {simulated_edge.from_instance_node.instance_id} ->
+                # {simulated_edge.to_instance_node.instance_id}"
                 # )
                 self._handle_simulated_edge(simulated_edge, edge_reached_time_to_sns_data)
 
@@ -127,11 +132,12 @@ class WorkflowInstance:
         # As that is the one that will actually cause the SNS invocation
         edge_reached_time_to_sns_data.sort(key=lambda x: x[0], reverse=True)
 
-        parsed_dict: list[tuple[int, int]] = []
-        for _, (start_runtime, sns_data) in enumerate(edge_reached_time_to_sns_data):
-            from_instance_id = sns_data["from_instance_node"].instance_id if sns_data["from_instance_node"] else -1
-            to_instance_id = sns_data["to_instance_node"].instance_id
-            parsed_dict.append((f"{from_instance_id}>{to_instance_id}", start_runtime, sns_data["cumulative_runtime"]))
+        # parsed_dict: list[tuple[int, int, Any]] = []
+        # for _, (start_runtime, sns_data) in enumerate(edge_reached_time_to_sns_data):
+        #     from_instance_id = sns_data["from_instance_node"].instance_id if sns_data["from_instance_node"] else -1
+        #     to_instance_id = sns_data["to_instance_node"].instance_id
+        #     parsed_dict.append((f"{from_instance_id}>{to_instance_id}", start_runtime,
+        # sns_data["cumulative_runtime"]))
         # print(f"WIT: Edge Reached Time to SNS Data: {parsed_dict}")
 
         if len(edge_reached_time_to_sns_data) > 0:
@@ -174,6 +180,12 @@ class WorkflowInstance:
     ) -> None:
         # Get the transmission information of the edge
         transmission_info = current_edge.get_simulated_transmission_information()
+        if not transmission_info:
+            raise ValueError(
+                "No transmission info in edge",
+                f"Node: {current_edge.to_instance_node.instance_id}",
+                f"To: {current_edge.to_instance_node.instance_id}",
+            )
         starting_runtime = transmission_info["starting_runtime"]
         cumulative_runtime = transmission_info["cumulative_runtime"]
         sns_data_transfer_size = transmission_info["sns_data_transfer_size"]
@@ -205,8 +217,9 @@ class WorkflowInstance:
             if current_edge.conditionally_invoked:
                 # For the normal execution case, we should get the size of data transfer, and the transfer latency.
                 # If this node is a sync predecessor, we should also retrieve the sync_sizes_gb this denotes
-                # the size of the sync table that need to be updated (invoked twice) to its successor, and also indicates
-                # that the edge is a sync edge, and thus it transfer the data through the sync table rather than directly through SNS.
+                # the size of the sync table that need to be updated (invoked twice) to its successor,
+                # and also indicates that the edge is a sync edge, and thus it transfer the data through
+                # the sync table rather than directly through SNS.
                 starting_runtime = transmission_info["starting_runtime"]
                 cumulative_runtime = transmission_info["cumulative_runtime"]
                 sns_data_transfer_size = transmission_info["sns_data_transfer_size"]
@@ -226,9 +239,10 @@ class WorkflowInstance:
                 # Sync node must have more than 1 predecessor, all sync edges must have a predecessor
                 # For sync nodes, payload is uploaded to the sync table and not through SNS
                 if successor_is_sync_node:
-                    if current_edge.from_instance_node == None:
+                    if current_edge.from_instance_node is None:
                         raise ValueError(
-                            f"Sync node must have a predecessor, destination instance: {current_edge.to_instance_node.instance_id}"
+                            "Sync node must have a predecessor, destination "
+                            f"instance: {current_edge.to_instance_node.instance_id}"
                         )
                     sync_info = transmission_info["sync_info"]
                     sync_size = sync_info["sync_size"]
@@ -242,7 +256,8 @@ class WorkflowInstance:
                     # of the SYNC Node (Outgoing node, Current node)
                     current_edge.to_instance_node.tracked_dynamodb_write_capacity += consumed_wcu
 
-                    # Data denoted by dynamodb_upload_size is uploaded to the sync table (Move out of the predecessor node, and into the current, sync node)
+                    # Data denoted by dynamodb_upload_size is uploaded to the sync
+                    # table (Move out of the predecessor node, and into the current, sync node)
                     self._manage_data_transfer_dict(
                         current_edge.from_instance_node.tracked_data_output_sizes,
                         current_edge.to_instance_node.region_id,
@@ -271,9 +286,10 @@ class WorkflowInstance:
                 # Mark that the node was invoked
                 node_invoked = True
             else:
-                if current_edge.from_instance_node == None:
+                if current_edge.from_instance_node is None:
                     raise ValueError(
-                        f"Sync node must have a predecessor, destination instance: {current_edge.to_instance_node.instance_id}"
+                        "Sync node must have a predecessor, destination "
+                        f"instance: {current_edge.to_instance_node.instance_id}"
                     )
 
                 # For the non-execution case, we should get the instances that the sync node will write to
@@ -315,7 +331,7 @@ class WorkflowInstance:
                 # In the case the edge is real, there should never be a case where
                 # there are no transmission information
                 raise ValueError(
-                    f"No transmission info in edge",
+                    "No transmission info in edge",
                     f"Node: {current_edge.to_instance_node.instance_id}",
                     f"Conditionally Invoked: {current_edge.conditionally_invoked}",
                     f"To: {current_edge.to_instance_node.instance_id}",
@@ -339,7 +355,9 @@ class WorkflowInstance:
         # print(f"Cost: {cumulative_cost}")
         # print(f"Runtime: {max_runtime}")
         # print(
-        #     f"Carbon: EX- {cumulative_execution_carbon}, TR- {cumulative_transmission_carbon}, overall- {cumulative_execution_carbon + cumulative_transmission_carbon}"
+        #     f"Carbon: EX- {cumulative_execution_carbon},
+        # TR- {cumulative_transmission_carbon},
+        # overall- {cumulative_execution_carbon + cumulative_transmission_carbon}"
         # )
 
         return {
@@ -390,7 +408,9 @@ class WorkflowInstance:
             self._simulated_edges[sync_node_id] = {}
         self._simulated_edges[sync_node_id][from_instance_id] = simulated_edge
 
-        # print(f"Created edge on {sync_node_id} from {from_instance_id} to {sync_node_id} (Uninvoked: {uninvoked_instance_id}, Sync Predecessor: {simulated_sync_predecessor_id})")
+        # print(f"Created edge on {sync_node_id} from {from_instance_id}
+        # to {sync_node_id} (Uninvoked: {uninvoked_instance_id}, Sync
+        # Predecessor: {simulated_sync_predecessor_id})")
 
         return simulated_edge
 
@@ -403,16 +423,14 @@ class WorkflowInstance:
         data_transfer_dict[region_id] += data_transfer_size
 
     def _manage_sns_invocation_data_transfer_dict(
-        self, sns_data_transfer_dict: dict[str, list[float]], region_id: int, data_transfer_size: float
+        self, sns_data_transfer_dict: dict[int, list[float]], region_id: int, data_transfer_size: float
     ) -> None:
         if region_id not in sns_data_transfer_dict:
             sns_data_transfer_dict[region_id] = []
         sns_data_transfer_dict[region_id].append(data_transfer_size)
 
-    def _get_predecessor_edges(
-        self, instance_index: int, simulated_edges: bool
-    ) -> list[Union[InstanceEdge, SimulatedInstanceEdge]]:
-        edge_dict = self._edges
+    def _get_predecessor_edges(self, instance_index: int, simulated_edges: bool) -> list[Any]:
+        edge_dict: dict[int, Any] = self._edges
         if simulated_edges:
             edge_dict = self._simulated_edges
 

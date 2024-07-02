@@ -1,7 +1,6 @@
 from typing import Optional
 
 from caribou.deployment_solver.deployment_input.components.calculator import InputCalculator
-from caribou.deployment_solver.deployment_input.components.calculators.runtime_calculator import RuntimeCalculator
 from caribou.deployment_solver.deployment_input.components.loaders.carbon_loader import CarbonLoader
 from caribou.deployment_solver.deployment_input.components.loaders.datacenter_loader import DatacenterLoader
 from caribou.deployment_solver.deployment_input.components.loaders.workflow_loader import WorkflowLoader
@@ -51,8 +50,8 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
         runtime: float,
         instance_name: str,
         region_name: str,
-        data_input_sizes: dict[str, float],
-        data_output_sizes: dict[str, float],
+        data_input_sizes: dict[Optional[str], float],
+        data_output_sizes: dict[Optional[str], float],
         data_transfer_during_execution: float,
         is_invoked: bool,
     ) -> tuple[float, float]:
@@ -78,8 +77,8 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
     def _calculate_data_transfer_carbon(
         self,
         current_region_name: str,
-        data_input_sizes: dict[str, float],
-        data_output_sizes: dict[str, float],
+        data_input_sizes: dict[Optional[str], float],
+        data_output_sizes: dict[Optional[str], float],
         data_transfer_during_execution: float,
     ) -> float:
         total_transmission_carbon: float = 0.0

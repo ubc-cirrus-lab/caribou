@@ -51,7 +51,7 @@ class RuntimeCalculator(InputCalculator):
             # Default to transmission latency distribution of what happens when simulated_sync_predecessor_name
             # Calls sync_node_name as a normal transmission
             ## This type of transmission will always go to a sync node
-            transmission_latency_distribution: list[float] = self._get_transmission_latency_distribution(
+            transmission_latency_distribution = self._get_transmission_latency_distribution(
                 simulated_sync_predecessor_name,
                 from_region_name,
                 sync_node_name,
@@ -126,7 +126,7 @@ class RuntimeCalculator(InputCalculator):
         if cache_key in self._transmission_latency_distribution_cache:
             return self._transmission_latency_distribution_cache[cache_key]
 
-        if from_instance_name:
+        if from_instance_name and from_region_name:
             transmission_latency_distribution = self._workflow_loader.get_latency_distribution(
                 from_instance_name, to_instance_name, from_region_name, to_region_name, data_transfer_size
             )
@@ -148,13 +148,18 @@ class RuntimeCalculator(InputCalculator):
                     to_region_name, data_transfer_size
                 )
 
-        # print(f"transmission_latency_distribution: {transmission_latency_distribution[:5]}, From: {from_instance_name}, To: {to_instance_name}, From Region: {from_region_name}, To Region: {to_region_name}, Size: {data_transfer_size}")
+        # print(f"transmission_latency_distribution: {transmission_latency_distribution[:5]},
+        # From: {from_instance_name}, To: {to_instance_name},
+        # From Region: {from_region_name}, To Region: {to_region_name},
+        # Size: {data_transfer_size}")
 
         if len(transmission_latency_distribution) == 0:
             # There should never be a case where the size distribution is empty
             # As the missing handling should have taken care of it
             raise ValueError(
-                f"The transmission latency distribution for {from_instance_name} to {to_instance_name} for {from_region_name} to {to_region_name} is empty, this should be impossible."
+                f"The transmission latency distribution for {from_instance_name} "
+                f"to {to_instance_name} for {from_region_name} to {to_region_name} "
+                f"is empty, this should be impossible."
             )
 
         self._transmission_latency_distribution_cache[cache_key] = transmission_latency_distribution
@@ -289,7 +294,8 @@ class RuntimeCalculator(InputCalculator):
                 # This should never happen, as the instance should have been invoked in the home region
                 # At least once, thus it should have runtime data
                 raise ValueError(
-                    f"Instance {instance_name} has no runtime data in home region {home_region}, this should be impossible."
+                    f"Instance {instance_name} has no runtime data in home region "
+                    f"{home_region}, this should be impossible."
                 )
             runtime_distribution = self._workflow_loader.get_runtime_distribution(instance_name, home_region)
             original_runtime_region_name = home_region

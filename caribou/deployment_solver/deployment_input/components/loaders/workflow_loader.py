@@ -12,10 +12,10 @@ from caribou.common.constants import (  # SOLVER_INPUT_TRANSMISSION_LATENCY_DEFA
 from caribou.common.models.remote_client.remote_client import RemoteClient
 from caribou.common.provider import Provider
 from caribou.deployment_solver.deployment_input.components.loader import InputLoader
-from caribou.deployment_solver.deployment_input.components.loaders.performance_loader import PerformanceLoader
 from caribou.deployment_solver.workflow_config import WorkflowConfig
 
 
+# pylint: disable=too-many-public-methods
 class WorkflowLoader(InputLoader):
     _workflow_data: dict[str, Any]
     _instances_regions_and_providers: dict[str, Any]
@@ -120,11 +120,13 @@ class WorkflowLoader(InputLoader):
             .get("durations_s", [])
         )
 
-    def get_auxiliary_data_distribution(self, instance_name: str, region_name: str, runtime: float) -> list[float]:
+    def get_auxiliary_data_distribution(
+        self, instance_name: str, region_name: str, runtime: float
+    ) -> list[list[float]]:
         # Round the duration to the nearest 10 ms
         runtime = self._round_to_ms(runtime, 10)
 
-        auxiliary_data_distribution: list[float] = (
+        auxiliary_data_distribution: list[list[float]] = (
             self._workflow_data.get("instance_summary", {})
             .get(instance_name, {})
             .get("executions", {})
@@ -136,7 +138,7 @@ class WorkflowLoader(InputLoader):
 
         return auxiliary_data_distribution
 
-    def get_auxiliary_index_translation(self, instance_name) -> dict[str, int]:
+    def get_auxiliary_index_translation(self, instance_name: str) -> dict[str, int]:
         auxiliary_index_translation: dict[str, int] = (
             self._workflow_data.get("instance_summary", {})
             .get(instance_name, {})

@@ -1,8 +1,9 @@
-from typing import Any, Optional
+from typing import Any
 
 from caribou.deployment_solver.deployment_input.input_manager import InputManager
 
 
+# pylint: disable=too-many-instance-attributes
 class InstanceNode:
     def __init__(self, input_manager: InputManager, instane_id: int) -> None:
         self._input_manager: InputManager = input_manager
@@ -27,7 +28,7 @@ class InstanceNode:
         self.data_transfer_during_execution: float = 0.0
 
         # Store the cumulative data output size of only SNS
-        self.sns_data_call_and_output_sizes: dict[str, list[float]] = {}
+        self.sns_data_call_and_output_sizes: dict[int, list[float]] = {}
 
         # Store the cumulative dynamodb read and
         # write capacity of the node
@@ -65,7 +66,6 @@ class InstanceNode:
             self.invoked,
         )
         # print(calculated_metrics)
-        execution_carbon, transmission_carbon = calculated_metrics["carbon"]
 
         # We only care about the runtime if the node was invoked
         runtime = self.cumulative_runtimes["current"] if self.invoked else 0.0
@@ -73,6 +73,6 @@ class InstanceNode:
             "cost": calculated_metrics["cost"],
             # "carbon": calculated_metrics['carbon'],
             "runtime": runtime,
-            "execution_carbon": execution_carbon,
-            "transmission_carbon": transmission_carbon,
+            "execution_carbon": calculated_metrics["execution_carbon"],
+            "transmission_carbon": calculated_metrics["transmission_carbon"],
         }
