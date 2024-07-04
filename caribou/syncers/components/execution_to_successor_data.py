@@ -68,6 +68,7 @@ class ExecutionToSuccessorData:  # pylint: disable=too-many-instance-attributes
             "task_type": self.task_type,
             "invocation_time_from_function_start_s": self.invocation_time_from_function_start,
             "sync_info": self.invoking_sync_node_data_output if self.invoking_sync_node_data_output else None,
+            "consumed_write_capacity": self.consumed_write_capacity if self.consumed_write_capacity else None,
         }
 
         # Filter out fields that are None
