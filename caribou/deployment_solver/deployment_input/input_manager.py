@@ -3,7 +3,7 @@ import random
 import time
 from typing import Any, Optional
 
-from caribou.common.constants import TAIL_LATENCY_THRESHOLD
+from caribou.common.constants import TAIL_LATENCY_THRESHOLD, GLOBAL_SYSTEM_REGION
 from caribou.common.models.endpoints import Endpoints
 from caribou.common.models.remote_client.remote_client import RemoteClient
 from caribou.deployment_solver.deployment_input.components.calculators.carbon_calculator import CarbonCalculator
@@ -73,6 +73,11 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         # We should asset this is true
         if self._workflow_loader.get_home_region() not in requested_regions:
             raise ValueError("Home region of the workflow is not in the requested regions! This should NEVER happen!")
+
+        # If the system region is not in the requested regions, add it
+        system_region_name = f"aws:{GLOBAL_SYSTEM_REGION}"
+        if system_region_name not in requested_regions:
+            requested_regions.add(system_region_name)
 
         # Now setup all appropriate loaders
         self._datacenter_loader.setup(requested_regions)
