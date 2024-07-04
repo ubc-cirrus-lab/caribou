@@ -5,7 +5,7 @@ from caribou.deployment_solver.deployment_input.components.loaders.carbon_loader
 from caribou.deployment_solver.deployment_input.components.loaders.datacenter_loader import DatacenterLoader
 from caribou.deployment_solver.deployment_input.components.loaders.workflow_loader import WorkflowLoader
 from caribou.common.constants import AVERAGE_USA_CARBON_INTENSITY
-
+from caribou.common.constants import GLOBAL_SYSTEM_REGION
 
 class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-attributes
     def __init__(
@@ -52,6 +52,29 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
         self._execution_conversion_ratio_cache = {}
         self._transmission_conversion_ratio_cache = {}
 
+    def calculate_virtual_start_instance_carbon(
+        self,
+        data_input_sizes: dict[Optional[str], float],
+        data_output_sizes: dict[Optional[str], float],  # pylint: disable=unused-argument
+    ) -> float:
+        transmission_carbon = 0.0
+
+        # We model the virtual start hop cost where the SYSTEM Region
+        # As it pulls wpd data from the system region.
+        current_region_name = f"aws:{GLOBAL_SYSTEM_REGION}"
+        data_input_sizes = { # Alter the data input size such that the -1 or from region is the SYSTEM Region
+            current_region_name: data_input_sizes[None]
+        }
+
+        # Even if the function is not invoked, we model
+        # Each node as an abstract instance to consider
+        # data transfer carbon
+        transmission_carbon += self._calculate_data_transfer_carbon(
+            None, data_input_sizes, data_output_sizes, 0.0
+        )
+
+        return transmission_carbon
+
     def calculate_instance_carbon(
         self,
         runtime: float,
@@ -64,7 +87,7 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
     ) -> tuple[float, float]:
         execution_carbon = 0.0
         transmission_carbon = 0.0
-
+        
         # print(f"instance_name: {instance_name}, at region: {region_name}")
 
         # If the function is actually invoked

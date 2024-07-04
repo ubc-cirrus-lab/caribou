@@ -15,7 +15,8 @@ class SimulatedInstanceEdge:
     ) -> None:
         self._input_manager: InputManager = input_manager
 
-        # Edge always goes to an instance
+        # Edge always goes to an instance (This instance is also ALWAYS real
+        # Ie. not start hop virtual instance)
         self.from_instance_node: InstanceNode = from_instance_node
 
         # To instance is also the sync_node
@@ -45,9 +46,6 @@ class SimulatedInstanceEdge:
             # The time to call successor node is actually the cumulative time of the
             # parent node calling the uninvoked node
             cumulative_runtime += self.from_instance_node.get_cumulative_runtime(uninvoked_instance_id)
-
-        # print(f"SIE: FI: {from_instance_id}, UII: {uninvoked_instance_id},
-        # Cumulative Runtime: {cumulative_runtime} s")
 
         # Those edges are not apart of the workflow
         # and are only used to handle latencies of non-execution of ancestor nodes

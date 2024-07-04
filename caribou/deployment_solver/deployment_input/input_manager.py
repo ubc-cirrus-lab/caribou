@@ -256,6 +256,19 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
 
         return write_capacity_units
 
+    def _calculate_read_capacity_units(self, data_size_gb: float) -> float:
+        # We can calculate the read capacity units for the data size
+        # DynamoDB charges 1 RCU for up to 4 KB of data read for On-Demand capacity mode
+        # For strongly consistent reads (What our wrapper uses)
+        # https://aws.amazon.com/dynamodb/pricing/on-demand/
+
+        # Convert the data size from GB to KB
+        # And then round up to the nearest 4 KB
+        data_size_kb = float(data_size_gb * 1024**2)
+        read_capacity_units = math.ceil(data_size_kb / 4)
+
+        return read_capacity_units
+
     def get_simulated_transmission_info(
         self,
         from_instance_index: int,
@@ -392,6 +405,35 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
             "transmission_carbon": transmission_carbon,
         }
 
+    def calculate_cost_and_carbon_virtual_start_instance(
+        self,
+        data_input_sizes: dict[int, float],
+        data_output_sizes: dict[int, float],
+        sns_data_call_and_output_sizes: dict[int, list[float]],
+        dynamodb_read_capacity: float,
+        dynamodb_write_capacity: float,
+    ) -> dict[str, float]:
+        # print("calculate_cost_and_carbon_of_instance")
+        # print(f"data_input_sizes: {data_input_sizes}")
+        # print(f"data_output_sizes: {data_output_sizes}")
+        # print(f"dynamodb_read_capacity: {dynamodb_read_capacity}")
+        # print(f"dynamodb_write_capacity: {dynamodb_write_capacity}\n")
+        data_output_sizes_str_dict = self._get_converted_region_name_dict(data_output_sizes)
+        return {
+            "cost": self._cost_calculator.calculate_virtual_start_instance_cost(
+                data_output_sizes_str_dict,
+                self._get_converted_region_name_dict(sns_data_call_and_output_sizes),
+                dynamodb_read_capacity,
+                dynamodb_write_capacity,
+            ),
+            "execution_carbon": 0.0,
+            "transmission_carbon": self._carbon_calculator.calculate_virtual_start_instance_carbon(
+                self._get_converted_region_name_dict(data_input_sizes),
+                data_output_sizes_str_dict
+            ),
+        }
+
+
     def _get_converted_region_name_dict(self, input_region_index_dict: dict[int, Any]) -> dict[Optional[str], Any]:
         return {
             self._region_indexer.index_to_value(region_index) if region_index != -1 else None: value
@@ -403,10 +445,9 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
     ) -> dict[str, float]:
         # Each entry of the sync_edge_upload_edges_auxiliary_data is a tuple
         # Where the first element is when a node reaches the invoke_call
-        # Where the second element is the size of the sync uploads
-        # The third element is the latency of the entire tranmsission (May be used)
+        # Where the second element is the size of the sync uploads.
         # We need to first sort the list by the first element (shortest time first)
-        # Then we calculate the WRU for each entry with cumulative data sizes
+        # Then we calculate the WRU for each entry with cumulative data sizes.
         write_capacity_units = 0.0
         cumulative_data_size = 0.0
 
@@ -419,6 +460,14 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
             write_capacity_units += self._calculate_write_capacity_units(cumulative_data_size)
 
         return {
-            "read_capacity_units": self._calculate_write_capacity_units(cumulative_data_size),
+            "read_capacity_units": self._calculate_read_capacity_units(cumulative_data_size),
             "write_capacity_units": write_capacity_units,
+        }
+
+    def get_start_hop_info(self) -> dict[str, float]:
+        workflow_placement_decision_size_gb = self._workflow_loader.get_workflow_placement_decision_size()
+        read_capacity_units = self._calculate_read_capacity_units(workflow_placement_decision_size_gb)
+        return {
+            "read_capacity_units": read_capacity_units,
+            "workflow_placement_decision_size": workflow_placement_decision_size_gb,
         }
