@@ -169,7 +169,7 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
         memory = memory / 1024
 
         # Get the average cpu utilization of the instance
-        utilization = self._workflow_loader.get_average_cpu_utilization(instance_name)
+        utilization = self._workflow_loader.get_average_cpu_utilization(instance_name, region_name)
         # average_cpu_power = (0.74 + utilization * (3.5 - 0.74)) / 1000
         average_cpu_power = min_cpu_power + utilization * (max_cpu_power - min_cpu_power)
 
