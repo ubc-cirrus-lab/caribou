@@ -157,6 +157,7 @@ class WorkflowRetriever(DataRetriever):
             # Process execution data
             execution_data = {
                 "duration_s": execution_information["duration_s"],
+                "cpu_utilization": execution_information["cpu_utilization"],
                 "data_transfer_during_execution_gb": execution_information["data_transfer_during_execution_gb"],
                 "successor_invocations": {},
             }
@@ -530,11 +531,15 @@ class WorkflowRetriever(DataRetriever):
                 # form with values stored in the order of index_translation
                 for region, execution_data in instance_val["executions"]["at_region"].items():
                     durations = []
+                    cpu_utilizations = []
                     duration_to_auxiliary_data: dict[float, Any] = {}
 
                     for execution in execution_data:
                         duration = execution["duration_s"]
                         durations.append(duration)
+
+                        utilization = execution["cpu_utilization"]
+                        cpu_utilizations.append(utilization)
 
                         # Round the duration to the nearest 10 ms
                         duration = self._round_to_ms(duration, 10)
@@ -552,7 +557,9 @@ class WorkflowRetriever(DataRetriever):
 
                         duration_to_auxiliary_data[duration].append(new_execution)
 
+                    average_cpu_utilization = sum(cpu_utilizations) / len(cpu_utilizations)
                     instance_val["executions"]["at_region"][region] = {
+                        "cpu_utilization": average_cpu_utilization,
                         "durations_s": durations,
                         "auxiliary_data": duration_to_auxiliary_data,
                     }
