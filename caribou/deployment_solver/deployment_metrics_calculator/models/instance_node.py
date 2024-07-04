@@ -51,9 +51,10 @@ class InstanceNode:
         # Calculate the cost and carbon of the node
         # based on the input/output size and dynamodb
         # read/write capacity
-        
+
         # TODO: If instance ID == -1, this is a virtual start node
         if self.instance_id == -1:
+            print(f"Calculate Virtual Node (Virtual Start Node {self.instance_id}):")
             calculated_metrics = self._input_manager.calculate_cost_and_carbon_virtual_start_instance(
                 self.tracked_data_input_sizes,
                 self.tracked_data_output_sizes,
@@ -62,6 +63,7 @@ class InstanceNode:
                 self.tracked_dynamodb_write_capacity,
             )
         else:
+            print(f"Calculate Real Node, {self.instance_id} -> {self.invoked}:")
             calculated_metrics = self._input_manager.calculate_cost_and_carbon_of_instance(
                 self.cumulative_runtimes["current"],
                 self.instance_id,

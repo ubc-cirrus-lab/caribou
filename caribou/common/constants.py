@@ -110,7 +110,7 @@ TAIL_LATENCY_THRESHOLD = 95
 # Average USA Carbon Intensity of Electric Grid
 ## Contiguous United States Carbon intensity of energy grid
 ## of Consumption in 2023 according to Electric Maps - gCO2e/kWh
-AVERAGE_USA_CARBON_INTENSITY = 410 
+AVERAGE_USA_CARBON_INTENSITY = 410
 
 # datetime
 GLOBAL_TIME_ZONE = pytz.utc

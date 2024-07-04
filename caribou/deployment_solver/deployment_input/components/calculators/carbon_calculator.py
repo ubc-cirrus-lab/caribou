@@ -1,11 +1,11 @@
 from typing import Optional
 
+from caribou.common.constants import AVERAGE_USA_CARBON_INTENSITY, GLOBAL_SYSTEM_REGION
 from caribou.deployment_solver.deployment_input.components.calculator import InputCalculator
 from caribou.deployment_solver.deployment_input.components.loaders.carbon_loader import CarbonLoader
 from caribou.deployment_solver.deployment_input.components.loaders.datacenter_loader import DatacenterLoader
 from caribou.deployment_solver.deployment_input.components.loaders.workflow_loader import WorkflowLoader
-from caribou.common.constants import AVERAGE_USA_CARBON_INTENSITY
-from caribou.common.constants import GLOBAL_SYSTEM_REGION
+
 
 class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-attributes
     def __init__(
@@ -62,16 +62,14 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
         # We model the virtual start hop cost where the SYSTEM Region
         # As it pulls wpd data from the system region.
         current_region_name = f"aws:{GLOBAL_SYSTEM_REGION}"
-        data_input_sizes = { # Alter the data input size such that the -1 or from region is the SYSTEM Region
+        data_input_sizes = {  # Alter the data input size such that the -1 or from region is the SYSTEM Region
             current_region_name: data_input_sizes[None]
         }
 
         # Even if the function is not invoked, we model
         # Each node as an abstract instance to consider
         # data transfer carbon
-        transmission_carbon += self._calculate_data_transfer_carbon(
-            None, data_input_sizes, data_output_sizes, 0.0
-        )
+        transmission_carbon += self._calculate_data_transfer_carbon(None, data_input_sizes, data_output_sizes, 0.0)
 
         return transmission_carbon
 
@@ -87,7 +85,7 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
     ) -> tuple[float, float]:
         execution_carbon = 0.0
         transmission_carbon = 0.0
-        
+
         # print(f"instance_name: {instance_name}, at region: {region_name}")
 
         # If the function is actually invoked
@@ -108,7 +106,7 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
         self,
         current_region_name: str,
         data_input_sizes: dict[Optional[str], float],
-        data_output_sizes: dict[Optional[str], float], # pylint: disable=unused-argument
+        data_output_sizes: dict[Optional[str], float],  # pylint: disable=unused-argument
         data_transfer_during_execution: float,
     ) -> float:
         total_transmission_carbon: float = 0.0
@@ -124,11 +122,11 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
             # data transfer within the same region.
             # Otherwise, we skip the data transfer within the same region
             if from_region_name == current_region_name:
-                # If its intra region transmission, and if we 
+                # If its intra region transmission, and if we
                 # want to consider it as free, then we skip it.
                 if self._carbon_free_intra_region_transmission:
                     continue
-            
+
             # TODO: At some point, actually change this from looking at average carbon
             # intensity of a country or continent to looking at the average carbon intensity
             # of the route between the two regions.
@@ -140,7 +138,10 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
         # Of data that we CANNOT track represented by data_transfer_during_execution
         # This may come from the data transfer of user code during execution OR
         # From Lambda runtimes or some AWS internal data transfer.
-        if not self._carbon_free_dt_during_execution_at_home_region or current_region_name != self._workflow_loader.get_home_region():
+        if (
+            not self._carbon_free_dt_during_execution_at_home_region
+            or current_region_name != self._workflow_loader.get_home_region()
+        ):
             total_transmission_carbon += (
                 data_transfer_during_execution * self._energy_factor_of_transmission * average_carbon_intensity_of_usa
             )

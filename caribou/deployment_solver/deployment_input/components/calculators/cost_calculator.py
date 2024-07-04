@@ -1,10 +1,10 @@
 import math
 from typing import Optional
 
+from caribou.common.constants import GLOBAL_SYSTEM_REGION
 from caribou.deployment_solver.deployment_input.components.calculator import InputCalculator
 from caribou.deployment_solver.deployment_input.components.loaders.datacenter_loader import DatacenterLoader
 from caribou.deployment_solver.deployment_input.components.loaders.workflow_loader import WorkflowLoader
-from caribou.common.constants import GLOBAL_SYSTEM_REGION
 
 
 class CostCalculator(InputCalculator):
@@ -25,7 +25,7 @@ class CostCalculator(InputCalculator):
 
     def calculate_virtual_start_instance_cost(
         self,
-        data_output_sizes: dict[Optional[str], float], # pylint: disable=unused-argument
+        data_output_sizes: dict[Optional[str], float],  # pylint: disable=unused-argument
         sns_data_call_and_output_sizes: dict[Optional[str], list[float]],
         dynamodb_read_capacity: float,
         dynamodb_write_capacity: float,
@@ -51,7 +51,7 @@ class CostCalculator(InputCalculator):
         )
 
         return total_cost
-    
+
     def calculate_instance_cost(
         self,
         runtime: float,
