@@ -104,11 +104,22 @@ class WorkflowLoader(InputLoader):
         self._start_hop_latency_distribution_cache[cache_key] = start_hop_latency_distribution
         return start_hop_latency_distribution
 
-    def get_average_cpu_utilization(self, instance_name: str) -> float:
-        # Get the average CPU utilization for the instance
-        # If not available, default to 0.5 (Average cpu utilization of
+    def get_average_cpu_utilization(self, instance_name: str, region_name: str) -> float:
+        # Get the average CPU utilization for the instance (at specific region if possible
+        # if not then try to get the average cpu utilization for the instance on all regions)
+        # If that is not even available (Should be impossible), default to 0.5 (Average cpu utilization of
         # hyperscale cloud providers)
-        return self._workflow_data.get("instance_summary", {}).get(instance_name, {}).get("cpu_utilization", 0.5)
+        cpu_utilization = (
+            self._workflow_data.get("instance_summary", {})
+            .get(instance_name, {})
+            .get("executions", {})
+            .get("at_region", {})
+            .get(region_name, {})
+            .get("cpu_utilization", None))
+        if cpu_utilization is None:
+            cpu_utilization = self._workflow_data.get("instance_summary", {}).get(instance_name, {}).get("cpu_utilization", 0.5)
+
+        return cpu_utilization
 
     def get_runtime_distribution(self, instance_name: str, region_name: str) -> list[float]:
         return (
