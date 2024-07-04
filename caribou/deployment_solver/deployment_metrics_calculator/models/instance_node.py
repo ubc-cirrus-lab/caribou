@@ -51,27 +51,34 @@ class InstanceNode:
         # Calculate the cost and carbon of the node
         # based on the input/output size and dynamodb
         # read/write capacity
-        # print(f'Calculating cost and carbon for node: {self.instance_id}')
-        # print(f"cumulative_runtimes: {self.cumulative_runtimes}")
-        calculated_metrics = self._input_manager.calculate_cost_and_carbon_of_instance(
-            self.cumulative_runtimes["current"],
-            self.instance_id,
-            self.region_id,
-            self.tracked_data_input_sizes,
-            self.tracked_data_output_sizes,
-            self.sns_data_call_and_output_sizes,
-            self.data_transfer_during_execution,
-            self.tracked_dynamodb_read_capacity,
-            self.tracked_dynamodb_write_capacity,
-            self.invoked,
-        )
-        # print(calculated_metrics)
+        
+        # TODO: If instance ID == -1, this is a virtual start node
+        if self.instance_id == -1:
+            calculated_metrics = self._input_manager.calculate_cost_and_carbon_virtual_start_instance(
+                self.tracked_data_input_sizes,
+                self.tracked_data_output_sizes,
+                self.sns_data_call_and_output_sizes,
+                self.tracked_dynamodb_read_capacity,
+                self.tracked_dynamodb_write_capacity,
+            )
+        else:
+            calculated_metrics = self._input_manager.calculate_cost_and_carbon_of_instance(
+                self.cumulative_runtimes["current"],
+                self.instance_id,
+                self.region_id,
+                self.tracked_data_input_sizes,
+                self.tracked_data_output_sizes,
+                self.sns_data_call_and_output_sizes,
+                self.data_transfer_during_execution,
+                self.tracked_dynamodb_read_capacity,
+                self.tracked_dynamodb_write_capacity,
+                self.invoked,
+            )
 
         # We only care about the runtime if the node was invoked
         runtime = self.cumulative_runtimes["current"] if self.invoked else 0.0
         return {
             "cost": calculated_metrics["cost"],
-            # "carbon": calculated_metrics['carbon'],
             "runtime": runtime,
             "execution_carbon": calculated_metrics["execution_carbon"],
             "transmission_carbon": calculated_metrics["transmission_carbon"],

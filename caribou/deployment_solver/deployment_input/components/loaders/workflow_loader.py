@@ -53,14 +53,14 @@ class WorkflowLoader(InputLoader):
     def get_home_region(self) -> str:
         return self._home_region
 
-    def get_wpd_size(self) -> list[float]:
+    def get_workflow_placement_decision_size(self) -> list[float]:
         # Workflow Placement Decision Size
         return self._workflow_data.get("start_hop_summary", {}).get("workflow_placement_decision_size_gb", 0.0)
 
     def get_start_hop_size_distribution(self) -> list[float]:
         # Start hop size distribution, if not available, return the WPD size
         # As it will always send at least the WPD size
-        return self._workflow_data.get("start_hop_summary", {}).get("transfer_sizes_gb", [self.get_wpd_size()])
+        return self._workflow_data.get("start_hop_summary", {}).get("transfer_sizes_gb", [self.get_workflow_placement_decision_size()])
 
     def get_start_hop_best_fit_line(self, to_region_name: str) -> Optional[dict[str, float]]:
         best_fit_line = (
