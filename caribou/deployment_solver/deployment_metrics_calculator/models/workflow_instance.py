@@ -375,13 +375,13 @@ class WorkflowInstance:
             cumulative_transmission_carbon += node_carbon_cost_runtime["transmission_carbon"]
             max_runtime = max(max_runtime, node_carbon_cost_runtime["runtime"])
 
-        print("\nFinal Results:")
-        print(f"Cost: {cumulative_cost} $")
-        print(f"Runtime: {max_runtime} s")
-        print(
-            f"Carbon: EX- {cumulative_execution_carbon}, TR- {cumulative_transmission_carbon}, "
-            f"overall- {cumulative_execution_carbon + cumulative_transmission_carbon}"
-        )
+        # print("\nFinal Results:")
+        # print(f"Cost: {cumulative_cost} $")
+        # print(f"Runtime: {max_runtime} s")
+        # print(
+        #     f"Carbon: EX- {cumulative_execution_carbon}, TR- {cumulative_transmission_carbon}, "
+        #     f"overall- {cumulative_execution_carbon + cumulative_transmission_carbon}"
+        # )
 
         return {
             "cost": cumulative_cost,

@@ -376,14 +376,14 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         instance_name: str = self._instance_indexer.index_to_value(instance_index)
         region_name: str = self._region_indexer.index_to_value(region_index)
 
-        print(f"runtime: {runtime}")
-        print(f"region_index: {region_index}")
-        print(f"data_input_sizes: {data_input_sizes}")
-        print(f"data_output_sizes: {data_output_sizes}")
-        print(f"sns_data_output_sizes: {sns_data_call_and_output_sizes}")
-        print(f"data_transfer_during_execution: {data_transfer_during_execution}")
-        print(f"dynamodb_read_capacity: {dynamodb_read_capacity}")
-        print(f"dynamodb_write_capacity: {dynamodb_write_capacity}\n")
+        # print(f"runtime: {runtime}")
+        # print(f"region_index: {region_index}")
+        # print(f"data_input_sizes: {data_input_sizes}")
+        # print(f"data_output_sizes: {data_output_sizes}")
+        # print(f"sns_data_output_sizes: {sns_data_call_and_output_sizes}")
+        # print(f"data_transfer_during_execution: {data_transfer_during_execution}")
+        # print(f"dynamodb_read_capacity: {dynamodb_read_capacity}")
+        # print(f"dynamodb_write_capacity: {dynamodb_write_capacity}\n")
         data_output_sizes_str_dict = self._get_converted_region_name_dict(data_output_sizes)
         execution_carbon, transmission_carbon = self._carbon_calculator.calculate_instance_carbon(
             runtime,
@@ -417,10 +417,10 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         dynamodb_read_capacity: float,
         dynamodb_write_capacity: float,
     ) -> dict[str, float]:
-        print(f"data_input_sizes: {data_input_sizes}")
-        print(f"data_output_sizes: {data_output_sizes}")
-        print(f"dynamodb_read_capacity: {dynamodb_read_capacity}")
-        print(f"dynamodb_write_capacity: {dynamodb_write_capacity}\n")
+        # print(f"data_input_sizes: {data_input_sizes}")
+        # print(f"data_output_sizes: {data_output_sizes}")
+        # print(f"dynamodb_read_capacity: {dynamodb_read_capacity}")
+        # print(f"dynamodb_write_capacity: {dynamodb_write_capacity}\n")
         data_output_sizes_str_dict = self._get_converted_region_name_dict(data_output_sizes)
         return {
             "cost": self._cost_calculator.calculate_virtual_start_instance_cost(
