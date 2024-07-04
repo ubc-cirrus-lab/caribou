@@ -4,6 +4,7 @@ from caribou.deployment_solver.deployment_input.components.calculator import Inp
 from caribou.deployment_solver.deployment_input.components.loaders.carbon_loader import CarbonLoader
 from caribou.deployment_solver.deployment_input.components.loaders.datacenter_loader import DatacenterLoader
 from caribou.deployment_solver.deployment_input.components.loaders.workflow_loader import WorkflowLoader
+from caribou.common.constants import AVERAGE_USA_CARBON_INTENSITY
 
 
 class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-attributes
@@ -12,8 +13,9 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
         carbon_loader: CarbonLoader,
         datacenter_loader: DatacenterLoader,
         workflow_loader: WorkflowLoader,
-        energy_factor_of_transmission: float = 0.005,
-        consider_home_region_for_transmission: bool = True,
+        energy_factor_of_transmission: float = 0.001,
+        carbon_free_intra_region_transmission: bool = False,
+        carbon_free_dt_during_execution_at_home_region: bool = False,
         consider_cfe: bool = False,
     ) -> None:
         super().__init__()
@@ -33,10 +35,15 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
         # Energy factor and if considering home region for transmission carbon calculation
         self._energy_factor_of_transmission: float = energy_factor_of_transmission
 
-        # This denotes if we should consider the home region for transmission carbon calculation
+        # This denotes if we should consider the intra region for transmission carbon calculation
         # Meaning that if this is true, we consider data transfer within the same region as incrring
         # transmission carbon.
-        self._consider_home_region_for_transmission: bool = consider_home_region_for_transmission
+        self._carbon_free_intra_region_transmission: bool = carbon_free_intra_region_transmission
+
+        # Consider the case of data transfer during execution being free at home region
+        # of the user workflow. (Basically making the assumption that functions deployed
+        # at user specified home region will not incurr carbon from data transfer )
+        self._carbon_free_dt_during_execution_at_home_region: bool = carbon_free_dt_during_execution_at_home_region
 
     def alter_carbon_setting(self, carbon_setting: Optional[str]) -> None:
         self._hourly_carbon_setting = carbon_setting
@@ -78,62 +85,41 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
         self,
         current_region_name: str,
         data_input_sizes: dict[Optional[str], float],
-        data_output_sizes: dict[Optional[str], float],
+        data_output_sizes: dict[Optional[str], float], # pylint: disable=unused-argument
         data_transfer_during_execution: float,
     ) -> float:
         total_transmission_carbon: float = 0.0
-        current_region_carbon_intensity = self._carbon_loader.get_grid_carbon_intensity(
-            current_region_name, self._hourly_carbon_setting
-        )
+        average_carbon_intensity_of_usa: float = AVERAGE_USA_CARBON_INTENSITY
 
-        # Make a new dictionary where the key is other region name
-        # and the value is the data transfer size (If data_input sizes
-        # and data_output sizes have the same key, we add the values)
-        data_transfer_sizes = {
-            k: data_input_sizes.get(k, 0) + data_output_sizes.get(k, 0)
-            for k in set(data_input_sizes) | set(data_output_sizes)
-        }
-
-        # print(f'data_input_sizes: {data_input_sizes}')
-        # print(f'data_output_sizes: {data_output_sizes}')
-        # print(f'data_transfer_sizes: {data_transfer_sizes}\n')
-
-        # Deal with carbon that we can track
-        for other_region_name, data_transfer_gb in data_transfer_sizes.items():
+        # Since the energy factor of transmission denotes the energy consumption
+        # of the data transfer from and to destination, we do not want to double count.
+        # Thus we can simply take a look at the data_input_sizes and ignore the data_output_sizes.
+        data_transfer_accounted_by_wrapper = data_input_sizes
+        for from_region_name, data_transfer_gb in data_transfer_accounted_by_wrapper.items():
             # If consider_home_region_for_transmission is true,
             # then we consider there are transmission carbon EVEN for
             # data transfer within the same region.
             # Otherwise, we skip the data transfer within the same region
-            if current_region_name == other_region_name:
-                if not self._consider_home_region_for_transmission:
+            if from_region_name == current_region_name:
+                # If its intra region transmission, and if we 
+                # want to consider it as free, then we skip it.
+                if self._carbon_free_intra_region_transmission:
                     continue
-
-            carbon_intensity_of_transmission_route = current_region_carbon_intensity
-            if other_region_name is not None:
-                other_region_carbon_intensity: float = self._carbon_loader.get_grid_carbon_intensity(
-                    other_region_name, self._hourly_carbon_setting
-                )
-
-                # Calculate the carbon from data transfer of the carbon intensity of the route
-                # TODO: Look into changing this if its not appropriate
-                carbon_intensity_of_transmission_route = (
-                    other_region_carbon_intensity + current_region_carbon_intensity
-                ) / 2
-
+            
+            # TODO: At some point, actually change this from looking at average carbon
+            # intensity of a country or continent to looking at the average carbon intensity
+            # of the route between the two regions.
             total_transmission_carbon += (
-                data_transfer_gb * self._energy_factor_of_transmission * carbon_intensity_of_transmission_route
+                data_transfer_gb * self._energy_factor_of_transmission * average_carbon_intensity_of_usa
             )
 
         # Calculate the carbon from data transfer
         # Of data that we CANNOT track represented by data_transfer_during_execution
-        # Right now we are just assuming they are from the home region
-        # if not ((current_region_name == self._workflow_loader.get_home_region()) and not ):
-        if self._consider_home_region_for_transmission or (
-            current_region_name != self._workflow_loader.get_home_region()
-        ):
-            # Perhaps use global carbon intensity
+        # This may come from the data transfer of user code during execution OR
+        # From Lambda runtimes or some AWS internal data transfer.
+        if not self._carbon_free_dt_during_execution_at_home_region or current_region_name != self._workflow_loader.get_home_region():
             total_transmission_carbon += (
-                data_transfer_during_execution * self._energy_factor_of_transmission * current_region_carbon_intensity
+                data_transfer_during_execution * self._energy_factor_of_transmission * average_carbon_intensity_of_usa
             )
 
         return total_transmission_carbon

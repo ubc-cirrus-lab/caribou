@@ -130,7 +130,7 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         state["_workflow_loader"] = self._workflow_loader.get_workflow_data()
         state["_carbon_calculator"] = {
             "_energy_factor_of_transmission": self._carbon_calculator._energy_factor_of_transmission,
-            "_consider_home_region_for_transmission": self._carbon_calculator._consider_home_region_for_transmission,
+            "_consider_home_region_for_transmission": self._carbon_calculator._carbon_free_intra_region_transmission,
         }
         return state
 
@@ -151,7 +151,7 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         self._carbon_calculator._energy_factor_of_transmission = state.get("_carbon_calculator").get(
             "_energy_factor_of_transmission"
         )
-        self._carbon_calculator._consider_home_region_for_transmission = state.get("_carbon_calculator").get(
+        self._carbon_calculator._carbon_free_intra_region_transmission = state.get("_carbon_calculator").get(
             "_consider_home_region_for_transmission"
         )
         requested_regions: set[str] = set(self._region_indexer.get_value_indices().keys())
