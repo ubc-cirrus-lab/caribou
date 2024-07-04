@@ -5,6 +5,7 @@ from caribou.deployment_solver.deployment_metrics_calculator.models.instance_edg
 from caribou.deployment_solver.deployment_metrics_calculator.models.instance_node import InstanceNode
 from caribou.deployment_solver.deployment_metrics_calculator.models.simulated_instance_edge import SimulatedInstanceEdge
 
+
 class WorkflowInstance:
     def __init__(self, input_manager: InputManager, instance_deployment_regions: list[int]) -> None:
         self._input_manager: InputManager = input_manager
@@ -23,10 +24,16 @@ class WorkflowInstance:
         self._configure_node_regions(instance_deployment_regions)
 
     def _configure_node_regions(self, instance_deployment_regions: list[int]) -> None:
+        # Create the start hop node
+        start_hop_node = self._get_node(-1)
+
         # Configure the regions of the nodes (Ran at the start of the workflow)
         for instance_index, region_index in enumerate(instance_deployment_regions):
             current_node = self._get_node(instance_index)
             current_node.region_id = region_index
+
+        # Ensure that the start hop node is not in a region
+        start_hop_node.region_id = -1
 
     def add_start_hop(self, starting_instance_index: int) -> None:
         # Create a new edge that goes from the home region to the starting instance
@@ -37,8 +44,8 @@ class WorkflowInstance:
 
         # Instantiate the starting node
         virtual_start_node = self._get_node(-1)
-        virtual_start_node.invoked = True # Virtual start node is always invoked
-        
+        virtual_start_node.invoked = True  # Virtual start node is always invoked
+
         # Get the WPD size of the starting node (This is the data that is downloaded from
         # system region to the starting node)
         start_hop_node_info = self._input_manager.get_start_hop_info()
@@ -307,7 +314,7 @@ class WorkflowInstance:
                         "Non-execution node must have a predecessor that is not the start hop!"
                         f"instance: {current_edge.to_instance_node.instance_id}"
                     )
-                    
+
                 # For the non-execution case, we should get the instances that the sync node will write to
                 # This will increment the consumed write capacity of the sync node, and also the data transfer size
                 non_execution_infos = transmission_info["non_execution_info"]
@@ -368,14 +375,13 @@ class WorkflowInstance:
             cumulative_transmission_carbon += node_carbon_cost_runtime["transmission_carbon"]
             max_runtime = max(max_runtime, node_carbon_cost_runtime["runtime"])
 
-        # print("\nFinal Results:")
-        # print(f"Cost: {cumulative_cost}")
-        # print(f"Runtime: {max_runtime}")
-        # print(
-        #     f"Carbon: EX- {cumulative_execution_carbon},
-        # TR- {cumulative_transmission_carbon},
-        # overall- {cumulative_execution_carbon + cumulative_transmission_carbon}"
-        # )
+        print("\nFinal Results:")
+        print(f"Cost: {cumulative_cost} $")
+        print(f"Runtime: {max_runtime} s")
+        print(
+            f"Carbon: EX- {cumulative_execution_carbon}, TR- {cumulative_transmission_carbon}, "
+            f"overall- {cumulative_execution_carbon + cumulative_transmission_carbon}"
+        )
 
         return {
             "cost": cumulative_cost,
