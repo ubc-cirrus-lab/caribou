@@ -79,4 +79,6 @@ class GoDeploymentMetricsCalculator(DeploymentMetricsCalculator):
         return ret_data["data"]
 
     def update_data_for_new_hour(self, hour_to_run: str) -> None:
-        pass
+        CaribouGo.goRead()
+        send_to_go(SEND_GO, "UpdateDataForNewHour", hour_to_run)
+        _ = receive_from_go(REC_GO)

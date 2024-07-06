@@ -1,4 +1,5 @@
 import json
+import pdb
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from typing import Any, Optional
@@ -46,16 +47,16 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
         # Complete the setup of the input manager
         self._input_manager.setup(self._region_indexer, self._instance_indexer)
 
-        # self._deployment_metrics_calculator: DeploymentMetricsCalculator = GoDeploymentMetricsCalculator(
-        #     workflow_config,
-        #     self._input_manager,
-        #     self._region_indexer,
-        #     self._instance_indexer,
-        #     record_transmission_execution_carbon=record_transmission_execution_carbon,
-        # )
-        self._deployment_metrics_calculator: DeploymentMetricsCalculator = SimpleDeploymentMetricsCalculator(
-            workflow_config, self._input_manager, self._region_indexer, self._instance_indexer, n_processes=1,
+        self._deployment_metrics_calculator: DeploymentMetricsCalculator = GoDeploymentMetricsCalculator(
+            workflow_config,
+            self._input_manager,
+            self._region_indexer,
+            self._instance_indexer,
+            record_transmission_execution_carbon=record_transmission_execution_carbon,
         )
+        # self._deployment_metrics_calculator: DeploymentMetricsCalculator = SimpleDeploymentMetricsCalculator(
+        #     workflow_config, self._input_manager, self._region_indexer, self._instance_indexer, n_processes=1,
+        # )
 
         self._home_region_index = self._region_indexer.value_to_index(self._workflow_config.home_region)
 
@@ -75,6 +76,7 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
         ]
 
     def run(self, hours_to_run: Optional[list[str]] = None) -> None:
+        pdb.set_trace()
         hour_to_run_to_result: dict[str, Any] = {"time_keys_to_staging_area_data": {}, "deployment_metrics": {}}
         if hours_to_run is None:
             hours_to_run = [None]  # type: ignore
@@ -103,7 +105,8 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
 
     def _update_data_for_new_hour(self, hour_to_run: str) -> None:
         self._input_manager.alter_carbon_setting(hour_to_run)
-        if isinstance(self._deployment_metrics_calculator, SimpleDeploymentMetricsCalculator):
+        if (isinstance(self._deployment_metrics_calculator, SimpleDeploymentMetricsCalculator)
+                or isinstance(self._deployment_metrics_calculator, GoDeploymentMetricsCalculator)):
             self._deployment_metrics_calculator.update_data_for_new_hour(hour_to_run)
         (
             self._home_deployment,  # pylint: disable=attribute-defined-outside-init
