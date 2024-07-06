@@ -27,3 +27,6 @@ class RegionViabilityLoader(InputLoader):
 
     def get_available_regions(self) -> list[str]:
         return self._available_regions
+
+    def toDict(self):
+        return self._available_regions

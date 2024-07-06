@@ -118,6 +118,19 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
     def get_all_carbon_data(self) -> dict[str, Any]:
         return self._carbon_loader.get_carbon_data()
 
+    def toDict(self) -> dict[str, Any]:
+        return {
+            "region_viability_loader": self._region_viability_loader.toDict(),
+            "datacenter_loader": self._datacenter_loader.toDict(),
+            "performance_loader": self._performance_loader.toDict(),
+            "carbon_loader": self._carbon_loader.toDict(),
+            "workflow_loader": self._workflow_loader.toDict(),
+            "consider_cfe": self._carbon_calculator._consider_cfe,
+            "instance_indexer": self._instance_indexer.toDict(),
+            "region_indexer": self._region_indexer.toDict(),
+
+        }
+
     def __getstate__(self):  # type: ignore
         state = self.__dict__.copy()
         state.pop("_data_collector_client", None)

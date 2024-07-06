@@ -33,3 +33,6 @@ class PerformanceLoader(InputLoader):
 
     def get_performance_data(self) -> dict[str, Any]:
         return self._performance_data
+
+    def toDict(self):
+        return self._performance_data

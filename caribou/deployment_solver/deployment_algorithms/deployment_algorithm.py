@@ -14,6 +14,8 @@ from caribou.deployment_solver.deployment_input.input_manager import InputManage
 from caribou.deployment_solver.deployment_metrics_calculator.deployment_metrics_calculator import (
     DeploymentMetricsCalculator,
 )
+from caribou.deployment_solver.deployment_metrics_calculator.go_deployment_metrics_calculator import \
+    GoDeploymentMetricsCalculator
 from caribou.deployment_solver.deployment_metrics_calculator.simple_deployment_metrics_calculator import (
     SimpleDeploymentMetricsCalculator,
 )
@@ -44,13 +46,15 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
         # Complete the setup of the input manager
         self._input_manager.setup(self._region_indexer, self._instance_indexer)
 
+        # self._deployment_metrics_calculator: DeploymentMetricsCalculator = GoDeploymentMetricsCalculator(
+        #     workflow_config,
+        #     self._input_manager,
+        #     self._region_indexer,
+        #     self._instance_indexer,
+        #     record_transmission_execution_carbon=record_transmission_execution_carbon,
+        # )
         self._deployment_metrics_calculator: DeploymentMetricsCalculator = SimpleDeploymentMetricsCalculator(
-            workflow_config,
-            self._input_manager,
-            self._region_indexer,
-            self._instance_indexer,
-            n_processes=n_workers,
-            record_transmission_execution_carbon=record_transmission_execution_carbon,
+            workflow_config, self._input_manager, self._region_indexer, self._instance_indexer, n_processes=1,
         )
 
         self._home_region_index = self._region_indexer.value_to_index(self._workflow_config.home_region)

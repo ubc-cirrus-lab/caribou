@@ -115,3 +115,6 @@ class DatacenterLoader(InputLoader):
             all_data[provider] = self._retrieve_data(self._provider_table, provider)
 
         return all_data
+
+    def toDict(self):
+        return self._datacenter_data

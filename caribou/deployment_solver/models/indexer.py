@@ -19,3 +19,9 @@ class Indexer(ABC):
 
     def index_to_value(self, index: int) -> str:
         return self._indices_to_values[index]
+
+    def toDict(self):
+        return {
+            "value_indices": self._value_indices,
+            "indices_to_values": self._indices_to_values
+        }
