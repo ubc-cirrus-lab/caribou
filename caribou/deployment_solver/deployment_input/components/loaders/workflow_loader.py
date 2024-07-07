@@ -53,7 +53,7 @@ class WorkflowLoader(InputLoader):
     def get_home_region(self) -> str:
         return self._home_region
 
-    def get_workflow_placement_decision_size(self) -> list[float]:
+    def get_workflow_placement_decision_size(self) -> float:
         # Workflow Placement Decision Size
         return self._workflow_data.get("start_hop_summary", {}).get("workflow_placement_decision_size_gb", 0.0)
 
