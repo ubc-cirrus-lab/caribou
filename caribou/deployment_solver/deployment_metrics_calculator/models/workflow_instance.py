@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any
 
 from caribou.deployment_solver.deployment_input.input_manager import InputManager
 from caribou.deployment_solver.deployment_metrics_calculator.models.instance_edge import InstanceEdge
@@ -134,6 +134,7 @@ class WorkflowInstance:
             # and the data transfer during execution
             (
                 current_node.cumulative_runtimes,
+                current_node.execution_time,
                 data_transfer_during_execution,
             ) = self._input_manager.get_node_runtimes_and_data_transfer(
                 instance_index, current_node.region_id, cumulative_runtime

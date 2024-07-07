@@ -282,7 +282,7 @@ class RuntimeCalculator(InputCalculator):
 
     def calculate_node_runtimes_and_data_transfer(
         self, instance_name: str, region_name: str, previous_cumulative_runtime: float, instance_indexer: Indexer
-    ) -> tuple[dict[str, Any], float]:
+    ) -> tuple[dict[str, Any], float, float]:
         # Calculate the current runtime of this instance when executed in the given region
         # Get the runtime distribution of the instance in the given region
         runtime_distribution: list[float] = self._workflow_loader.get_runtime_distribution(instance_name, region_name)
@@ -323,7 +323,7 @@ class RuntimeCalculator(InputCalculator):
         runtime: float,
         previous_cumulative_runtime: float,
         instance_indexer: Indexer,
-    ) -> tuple[dict[str, Any], float]:
+    ) -> tuple[dict[str, Any], float, float]:
         # Retrieve the auxiliary_index_translation
         auxiliary_index_translation = self._workflow_loader.get_auxiliary_index_translation(instance_name)
 
@@ -367,10 +367,12 @@ class RuntimeCalculator(InputCalculator):
         # input manager
         # The value is the cumulative runtime of when this
         # node invokes the successor
+        current_node_execution_time = runtime * relative_region_performance
         return (
             {
-                "current": previous_cumulative_runtime + (runtime * relative_region_performance),
+                "current": previous_cumulative_runtime + current_node_execution_time,
                 "successors": successors_runtime_data,
             },
+            current_node_execution_time,
             auxiliary_data[auxiliary_index_translation["data_transfer_during_execution_gb"]],
         )

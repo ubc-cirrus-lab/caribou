@@ -54,7 +54,7 @@ class CostCalculator(InputCalculator):
 
     def calculate_instance_cost(
         self,
-        runtime: float,
+        execution_time: float,
         instance_name: str,
         current_region_name: str,
         data_output_sizes: dict[Optional[str], float],
@@ -69,7 +69,7 @@ class CostCalculator(InputCalculator):
         # We must consider the cost of execution and SNS
         if is_invoked:
             # Calculate execution cost of the instance itself
-            total_cost += self._calculate_execution_cost(instance_name, current_region_name, runtime)
+            total_cost += self._calculate_execution_cost(instance_name, current_region_name, execution_time)
 
             # Add the cost of SNS (Our current orchastration service)
             total_cost += self._calculate_sns_cost(current_region_name, sns_data_call_and_output_sizes)
@@ -102,7 +102,7 @@ class CostCalculator(InputCalculator):
         return total_dynamodb_cost
 
     def _calculate_sns_cost(
-        self, current_region_name: str, sns_data_call_and_output_sizes: dict[Optional[str], list[float]]
+        self, current_region_name: Optional[str], sns_data_call_and_output_sizes: dict[Optional[str], list[float]]
     ) -> float:
         total_sns_cost = 0.0
 
@@ -111,7 +111,7 @@ class CostCalculator(InputCalculator):
         # INSIDE the current region (As data_output_size already
         # includes data transfer outside the region and contains
         # sns_data_output_sizes)
-        if self._consider_intra_region_transfer_for_sns:
+        if self._consider_intra_region_transfer_for_sns and current_region_name:
             _, total_data_output_size = sns_data_call_and_output_sizes.get(current_region_name, (0, 0.0))
 
             # Calculate the cost of data transfer
@@ -154,9 +154,9 @@ class CostCalculator(InputCalculator):
 
         return total_data_output_size * transmission_cost_gb
 
-    def _calculate_execution_cost(self, instance_name: str, region_name: str, runtime: float) -> float:
+    def _calculate_execution_cost(self, instance_name: str, region_name: str, execution_time: float) -> float:
         cost_from_compute_s, invocation_cost = self._get_execution_conversion_ratio(instance_name, region_name)
-        return cost_from_compute_s * runtime + invocation_cost
+        return cost_from_compute_s * execution_time + invocation_cost
 
     def _get_execution_conversion_ratio(self, instance_name: str, region_name: str) -> tuple[float, float]:
         # Check if the conversion ratio is in the cache

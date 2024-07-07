@@ -41,6 +41,9 @@ class InstanceNode:
         # node invokes the successor
         self.cumulative_runtimes: dict[str, Any] = {"current": 0.0, "successors": {}}
 
+        # Store the node execution time
+        self.execution_time: float = 0.0
+
     def get_cumulative_runtime(self, successor_instance_index: int) -> float:
         # Get the cumulative runtime of the successor edge
         # If there are no specifiec runtime for the successor
@@ -65,7 +68,7 @@ class InstanceNode:
         else:
             # print(f"Calculate Real Node, {self.instance_id} -> {self.invoked}:")
             calculated_metrics = self._input_manager.calculate_cost_and_carbon_of_instance(
-                self.cumulative_runtimes["current"],
+                self.execution_time,
                 self.instance_id,
                 self.region_id,
                 self.tracked_data_input_sizes,

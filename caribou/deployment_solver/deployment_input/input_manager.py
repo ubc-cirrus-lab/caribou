@@ -347,7 +347,7 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
 
     def get_node_runtimes_and_data_transfer(
         self, instance_index: int, region_index: int, previous_cumulative_runtime: float
-    ) -> tuple[dict[str, Any], float]:
+    ) -> tuple[dict[str, Any], float, float]:
         # Convert the instance and region indices to their names
         instance_name: str = self._instance_indexer.index_to_value(instance_index)
         region_name: str = self._region_indexer.index_to_value(region_index)
@@ -361,7 +361,7 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
 
     def calculate_cost_and_carbon_of_instance(
         self,
-        runtime: float,
+        execution_time: float,
         instance_index: int,
         region_index: int,
         data_input_sizes: dict[int, float],
@@ -386,7 +386,7 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         # print(f"dynamodb_write_capacity: {dynamodb_write_capacity}\n")
         data_output_sizes_str_dict = self._get_converted_region_name_dict(data_output_sizes)
         execution_carbon, transmission_carbon = self._carbon_calculator.calculate_instance_carbon(
-            runtime,
+            execution_time,
             instance_name,
             region_name,
             self._get_converted_region_name_dict(data_input_sizes),
@@ -396,7 +396,7 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         )
         return {
             "cost": self._cost_calculator.calculate_instance_cost(
-                runtime,
+                execution_time,
                 instance_name,
                 region_name,
                 data_output_sizes_str_dict,

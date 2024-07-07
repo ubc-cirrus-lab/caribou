@@ -75,7 +75,7 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
 
     def calculate_instance_carbon(
         self,
-        runtime: float,
+        execution_time: float,
         instance_name: str,
         region_name: str,
         data_input_sizes: dict[Optional[str], float],
@@ -91,7 +91,7 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
         # If the function is actually invoked
         if is_invoked:
             # Calculate the carbon from running the execution
-            execution_carbon += self._calculate_execution_carbon(instance_name, region_name, runtime)
+            execution_carbon += self._calculate_execution_carbon(instance_name, region_name, execution_time)
 
         # Even if the function is not invoked, we model
         # Each node as an abstract instance to consider
@@ -104,7 +104,7 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
 
     def _calculate_data_transfer_carbon(
         self,
-        current_region_name: str,
+        current_region_name: Optional[str],
         data_input_sizes: dict[Optional[str], float],
         data_output_sizes: dict[Optional[str], float],  # pylint: disable=unused-argument
         data_transfer_during_execution: float,
