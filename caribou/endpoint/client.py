@@ -38,7 +38,7 @@ class Client:
         self._endpoints = Endpoints()
         self._home_region_threshold = 0.1  # 10% of the time run in home region
 
-    def run(self, input_data: Optional[str] = None) -> None:
+    def run(self, input_data: Optional[str] = None) -> str:
         current_time = datetime.now(GLOBAL_TIME_ZONE).strftime(TIME_FORMAT)
 
         if self._workflow_id is None:
@@ -91,6 +91,8 @@ class Client:
             message=json_payload,
             identifier=identifier,
         )
+
+        return run_id
 
     def _get_time_key(self, workflow_placement_decision: dict[str, Any]) -> str:
         if "current_deployment" not in workflow_placement_decision["workflow_placement"]:
