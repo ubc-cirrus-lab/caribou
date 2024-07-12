@@ -29,8 +29,9 @@ class StochasticHeuristicDeploymentAlgorithm(DeploymentAlgorithm):
         self._bias_regions: set[int] = set()
         self._bias_probability = 0.2
 
-        # Here is the maximum search space size (Exauhstive search space size)
-        self._max_search_space_size = len(self._region_indexer.get_value_indices().values()) ** self._number_of_instances
+        # # Here is the maximum search space size (Exauhstive search space size)
+        # self._max_search_space_size = len(self._region_indexer.get_value_indices().values())
+        # ** self._number_of_instances
 
         self._max_number_combinations = 1
         for instance in range(self._number_of_instances):
@@ -51,10 +52,15 @@ class StochasticHeuristicDeploymentAlgorithm(DeploymentAlgorithm):
 
         generated_deployments: set[tuple[int, ...]] = {tuple(deployment) for deployment, _ in deployments}
         for _ in range(self._num_iterations):
+            if len(generated_deployments) >= self._max_number_combinations:
+                break
+
             new_deployment = self._generate_new_deployment(current_deployment)
             if tuple(new_deployment) in generated_deployments:
                 continue
-            generated_deployments.add(tuple(current_deployment)) # Add the current deployment to the set (as it is generated)
+            generated_deployments.add(
+                tuple(current_deployment)
+            )  # Add the current deployment to the set (as it is generated)
 
             new_deployment_metrics = self._deployment_metrics_calculator.calculate_deployment_metrics(new_deployment)
 
@@ -68,11 +74,11 @@ class StochasticHeuristicDeploymentAlgorithm(DeploymentAlgorithm):
 
             self._temperature *= 0.99
 
-            if len(deployments) >= self._max_number_combinations:
-                break
-            elif (len(generated_deployments) == self._max_search_space_size):
-                # If we have explored the entire search space, break
-                break
+            # if len(deployments) >= self._max_number_combinations:
+            #     break
+            # elif (len(generated_deployments) == self._max_search_space_size):
+            #     # If we have explored the entire search space, break
+            #     break
 
     def _generate_all_possible_coarse_deployments(self) -> list[tuple[list[int], dict[str, float]]]:
         deployments = []
