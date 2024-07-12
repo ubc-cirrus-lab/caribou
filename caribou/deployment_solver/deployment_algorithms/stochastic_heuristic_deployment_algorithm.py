@@ -52,14 +52,17 @@ class StochasticHeuristicDeploymentAlgorithm(DeploymentAlgorithm):
 
         generated_deployments: set[tuple[int, ...]] = {tuple(deployment) for deployment, _ in deployments}
         for _ in range(self._num_iterations):
+        # for i in range(self._num_iterations):
+        #     print(len(generated_deployments), self._max_number_combinations, i, self._num_iterations)
             if len(generated_deployments) >= self._max_number_combinations:
                 break
 
             new_deployment = self._generate_new_deployment(current_deployment)
             if tuple(new_deployment) in generated_deployments:
+                # print(f"Generated deployment already exists: {new_deployment}")
                 continue
             generated_deployments.add(
-                tuple(current_deployment)
+                tuple(new_deployment)
             )  # Add the current deployment to the set (as it is generated)
 
             new_deployment_metrics = self._deployment_metrics_calculator.calculate_deployment_metrics(new_deployment)
