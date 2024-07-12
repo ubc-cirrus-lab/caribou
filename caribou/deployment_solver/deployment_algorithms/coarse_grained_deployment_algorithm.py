@@ -27,7 +27,7 @@ class CoarseGrainedDeploymentAlgorithm(DeploymentAlgorithm):
             deployment_metrics = self._home_deployment_metrics
         else:
             deployment_metrics = self._deployment_metrics_calculator.calculate_deployment_metrics(deployment)
-        
+
         if self._is_hard_constraint_failed(deployment_metrics):
             return None
 

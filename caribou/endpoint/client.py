@@ -76,7 +76,7 @@ class Client:
         workflow_placement_decision["send_to_home_region"] = send_to_home_region
 
         run_id = uuid.uuid4().hex
-        workflow_placement_decision["run_id"] = run_id # Run_id is stored in the workflow_placement_decision
+        workflow_placement_decision["run_id"] = run_id  # Run_id is stored in the workflow_placement_decision
         print(f"Run ID for current run: {run_id}")
         wrapped_input_data = {
             "input_data": input_data,
