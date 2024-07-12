@@ -117,6 +117,7 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
         # Thus we can simply take a look at the data_input_sizes and ignore the data_output_sizes.
         data_transfer_accounted_by_wrapper = data_input_sizes
         for from_region_name, data_transfer_gb in data_transfer_accounted_by_wrapper.items():
+            transmission_network_carbon_intensity = average_carbon_intensity_of_usa
             # If consider_home_region_for_transmission is true,
             # then we consider there are transmission carbon EVEN for
             # data transfer within the same region.
@@ -126,24 +127,41 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
                 # want to consider it as free, then we skip it.
                 if self._carbon_free_intra_region_transmission:
                     continue
+                else:
+                    # Get the carbon intensity of the region (If data transfer is within the same region)
+                    # Otherwise it will be inter-region data transfer, and thus we use the average carbon intensity
+                    # of the USA.
+                    transmission_network_carbon_intensity = self._carbon_loader.get_grid_carbon_intensity(
+                        current_region_name, self._hourly_carbon_setting
+                    )
 
             # TODO: At some point, actually change this from looking at average carbon
             # intensity of a country or continent to looking at the average carbon intensity
             # of the route between the two regions.
             total_transmission_carbon += (
-                data_transfer_gb * self._energy_factor_of_transmission * average_carbon_intensity_of_usa
+                data_transfer_gb * self._energy_factor_of_transmission * transmission_network_carbon_intensity
             )
 
         # Calculate the carbon from data transfer
         # Of data that we CANNOT track represented by data_transfer_during_execution
         # This may come from the data transfer of user code during execution OR
         # From Lambda runtimes or some AWS internal data transfer.
+        current_region_is_home_region = current_region_name == self._workflow_loader.get_home_region()
         if (
             not self._carbon_free_dt_during_execution_at_home_region
-            or current_region_name != self._workflow_loader.get_home_region()
+            or not current_region_is_home_region
         ):
+            transmission_network_carbon_intensity = average_carbon_intensity_of_usa
+            if current_region_is_home_region:
+                # Here we make the assumption that the user code accesses data from the home region
+                # thus the grid carbon intensity will be the same as the home region if it is at the home region.
+                # Otherwise, we use the average carbon intensity of the USA.
+                transmission_network_carbon_intensity = self._carbon_loader.get_grid_carbon_intensity(
+                    current_region_name, self._hourly_carbon_setting
+                )
+
             total_transmission_carbon += (
-                data_transfer_during_execution * self._energy_factor_of_transmission * average_carbon_intensity_of_usa
+                data_transfer_during_execution * self._energy_factor_of_transmission * transmission_network_carbon_intensity
             )
 
         return total_transmission_carbon
