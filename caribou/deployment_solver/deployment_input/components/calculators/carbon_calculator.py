@@ -7,21 +7,21 @@ from caribou.deployment_solver.deployment_input.components.loaders.workflow_load
 
 
 class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-attributes
+    _energy_factor_of_transmission: float = 0.005,
+    _consider_home_region_for_transmission: bool = True,
+    _consider_cfe: bool = False
+
     def __init__(
         self,
         carbon_loader: CarbonLoader,
         datacenter_loader: DatacenterLoader,
         workflow_loader: WorkflowLoader,
-        energy_factor_of_transmission: float = 0.005,
-        consider_home_region_for_transmission: bool = True,
-        consider_cfe: bool = False,
     ) -> None:
         super().__init__()
         self._carbon_loader: CarbonLoader = carbon_loader
         self._datacenter_loader: DatacenterLoader = datacenter_loader
         self._workflow_loader: WorkflowLoader = workflow_loader
         # self._runtime_calculator: RuntimeCalculator = runtime_calculator
-        self._consider_cfe: bool = consider_cfe
 
         # Conversion ratio cache
         self._execution_conversion_ratio_cache: dict[str, tuple[float, float, float]] = {}
@@ -29,14 +29,6 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
 
         # Carbon setting - hourly or average policy
         self._hourly_carbon_setting: Optional[str] = None  # None indicates the default setting -> Average everything
-
-        # Energy factor and if considering home region for transmission carbon calculation
-        self._energy_factor_of_transmission: float = energy_factor_of_transmission
-
-        # This denotes if we should consider the home region for transmission carbon calculation
-        # Meaning that if this is true, we consider data transfer within the same region as incrring
-        # transmission carbon.
-        self._consider_home_region_for_transmission: bool = consider_home_region_for_transmission
 
     def alter_carbon_setting(self, carbon_setting: Optional[str]) -> None:
         self._hourly_carbon_setting = carbon_setting

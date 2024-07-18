@@ -128,7 +128,7 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
             "consider_cfe": self._carbon_calculator._consider_cfe,
             "instance_indexer": self._instance_indexer.toDict(),
             "region_indexer": self._region_indexer.toDict(),
-
+            "energy_factor": self._carbon_calculator._energy_factor_of_transmission,
         }
 
     def __getstate__(self):  # type: ignore
