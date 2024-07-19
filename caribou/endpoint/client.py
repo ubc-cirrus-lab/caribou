@@ -17,6 +17,7 @@ from caribou.common.constants import (
     WORKFLOW_PLACEMENT_DECISION_TABLE,
     WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE,
     WORKFLOW_SUMMARY_TABLE,
+    HOME_REGION_THRESHOLD
 )
 from caribou.common.models.endpoints import Endpoints
 from caribou.common.models.remote_client.aws_remote_client import AWSRemoteClient
@@ -36,7 +37,7 @@ class Client:
     def __init__(self, workflow_id: Optional[str] = None) -> None:
         self._workflow_id = workflow_id
         self._endpoints = Endpoints()
-        self._home_region_threshold = 0.1  # 10% of the time run in home region
+        self._home_region_threshold = HOME_REGION_THRESHOLD  # fractional % of the time run in home region
 
     def run(self, input_data: Optional[str] = None) -> str:
         current_time = datetime.now(GLOBAL_TIME_ZONE).strftime(TIME_FORMAT)
@@ -77,13 +78,20 @@ class Client:
 
         run_id = uuid.uuid4().hex
         workflow_placement_decision["run_id"] = run_id  # Run_id is stored in the workflow_placement_decision
+        workflow_placement_decision["data_size"] = wpd_data_size
+        workflow_placement_decision["consumed_read_capacity"] = consumed_read_capacity
         print(f"Run ID for current run: {run_id}")
         wrapped_input_data = {
-            "input_data": input_data,
+            # "input_data": input_data,
+            "payload": input_data,
             "time_request_sent": current_time,
             "workflow_placement_decision": workflow_placement_decision,
-            "wpd_data_size": wpd_data_size,
-            "wpd_consumed_read_capacity": consumed_read_capacity,
+            "number_of_hops_from_client_request": 0,
+            "permit_redirection": False, # We don't want to redirect the request (As we should already send it to the correct region)
+            "redirected": False,
+            "request_source": "Caribou CLI",
+            # "wpd_data_size": wpd_data_size,
+            # "wpd_consumed_read_capacity": consumed_read_capacity,
         }
 
         json_payload = json.dumps(wrapped_input_data)
