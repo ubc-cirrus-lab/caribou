@@ -15,6 +15,7 @@ class CaribouFunction:
         entry_point: bool,
         regions_and_providers: dict,
         environment_variables: list[dict[str, str]],
+        allow_placement_decision_override: bool,
     ):
         self.function_callable = function_callable
         self.name = name
@@ -22,6 +23,7 @@ class CaribouFunction:
         self.handler = f"app.{function_callable.__name__}"
         self.regions_and_providers = regions_and_providers if len(regions_and_providers) > 0 else None
         self.environment_variables = environment_variables if len(environment_variables) > 0 else None
+        self.allow_placement_decision_override = allow_placement_decision_override
         self.validate_function_name()
 
     def validate_function_name(self) -> None:

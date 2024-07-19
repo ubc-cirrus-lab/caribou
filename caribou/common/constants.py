@@ -1,4 +1,11 @@
-import pytz
+from datetime import timezone
+
+# Caribou Wrapper Constants
+## Determines the percentage of requests ALWAYS
+## being sent to the home region (Entire workflow)
+HOME_REGION_THRESHOLD = 0.1 # 10% of the time run in home region
+
+MAXIMUM_HOPS_FROM_CLIENT_REQUEST = 20 # If the request has been forwarded or gone through X hops, it is dropped
 
 # Workflow Placement Tables
 WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE = "workflow_placement_solver_staging_area_table"
@@ -113,7 +120,7 @@ TAIL_LATENCY_THRESHOLD = 95
 AVERAGE_USA_CARBON_INTENSITY = 410
 
 # datetime
-GLOBAL_TIME_ZONE = pytz.utc
+GLOBAL_TIME_ZONE = timezone.utc
 TIME_FORMAT = "%Y-%m-%d %H:%M:%S,%f%z"
 TIME_FORMAT_DAYS = "%Y-%m-%d%z"
 
@@ -135,7 +142,7 @@ CONDITIONALLY_NOT_INVOKE_TASK_TYPE = "CONDITIONALLY_NOT_INVOKE"
 
 # Caribou Wrapper parameters
 ## max workers for async invocations
-MAX_WORKERS = 4
+MAX_WORKERS = 10
 
 ## Orchastration transfer size limitation
 MAX_TRANSFER_SIZE = 256000  # In bytes
