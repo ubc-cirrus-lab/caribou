@@ -58,7 +58,7 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
         resources: list[Resource] = [self.role, self.deployment_package]
         return resources
 
-    def get_deployment_instructions(self) -> dict[str, list[Instruction]]:
+    def get_deployment_instructions(self,deployment_name, create_workflow_ecr) -> dict[str, list[Instruction]]:
         instructions: dict[str, list[Instruction]] = {}
         provider, region = self.deploy_region["provider"], self.deploy_region["region"]
         deploy_instruction = DeployInstructionFactory.get_deploy_instructions(provider, region)
@@ -66,6 +66,7 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
             raise RuntimeError("Deployment package has not been built")
         instructions[f"{provider}:{region}"] = deploy_instruction.get_deployment_instructions(
             self.name,
+            deployment_name,
             self.role,
             self.providers,
             self.runtime,
@@ -74,6 +75,7 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
             self.deployment_package.filename,
             self._remote_state,
             self._remote_state.resource_exists(self),
+            create_workflow_ecr
         )
         return instructions
 

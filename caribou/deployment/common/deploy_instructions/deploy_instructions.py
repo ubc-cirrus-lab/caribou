@@ -16,6 +16,7 @@ class DeployInstructions(ABC):
     def get_deployment_instructions(
         self,
         name: str,
+        workflow_deployment_name,
         role: IAMRole,
         providers: dict[str, Any],
         runtime: str,
@@ -24,9 +25,31 @@ class DeployInstructions(ABC):
         filename: str,
         remote_state: RemoteState,
         function_exists: bool,
+        create_workflow_ecr:bool,
     ) -> list[Instruction]:
         self._config = self._get_config(providers, self._provider.value)
         instructions: list[Instruction] = []
+        if create_workflow_ecr:
+            with open(filename, "rb") as f:
+                zip_contents = f.read()
+            instructions.extend(
+                [
+                    self._get_create_workflow_instruction(
+                     workflow_deployment_name,
+                       zip_contents,
+                        runtime,
+                        handler),
+                    RecordResourceVariable(
+                        resource_type="function",
+                        resource_name=name,
+                        name="function_identifier",
+                        variable_name=workflow_deployment_name,
+                    ),
+                ]
+            )
+            return instructions
+
+        
         messaging_topic_identifier_varname = f"{name}_messaging_topic"
         instructions.extend(
             [
@@ -65,6 +88,8 @@ class DeployInstructions(ABC):
                     ),
                 ]
             )
+     
+     
 
         with open(filename, "rb") as f:
             zip_contents = f.read()
@@ -80,6 +105,7 @@ class DeployInstructions(ABC):
                         handler,
                         environment_variables,
                         function_varname,
+                        workflow_deployment_name
                     ),
                     RecordResourceVariable(
                         resource_type="function",
@@ -100,6 +126,8 @@ class DeployInstructions(ABC):
                         handler,
                         environment_variables,
                         function_varname,
+                        workflow_deployment_name
+
                     ),
                     RecordResourceVariable(
                         resource_type="function",
@@ -130,6 +158,17 @@ class DeployInstructions(ABC):
         return instructions
 
     @abstractmethod
+    def _get_create_workflow_instruction(
+        self,
+        workflow_deployment_name: str,
+        zip_contents: bytes,
+        runtime: str,
+        handler: str,
+
+        ) -> Instruction:
+            raise NotImplementedError
+
+    @abstractmethod
     def _get_create_function_instruction(
         self,
         name: str,
@@ -139,6 +178,7 @@ class DeployInstructions(ABC):
         handler: str,
         environment_variables: dict[str, str],
         function_varname: str,
+        workflow_deployment_name: str,
     ) -> Instruction:
         raise NotImplementedError
 
@@ -158,6 +198,8 @@ class DeployInstructions(ABC):
         handler: str,
         environment_variables: dict[str, str],
         function_varname: str,
+        workflow_deployment_name: str,
+
     ) -> Instruction:
         raise NotImplementedError
 

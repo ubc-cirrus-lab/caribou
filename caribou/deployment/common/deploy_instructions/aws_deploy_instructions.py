@@ -41,6 +41,24 @@ class AWSDeployInstructions(DeployInstructions):
             },
             output_var=iam_role_varname,
         )
+    def _get_create_workflow_instruction(
+        self,
+        workflow_deployment_name: str,
+        zip_contents: bytes,
+        runtime: str,
+        handler: str,
+        ) -> Instruction:
+            return APICall(
+                name="create_workflow_ecr",
+                params={
+                    "workflow_deployment_name":workflow_deployment_name,
+                    "additional_docker_commands": self._config.get("additional_docker_commands", []),
+                    "zip_contents":  zip_contents,
+                    "runtime": runtime,
+                    "handler": handler,
+                },
+                output_var=workflow_deployment_name,
+            )
 
     def _get_create_function_instruction(
         self,
@@ -51,6 +69,7 @@ class AWSDeployInstructions(DeployInstructions):
         handler: str,
         environment_variables: dict[str, str],
         function_varname: str,
+        workflow_deployment_name: str,
     ) -> Instruction:
         return APICall(
             name="create_function",
@@ -63,6 +82,7 @@ class AWSDeployInstructions(DeployInstructions):
                 "environment_variables": environment_variables,
                 "timeout": self._config["timeout"],
                 "memory_size": self._config["memory"],
+                "workflow_deployment_name": workflow_deployment_name,
                 "additional_docker_commands": self._config.get("additional_docker_commands", []),
             },
             output_var=function_varname,
@@ -77,6 +97,7 @@ class AWSDeployInstructions(DeployInstructions):
         handler: str,
         environment_variables: dict[str, str],
         function_varname: str,
+        workflow_deployment_name: str,
     ) -> Instruction:
         return APICall(
             name="update_function",
@@ -89,6 +110,7 @@ class AWSDeployInstructions(DeployInstructions):
                 "environment_variables": environment_variables,
                 "timeout": self._config["timeout"],
                 "memory_size": self._config["memory"],
+                "workflow_deployment_name": workflow_deployment_name,
                 "additional_docker_commands": self._config.get("additional_docker_commands", []),
             },
             output_var=function_varname,

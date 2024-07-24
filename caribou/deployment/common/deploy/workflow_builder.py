@@ -34,16 +34,18 @@ class WorkflowBuilder:
         # Both of these are later used to build the DAG
         function_name_to_function: dict[str, CaribouFunction] = {}
         entry_point: Optional[CaribouFunction] = None
-
+        print(f"function_name {str}")
         for region in regions:
             if config.workflow_name != config.workflow_app.name:
                 raise RuntimeError("Workflow name in config and workflow app must match")
 
             if config.workflow_version != config.workflow_app.version:
                 raise RuntimeError("Workflow version in config and workflow app must match")
+            workflow_deployment_name = self._get_workflow_name(config, region)
 
             # First, we create the functions (the resources that we deploy to the serverless platform)
             for function in config.workflow_app.functions.values():
+                # workflow_deployment_name = self._get_function_name(config,function, region)
                 function_deployment_name = self._get_function_name(config, function, region)
                 function_role = self.get_function_role(config, function_deployment_name)
                 if function.regions_and_providers and "providers" in function.regions_and_providers:
@@ -64,6 +66,7 @@ class WorkflowBuilder:
                 merged_env_vars = self.merge_environment_variables(
                     function.environment_variables, config.environment_variables
                 )
+                print("function_deployment_name!!!!!workflow name"+function_deployment_name + workflow_deployment_name)
                 home_region_resources.append(
                     Function(
                         name=function_deployment_name,
@@ -127,7 +130,7 @@ class WorkflowBuilder:
                 if not caribou_function.is_waiting_for_predecessors()
                 else f"{self._get_function_name_without_provider_and_region(caribou_function.name)}:sync:"  # pylint: disable=line-too-long
             )
-
+            print(f"function_instance_name , {function_instance_name}")
             index_in_dag += 1
             # If the function is waiting for its predecessors, there can only be one instance of the function
             # Otherwise, we create a new instance of the function for every predecessor
@@ -150,6 +153,7 @@ class WorkflowBuilder:
         functions: list[FunctionInstance] = list(function_instances.values())
         return Workflow(
             resources=home_region_resources,
+            deployment_name=workflow_deployment_name,
             functions=functions,
             edges=edges,
             name=config.workflow_name,
@@ -219,6 +223,20 @@ class WorkflowBuilder:
         # Note: If this is altered, also alter verify_name_and_version() in workflow.py
         name = (
             f"{config.workflow_name}-{config.workflow_version}-{function.name}_{region['provider']}-{region['region']}"
+        )
+       
+        return name.replace(".", "_")
+    
+    def _get_workflow_name(self, config: Config, region: dict[str, str]) -> str:
+    # A function name is of the form <workflow_name>-<workflow_version>-<function_name>_<provider>-<region>
+    # This is used to uniquely identify a function with respect to a workflow,
+    # its version, the provider and the region
+    # Note: If this is altered, also alter verify_name_and_version() in workflow.py
+    # name = (
+    #     f"{config.workflow_name}-{config.workflow_version}-{function.name}_{region['provider']}-{region['region']}"
+    # )
+        name = (
+            f"{config.workflow_name}-{config.workflow_version}-{region['provider']}-{region['region']}"
         )
         return name.replace(".", "_")
 

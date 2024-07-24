@@ -141,7 +141,7 @@ class Client:
     def remove(self) -> None:
         if self._workflow_id is None:
             raise RuntimeError("No workflow id provided")
-
+        print(f"self._workflow_id {self._workflow_id}")
         self._endpoints.get_deployment_algorithm_workflow_placement_decision_client().remove_key(
             WORKFLOW_PLACEMENT_DECISION_TABLE, self._workflow_id
         )
@@ -161,7 +161,7 @@ class Client:
                 raise RuntimeError(
                     f"The deployment manager resource value for workflow_id: {workflow_id} is not a string"
                 )
-            self._remove_workflow(deployment_manager_config_json)
+            self._remove_workflow(deployment_manager_config_json, workflow_id)
 
         self._endpoints.get_deployment_resources_client().remove_resource(f"deployment_package_{self._workflow_id}")
 
@@ -177,13 +177,29 @@ class Client:
 
         print(f"Removed workflow {self._workflow_id}")
 
-    def _remove_workflow(self, deployment_manager_config_json: str) -> None:
+    def _remove_workflow(self, deployment_manager_config_json: str,workflow_id) -> None:
         deployment_manager_config = json.loads(deployment_manager_config_json)
         deployed_region_json = deployment_manager_config.get("deployed_regions")
         deployed_region: dict[str, dict[str, Any]] = json.loads(deployed_region_json)
-
         for function_physical_instance, provider_region in deployed_region.items():
+            # TODO should be removed once; should not be called for each function
+            self.remove_workflow_ecr(workflow_id, provider_region["deploy_region"])
             self._remove_function_instance(function_physical_instance, provider_region["deploy_region"])
+
+    def remove_workflow_ecr(self, workflow_id: str, provider_region: dict[str, str])-> None:
+        provider = provider_region["provider"]
+        region = provider_region["region"]
+        client = RemoteClientFactory.get_remote_client(provider, region)     
+        workflow_id = workflow_id.replace(".", "_") 
+        identifier = workflow_id + "-" + provider + "-" + region
+        print(f"Removing ecr repository {identifier} from provider {provider} in region {region}")
+        try:
+            if isinstance(client, AWSRemoteClient):
+                client.remove_ecr_repository(identifier)
+        except RuntimeError as e:
+            print(f"Could not remove ecr repository {identifier}: {str(e)}")
+        except botocore.exceptions.ClientError as e:
+            print(f"Could not remove ecr repository {identifier}: {str(e)}")
 
     def _remove_function_instance(self, function_instance: str, provider_region: dict[str, str]) -> None:
         provider = provider_region["provider"]
@@ -192,14 +208,6 @@ class Client:
         role_name = f"{identifier}-role"
         messaging_topic_name = f"{identifier}_messaging_topic"
         client = RemoteClientFactory.get_remote_client(provider, region)
-
-        try:
-            if isinstance(client, AWSRemoteClient):
-                client.remove_ecr_repository(identifier)
-        except RuntimeError as e:
-            print(f"Could not remove ecr repository {identifier}: {str(e)}")
-        except botocore.exceptions.ClientError as e:
-            print(f"Could not remove ecr repository {identifier}: {str(e)}")
 
         try:
             topic_identifier = client.get_topic_identifier(messaging_topic_name)

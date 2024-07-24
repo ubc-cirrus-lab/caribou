@@ -14,6 +14,7 @@ class Workflow(Resource):
     def __init__(
         self,
         name: str,
+        deployment_name: str,
         version: str,
         resources: list[Function],
         functions: list[FunctionInstance],
@@ -24,6 +25,7 @@ class Workflow(Resource):
         self._functions = functions
         self._edges = edges
         self._config = config
+        self.deployment_name = deployment_name
         self._deployed_regions: dict[str, dict[str, str]] = {}
         super().__init__(name, "workflow", version)
 
@@ -40,20 +42,34 @@ class Workflow(Resource):
         plans: dict[str, list[Instruction]] = {}
         if self._config is None:
             raise ValueError("Config not set, this state should not be reachable")
-
+        create_ecr = True
         for resource in self._resources:
-            if resource.deploy:
-                result = resource.get_deployment_instructions()
+            print(f"resource name {resource.name} is deploy {resource.deploy} ")
+            if resource.deploy:  
+                if create_ecr:
+                    result_1 = self._resources[0].get_deployment_instructions(self.deployment_name,True)
+                    if result_1:
+                        for region, instructions in result_1.items():
+                            if region not in plans:
+                                plans[region] = []
+                            plans[region].extend(instructions)
+                    create_ecr = False
+                    print("workflow ecr created")
+                result = resource.get_deployment_instructions(self.deployment_name,False)
                 if result:
                     for region, instructions in result.items():
+                        print(f"resource name {resource.name} region {region} instructions length {len(instructions)}") 
                         if region not in plans:
                             plans[region] = []
                         plans[region].extend(instructions)
-
+        # add new instruction to create workflow ecr 
+        # add image uri to workflow 
+        # pass image uri in create and update function
         return plans
 
     def get_deployment_packages(self) -> list[DeploymentPackage]:
         packages: list[DeploymentPackage] = []
+        print(f"get deployment packages {self._resources}")
         for resource in self._resources:
             if isinstance(resource, Function):
                 packages.append(resource.deployment_package)
@@ -293,6 +309,7 @@ class Workflow(Resource):
         # Also put a limit on the length of the function name to be less than or equal to 15 characters
         for function in self._resources:
             function_name = function.name
+            print("___________function_name"+ function_name)
 
             # First check the overall length of the function name
             if len(function_name) > 64:
