@@ -254,7 +254,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
                 self._extract_cpu_model(workflow_run_sample, message, request_id)
             elif message.startswith("DOWNLOAD_DATA_FROM_SYNC_TABLE"):
                 self._extract_download_data_from_sync_table(workflow_run_sample, message, request_id)
-            elif message.startswith("EXCEPTION"):
+            elif message.startswith("CLIENT_CODE_EXCEPTION"):
                 # Taint and blacklist the run_id as we don't need to collect more logs for it
                 del self._collected_logs[run_id]
                 self._blacklisted_run_ids.add(run_id)
@@ -283,39 +283,55 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         workflow_run_sample.start_hop_destination = self._format_region(provider_region)
 
         # Extract the instance name of the start hop from the log entry
-        function_executed = self._extract_from_string(log_entry, r"INSTANCE \((.*?)\)")
-        if not isinstance(function_executed, str):
-            raise ValueError(f"Invalid function_executed: {function_executed}")
+        function_executed = self._extract_string_from_log_entry(log_entry, r"INSTANCE \((.*?)\)", "function_executed")
         workflow_run_sample.start_hop_instance_name = function_executed
 
-        # Extract the start hop latency from the log entry
-        start_hop_latency = self._extract_from_string(log_entry, r"INIT_LATENCY \((.*?)\)")
-        if start_hop_latency and start_hop_latency != "N/A":
-            start_hop_latency_fl: float = float(start_hop_latency)
-            workflow_run_sample.start_hop_latency = start_hop_latency_fl
-
         # Extract the start hop latency and data transfer size from the log entry
-        data_transfer_size = self._extract_from_string(log_entry, r"PAYLOAD_SIZE \((.*?)\)")
-        if data_transfer_size:
-            data_transfer_size_fl: float = float(data_transfer_size)
-            workflow_run_sample.start_hop_data_transfer_size = data_transfer_size_fl
+        data_transfer_size: float = self._extract_float_from_log_entry(log_entry, r"PAYLOAD_SIZE \((.*?)\)", "data_transfer_size")
+        workflow_run_sample.start_hop_data_transfer_size = data_transfer_size
+        
 
         # Extract the workflow placement payload size from the log entry
-        workflow_placement_decision_size = self._extract_from_string(
-            log_entry, r"WORKFLOW_PLACEMENT_DECISION_SIZE \((.*?)\)"
+        workflow_placement_decision_size: float = self._extract_float_from_log_entry(
+            log_entry, r"WORKFLOW_PLACEMENT_DECISION_SIZE \((.*?)\)", "workflow_placement_decision_size"
         )
-        if workflow_placement_decision_size:
-            workflow_placement_decision_size_fl: float = float(workflow_placement_decision_size)
-            workflow_run_sample.start_hop_wpd_data_size = workflow_placement_decision_size_fl
+        workflow_run_sample.start_hop_wpd_data_size = workflow_placement_decision_size
 
-        # Extract the coonsumed read capacity to extract this payload size from the log entry
-        consumed_read_capacity = self._extract_from_string(log_entry, r"CONSUMED_READ_CAPACITY \((.*?)\)")
-        if consumed_read_capacity:
-            consumed_read_capacity_fl = float(consumed_read_capacity)
-            workflow_run_sample.start_hop_wpd_consumed_read_capacity = consumed_read_capacity_fl
+        # Extract the consumed read capacity to extract this payload size from the log entry
+        consumed_read_capacity = self._extract_float_from_log_entry(
+            log_entry, r"CONSUMED_READ_CAPACITY \((.*?)\)", "consumed_read_capacity"
+        )
+        workflow_run_sample.start_hop_wpd_consumed_read_capacity = consumed_read_capacity
 
+        # Extract if the entry was redirected (from a different region)
+        redirected_from_region = self._extract_string_from_log_entry(
+            log_entry, r"REDIRECTED \((.*?)\)", "redirected"
+        )
+        # TODO: Save this info
+
+        # Extract the request source from the log entry
+        request_source = self._extract_string_from_log_entry(log_entry, r"REQUEST_SOURCE \((.*?)\)", "request_source")
+        # TODO: Save this info
+
+        # Extract the init latency from first recieved the request to the start hop
+        init_latency_first_recieved = self._extract_float_from_log_entry(
+            log_entry, r"INIT_LATENCY_FIRST_RECIEVED \((.*?)\)", "init_latency_first_recieved"
+        )
+        # TODO: Save this info
+
+        # Extract the start hop latency from the log entry (Which can be N/A)
+        start_hop_latency_from_client = self._extract_from_string(log_entry, r"INIT_LATENCY \((.*?)\)")
+        if start_hop_latency_from_client and start_hop_latency_from_client != "N/A":
+            start_hop_latency_from_client_fl: float = float(start_hop_latency_from_client)
+            workflow_run_sample.start_hop_latency = start_hop_latency_from_client_fl
+            # TODO: Rename this slightly
+
+        # Handle Start Hop Updates
+
+
+        # Handle Execution Data Updates
         execution_data = workflow_run_sample.get_execution_data(function_executed, request_id)
-        execution_data.input_payload_size += data_transfer_size_fl
+        execution_data.input_payload_size += data_transfer_size
 
     def _extract_invoked_logs(
         self,
@@ -327,7 +343,6 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         taint = self._extract_from_string(log_entry, r"TAINT \((.*?)\)")
         if not isinstance(taint, str):
             raise ValueError(f"Invalid taint: {taint}")
-
         transmission_data = workflow_run_sample.get_transmission_data(taint)
         transmission_data.to_region = self._format_region(provider_region)
         transmission_data.transmission_end_time = log_time
@@ -335,21 +350,13 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
     def _extract_executed_logs(
         self, workflow_run_sample: WorkflowRunSample, log_entry: str, provider_region: dict[str, str], request_id: str
     ) -> None:
-        function_executed = self._extract_from_string(log_entry, r"INSTANCE \((.*?)\)")
-        if not isinstance(function_executed, str):
-            raise ValueError(f"Invalid function_executed: {function_executed}")
-
-        user_execution_duration = self._extract_from_string(log_entry, r"USER_EXECUTION_TIME \((.*?)\)")
-        if user_execution_duration:
-            user_execution_duration = float(user_execution_duration)  # type: ignore
-        if not isinstance(user_execution_duration, float):
-            raise ValueError(f"Invalid duration: {user_execution_duration}")
-
-        execution_duration = self._extract_from_string(log_entry, r"TOTAL_EXECUTION_TIME \((.*?)\)")
-        if execution_duration:
-            execution_duration = float(execution_duration)  # type: ignore
-        if not isinstance(execution_duration, float):
-            raise ValueError(f"Invalid duration: {execution_duration}")
+        function_executed: str = self._extract_string_from_log_entry(log_entry, r"INSTANCE \((.*?)\)", "function_executed")
+        user_execution_duration: float = self._extract_float_from_log_entry(
+            log_entry, r"USER_EXECUTION_TIME \((.*?)\)", "user_execution_duration"
+        )
+        execution_duration: float = self._extract_float_from_log_entry(
+            log_entry, r"TOTAL_EXECUTION_TIME \((.*?)\)", "execution_duration"
+        )
 
         # Handle execution data updates
         execution_data = workflow_run_sample.get_execution_data(function_executed, request_id)
@@ -368,65 +375,26 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         log_time: datetime,
         request_id: str,
     ) -> None:
-        taint = self._extract_from_string(log_entry, r"TAINT \((.*?)\)")
-        if not isinstance(taint, str):
-            raise ValueError(f"Invalid taint: {taint}")
-
-        caller_function = self._extract_from_string(log_entry, r"INSTANCE \((.*?)\)")
-        if not isinstance(caller_function, str):
-            raise ValueError(f"Invalid caller_function: {caller_function}")
-
-        callee_function = self._extract_from_string(log_entry, r"SUCCESSOR \((.*?)\)")
-        if not isinstance(callee_function, str):
-            raise ValueError(f"Invalid callee_function: {callee_function}")
-
-        payload_data_transfer_size = self._extract_from_string(log_entry, r"PAYLOAD_SIZE \((.*?)\)")
-        if payload_data_transfer_size:
-            payload_data_transfer_size = float(payload_data_transfer_size)  # type: ignore
-        if not isinstance(payload_data_transfer_size, float):
-            raise ValueError(f"Invalid data_transfer_size: {payload_data_transfer_size}")
-
-        invocation_time_from_function_start = self._extract_from_string(
-            log_entry, r"INVOCATION_TIME_FROM_FUNCTION_START \((.*?)\)"
+        taint: str = self._extract_string_from_log_entry(log_entry, r"TAINT \((.*?)\)", "taint")
+        caller_function: str = self._extract_string_from_log_entry(log_entry, r"INSTANCE \((.*?)\)", "caller_function")
+        callee_function: str = self._extract_string_from_log_entry(log_entry, r"SUCCESSOR \((.*?)\)", "callee_function")
+        payload_data_transfer_size: float = self._extract_float_from_log_entry(
+            log_entry, r"PAYLOAD_SIZE \((.*?)\)", "payload_data_transfer_size"
         )
-        if invocation_time_from_function_start:
-            invocation_time_from_function_start = float(invocation_time_from_function_start)  # type: ignore
-        if not isinstance(invocation_time_from_function_start, float):
-            raise ValueError(f"Invalid invocation_time_from_function_start: {invocation_time_from_function_start}")
-
-        finish_time_from_invocation_start = self._extract_from_string(
-            log_entry, r"FINISH_TIME_FROM_INVOCATION_START \((.*?)\)"
+        invocation_time_from_function_start: float = self._extract_float_from_log_entry(
+            log_entry, r"INVOCATION_TIME_FROM_FUNCTION_START \((.*?)\)", "invocation_time_from_function_start"
         )
-        if finish_time_from_invocation_start:
-            finish_time_from_invocation_start = float(finish_time_from_invocation_start)  # type: ignore
-        if not isinstance(finish_time_from_invocation_start, float):
-            raise ValueError(f"Invalid finish_time_from_invocation_start: {finish_time_from_invocation_start}")
-
-        destination_provider = self._extract_from_string(log_entry, r"PROVIDER \((.*?)\)")
-        if not isinstance(destination_provider, str):
-            raise ValueError(f"Invalid destination_provider: {destination_provider}")
-
-        destination_region = self._extract_from_string(log_entry, r"REGION \((.*?)\)")
-        if not isinstance(destination_region, str):
-            raise ValueError(f"Invalid destination_region: {destination_region}")
-
-        successor_invoked = self._extract_from_string(log_entry, r"SUCCESSOR_INVOKED \((.*?)\)")
-        if successor_invoked:
-            if successor_invoked == "True":
-                successor_invoked = True  # type: ignore
-            elif successor_invoked == "False":
-                successor_invoked = False  # type: ignore
-        if not isinstance(successor_invoked, bool):
-            raise ValueError(f"Invalid successor_invoked: {successor_invoked}")
-
-        uploaded_data_to_sync_table = self._extract_from_string(log_entry, r"UPLOADED_DATA_TO_SYNC_TABLE \((.*?)\)")
-        if uploaded_data_to_sync_table:
-            if uploaded_data_to_sync_table == "True":
-                uploaded_data_to_sync_table = True  # type: ignore
-            elif uploaded_data_to_sync_table == "False":
-                uploaded_data_to_sync_table = False  # type: ignore
-        if not isinstance(uploaded_data_to_sync_table, bool):
-            raise ValueError(f"Invalid uploaded_data_to_sync_table: {uploaded_data_to_sync_table}")
+        finish_time_from_invocation_start: float = self._extract_float_from_log_entry(
+            log_entry, r"FINISH_TIME_FROM_INVOCATION_START \((.*?)\)", "finish_time_from_invocation_start"
+        )
+        destination_provider: str = self._extract_string_from_log_entry(log_entry, r"PROVIDER \((.*?)\)", "destination_provider")
+        destination_region: str = self._extract_string_from_log_entry(log_entry, r"REGION \((.*?)\)", "destination_region")
+        successor_invoked: bool = self._extract_boolean_from_log_entry(
+            log_entry, r"SUCCESSOR_INVOKED \((.*?)\)", "successor_invoked"
+        )
+        uploaded_data_to_sync_table: bool = self._extract_boolean_from_log_entry(
+            log_entry, r"UPLOADED_DATA_TO_SYNC_TABLE \((.*?)\)", "uploaded_data_to_sync_table"
+        )
 
         # Handle transmission data updates
         transmission_data = workflow_run_sample.get_transmission_data(taint)
@@ -468,30 +436,18 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
                 successor_data.task_type = SYNC_UPLOAD_ONLY_TASK_TYPE
 
             # Update information regarding the upload data to the sync table
-            upload_data_size = self._extract_from_string(log_entry, r"UPLOAD_DATA_SIZE \((.*?)\)")
-            if upload_data_size:
-                upload_data_size = float(upload_data_size)  # type: ignore
-            if not isinstance(upload_data_size, float):
-                raise ValueError(f"Invalid upload_data_size: {upload_data_size}")
+            upload_data_size: float = self._extract_float_from_log_entry(
+                log_entry, r"UPLOAD_DATA_SIZE \((.*?)\)", "upload_data_size"
+            )
+            consumed_write_capacity: float = self._extract_float_from_log_entry(
+                log_entry, r"CONSUMED_WRITE_CAPACITY \((.*?)\)", "consumed_write_capacity"
+            )
+            sync_data_response_size: float = self._extract_float_from_log_entry(
+                log_entry, r"SYNC_DATA_RESPONSE_SIZE \((.*?)\)", "sync_data_response_size"
+            )
+            upload_rtt: float = self._extract_float_from_log_entry(log_entry, r"UPLOAD_RTT \((.*?)\)", "upload_rtt")
 
-            consumed_write_capacity = self._extract_from_string(log_entry, r"CONSUMED_WRITE_CAPACITY \((.*?)\)")
-            if consumed_write_capacity:
-                consumed_write_capacity = float(consumed_write_capacity)  # type: ignore
-            if not isinstance(consumed_write_capacity, float):
-                raise ValueError(f"Invalid consumed_write_capacity: {consumed_write_capacity}")
-
-            sync_data_response_size = self._extract_from_string(log_entry, r"SYNC_DATA_RESPONSE_SIZE \((.*?)\)")
-            if sync_data_response_size:
-                sync_data_response_size = float(sync_data_response_size)  # type: ignore
-            if not isinstance(sync_data_response_size, float):
-                raise ValueError(f"Invalid sync_data_response_size: {sync_data_response_size}")
-
-            upload_rtt = self._extract_from_string(log_entry, r"UPLOAD_RTT \((.*?)\)")
-            if upload_rtt:
-                upload_rtt = float(upload_rtt)  # type: ignore
-            if not isinstance(upload_rtt, float):
-                raise ValueError(f"Invalid upload_rtt: {upload_rtt}")
-
+            # Update the successor data
             successor_data.upload_data_size = upload_data_size
             successor_data.consumed_write_capacity = consumed_write_capacity
             successor_data.sync_data_response_size = sync_data_response_size
@@ -519,82 +475,34 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         log_time: datetime,
         request_id: str,
     ) -> None:
-        taint = self._extract_from_string(log_entry, r"TAINT \((.*?)\)")
-        if not isinstance(taint, str):
-            raise ValueError(f"Invalid taint: {taint}")
-
-        caller_function = self._extract_from_string(log_entry, r"INSTANCE \((.*?)\)")
-        if not isinstance(caller_function, str):
-            raise ValueError(f"Invalid caller_function: {caller_function}")
-
-        successor_function = self._extract_from_string(log_entry, r"SUCCESSOR \((.*?)\)")
-        if not isinstance(successor_function, str):
-            raise ValueError(f"Invalid successor_function: {successor_function}")
-
-        proxy_for_instance = self._extract_from_string(log_entry, r"PREDECESSOR_INSTANCE \((.*?)\)")
-        if not isinstance(proxy_for_instance, str):
-            raise ValueError(f"Invalid callee_function: {proxy_for_instance}")
-
-        sync_node_instance = self._extract_from_string(log_entry, r"SYNC_NODE \((.*?)\)")
-        if not isinstance(sync_node_instance, str):
-            raise ValueError(f"Invalid callee_function: {sync_node_instance}")
-
-        successor_invoked = self._extract_from_string(log_entry, r"SUCCESSOR_INVOKED \((.*?)\)")
-        if successor_invoked:
-            if successor_invoked == "True":
-                successor_invoked = True  # type: ignore
-            elif successor_invoked == "False":
-                successor_invoked = False  # type: ignore
-        if not isinstance(successor_invoked, bool):
-            raise ValueError(f"Invalid successor_invoked: {successor_invoked}")
-
-        consumed_write_capacity = self._extract_from_string(log_entry, r"CONSUMED_WRITE_CAPACITY \((.*?)\)")
-        if consumed_write_capacity:
-            consumed_write_capacity = float(consumed_write_capacity)  # type: ignore
-        if not isinstance(consumed_write_capacity, float):
-            raise ValueError(f"Invalid consumed_write_capacity: {consumed_write_capacity}")
-
-        sync_data_response_size = self._extract_from_string(log_entry, r"SYNC_DATA_RESPONSE_SIZE \((.*?)\)")
-        if sync_data_response_size:
-            sync_data_response_size = float(sync_data_response_size)  # type: ignore
-        if not isinstance(sync_data_response_size, float):
-            raise ValueError(f"Invalid sync_data_response_size: {sync_data_response_size}")
-
-        data_transfer_size = self._extract_from_string(log_entry, r"PAYLOAD_SIZE \((.*?)\)")
-        if data_transfer_size:
-            data_transfer_size = float(data_transfer_size)  # type: ignore
-        if not isinstance(data_transfer_size, float):
-            raise ValueError(f"Invalid data_transfer_size: {data_transfer_size}")
-
-        invocation_time_from_function_start = self._extract_from_string(
-            log_entry, r"INVOCATION_TIME_FROM_FUNCTION_START \((.*?)\)"
+        taint: str = self._extract_string_from_log_entry(log_entry, r"TAINT \((.*?)\)", "taint")
+        caller_function: str = self._extract_string_from_log_entry(log_entry, r"INSTANCE \((.*?)\)", "caller_function")
+        successor_function: str = self._extract_string_from_log_entry(log_entry, r"SUCCESSOR \((.*?)\)", "successor_function")
+        proxy_for_instance: str = self._extract_string_from_log_entry(log_entry, r"PREDECESSOR_INSTANCE \((.*?)\)", "proxy_for_instance")
+        sync_node_instance: str = self._extract_string_from_log_entry(log_entry, r"SYNC_NODE \((.*?)\)", "sync_node_instance")
+        successor_invoked: bool = self._extract_boolean_from_log_entry(
+            log_entry, r"SUCCESSOR_INVOKED \((.*?)\)", "successor_invoked"
         )
-        if invocation_time_from_function_start:
-            invocation_time_from_function_start = float(invocation_time_from_function_start)  # type: ignore
-        if not isinstance(invocation_time_from_function_start, float):
-            raise ValueError(f"Invalid invocation_time_from_function_start: {invocation_time_from_function_start}")
-
-        finish_time_from_invocation_start = self._extract_from_string(
-            log_entry, r"FINISH_TIME_FROM_INVOCATION_START \((.*?)\)"
+        consumed_write_capacity: float = self._extract_float_from_log_entry(
+            log_entry, r"CONSUMED_WRITE_CAPACITY \((.*?)\)", "consumed_write_capacity"
         )
-        if finish_time_from_invocation_start:
-            finish_time_from_invocation_start = float(finish_time_from_invocation_start)  # type: ignore
-        if not isinstance(finish_time_from_invocation_start, float):
-            raise ValueError(f"Invalid finish_time_from_invocation_start: {finish_time_from_invocation_start}")
-
-        call_start_to_finish_time = self._extract_from_string(log_entry, r"CALL_START_TO_FINISH \((.*?)\)")
-        if call_start_to_finish_time:
-            call_start_to_finish_time = float(call_start_to_finish_time)  # type: ignore
-        if not isinstance(call_start_to_finish_time, float):
-            raise ValueError(f"Invalid call_start_to_finish_time: {call_start_to_finish_time}")
-
-        destination_provider = self._extract_from_string(log_entry, r"PROVIDER \((.*?)\)")
-        if not isinstance(destination_provider, str):
-            raise ValueError(f"Invalid destination_provider: {destination_provider}")
-
-        destination_region = self._extract_from_string(log_entry, r"REGION \((.*?)\)")
-        if not isinstance(destination_region, str):
-            raise ValueError(f"Invalid destination_region: {destination_region}")
+        sync_data_response_size: float = self._extract_float_from_log_entry(
+            log_entry, r"SYNC_DATA_RESPONSE_SIZE \((.*?)\)", "sync_data_response_size"
+        )
+        data_transfer_size: float = self._extract_float_from_log_entry(
+            log_entry, r"PAYLOAD_SIZE \((.*?)\)", "data_transfer_size"
+        )
+        invocation_time_from_function_start: float = self._extract_float_from_log_entry(
+            log_entry, r"INVOCATION_TIME_FROM_FUNCTION_START \((.*?)\)", "invocation_time_from_function_start"
+        )
+        finish_time_from_invocation_start: float = self._extract_float_from_log_entry(
+            log_entry, r"FINISH_TIME_FROM_INVOCATION_START \((.*?)\)", "finish_time_from_invocation_start"
+        )
+        call_start_to_finish_time: float = self._extract_float_from_log_entry(
+            log_entry, r"CALL_START_TO_FINISH \((.*?)\)", "call_start_to_finish_time"
+        )
+        destination_provider: str = self._extract_string_from_log_entry(log_entry, r"PROVIDER \((.*?)\)", "destination_provider")
+        destination_region: str = self._extract_string_from_log_entry(log_entry, r"REGION \((.*?)\)", "destination_region")
 
         # Handle transmission data updates
         if successor_invoked:
@@ -618,7 +526,6 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
 
         # Handle execution data updates
         execution_data = workflow_run_sample.get_execution_data(caller_function, request_id)
-
         successor_data = execution_data.get_successor_data(successor_function)
         proxy_instance_str = f"{proxy_for_instance}>{sync_node_instance}"
         successor_data.invoking_sync_node_data_output[proxy_instance_str] = {
@@ -631,49 +538,22 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
     def _extract_conditional_non_execution_logs(
         self, workflow_run_sample: WorkflowRunSample, log_entry: str, request_id: str
     ) -> None:
-        caller_function = self._extract_from_string(log_entry, r"INSTANCE \((.*?)\)")
-        if not isinstance(caller_function, str):
-            raise ValueError(f"Invalid caller_function: {caller_function}")
-
-        callee_function = self._extract_from_string(log_entry, r"SUCCESSOR \((.*?)\)")
-        if not isinstance(callee_function, str):
-            raise ValueError(f"Invalid callee_function: {callee_function}")
-
-        consumed_write_capacity = self._extract_from_string(log_entry, r"CONSUMED_WRITE_CAPACITY \((.*?)\)")
-        if consumed_write_capacity:
-            consumed_write_capacity = float(consumed_write_capacity)  # type: ignore
-        if not isinstance(consumed_write_capacity, float):
-            raise ValueError(f"Invalid consumed_write_capacity: {consumed_write_capacity}")
-
-        sync_data_response_size = self._extract_from_string(log_entry, r"SYNC_DATA_RESPONSE_SIZE \((.*?)\)")
-        if sync_data_response_size:
-            sync_data_response_size = float(sync_data_response_size)  # type: ignore
-        if not isinstance(sync_data_response_size, float):
-            raise ValueError(f"Invalid sync_data_response_size: {sync_data_response_size}")
-
-        destination_provider = self._extract_from_string(log_entry, r"PROVIDER \((.*?)\)")
-        if not isinstance(destination_provider, str):
-            raise ValueError(f"Invalid destination_provider: {destination_provider}")
-
-        destination_region = self._extract_from_string(log_entry, r"REGION \((.*?)\)")
-        if not isinstance(destination_region, str):
-            raise ValueError(f"Invalid destination_region: {destination_region}")
-
-        invocation_time_from_function_start = self._extract_from_string(
-            log_entry, r"INVOCATION_TIME_FROM_FUNCTION_START \((.*?)\)"
+        caller_function: str = self._extract_string_from_log_entry(log_entry, r"INSTANCE \((.*?)\)", "caller_function")
+        callee_function: str = self._extract_string_from_log_entry(log_entry, r"SUCCESSOR \((.*?)\)", "callee_function")
+        consumed_write_capacity: float = self._extract_float_from_log_entry(
+            log_entry, r"CONSUMED_WRITE_CAPACITY \((.*?)\)", "consumed_write_capacity"
         )
-        if invocation_time_from_function_start:
-            invocation_time_from_function_start = float(invocation_time_from_function_start)  # type: ignore
-        if not isinstance(invocation_time_from_function_start, float):
-            raise ValueError(f"Invalid invocation_time_from_function_start: {invocation_time_from_function_start}")
-
-        finish_time_from_invocation_start = self._extract_from_string(
-            log_entry, r"FINISH_TIME_FROM_INVOCATION_START \((.*?)\)"
+        sync_data_response_size: float = self._extract_float_from_log_entry(
+            log_entry, r"SYNC_DATA_RESPONSE_SIZE \((.*?)\)", "sync_data_response_size"
         )
-        if finish_time_from_invocation_start:
-            finish_time_from_invocation_start = float(finish_time_from_invocation_start)
-        if not isinstance(finish_time_from_invocation_start, float):
-            raise ValueError(f"Invalid finish_time_from_invocation_start: {finish_time_from_invocation_start}")
+        destination_provider: str = self._extract_string_from_log_entry(log_entry, r"PROVIDER \((.*?)\)", "destination_provider")
+        destination_region: str = self._extract_string_from_log_entry(log_entry, r"REGION \((.*?)\)", "destination_region")
+        invocation_time_from_function_start: float = self._extract_float_from_log_entry(
+            log_entry, r"INVOCATION_TIME_FROM_FUNCTION_START \((.*?)\)", "invocation_time_from_function_start"
+        )
+        finish_time_from_invocation_start: float = self._extract_float_from_log_entry(
+            log_entry, r"FINISH_TIME_FROM_INVOCATION_START \((.*?)\)", "finish_time_from_invocation_start"
+        )
 
         # Execution and successor data updates
         execution_data = workflow_run_sample.get_execution_data(caller_function, request_id)
@@ -688,14 +568,9 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         )
 
     def _extract_cpu_model(self, workflow_run_sample: WorkflowRunSample, log_entry: str, request_id: str) -> None:
-        function_executed = self._extract_from_string(log_entry, r"INSTANCE \((.*?)\)")
-        if not isinstance(function_executed, str):
-            raise ValueError(f"Invalid function_executed: {function_executed}")
-
-        cpu_model = self._extract_from_string(log_entry, r"CPU_MODEL \((.*?)\)")
-        if not isinstance(cpu_model, str):
-            raise ValueError(f"Invalid cpu_model: {cpu_model}")
-        cpu_model = cpu_model.replace("<", "(").replace(">", ")")
+        function_executed: str = self._extract_string_from_log_entry(log_entry, r"INSTANCE \((.*?)\)", "function_executed")
+        cpu_model: str = self._extract_string_from_log_entry(log_entry, r"CPU_MODEL \((.*?)\)", "cpu_model")
+        cpu_model = cpu_model.replace("<", "(").replace(">", ")") # Convert back to the original format
 
         execution_data = workflow_run_sample.get_execution_data(function_executed, request_id)
         execution_data.cpu_model = cpu_model
@@ -706,28 +581,14 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
     def _extract_download_data_from_sync_table(
         self, workflow_run_sample: WorkflowRunSample, log_entry: str, request_id: str
     ) -> None:
-        function_executed = self._extract_from_string(log_entry, r"INSTANCE \((.*?)\)")
-        if not isinstance(function_executed, str):
-            raise ValueError(f"Invalid function_executed: {function_executed}")
+        function_executed: str = self._extract_string_from_log_entry(log_entry, r"INSTANCE \((.*?)\)", "function_executed")
+        download_size: float = self._extract_float_from_log_entry(log_entry, r"DOWNLOAD_SIZE \((.*?)\)", "download_size")
+        download_time: float = self._extract_float_from_log_entry(log_entry, r"DOWNLOAD_TIME \((.*?)\)", "download_time")
+        consumed_read_capacity: float = self._extract_float_from_log_entry(
+            log_entry, r"CONSUMED_READ_CAPACITY \((.*?)\)", "consumed_read_capacity"
+        )
 
-        download_size = self._extract_from_string(log_entry, r"DOWNLOAD_SIZE \((.*?)\)")
-        if download_size:
-            download_size = float(download_size)  # type: ignore
-        if not isinstance(download_size, float):
-            raise ValueError(f"Invalid download_size: {download_size}")
-
-        download_time = self._extract_from_string(log_entry, r"DOWNLOAD_TIME \((.*?)\)")
-        if download_time:
-            download_time = float(download_time)  # type: ignore
-        if not isinstance(download_time, float):
-            raise ValueError(f"Invalid download_time: {download_time}")
-
-        consumed_read_capacity = self._extract_from_string(log_entry, r"CONSUMED_READ_CAPACITY \((.*?)\)")
-        if consumed_read_capacity:
-            consumed_read_capacity = float(consumed_read_capacity)
-        if not isinstance(consumed_read_capacity, float):
-            raise ValueError(f"Invalid consumed_read_capacity: {consumed_read_capacity}")
-
+        # Handle execution data updates
         execution_data = workflow_run_sample.get_execution_data(function_executed, request_id)
         execution_data.download_size = download_size
         execution_data.download_time = download_time
@@ -965,3 +826,39 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         if region:
             return f"{region['provider']}:{region['region']}"
         return None
+
+    def _extract_float_from_log_entry(self, log_entry: str, regex: str, entry_type: Optional[str] = None) -> float:
+        float_extracted_str: Optional[str] = self._extract_from_string(log_entry, regex)
+        float_extracted: Optional[float] = None
+        if float_extracted_str:
+            float_extracted = float(float_extracted_str)
+
+        if not isinstance(float_extracted, float):
+            if entry_type is None:
+                entry_type = "String Type"
+            raise ValueError(f"Invalid {entry_type}: {float_extracted_str}")
+
+        return float_extracted
+
+    def _extract_string_from_log_entry(self, log_entry: str, regex: str, entry_type: Optional[str] = None) -> str:
+        string_extracted: Optional[str] = self._extract_from_string(log_entry, regex)
+        if not isinstance(string_extracted, str):
+            if entry_type is None:
+                entry_type = "String Type"
+            raise ValueError(f"Invalid {entry_type}: {string_extracted}")
+
+        return string_extracted
+
+    def _extract_boolean_from_log_entry(self, log_entry: str, regex: str, entry_type: Optional[str] = None) -> bool:
+        bool_extracted_str: Optional[str] = self._extract_from_string(log_entry, regex)
+        bool_extracted: Optional[bool] = None
+        if bool_extracted_str:
+            bool_extracted_str = bool_extracted_str.lower()
+            if bool_extracted_str == "true":
+                bool_extracted = True
+            elif bool_extracted_str == "false":
+                bool_extracted = False
+        if not isinstance(bool_extracted, bool):
+            raise ValueError(f"Invalid {entry_type}: {bool_extracted_str}")
+
+        return bool_extracted
