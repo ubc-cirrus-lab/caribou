@@ -976,8 +976,8 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
                                 identifier=first_function_identifier,
                             )
 
-                            # Log the CPU model
-                            self._log_cpu_model(workflow_placement_decision)
+                            # Log the CPU model (From Redirector)
+                            self._log_cpu_model(workflow_placement_decision, True)
 
                             return {
                                 "statusCode": 200,
@@ -1092,7 +1092,7 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
                     raise e
 
                 # Log the CPU model
-                self._log_cpu_model(workflow_placement_decision)
+                self._log_cpu_model(workflow_placement_decision, False)
 
                 return result
 
@@ -1102,12 +1102,12 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
 
         return _register_handler
 
-    def _log_cpu_model(self, workflow_placement_decision: dict[str, Any]) -> None:
+    def _log_cpu_model(self, workflow_placement_decision: dict[str, Any], from_redirector: bool = False) -> None:
         # Log the CPU model used in the instance
         cpu_model = self.get_cpu_info()
         log_message = (
             f"USED_CPU_MODEL: CPU_MODEL ({cpu_model.replace('(', '<').replace(')', '>')}) used in INSTANCE "
-            f'({workflow_placement_decision["current_instance_name"]})'
+            f'({workflow_placement_decision["current_instance_name"]}) and from FROM_REDIRECTOR ({from_redirector})'
         )
         self.log_for_retrieval(
             log_message,
