@@ -901,21 +901,30 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
                         if allow_placement_decision_override and debug_workflow_placement_override is not None:
                             workflow_placement_decision = debug_workflow_placement_override["workflow_placement_decision"] # Override the current workflow placement decision
 
-                            # For testing purposes, debug_workflow_placement_override should not be counted towards the payload size
-                            # Since for a non-testing scenerio, there should NOT be a debug_workflow_placement_override in the payload
-                            # if configured correctly
-                            size_of_payload_gb -= len(json.dumps(debug_workflow_placement_override).encode("utf-8")) / (1024**3)
-
+                            # We should log the size of the debug_workflow_placement_override
+                            # to correctly account for its size for cost and carbon calculations
+                            overriden_workflow_placement_size = len(json.dumps(debug_workflow_placement_override).encode("utf-8")) / (1024**3)
+                            log_message = (
+                                f"WPD_OVERRIDE: WPD was overriden by debug_workflow_placement_override "
+                                f"OVERRIDING_WORKFLOW_PLACEMENT_SIZE ({overriden_workflow_placement_size}) GB"
+                            )
+                            self.log_for_retrieval(
+                                log_message, workflow_placement_decision["run_id"], self._function_start_time
+                            )
 
                         # Get the desired first function provider and region, this determines where the first function should be placed
                         desired_first_function_provider, desired_first_function_region, first_function_identifier = self._get_current_node_desired_workflow_placement_decision(workflow_placement_decision)
+                        
+
+                        time_from_function_start = (datetime.now(GLOBAL_TIME_ZONE) - self._function_start_time).total_seconds()
                         log_message = (
                             f"RETRIVE_WPD: "
                             f'SEND_TO_HOME_DECISION ({workflow_placement_decision["send_to_home_region"]}) '
                             f'TIME_KEY ({workflow_placement_decision["time_key"]}) '
                             f'RETRIEVED_PLACEMENT_DECISION_FROM_PLATFORM ({pulled_decision_from_platform}) '
                             f"WORKFLOW_PLACEMENT_DECISION_SIZE ({wpd_data_size}) GB "
-                            f"and CONSUMED_READ_CAPACITY ({wpd_consumed_read_capacity})"
+                            f"and CONSUMED_READ_CAPACITY ({wpd_consumed_read_capacity}) "
+                            f"TIME_FROM_FUNCTION_START ({time_from_function_start}) s "
                         )
                         self.log_for_retrieval(
                             log_message, workflow_placement_decision["run_id"], self._function_start_time
