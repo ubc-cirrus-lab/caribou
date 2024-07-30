@@ -356,7 +356,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         to_provider_region = self._format_region({"provider": to_provider, "region": to_region})
 
         # Handle start hop updates
-        workflow_run_sample.start_hop_data.retrieved_placement_decision_from_platform = retrieved_placement_decision_from_platform
+        workflow_run_sample.start_hop_data.retrieved_wpd_at_function = retrieved_placement_decision_from_platform
 
         # Handle Execution Data Updates of Start Hop
         execution_data = workflow_run_sample.start_hop_data.get_redirector_execution_data(redirecting_instance, request_id)

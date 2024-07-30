@@ -19,7 +19,7 @@ class StartHopData:  # pylint: disable=too-many-instance-attributes
 
         # Indicate if the placement decision was retrieved from the platform
         # Or if it were cached
-        self.retrieved_placement_decision_from_platform: Optional[bool] = None
+        self.retrieved_wpd_at_function: bool = False
 
         # Optional Fields, only if redirected
         ## The name of the instance (Code name, as the real instance name
@@ -84,6 +84,7 @@ class StartHopData:  # pylint: disable=too-many-instance-attributes
             "workflow_placement_decision": {
                 "data_size_gb": self.wpd_data_size,
                 "consumed_read_capacity": self.consumed_read_capacity,
+                "retrieved_wpd_at_function": self.retrieved_wpd_at_function,
             },
             "redirector_execution_data": self.redirector_execution_data.to_dict() if self.redirector_execution_data else None,
         }
