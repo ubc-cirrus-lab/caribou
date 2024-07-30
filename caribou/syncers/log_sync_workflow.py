@@ -17,6 +17,7 @@ from caribou.common.constants import (
     TIME_FORMAT,
     TIME_FORMAT_DAYS,
     WORKFLOW_SUMMARY_TABLE,
+    REDIRECT_ONLY_TASK_TYPE,
 )
 from caribou.common.models.remote_client.remote_client import RemoteClient
 from caribou.common.models.remote_client.remote_client_factory import RemoteClientFactory
@@ -286,7 +287,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         request_id: str,
     ) -> None:
         function_executed: str = self._extract_string_from_log_entry(log_entry, r"INSTANCE \((.*?)\)", "function_executed")
-        data_transfer_size: float = self._extract_float_from_log_entry(log_entry, r"PAYLOAD_SIZE \((.*?)\)", "data_transfer_size")
+        input_payload_size: float = self._extract_float_from_log_entry(log_entry, r"PAYLOAD_SIZE \((.*?)\)", "data_transfer_size")
         workflow_placement_decision_size: float = self._extract_float_from_log_entry(
             log_entry, r"WORKFLOW_PLACEMENT_DECISION_SIZE \((.*?)\)", "workflow_placement_decision_size"
         )
@@ -314,7 +315,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         # Handle Start Hop Updates
         workflow_run_sample.start_hop_data.destination_provider_region = self._format_region(provider_region)
         workflow_run_sample.start_hop_data.request_source = request_source
-        workflow_run_sample.start_hop_data.data_transfer_size = data_transfer_size
+        workflow_run_sample.start_hop_data.input_payload_size_to_first_function = input_payload_size
         workflow_run_sample.start_hop_data.wpd_data_size = workflow_placement_decision_size
         workflow_run_sample.start_hop_data.consumed_read_capacity = consumed_read_capacity
         workflow_run_sample.start_hop_data.start_hop_latency_from_client = start_hop_latency_from_client
@@ -322,7 +323,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
 
         # Handle Execution Data Updates
         execution_data = workflow_run_sample.get_execution_data(function_executed, request_id)
-        execution_data.input_payload_size += data_transfer_size
+        execution_data.input_payload_size += input_payload_size
 
     def _extract_redirect_logs(
         self,
@@ -337,7 +338,8 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         # from_provider: str = self._extract_string_from_log_entry(log_entry, r"FROM_PROVIDER \((.*?)\)", "from_provider")
         to_region: str = self._extract_string_from_log_entry(log_entry, r"TO_REGION \((.*?)\)", "to_region")
         to_provider: str = self._extract_string_from_log_entry(log_entry, r"TO_PROVIDER \((.*?)\)", "to_provider")
-        payload_size: float = self._extract_float_from_log_entry(log_entry, r"PAYLOAD_SIZE \((.*?)\)", "payload_size")
+        input_payload_size: float = self._extract_float_from_log_entry(log_entry, r"INPUT_PAYLOAD_SIZE \((.*?)\)", "input_payload_size")
+        output_payload_size: float = self._extract_float_from_log_entry(log_entry, r"OUTPUT_PAYLOAD_SIZE \((.*?)\)", "output_payload_size")
         # function_identifier: str = self._extract_string_from_log_entry(log_entry, r"FUNCTION_IDENTIFIER \((.*?)\)", "function_identifier")
         taint: str = self._extract_string_from_log_entry(log_entry, r"TAINT \((.*?)\)", "taint")
         invocation_time_from_function_start: float = self._extract_float_from_log_entry(
@@ -346,51 +348,41 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         finish_time_from_invocation_start: float = self._extract_float_from_log_entry(
             log_entry, r"FINISH_TIME_FROM_INVOCATION_START \((.*?)\)", "finish_time_from_invocation_start"
         )
+        retrieved_placement_decision_from_platform: bool = self._extract_boolean_from_log_entry(
+            log_entry, r"RETRIEVED_PLACEMENT_DECISION_FROM_PLATFORM \((.*?)\)", "retrieved_placement_decision_from_platform"
+        )
         
-        # TODO: Handle the redirect logs
         # from_provider_region = self._format_region({"provider": from_provider, "region": from_region})
         to_provider_region = self._format_region({"provider": to_provider, "region": to_region})
 
+        # Handle start hop updates
+        workflow_run_sample.start_hop_data.retrieved_placement_decision_from_platform = retrieved_placement_decision_from_platform
+
         # Handle Execution Data Updates of Start Hop
         execution_data = workflow_run_sample.start_hop_data.get_redirector_execution_data(redirecting_instance, request_id)
-        execution_data.request_id = request_id
         execution_data.provider_region = self._format_region(provider_region)
         execution_data.lambda_insights = self._insights_logs.get(request_id, {})
-
-
-        # execution_data = workflow_run_sample.get_execution_data(function_executed, request_id)
-        # execution_data.input_payload_size += data_transfer_size
-
+        execution_data.input_payload_size += input_payload_size
 
         # Handle transmission data updates
         transmission_data = workflow_run_sample.get_transmission_data(taint)
         transmission_data.from_region = self._format_region(provider_region)
-
-
-
-
-        transmission_data.from_instance = caller_function
-        transmission_data.to_instance = callee_function
+        transmission_data.from_instance = redirecting_instance
+        transmission_data.to_instance = redirecting_instance
         transmission_data.transmission_start_time = log_time
-        transmission_data.payload_transmission_size = payload_size
-        transmission_data.successor_invoked = successor_invoked
+        transmission_data.payload_transmission_size = output_payload_size
+        transmission_data.successor_invoked = True
         transmission_data.from_direct_successor = True
+        transmission_data.redirector_transmission = True # Indicate that this is a redirector transmission
 
-        # Handle execution (and successor) data updates
-        execution_data = workflow_run_sample.get_execution_data(caller_function, request_id)
-        successor_data = execution_data.get_successor_data(callee_function)
-
+        # Handle Redirector execution (and successor) data updates
+        execution_data = workflow_run_sample.start_hop_data.get_redirector_execution_data(transmission_data, request_id)
+        successor_data = execution_data.get_successor_data(transmission_data)
         successor_data.invocation_time_from_function_start = invocation_time_from_function_start
         successor_data.finish_time_from_invocation_start = finish_time_from_invocation_start
-        successor_data.payload_data_size = payload_size
+        successor_data.output_payload_data_size = output_payload_size
         successor_data.destination_region = to_provider_region
-
-        # Handle the recipient execution data
-        # Payload data size is the data transfer size
-        recipient_execution_data = workflow_run_sample.get_execution_data(callee_function, None)
-        recipient_execution_data.input_payload_size += payload_size
-
-        successor_data.task_type = INVOKE_SUCCESSOR_ONLY_TASK_TYPE
+        successor_data.task_type = REDIRECT_ONLY_TASK_TYPE
 
     def _extract_invoked_logs(
         self,
@@ -417,7 +409,6 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
 
         # Handle execution data updates
         execution_data = workflow_run_sample.get_execution_data(function_executed, request_id)
-        execution_data.request_id = request_id
         execution_data.user_execution_duration = user_execution_duration
         execution_data.execution_duration = execution_duration
         execution_data.provider_region = self._format_region(provider_region)
@@ -435,7 +426,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         taint: str = self._extract_string_from_log_entry(log_entry, r"TAINT \((.*?)\)", "taint")
         caller_function: str = self._extract_string_from_log_entry(log_entry, r"INSTANCE \((.*?)\)", "caller_function")
         callee_function: str = self._extract_string_from_log_entry(log_entry, r"SUCCESSOR \((.*?)\)", "callee_function")
-        payload_data_transfer_size: float = self._extract_float_from_log_entry(
+        output_payload_data_transfer_size: float = self._extract_float_from_log_entry(
             log_entry, r"PAYLOAD_SIZE \((.*?)\)", "payload_data_transfer_size"
         )
         invocation_time_from_function_start: float = self._extract_float_from_log_entry(
@@ -459,7 +450,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         transmission_data.from_instance = caller_function
         transmission_data.to_instance = callee_function
         transmission_data.transmission_start_time = log_time
-        transmission_data.payload_transmission_size = payload_data_transfer_size
+        transmission_data.payload_transmission_size = output_payload_data_transfer_size
         transmission_data.successor_invoked = successor_invoked
         transmission_data.from_direct_successor = True
 
@@ -469,7 +460,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
 
         successor_data.invocation_time_from_function_start = invocation_time_from_function_start
         successor_data.finish_time_from_invocation_start = finish_time_from_invocation_start
-        successor_data.payload_data_size = payload_data_transfer_size
+        successor_data.output_payload_data_size = output_payload_data_transfer_size
         successor_data.destination_region = self._format_region(
             {"provider": destination_provider, "region": destination_region}
         )
@@ -477,7 +468,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         # Handle the recipient execution data
         # Payload data size is the data transfer size
         recipient_execution_data = workflow_run_sample.get_execution_data(callee_function, None)
-        recipient_execution_data.input_payload_size += payload_data_transfer_size
+        recipient_execution_data.input_payload_size += output_payload_data_transfer_size
 
         # Handle task type
         if not uploaded_data_to_sync_table:

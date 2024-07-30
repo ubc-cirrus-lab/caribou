@@ -820,7 +820,7 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
                                         f"for accepted format. Type: {type(argument_raw)}, Argument: {argument_raw}.")
 
                 # Determine the invocation type (SNS or direct)
-                size_of_payload_gb: float = -1.0 # Default value
+                size_of_input_payload_gb: float = -1.0 # Default value
                 if ("Records" in argument_raw
                     and len(argument_raw["Records"]) == 1
                     and "Sns" in argument_raw["Records"][0]
@@ -829,7 +829,7 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
                     # For an SNS message, the argument will not be directly available as a dictionary
                     # But must be loaded from the SNS Message inside of the argument
                     raw_sns_message: str = argument_raw["Records"][0]["Sns"]["Message"]
-                    size_of_payload_gb: float = len(raw_sns_message.encode("utf-8")) / (1024**3) if entry_point else -1.0
+                    size_of_input_payload_gb: float = len(raw_sns_message.encode("utf-8")) / (1024**3) if entry_point else -1.0
 
                     caribou_wrapper_argument = json.loads(raw_sns_message, cls=CustomDecoder) 
                 else: 
@@ -838,7 +838,7 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
                     caribou_wrapper_argument = argument_raw
 
                     # Convert the argument to a string to get the size of the payload
-                    size_of_payload_gb: float = len(json.dumps(caribou_wrapper_argument).encode("utf-8")) / (1024**3) if entry_point else -1.0
+                    size_of_input_payload_gb: float = len(json.dumps(caribou_wrapper_argument).encode("utf-8")) / (1024**3) if entry_point else -1.0
 
                 # Check if the argument is a dictionary (At this point it SHOULD be a dictionary)
                 if not isinstance(caribou_wrapper_argument, dict):
@@ -933,7 +933,7 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
                             transmission_taint = uuid.uuid4().hex
 
                             # Redirect the request to the desired provider and region
-                            desired_redirect_payload: dict[str, Any] = {
+                            redirect_payload: dict[str, Any] = {
                                 "payload": caribou_wrapper_argument.get("payload", {}),
                                 "workflow_placement_decision": workflow_placement_decision,
                                 "time_first_recieved": self._function_start_time.strftime(TIME_FORMAT),
@@ -946,17 +946,17 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
                             # Get the time the request was sent from the client (if available)
                             time_request_sent: Optional[str] = caribou_wrapper_argument.get("time_request_sent", None)
                             if time_request_sent is not None:
-                                desired_redirect_payload["time_request_sent"] = time_request_sent
+                                redirect_payload["time_request_sent"] = time_request_sent
 
                             # Get the request source (if available)
                             request_source: Optional[str] = caribou_wrapper_argument.get("request_source", None)
                             if request_source is not None:
-                                desired_redirect_payload["request_source"] = request_source
+                                redirect_payload["request_source"] = request_source
 
                             # Directly invoke and send the request to the desired provider and region
                             invocation_start_time = datetime.now(GLOBAL_TIME_ZONE)
                             RemoteClientFactory.get_remote_client(desired_first_function_provider, desired_first_function_region).invoke_function(
-                                message=json.dumps(desired_redirect_payload),
+                                message=json.dumps(redirect_payload),
                                 identifier=first_function_identifier,
                             )
                             invocation_finish_time = datetime.now(GLOBAL_TIME_ZONE)
@@ -977,12 +977,15 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
                             )
 
                             # Log the redirection information
+                            size_of_output_payload_gb = len(json.dumps(redirect_payload).encode("utf-8")) / (1024**3)
                             log_message = (
                                 f"REDIRECT: "
                                 f'REDIRECTING_INSTANCE ({workflow_placement_decision["current_instance_name"]}) '
                                 f'FROM_REGION ({current_region}) FROM_PROVIDER ({current_provider}) '
                                 f'TO_REGION ({desired_first_function_region}) TO_PROVIDER ({desired_first_function_provider}) '
-                                f'of workflow {f"{self.name}-{self.version}"} called with PAYLOAD_SIZE ({size_of_payload_gb}) GB '
+                                f'of WORKFLOW {f"{self.name}-{self.version}"} called with '
+                                f'INPUT_PAYLOAD_SIZE ({size_of_input_payload_gb}) GB '
+                                f'OUTPUT_PAYLOAD_SIZE ({size_of_output_payload_gb}) GB'
                                 f"Invoking IDENTIFIER ({first_function_identifier}) with TAINT ({transmission_taint}) "
                                 f'NUMBER_OF_HOPS_FROM_CLIENT_REQUEST ({self._number_of_hops_from_client_request}) '
                                 f"INVOCATION_TIME_FROM_FUNCTION_START "
@@ -1049,7 +1052,7 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
                         f"ENTRY_POINT: Entry Point INSTANCE "
                         f'({workflow_placement_decision["current_instance_name"]}) '
                         f'of workflow {f"{self.name}-{self.version}"} called with PAYLOAD_SIZE '
-                        f'({size_of_payload_gb}) GB and is REDIRECTED ({redirected}) with '
+                        f'({size_of_input_payload_gb}) GB and is REDIRECTED ({redirected}) with '
                         f"INIT_LATENCY_FROM_CLIENT ({init_latency_from_client}) s "
                         f"INIT_LATENCY_FIRST_RECIEVED ({init_latency_first_received}) s "
                         f"from REQUEST_SOURCE ({request_source}) with "
