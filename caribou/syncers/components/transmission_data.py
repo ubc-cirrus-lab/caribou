@@ -30,6 +30,7 @@ class TransmissionData:  # pylint: disable=too-many-instance-attributes
         self.consumed_write_capacity: Optional[float] = None
         self.sync_data_response_size: Optional[float] = None
         self.from_direct_successor: Optional[bool] = None
+        self.redirector_transmission: Optional[bool] = None
 
         # If not from a direct successor,
         # this will significantly affect what we want to collect

@@ -7,21 +7,19 @@ class StartHopData:  # pylint: disable=too-many-instance-attributes
         # self.first_execution_instance_name: Optional[str] = None
         self.request_source: Optional[str] = None
         self.destination_provider_region: Optional[str] = None
-        self.data_transfer_size: Optional[float] = None
+
+        # Indicate how much data is transfered to the first function (in GB)
+        # The redirector is NOT included in this calculation (Aka we don't
+        # consider it as a function)
+        self.input_payload_size_to_first_function: Optional[float] = None
         self.wpd_data_size: Optional[float] = None
         self.consumed_read_capacity: Optional[float] = None
         self.init_latency_from_first_recieved: Optional[float] = None
         self.start_hop_latency_from_client: Optional[float] = None
 
-        
-        # # Start hop informations
-        # self.start_hop_latency: float = 0.0
-        # self.start_hop_data_transfer_size: float = 0.0
-        # self.start_hop_instance_name: Optional[str] = None
-        # self.start_hop_destination: Optional[str] = None
-        # self.start_hop_wpd_data_size: Optional[float] = None
-        # self.start_hop_wpd_consumed_read_capacity: Optional[float] = None
-
+        # Indicate if the placement decision was retrieved from the platform
+        # Or if it were cached
+        self.retrieved_placement_decision_from_platform: Optional[bool] = None
 
         # Optional Fields, only if redirected
         ## The name of the instance (Code name, as the real instance name
@@ -42,9 +40,15 @@ class StartHopData:  # pylint: disable=too-many-instance-attributes
 
         if not self.redirector_execution_data:
             self.redirector_execution_data = ExecutionData(instance_name)
+
+        # Set the request ID if it is not set
+        if self.redirector_execution_data.request_id is None:
+            self.redirector_execution_data.request_id = request_id
+
         elif self.redirector_execution_data.instance_name != instance_name:
             raise ValueError(
-                f"Redirector instance name '{instance_name}' does not match existing instance name '{self.redirector_execution_data.instance_name}'"
+                f"Redirector instance name '{instance_name}' does not match "
+                f"existing instance name '{self.redirector_execution_data.instance_name}'"
             )
 
         return self.redirector_execution_data
@@ -56,7 +60,7 @@ class StartHopData:  # pylint: disable=too-many-instance-attributes
             [
                 self.request_source is not None,
                 self.destination_provider_region is not None,
-                self.data_transfer_size is not None,
+                self.input_payload_size_to_first_function is not None,
                 self.wpd_data_size is not None,
                 self.consumed_read_capacity is not None,
                 self.init_latency_from_first_recieved is not None,
@@ -72,30 +76,19 @@ class StartHopData:  # pylint: disable=too-many-instance-attributes
         return required_fields_completed and redirected_fields_completed
 
     def to_dict(self) -> dict[str, Any]:
-        # # Prepare data potentially used
-        # # for indiviual log cost and carbon analysis
-        # redirector_data = {
-        #     "input_payload_size_gb": self.input_payload_size,
-        #     "download_size_gb": self.download_size,
-        #     "consumed_read_capacity_from_download": self.consumed_read_capacity,
-        #     "total_input_data_transfer_gb": self._get_total_input_data_size(),
-        #     "total_output_data_transfer_gb": self._get_total_output_data_size(),
-        # }
+        start_hop_info = {
+            "destination": self.destination_provider_region,
+            "data_transfer_size_gb": self.input_payload_size_to_first_function,
+            "latency_from_recieved_s": self.init_latency_from_first_recieved,
+            "latency_from_client_s": self.start_hop_latency_from_client,
+            "workflow_placement_decision": {
+                "data_size_gb": self.wpd_data_size,
+                "consumed_read_capacity": self.consumed_read_capacity,
+            },
+            "redirector_execution_data": self.redirector_execution_data.to_dict() if self.redirector_execution_data else None,
+        }
 
-        # # Only return the fields that are not None
-        # result = {
-        #     "instance_name": self.instance_name,
-        #     "duration_s": self.longest_duration,
-        #     "cpu_model": self.cpu_model,
-        #     "provider_region": self.provider_region,
-        #     "data_transfer_during_execution_gb": self.data_transfer_during_execution,
-        #     "cpu_utilization": self.cpu_utilization,
-        #     "successor_data": {k: v.to_dict() for k, v in self.successor_data.items()},
-        #     "additional_analysis_data": {key: value for key, value in analysis_data.items() if value is not None},
-        # }
+        # Filter out fields that are None
+        filtered_result = {key: value for key, value in start_hop_info.items() if value is not None and value != {}}
 
-        # # Filter out fields that are None
-        # filtered_result = {key: value for key, value in result.items() if value is not None and value != {}}
-
-        # return filtered_result
-        return {} # TODO: Implement
+        return filtered_result

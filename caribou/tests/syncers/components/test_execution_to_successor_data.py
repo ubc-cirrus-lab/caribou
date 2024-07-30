@@ -13,7 +13,7 @@ class TestExecutionToSuccessorData(unittest.TestCase):
         self.assertIsNone(self.execution_data.task_type)
         self.assertIsNone(self.execution_data.invocation_time_from_function_start)
         self.assertIsNone(self.execution_data.finish_time_from_invocation_start)
-        self.assertIsNone(self.execution_data.payload_data_size)
+        self.assertIsNone(self.execution_data.output_payload_data_size)
         self.assertIsNone(self.execution_data.upload_data_size)
         self.assertIsNone(self.execution_data.consumed_write_capacity)
         self.assertIsNone(self.execution_data.sync_data_response_size)
@@ -21,7 +21,7 @@ class TestExecutionToSuccessorData(unittest.TestCase):
         self.assertEqual(self.execution_data.invoking_sync_node_data_output, {})
 
     def test_get_total_output_data_size(self):
-        self.execution_data.payload_data_size = 1.0
+        self.execution_data.output_payload_data_size = 1.0
         self.execution_data.upload_data_size = 2.0
         self.execution_data.invoking_sync_node_data_output = {
             "node1": {"data_transfer_size": 3.0},
@@ -30,7 +30,7 @@ class TestExecutionToSuccessorData(unittest.TestCase):
         self.assertEqual(self.execution_data.get_total_output_data_size(), 10.0)
 
     def test_get_total_output_data_size_none(self):
-        self.execution_data.payload_data_size = None
+        self.execution_data.output_payload_data_size = None
         self.execution_data.upload_data_size = None
         self.execution_data.invoking_sync_node_data_output = {}
         self.assertEqual(self.execution_data.get_total_output_data_size(), 0.0)
@@ -69,7 +69,7 @@ class TestExecutionToSuccessorData(unittest.TestCase):
         self.assertEqual(self.execution_data.to_dict(), expected_dict)
 
     def test_get_total_output_data_size_with_invoking_sync_node_data_output(self):
-        self.execution_data.payload_data_size = 1.0
+        self.execution_data.output_payload_data_size = 1.0
         self.execution_data.upload_data_size = 2.0
         self.execution_data.invoking_sync_node_data_output = {
             "node1": {"data_transfer_size": 3.0},
@@ -78,7 +78,7 @@ class TestExecutionToSuccessorData(unittest.TestCase):
         self.assertEqual(self.execution_data.get_total_output_data_size(), 10.0)
 
     def test_get_total_output_data_size_with_invoking_sync_node_data_output_none(self):
-        self.execution_data.payload_data_size = 1.0
+        self.execution_data.output_payload_data_size = 1.0
         self.execution_data.upload_data_size = 2.0
         self.execution_data.invoking_sync_node_data_output = {
             "node1": {"data_transfer_size": 0.0},
