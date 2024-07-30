@@ -13,7 +13,7 @@ class ExecutionToSuccessorData:  # pylint: disable=too-many-instance-attributes
 
         # May be used for future analysis
         self.invocation_time_from_function_start: Optional[float] = None
-        self.finish_time_from_function_start: Optional[float] = None
+        self.finish_time_from_invocation_start: Optional[float] = None
 
         # Invocation data size (Payload data size)
         # Output data

@@ -12,7 +12,7 @@ class TestExecutionToSuccessorData(unittest.TestCase):
         self.assertEqual(self.execution_data.successor_instance_name, self.successor_instance_name)
         self.assertIsNone(self.execution_data.task_type)
         self.assertIsNone(self.execution_data.invocation_time_from_function_start)
-        self.assertIsNone(self.execution_data.finish_time_from_function_start)
+        self.assertIsNone(self.execution_data.finish_time_from_invocation_start)
         self.assertIsNone(self.execution_data.payload_data_size)
         self.assertIsNone(self.execution_data.upload_data_size)
         self.assertIsNone(self.execution_data.consumed_write_capacity)

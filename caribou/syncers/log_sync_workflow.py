@@ -234,8 +234,11 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
                     self._extract_entry_point_log(workflow_run_sample, message, provider_region, log_time, request_id)
                 else:
                     # Blacklist the run_id as we don't need to collect more logs for it
+                    # As log outside the range of allowable time is not needed.
                     del self._collected_logs[run_id]
                     self._blacklisted_run_ids.add(run_id)
+            elif message.startswith("REDIRECT"):
+                self._extract_redirect_logs(workflow_run_sample, message, provider_region, log_time, request_id)
             elif message.startswith("INVOKED"):
                 self._extract_invoked_logs(workflow_run_sample, message, provider_region, log_time)
             elif message.startswith("EXECUTED"):
@@ -263,7 +266,10 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
                 if log_day_str not in self._daily_failure_set:
                     self._daily_failure_set[log_day_str] = set()
                 self._daily_failure_set[log_day_str].add(run_id)
-            elif message.startswith("INFORMING_SYNC_NODE") or message.startswith("DEBUG_MESSAGE"):
+            elif (message.startswith("INFORMING_SYNC_NODE") or
+                  message.startswith("DEBUG_MESSAGE") or
+                  message.startswith("RETRIVE_WPD") or
+                  message.startswith("WPD_OVERRIDE")):
                 # Debug message, we can ignore
                 pass
             else:
@@ -279,59 +285,112 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         log_time: datetime,
         request_id: str,
     ) -> None:
-        workflow_run_sample.log_start_time = log_time
-        workflow_run_sample.start_hop_destination = self._format_region(provider_region)
-
-        # Extract the instance name of the start hop from the log entry
-        function_executed = self._extract_string_from_log_entry(log_entry, r"INSTANCE \((.*?)\)", "function_executed")
-        workflow_run_sample.start_hop_instance_name = function_executed
-
-        # Extract the start hop latency and data transfer size from the log entry
+        function_executed: str = self._extract_string_from_log_entry(log_entry, r"INSTANCE \((.*?)\)", "function_executed")
         data_transfer_size: float = self._extract_float_from_log_entry(log_entry, r"PAYLOAD_SIZE \((.*?)\)", "data_transfer_size")
-        workflow_run_sample.start_hop_data_transfer_size = data_transfer_size
-        
-
-        # Extract the workflow placement payload size from the log entry
         workflow_placement_decision_size: float = self._extract_float_from_log_entry(
             log_entry, r"WORKFLOW_PLACEMENT_DECISION_SIZE \((.*?)\)", "workflow_placement_decision_size"
         )
-        workflow_run_sample.start_hop_wpd_data_size = workflow_placement_decision_size
-
-        # Extract the consumed read capacity to extract this payload size from the log entry
-        consumed_read_capacity = self._extract_float_from_log_entry(
+        consumed_read_capacity: str = self._extract_float_from_log_entry(
             log_entry, r"CONSUMED_READ_CAPACITY \((.*?)\)", "consumed_read_capacity"
         )
-        workflow_run_sample.start_hop_wpd_consumed_read_capacity = consumed_read_capacity
-
-        # Extract if the entry was redirected (from a different region)
-        redirected_from_region = self._extract_string_from_log_entry(
-            log_entry, r"REDIRECTED \((.*?)\)", "redirected"
-        )
-        # TODO: Save this info
-
-        # Extract the request source from the log entry
-        request_source = self._extract_string_from_log_entry(log_entry, r"REQUEST_SOURCE \((.*?)\)", "request_source")
-        # TODO: Save this info
-
-        # Extract the init latency from first recieved the request to the start hop
-        init_latency_first_recieved = self._extract_float_from_log_entry(
+        # redirected_from_region: str = self._extract_string_from_log_entry(
+        #     log_entry, r"REDIRECTED \((.*?)\)", "redirected"
+        # ) # Used only as a debug message, so could be removed from here
+        request_source: str = self._extract_string_from_log_entry(log_entry, r"REQUEST_SOURCE \((.*?)\)", "request_source")
+        init_latency_from_first_recieved: float = self._extract_float_from_log_entry(
             log_entry, r"INIT_LATENCY_FIRST_RECIEVED \((.*?)\)", "init_latency_first_recieved"
         )
-        # TODO: Save this info
+        start_hop_latency_from_client_str: str = self._extract_from_string(log_entry, r"INIT_LATENCY \((.*?)\)")
+        start_hop_latency_from_client: float = 0.0
+        if start_hop_latency_from_client_str and start_hop_latency_from_client_str != "N/A":
+            start_hop_latency_from_client: float = float(start_hop_latency_from_client_str)
 
-        # Extract the start hop latency from the log entry (Which can be N/A)
-        start_hop_latency_from_client = self._extract_from_string(log_entry, r"INIT_LATENCY \((.*?)\)")
-        if start_hop_latency_from_client and start_hop_latency_from_client != "N/A":
-            start_hop_latency_from_client_fl: float = float(start_hop_latency_from_client)
-            workflow_run_sample.start_hop_latency = start_hop_latency_from_client_fl
-            # TODO: Rename this slightly
+        # Handle start time logs
+        ## Should only be set if it is not already set
+        ## As a redirector would have a earlier start time
+        if workflow_run_sample.log_start_time is None:
+            workflow_run_sample.log_start_time = log_time
 
         # Handle Start Hop Updates
-
+        workflow_run_sample.start_hop_data.destination_provider_region = self._format_region(provider_region)
+        workflow_run_sample.start_hop_data.request_source = request_source
+        workflow_run_sample.start_hop_data.data_transfer_size = data_transfer_size
+        workflow_run_sample.start_hop_data.wpd_data_size = workflow_placement_decision_size
+        workflow_run_sample.start_hop_data.consumed_read_capacity = consumed_read_capacity
+        workflow_run_sample.start_hop_data.start_hop_latency_from_client = start_hop_latency_from_client
+        workflow_run_sample.start_hop_data.init_latency_from_first_recieved = init_latency_from_first_recieved
 
         # Handle Execution Data Updates
         execution_data = workflow_run_sample.get_execution_data(function_executed, request_id)
         execution_data.input_payload_size += data_transfer_size
+
+    def _extract_redirect_logs(
+        self,
+        workflow_run_sample: WorkflowRunSample,
+        log_entry: str,
+        provider_region: dict[str, str],
+        log_time: datetime,
+        request_id: str,
+    ) -> None:
+        redirecting_instance: str = self._extract_string_from_log_entry(log_entry, r"REDIRECTING_INSTANCE \((.*?)\)", "redirecting_instance")
+        # from_region: str = self._extract_string_from_log_entry(log_entry, r"FROM_REGION \((.*?)\)", "from_region")
+        # from_provider: str = self._extract_string_from_log_entry(log_entry, r"FROM_PROVIDER \((.*?)\)", "from_provider")
+        to_region: str = self._extract_string_from_log_entry(log_entry, r"TO_REGION \((.*?)\)", "to_region")
+        to_provider: str = self._extract_string_from_log_entry(log_entry, r"TO_PROVIDER \((.*?)\)", "to_provider")
+        payload_size: float = self._extract_float_from_log_entry(log_entry, r"PAYLOAD_SIZE \((.*?)\)", "payload_size")
+        # function_identifier: str = self._extract_string_from_log_entry(log_entry, r"FUNCTION_IDENTIFIER \((.*?)\)", "function_identifier")
+        taint: str = self._extract_string_from_log_entry(log_entry, r"TAINT \((.*?)\)", "taint")
+        invocation_time_from_function_start: float = self._extract_float_from_log_entry(
+            log_entry, r"INVOCATION_TIME_FROM_FUNCTION_START \((.*?)\)", "invocation_time_from_function_start"
+        )
+        finish_time_from_invocation_start: float = self._extract_float_from_log_entry(
+            log_entry, r"FINISH_TIME_FROM_INVOCATION_START \((.*?)\)", "finish_time_from_invocation_start"
+        )
+        
+        # TODO: Handle the redirect logs
+        # from_provider_region = self._format_region({"provider": from_provider, "region": from_region})
+        to_provider_region = self._format_region({"provider": to_provider, "region": to_region})
+
+        # Handle Execution Data Updates of Start Hop
+        execution_data = workflow_run_sample.start_hop_data.get_redirector_execution_data(redirecting_instance, request_id)
+        execution_data.request_id = request_id
+        execution_data.provider_region = self._format_region(provider_region)
+        execution_data.lambda_insights = self._insights_logs.get(request_id, {})
+
+
+        # execution_data = workflow_run_sample.get_execution_data(function_executed, request_id)
+        # execution_data.input_payload_size += data_transfer_size
+
+
+        # Handle transmission data updates
+        transmission_data = workflow_run_sample.get_transmission_data(taint)
+        transmission_data.from_region = self._format_region(provider_region)
+
+
+
+
+        transmission_data.from_instance = caller_function
+        transmission_data.to_instance = callee_function
+        transmission_data.transmission_start_time = log_time
+        transmission_data.payload_transmission_size = payload_size
+        transmission_data.successor_invoked = successor_invoked
+        transmission_data.from_direct_successor = True
+
+        # Handle execution (and successor) data updates
+        execution_data = workflow_run_sample.get_execution_data(caller_function, request_id)
+        successor_data = execution_data.get_successor_data(callee_function)
+
+        successor_data.invocation_time_from_function_start = invocation_time_from_function_start
+        successor_data.finish_time_from_invocation_start = finish_time_from_invocation_start
+        successor_data.payload_data_size = payload_size
+        successor_data.destination_region = to_provider_region
+
+        # Handle the recipient execution data
+        # Payload data size is the data transfer size
+        recipient_execution_data = workflow_run_sample.get_execution_data(callee_function, None)
+        recipient_execution_data.input_payload_size += payload_size
+
+        successor_data.task_type = INVOKE_SUCCESSOR_ONLY_TASK_TYPE
 
     def _extract_invoked_logs(
         self,
@@ -340,9 +399,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         provider_region: dict[str, str],
         log_time: datetime,
     ) -> None:
-        taint = self._extract_from_string(log_entry, r"TAINT \((.*?)\)")
-        if not isinstance(taint, str):
-            raise ValueError(f"Invalid taint: {taint}")
+        taint: str = self._extract_string_from_log_entry(log_entry, r"TAINT \((.*?)\)", "taint")
         transmission_data = workflow_run_sample.get_transmission_data(taint)
         transmission_data.to_region = self._format_region(provider_region)
         transmission_data.transmission_end_time = log_time
@@ -406,12 +463,12 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         transmission_data.successor_invoked = successor_invoked
         transmission_data.from_direct_successor = True
 
-        # Handle execution data updates
+        # Handle execution (and successor) data updates
         execution_data = workflow_run_sample.get_execution_data(caller_function, request_id)
         successor_data = execution_data.get_successor_data(callee_function)
 
         successor_data.invocation_time_from_function_start = invocation_time_from_function_start
-        successor_data.finish_time_from_function_start = finish_time_from_invocation_start
+        successor_data.finish_time_from_invocation_start = finish_time_from_invocation_start
         successor_data.payload_data_size = payload_data_transfer_size
         successor_data.destination_region = self._format_region(
             {"provider": destination_provider, "region": destination_region}
@@ -569,10 +626,13 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
 
     def _extract_cpu_model(self, workflow_run_sample: WorkflowRunSample, log_entry: str, request_id: str) -> None:
         function_executed: str = self._extract_string_from_log_entry(log_entry, r"INSTANCE \((.*?)\)", "function_executed")
+        from_redirector: bool = self._extract_boolean_from_log_entry(log_entry, r"FROM_REDIRECTOR \((.*?)\)", "from_redirector")
         cpu_model: str = self._extract_string_from_log_entry(log_entry, r"CPU_MODEL \((.*?)\)", "cpu_model")
         cpu_model = cpu_model.replace("<", "(").replace(">", ")") # Convert back to the original format
-
-        execution_data = workflow_run_sample.get_execution_data(function_executed, request_id)
+        if from_redirector:
+            execution_data = workflow_run_sample.start_hop_data.get_redirector_execution_data(function_executed, request_id)
+        else:
+            execution_data = workflow_run_sample.get_execution_data(function_executed, request_id)
         execution_data.cpu_model = cpu_model
 
         # Add the CPU model to unique models

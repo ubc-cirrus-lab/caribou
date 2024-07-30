@@ -914,22 +914,8 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
 
                         # Get the desired first function provider and region, this determines where the first function should be placed
                         desired_first_function_provider, desired_first_function_region, first_function_identifier = self._get_current_node_desired_workflow_placement_decision(workflow_placement_decision)
+                        retrieved_wpd_time = datetime.now(GLOBAL_TIME_ZONE)
                         
-
-                        time_from_function_start = (datetime.now(GLOBAL_TIME_ZONE) - self._function_start_time).total_seconds()
-                        log_message = (
-                            f"RETRIVE_WPD: "
-                            f'SEND_TO_HOME_DECISION ({workflow_placement_decision["send_to_home_region"]}) '
-                            f'TIME_KEY ({workflow_placement_decision["time_key"]}) '
-                            f'RETRIEVED_PLACEMENT_DECISION_FROM_PLATFORM ({pulled_decision_from_platform}) '
-                            f"WORKFLOW_PLACEMENT_DECISION_SIZE ({wpd_data_size}) GB "
-                            f"and CONSUMED_READ_CAPACITY ({wpd_consumed_read_capacity}) "
-                            f"TIME_FROM_FUNCTION_START ({time_from_function_start}) s "
-                        )
-                        self.log_for_retrieval(
-                            log_message, workflow_placement_decision["run_id"], self._function_start_time
-                        )
-
                         # Get the current region and provider
                         current_region: str = os.environ['AWS_REGION']
                         current_provider: str = str(Provider.AWS.value)
@@ -945,18 +931,6 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
                         ## BE VERY CAREFUL WITH CHANGING THIS, AS INCORECT CONFIGURATION CAN CAUSE INFINITE LOOPS
                         if need_for_redirect is True and permit_redirection is True and was_redirected is False: # If the request is permitted to redirect
                             transmission_taint = uuid.uuid4().hex
-                            log_message = (
-                                f"REDIRECT: "
-                                f'REDIRECTING_INSTANCE ({workflow_placement_decision["current_instance_name"]}) '
-                                f'FROM_REGION ({current_region}) FROM_PROVIDER ({current_provider}) '
-                                f'TO_REGION ({desired_first_function_region}) TO_PROVIDER ({desired_first_function_provider}) '
-                                f'of workflow {f"{self.name}-{self.version}"} called with PAYLOAD_SIZE ({size_of_payload_gb}) GB '
-                                f"Invoking IDENTIFIER ({first_function_identifier}) with TAINT ({transmission_taint}) "
-                                f'NUMBER_OF_HOPS_FROM_CLIENT_REQUEST ({self._number_of_hops_from_client_request}) '
-                            )
-                            self.log_for_retrieval(
-                                log_message, workflow_placement_decision["run_id"], self._function_start_time
-                            )
 
                             # Redirect the request to the desired provider and region
                             desired_redirect_payload: dict[str, Any] = {
@@ -980,14 +954,49 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
                                 desired_redirect_payload["request_source"] = request_source
 
                             # Directly invoke and send the request to the desired provider and region
+                            invocation_start_time = datetime.now(GLOBAL_TIME_ZONE)
                             RemoteClientFactory.get_remote_client(desired_first_function_provider, desired_first_function_region).invoke_function(
                                 message=json.dumps(desired_redirect_payload),
                                 identifier=first_function_identifier,
                             )
+                            invocation_finish_time = datetime.now(GLOBAL_TIME_ZONE)
+
+                            # Log if and what decision to retrieve WPD from platform
+                            time_from_function_start = (retrieved_wpd_time - self._function_start_time).total_seconds()
+                            log_message = (
+                                f"RETRIVE_WPD: "
+                                f'SEND_TO_HOME_DECISION ({workflow_placement_decision["send_to_home_region"]}) '
+                                f'TIME_KEY ({workflow_placement_decision["time_key"]}) '
+                                f'RETRIEVED_PLACEMENT_DECISION_FROM_PLATFORM ({pulled_decision_from_platform}) '
+                                f"WORKFLOW_PLACEMENT_DECISION_SIZE ({wpd_data_size}) GB "
+                                f"and CONSUMED_READ_CAPACITY ({wpd_consumed_read_capacity}) "
+                                f"with TIME_FROM_FUNCTION_START ({time_from_function_start}) s "
+                            )
+                            self.log_for_retrieval(
+                                log_message, workflow_placement_decision["run_id"], self._function_start_time
+                            )
+
+                            # Log the redirection information
+                            log_message = (
+                                f"REDIRECT: "
+                                f'REDIRECTING_INSTANCE ({workflow_placement_decision["current_instance_name"]}) '
+                                f'FROM_REGION ({current_region}) FROM_PROVIDER ({current_provider}) '
+                                f'TO_REGION ({desired_first_function_region}) TO_PROVIDER ({desired_first_function_provider}) '
+                                f'of workflow {f"{self.name}-{self.version}"} called with PAYLOAD_SIZE ({size_of_payload_gb}) GB '
+                                f"Invoking IDENTIFIER ({first_function_identifier}) with TAINT ({transmission_taint}) "
+                                f'NUMBER_OF_HOPS_FROM_CLIENT_REQUEST ({self._number_of_hops_from_client_request}) '
+                                f"INVOCATION_TIME_FROM_FUNCTION_START "
+                                f"({(invocation_start_time - self._function_start_time).total_seconds()}) s and "
+                                f"FINISH_TIME_FROM_INVOCATION_START "
+                                f"({(invocation_finish_time - invocation_start_time).total_seconds()}) s and "
+                                f'RETRIEVED_PLACEMENT_DECISION_FROM_PLATFORM ({pulled_decision_from_platform})'
+                            )
+                            self.log_for_retrieval(
+                                log_message, workflow_placement_decision["run_id"], self._function_start_time
+                            )
 
                             # Log the CPU model (From Redirector)
                             self._log_cpu_model(workflow_placement_decision, True)
-
                             return {
                                 "statusCode": 200,
                                 "message": f"Redirecting to Provider: {desired_first_function_provider}, Region: {desired_first_function_region}",
