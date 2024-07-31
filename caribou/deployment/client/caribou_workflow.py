@@ -980,6 +980,16 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
                             )
                             invocation_finish_time = datetime.now(GLOBAL_TIME_ZONE)
 
+                            # Get the time the request was sent from the client (if available)
+                            init_latency_from_client = "N/A"
+                            if time_request_sent is not None:
+                                # If the time_request_sent is in the argument, convert it to a proper format
+                                datetime_invoked_at_client = datetime.strptime(time_request_sent, TIME_FORMAT)
+
+                                # Get s from the time difference
+                                # Note due to desync between client and server, the time difference can be negative
+                                init_latency_from_client = str((self._function_start_time - datetime_invoked_at_client).total_seconds())
+
                             # Log the redirection information
                             size_of_output_payload_gb = len(json.dumps(redirect_payload).encode("utf-8")) / (1024**3)
                             log_message = (
@@ -995,7 +1005,8 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
                                 f"INVOCATION_TIME_FROM_FUNCTION_START "
                                 f"({(invocation_start_time - self._function_start_time).total_seconds()}) s and "
                                 f"FINISH_TIME_FROM_INVOCATION_START "
-                                f"({(invocation_finish_time - invocation_start_time).total_seconds()}) s"
+                                f"({(invocation_finish_time - invocation_start_time).total_seconds()}) s "
+                                f"INIT_LATENCY_FROM_CLIENT ({init_latency_from_client}) s"
                             )
                             self.log_for_retrieval(
                                 log_message, workflow_placement_decision["run_id"], self._function_start_time
