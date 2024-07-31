@@ -238,6 +238,8 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
                     # As log outside the range of allowable time is not needed.
                     del self._collected_logs[run_id]
                     self._blacklisted_run_ids.add(run_id)
+            elif message.startswith("RETRIVE_WPD"):
+                self._extract_retrieve_wpd_logs(workflow_run_sample, message)
             elif message.startswith("REDIRECT"):
                 self._extract_redirect_logs(workflow_run_sample, message, provider_region, log_time, request_id)
             elif message.startswith("INVOKED"):
@@ -269,7 +271,6 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
                 self._daily_failure_set[log_day_str].add(run_id)
             elif (message.startswith("INFORMING_SYNC_NODE") or
                   message.startswith("DEBUG_MESSAGE") or
-                  message.startswith("RETRIVE_WPD") or
                   message.startswith("WPD_OVERRIDE")):
                 # Debug message, we can ignore
                 pass
@@ -301,7 +302,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         init_latency_from_first_recieved: float = self._extract_float_from_log_entry(
             log_entry, r"INIT_LATENCY_FIRST_RECIEVED \((.*?)\)", "init_latency_first_recieved"
         )
-        start_hop_latency_from_client_str: str = self._extract_from_string(log_entry, r"INIT_LATENCY \((.*?)\)")
+        start_hop_latency_from_client_str: str = self._extract_from_string(log_entry, r"INIT_LATENCY_FROM_CLIENT \((.*?)\)")
         start_hop_latency_from_client: float = 0.0
         if start_hop_latency_from_client_str and start_hop_latency_from_client_str != "N/A":
             start_hop_latency_from_client: float = float(start_hop_latency_from_client_str)
@@ -325,6 +326,18 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         execution_data = workflow_run_sample.get_execution_data(function_executed, request_id)
         execution_data.input_payload_size += input_payload_size
 
+    def _extract_retrieve_wpd_logs(
+        self,
+        workflow_run_sample: WorkflowRunSample,
+        log_entry: str,
+    ) -> None:
+        retrieved_placement_decision_from_platform: bool = self._extract_boolean_from_log_entry(
+            log_entry, r"RETRIEVED_PLACEMENT_DECISION_FROM_PLATFORM \((.*?)\)", "retrieved_placement_decision_from_platform"
+        )
+
+        # Handle start hop updates
+        workflow_run_sample.start_hop_data.retrieved_wpd_at_function = retrieved_placement_decision_from_platform
+
     def _extract_redirect_logs(
         self,
         workflow_run_sample: WorkflowRunSample,
@@ -334,13 +347,10 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         request_id: str,
     ) -> None:
         redirecting_instance: str = self._extract_string_from_log_entry(log_entry, r"REDIRECTING_INSTANCE \((.*?)\)", "redirecting_instance")
-        # from_region: str = self._extract_string_from_log_entry(log_entry, r"FROM_REGION \((.*?)\)", "from_region")
-        # from_provider: str = self._extract_string_from_log_entry(log_entry, r"FROM_PROVIDER \((.*?)\)", "from_provider")
         to_region: str = self._extract_string_from_log_entry(log_entry, r"TO_REGION \((.*?)\)", "to_region")
         to_provider: str = self._extract_string_from_log_entry(log_entry, r"TO_PROVIDER \((.*?)\)", "to_provider")
         input_payload_size: float = self._extract_float_from_log_entry(log_entry, r"INPUT_PAYLOAD_SIZE \((.*?)\)", "input_payload_size")
         output_payload_size: float = self._extract_float_from_log_entry(log_entry, r"OUTPUT_PAYLOAD_SIZE \((.*?)\)", "output_payload_size")
-        # function_identifier: str = self._extract_string_from_log_entry(log_entry, r"FUNCTION_IDENTIFIER \((.*?)\)", "function_identifier")
         taint: str = self._extract_string_from_log_entry(log_entry, r"TAINT \((.*?)\)", "taint")
         invocation_time_from_function_start: float = self._extract_float_from_log_entry(
             log_entry, r"INVOCATION_TIME_FROM_FUNCTION_START \((.*?)\)", "invocation_time_from_function_start"
@@ -348,15 +358,9 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         finish_time_from_invocation_start: float = self._extract_float_from_log_entry(
             log_entry, r"FINISH_TIME_FROM_INVOCATION_START \((.*?)\)", "finish_time_from_invocation_start"
         )
-        retrieved_placement_decision_from_platform: bool = self._extract_boolean_from_log_entry(
-            log_entry, r"RETRIEVED_PLACEMENT_DECISION_FROM_PLATFORM \((.*?)\)", "retrieved_placement_decision_from_platform"
-        )
-        
+
         # from_provider_region = self._format_region({"provider": from_provider, "region": from_region})
         to_provider_region = self._format_region({"provider": to_provider, "region": to_region})
-
-        # Handle start hop updates
-        workflow_run_sample.start_hop_data.retrieved_wpd_at_function = retrieved_placement_decision_from_platform
 
         # Handle Execution Data Updates of Start Hop
         execution_data = workflow_run_sample.start_hop_data.get_redirector_execution_data(redirecting_instance, request_id)
@@ -376,8 +380,8 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         transmission_data.redirector_transmission = True # Indicate that this is a redirector transmission
 
         # Handle Redirector execution (and successor) data updates
-        execution_data = workflow_run_sample.start_hop_data.get_redirector_execution_data(transmission_data, request_id)
-        successor_data = execution_data.get_successor_data(transmission_data)
+        execution_data = workflow_run_sample.start_hop_data.get_redirector_execution_data(redirecting_instance, request_id)
+        successor_data = execution_data.get_successor_data(redirecting_instance)
         successor_data.invocation_time_from_function_start = invocation_time_from_function_start
         successor_data.finish_time_from_invocation_start = finish_time_from_invocation_start
         successor_data.output_payload_data_size = output_payload_size
