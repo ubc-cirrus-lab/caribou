@@ -877,7 +877,7 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
                     if entry_point:
                         # In this case, there are no workflow placement decisions in the caribou_wrapper_argument
                         # We need to get the workflow placement decision from the platform (System region)
-                        pulled_decision_from_platform: bool = True # TODO: Implemnt decision caching
+                        pulled_decision_from_platform: bool = True
                         (
                             workflow_placement_decision,
                             wpd_data_size,
@@ -897,6 +897,7 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
 
                         # For debug and testing purposes, we allow for overriding the workflow placement decision
                         # IMPORTANT: This is only for debugging and testing purposes, a misconfiguration can cause infinite loops
+                        # Which may not terminate until it reaches the maximum number of hops (As a fail-safe)
                         debug_workflow_placement_override: Optional[dict[Any]] = caribou_wrapper_argument.get("debug_workflow_placement_override", None)
                         if allow_placement_decision_override and debug_workflow_placement_override is not None:
                             workflow_placement_decision = debug_workflow_placement_override["workflow_placement_decision"] # Override the current workflow placement decision
@@ -922,14 +923,14 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
                             f'SEND_TO_HOME_DECISION ({workflow_placement_decision["send_to_home_region"]}) '
                             f'TIME_KEY ({workflow_placement_decision["time_key"]}) '
                             f'RETRIEVED_PLACEMENT_DECISION_FROM_PLATFORM ({pulled_decision_from_platform}) '
-                            f"WORKFLOW_PLACEMENT_DECISION_SIZE ({wpd_data_size}) GB "
-                            f"and CONSUMED_READ_CAPACITY ({wpd_consumed_read_capacity}) "
-                            f"with TIME_FROM_FUNCTION_START ({time_from_function_start}) s "
+                            f'WORKFLOW_PLACEMENT_DECISION_SIZE ({workflow_placement_decision["data_size"]}) GB '
+                            f'and CONSUMED_READ_CAPACITY ({workflow_placement_decision["consumed_read_capacity"]}) '
+                            f"with TIME_FROM_FUNCTION_START ({time_from_function_start}) s"
                         )
                         self.log_for_retrieval(
                             log_message, workflow_placement_decision["run_id"], self._function_start_time
                         )
-                        
+
                         # Get the current region and provider
                         current_region: str = os.environ['AWS_REGION']
                         current_provider: str = str(Provider.AWS.value)
@@ -984,14 +985,13 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
                                 f'TO_REGION ({desired_first_function_region}) TO_PROVIDER ({desired_first_function_provider}) '
                                 f'of WORKFLOW {f"{self.name}-{self.version}"} called with '
                                 f'INPUT_PAYLOAD_SIZE ({size_of_input_payload_gb}) GB '
-                                f'OUTPUT_PAYLOAD_SIZE ({size_of_output_payload_gb}) GB'
+                                f'OUTPUT_PAYLOAD_SIZE ({size_of_output_payload_gb}) GB '
                                 f"Invoking IDENTIFIER ({first_function_identifier}) with TAINT ({transmission_taint}) "
                                 f'NUMBER_OF_HOPS_FROM_CLIENT_REQUEST ({self._number_of_hops_from_client_request}) '
                                 f"INVOCATION_TIME_FROM_FUNCTION_START "
                                 f"({(invocation_start_time - self._function_start_time).total_seconds()}) s and "
                                 f"FINISH_TIME_FROM_INVOCATION_START "
-                                f"({(invocation_finish_time - invocation_start_time).total_seconds()}) s and "
-                                f'RETRIEVED_PLACEMENT_DECISION_FROM_PLATFORM ({pulled_decision_from_platform})'
+                                f"({(invocation_finish_time - invocation_start_time).total_seconds()}) s"
                             )
                             self.log_for_retrieval(
                                 log_message, workflow_placement_decision["run_id"], self._function_start_time
