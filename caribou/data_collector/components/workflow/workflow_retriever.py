@@ -45,9 +45,15 @@ class WorkflowRetriever(DataRetriever):
 
     def _construct_summaries(self, logs: list[dict[str, Any]]) -> tuple[dict[str, Any], dict[str, Any], list[float]]:
         start_hop_summary: dict[str, Any] = {
+            "invoked": 0,
+            "retrieved_wpd_at_function": 0,
+            "wpd_at_function_probability": 0.0,
             "workflow_placement_decision_size_gb": [],
-            "transfer_sizes_gb": [],
-            "regions_to_regions": {},
+            "at_redirector": {},
+            "from_client": {
+                "transfer_sizes_gb": [],
+                "received_region": {},
+            },
         }
         instance_summary: dict[str, Any] = {}
         runtime_samples: list[float] = []
@@ -73,9 +79,22 @@ class WorkflowRetriever(DataRetriever):
         return start_hop_summary, instance_summary, runtime_samples
 
     def _extend_start_hop_summary(self, start_hop_summary: dict[str, Any], log: dict[str, Any]) -> None:
-        start_hop_size_latency_summary = start_hop_summary["regions_to_regions"]
+        from_client = start_hop_summary["from_client"]
+        start_hop_size_latency_summary = from_client["received_region"]
+
         start_hop_log: dict[str, Any] = log.get("start_hop_info", None)
         if start_hop_log:
+            # Determine if the workflow placement decision was retrieved at the function
+            # Redirect only occurs if the workflow placement decision was retrieved at the function
+            # Otherwise it would be directly send to appropriate region
+            start_hop_summary["invoked"] += 1
+            has_retrieved_wpd_at_function = start_hop_log.get("workflow_placement_decision", {}).get(
+                "retrieved_wpd_at_function", False
+            )
+            if has_retrieved_wpd_at_function:
+                start_hop_summary["retrieved_wpd_at_function"] += 1
+
+            # Determine the start hop latency from the client
             start_hop_destination = start_hop_log.get("destination", None)
             if start_hop_destination:
                 if start_hop_destination not in start_hop_size_latency_summary:
@@ -89,7 +108,7 @@ class WorkflowRetriever(DataRetriever):
                 start_hop_data_transfer_size = self._round_to_kb(start_hop_data_transfer_size, 1)
 
                 # Add the transfer size to the summary
-                start_hop_summary["transfer_sizes_gb"].append(start_hop_data_transfer_size)
+                from_client["transfer_sizes_gb"].append(start_hop_data_transfer_size)
 
                 # Round start hop data transfer size to nearest 10 KB
                 start_hop_data_transfer_size = self._round_to_kb(start_hop_data_transfer_size, 10)
@@ -102,7 +121,7 @@ class WorkflowRetriever(DataRetriever):
                     start_hop_size_latency_summary[start_hop_destination]["transfer_size_gb_to_transfer_latencies_s"][
                         start_hop_data_transfer_size
                     ] = []
-                start_hop_latency = start_hop_log.get("latency_s", 0.0)
+                start_hop_latency = start_hop_log.get("latency_from_client_s", 0.0)
 
                 # If start hop is greater than 3 seconds, its likely that
                 # the user clock is desynced and we may discard the data
@@ -119,6 +138,12 @@ class WorkflowRetriever(DataRetriever):
                 # Round to nearest 1 KB
                 workflow_placement_decision_size = self._round_to_kb(workflow_placement_decision_size, 1)
                 start_hop_summary["workflow_placement_decision_size_gb"].append(workflow_placement_decision_size)
+
+            # Now also fill in at_redirector data
+            redirector_execution_data: dict[str, Any] = start_hop_log.get("redirector_execution_data", None)
+            if redirector_execution_data:
+                at_redirector = start_hop_summary['at_redirector']
+                self._handle_single_execution_data_entry(redirector_execution_data, at_redirector)
 
     def _extend_instance_summary(  # pylint: disable=too-many-branches
         self, instance_summary: dict[str, Any], log: dict[str, Any]
@@ -409,7 +434,8 @@ class WorkflowRetriever(DataRetriever):
                 start_hop_summary["workflow_placement_decision_size_gb"], 1
             )
 
-        for at_region_info in start_hop_summary["regions_to_regions"].values():
+        from_client = start_hop_summary["from_client"]
+        for at_region_info in from_client["received_region"].values():
             transfer_size_to_transfer_latencies = at_region_info["transfer_size_gb_to_transfer_latencies_s"]
 
             number_of_data_sizes = len(transfer_size_to_transfer_latencies)
@@ -418,6 +444,15 @@ class WorkflowRetriever(DataRetriever):
                 continue
 
             at_region_info["best_fit_line"] = self._calculate_best_fit_line(transfer_size_to_transfer_latencies)
+
+        # Summarize the execution data (Duration, data transfer, etc.)
+        self._summarize_execution_data(start_hop_summary["at_redirector"])
+
+        # Summarize the wpd_at_function_probability
+        if start_hop_summary["invoked"] != 0:
+            start_hop_summary["wpd_at_function_probability"] = (
+                start_hop_summary["retrieved_wpd_at_function"] / start_hop_summary["invoked"]
+            )
 
     def _reorganize_instance_summary(self, instance_summary: dict[str, Any]) -> None:
         # Summarize the execution data (Duration, data transfer, etc.)
