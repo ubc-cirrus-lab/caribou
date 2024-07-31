@@ -195,10 +195,13 @@ class WorkflowRetriever(DataRetriever):
         successor_data: Optional[dict[str, Any]] = execution_information.get("successor_data", None)
         if successor_data is not None:
             for successor, successor_info in successor_data.items():
+                invocation_time_from_function_start_s = successor_info["invocation_time_from_function_start_s"]
+
+                # Round to nearest ms (As we are dealing with time)
+                invocation_time_from_function_start_s = self._round_to_ms(invocation_time_from_function_start_s)
+
                 execution_data["successor_invocations"][successor] = {
-                    "invocation_time_from_function_start_s": successor_info[
-                        "invocation_time_from_function_start_s"
-                    ],
+                    "invocation_time_from_function_start_s": invocation_time_from_function_start_s,
                 }
                 instance_summary[instance]["executions"]["successor_instances"].add(successor)
 
@@ -243,13 +246,9 @@ class WorkflowRetriever(DataRetriever):
                                 sync_to_from_instance
                                 not in instance_summary[caller]["to_instance"][callee]["non_execution_info"]
                             ):
-                                # parsed_sync_to_from_instance = sync_to_from_instance.split(">")
-                                # sync_predecessor_instance = parsed_sync_to_from_instance[0]
-                                # sync_node_instance = parsed_sync_to_from_instance[1]
                                 instance_summary[caller]["to_instance"][callee]["non_execution_info"][
                                     sync_to_from_instance
                                 ] = {
-                                    # "consumed_write_capacity": [],
                                     "sync_data_response_size_gb": [],
                                     "sns_transfer_size_gb": [],
                                     "regions_to_regions": {},
