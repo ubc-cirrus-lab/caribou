@@ -56,6 +56,14 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
 
         self._forgetting_number = FORGETTING_NUMBER
 
+        # Used to keep track of the request IDs that have been completed
+        # And if they are duplicated. This occur in cases of timeouts
+        # Where the same request ID is invoked multiple times. Those
+        # are equivalent to cold starts. We need to keep track of them and
+        # discard them.
+        self._encountered_completed_request_ids: set[str] = set()
+        self._encountered_duplicate_completed_request_ids: set[str] = set()
+
     def _load_information(self, deployment_manager_config_str: str) -> None:
         deployment_manager_config = json.loads(deployment_manager_config_str)
         deployed_regions_str = deployment_manager_config.get("deployed_regions", "{}")
@@ -157,6 +165,13 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
             request_id = self._extract_from_string(log_entry, r"RequestId: (.*?)\t")
             if "Init Duration" in log_entry and request_id is not None:
                 self._tainted_cold_start_samples.add(request_id)
+
+            # Add the request id of AWS report to list of completed request IDs
+            # But first check if it is a duplicate (Already encountered)
+            if request_id in self._encountered_completed_request_ids:
+                self._encountered_duplicate_completed_request_ids.add(request_id)
+
+            self._encountered_completed_request_ids.add(request_id)
 
         # Ensure that the log entry is a valid log entry and has the correct version
         # Those logs starts with "[CARIBOU]" and contains "LOG_VERSION"
@@ -800,9 +815,22 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
     def _format_collected_logs(self) -> list[dict[str, Any]]:
         logs: list[tuple[datetime, dict]] = []
         for workflow_run_sample in self._collected_logs.values():
+            # If the list of duplicate completed request ids is not empty, we need to
+            # check if the workflow run sample have any of these request ids
+            if len(self._encountered_duplicate_completed_request_ids) > 0:
+                common_request_ids: set[str] = workflow_run_sample.request_ids & self._encountered_duplicate_completed_request_ids
+
+                # First remove the common request ids from _encountered_duplicate_completed_request_ids
+                # As we don't need to check them again, as they should only be present in ONE workflow run sample
+                self._encountered_duplicate_completed_request_ids -= common_request_ids
+
+                continue
+            
+            # Now we check if the workflow run sample is valid and complete
             if not workflow_run_sample.is_valid_and_complete():
                 continue
-
+            
+            # Now all checks have passed, we can add the logs to the list
             log = workflow_run_sample.to_dict()
 
             self._extend_existing_execution_instance_region(log[1])
