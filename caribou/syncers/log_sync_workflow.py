@@ -37,7 +37,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         self.workflow_id = workflow_id
         self._collected_logs: dict[str, WorkflowRunSample] = {}
         self._daily_invocation_set: dict[str, set[str]] = {}
-        self._daily_failure_set: dict[str, set[str]] = {}
+        self._daily_user_code_failure_set: dict[str, set[str]] = {}
         self._time_intervals_to_sync: list[tuple[datetime, datetime]] = time_intervals_to_sync
         self._tainted_cold_start_samples: set[str] = set()
         self._blacklisted_run_ids: set[str] = set()
@@ -266,12 +266,13 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
                 self._blacklisted_run_ids.add(run_id)
 
                 log_day_str = log_time.strftime(TIME_FORMAT_DAYS)
-                if log_day_str not in self._daily_failure_set:
-                    self._daily_failure_set[log_day_str] = set()
-                self._daily_failure_set[log_day_str].add(run_id)
+                if log_day_str not in self._daily_user_code_failure_set:
+                    self._daily_user_code_failure_set[log_day_str] = set()
+                self._daily_user_code_failure_set[log_day_str].add(run_id)
+            elif message.startswith("WPD_OVERRIDE"):
+                self._extract_debug_wpd_override(workflow_run_sample, message)
             elif (message.startswith("INFORMING_SYNC_NODE") or
-                  message.startswith("DEBUG_MESSAGE") or
-                  message.startswith("WPD_OVERRIDE")):
+                  message.startswith("DEBUG_MESSAGE")):
                 # Debug message, we can ignore
                 pass
             else:
@@ -295,9 +296,6 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         consumed_read_capacity: str = self._extract_float_from_log_entry(
             log_entry, r"CONSUMED_READ_CAPACITY \((.*?)\)", "consumed_read_capacity"
         )
-        # redirected_from_region: str = self._extract_string_from_log_entry(
-        #     log_entry, r"REDIRECTED \((.*?)\)", "redirected"
-        # ) # Used only as a debug message, so could be removed from here
         request_source: str = self._extract_string_from_log_entry(log_entry, r"REQUEST_SOURCE \((.*?)\)", "request_source")
         init_latency_from_first_recieved: float = self._extract_float_from_log_entry(
             log_entry, r"INIT_LATENCY_FIRST_RECIEVED \((.*?)\)", "init_latency_first_recieved"
@@ -337,6 +335,18 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
 
         # Handle start hop updates
         workflow_run_sample.start_hop_data.retrieved_wpd_at_function = retrieved_placement_decision_from_platform
+
+    def _extract_debug_wpd_override(
+        self,
+        workflow_run_sample: WorkflowRunSample,
+        log_entry: str,
+    ) -> None:
+        overridden_wpd_data_size: float = self._extract_float_from_log_entry(
+            log_entry, r"OVERRIDING_WORKFLOW_PLACEMENT_SIZE \((.*?)\)", "overridden_wpd_data_size"
+        )
+
+        # Handle start hop updates
+        workflow_run_sample.start_hop_data.overridden_wpd_data_size = overridden_wpd_data_size
 
     def _extract_redirect_logs(
         self,
@@ -673,10 +683,10 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         self._merge_daily_invocation_counts(previous_daily_invocation_counts)
         daily_invocation_counts = previous_daily_invocation_counts
 
-        previous_daily_failure_counts = previous_data.get("daily_failure_counts", {})
-        self._filter_daily_counts(previous_daily_failure_counts)
-        self._merge_daily_failure_counts(previous_daily_failure_counts)
-        daily_failure_counts = previous_daily_failure_counts
+        previous_daily_user_code_failure_counts = previous_data.get("daily_user_code_failure_counts", {})
+        self._filter_daily_counts(previous_daily_user_code_failure_counts)
+        self._merge_daily_user_code_failure_counts(previous_daily_user_code_failure_counts)
+        daily_user_code_failure_counts = previous_daily_user_code_failure_counts
 
         collected_logs: list[dict[str, Any]] = self._format_collected_logs()
 
@@ -686,7 +696,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
 
         data_to_upload = {
             "daily_invocation_counts": daily_invocation_counts,
-            "daily_failure_counts": daily_failure_counts,
+            "daily_user_code_failure_counts": daily_user_code_failure_counts,
             "logs": collected_logs,
             "workflow_runtime_samples": workflow_runtime_samples,
             "last_sync_time": self._time_intervals_to_sync[-1][1].strftime(TIME_FORMAT),
@@ -871,8 +881,8 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
                 previous_daily_invocation_counts[date_str] = 0
             previous_daily_invocation_counts[date_str] += len(invocation_set)
 
-    def _merge_daily_failure_counts(self, previous_daily_failure_counts: dict) -> None:
-        for date_str, failure_set in self._daily_failure_set.items():
+    def _merge_daily_user_code_failure_counts(self, previous_daily_failure_counts: dict) -> None:
+        for date_str, failure_set in self._daily_user_code_failure_set.items():
             if date_str not in previous_daily_failure_counts:
                 previous_daily_failure_counts[date_str] = 0
             previous_daily_failure_counts[date_str] += len(failure_set)

@@ -17,6 +17,10 @@ class StartHopData:  # pylint: disable=too-many-instance-attributes
         self.init_latency_from_first_recieved: Optional[float] = None
         self.start_hop_latency_from_client: Optional[float] = None
 
+        # Optional Fields, used only in the case the user wishes
+        # to override the workflow placement decision.
+        self.overridden_wpd_data_size: Optional[float] = None
+
         # Indicate if the placement decision was retrieved from the platform
         # Or if it were cached
         self.retrieved_wpd_at_function: bool = False
@@ -76,17 +80,23 @@ class StartHopData:  # pylint: disable=too-many-instance-attributes
         return required_fields_completed and redirected_fields_completed
 
     def to_dict(self) -> dict[str, Any]:
+        workflow_placement_decision = {
+            "data_size_gb": self.wpd_data_size,
+            "overridden_data_size_gb": self.overridden_wpd_data_size,
+            "consumed_read_capacity": self.consumed_read_capacity,
+            "retrieved_wpd_at_function": self.retrieved_wpd_at_function,
+        }
+
+        # Filter out fields that are None
+        filtered_workflow_placement_decision = {key: value for key, value in workflow_placement_decision.items() if value is not None}
+
         start_hop_info = {
             "destination": self.destination_provider_region,
             "request_source": self.request_source,
             "data_transfer_size_gb": self.input_payload_size_to_first_function,
             "latency_from_recieved_s": self.init_latency_from_first_recieved,
             "latency_from_client_s": self.start_hop_latency_from_client,
-            "workflow_placement_decision": {
-                "data_size_gb": self.wpd_data_size,
-                "consumed_read_capacity": self.consumed_read_capacity,
-                "retrieved_wpd_at_function": self.retrieved_wpd_at_function,
-            },
+            "workflow_placement_decision": workflow_placement_decision,
             "redirector_execution_data": self.redirector_execution_data.to_dict() if self.redirector_execution_data else None,
         }
 
