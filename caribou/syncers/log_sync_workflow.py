@@ -81,8 +81,8 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         data_for_upload: str = self._prepare_data_for_upload(self._previous_data)
         self._upload_data(data_for_upload)
 
-        # TODO: Remove this print statement
-        print(json.dumps(json.loads(data_for_upload), indent=4))
+        # # TODO: Remove this print statement
+        # print(json.dumps(json.loads(data_for_upload), indent=4))
 
     def _upload_data(self, data_for_upload: str) -> None:
         self._workflow_summary_client.update_value_in_table(
