@@ -78,6 +78,7 @@ class StartHopData:  # pylint: disable=too-many-instance-attributes
     def to_dict(self) -> dict[str, Any]:
         start_hop_info = {
             "destination": self.destination_provider_region,
+            "request_source": self.request_source,
             "data_transfer_size_gb": self.input_payload_size_to_first_function,
             "latency_from_recieved_s": self.init_latency_from_first_recieved,
             "latency_from_client_s": self.start_hop_latency_from_client,
