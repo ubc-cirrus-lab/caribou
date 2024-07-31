@@ -916,15 +916,19 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
                         # Get the desired first function provider and region, this determines where the first function should be placed
                         desired_first_function_provider, desired_first_function_region, first_function_identifier = self._get_current_node_desired_workflow_placement_decision(workflow_placement_decision)
                         retrieved_wpd_time = datetime.now(GLOBAL_TIME_ZONE)
+
                         # Log if and what decision to retrieve WPD from platform
+                        ## Note: Here we intentially log the wpd size and consumed capacity of the retrieved WPD
+                        ## Regardless of override, as the override is only for testing and debugging purposes,
+                        ## and thus its size may not be representative of the actual size of the WPD.
                         time_from_function_start = (retrieved_wpd_time - self._function_start_time).total_seconds()
                         log_message = (
                             f"RETRIVE_WPD: "
                             f'SEND_TO_HOME_DECISION ({workflow_placement_decision["send_to_home_region"]}) '
                             f'TIME_KEY ({workflow_placement_decision["time_key"]}) '
                             f'RETRIEVED_PLACEMENT_DECISION_FROM_PLATFORM ({pulled_decision_from_platform}) '
-                            f'WORKFLOW_PLACEMENT_DECISION_SIZE ({workflow_placement_decision["data_size"]}) GB '
-                            f'and CONSUMED_READ_CAPACITY ({workflow_placement_decision["consumed_read_capacity"]}) '
+                            f'WORKFLOW_PLACEMENT_DECISION_SIZE ({wpd_data_size}) GB '
+                            f'and CONSUMED_READ_CAPACITY ({wpd_consumed_read_capacity}) '
                             f"with TIME_FROM_FUNCTION_START ({time_from_function_start}) s"
                         )
                         self.log_for_retrieval(
