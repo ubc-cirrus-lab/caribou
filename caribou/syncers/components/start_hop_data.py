@@ -14,7 +14,7 @@ class StartHopData:  # pylint: disable=too-many-instance-attributes
         self.input_payload_size_to_first_function: Optional[float] = None
         self.wpd_data_size: Optional[float] = None
         self.consumed_read_capacity: Optional[float] = None
-        self.init_latency_from_first_recieved: Optional[float] = None
+        self.init_latency_from_first_recieved: Optional[float] = None # Debug only message
         self.start_hop_latency_from_client: Optional[float] = None
 
         # Optional Fields, used only in the case the user wishes
@@ -67,7 +67,7 @@ class StartHopData:  # pylint: disable=too-many-instance-attributes
                 self.input_payload_size_to_first_function is not None,
                 self.wpd_data_size is not None,
                 self.consumed_read_capacity is not None,
-                self.init_latency_from_first_recieved is not None,
+                # self.init_latency_from_first_recieved is not None,
                 self.start_hop_latency_from_client is not None,
             ]
         )
@@ -94,9 +94,9 @@ class StartHopData:  # pylint: disable=too-many-instance-attributes
             "destination": self.destination_provider_region,
             "request_source": self.request_source,
             "data_transfer_size_gb": self.input_payload_size_to_first_function,
-            "latency_from_recieved_s": self.init_latency_from_first_recieved,
+            # "latency_from_recieved_s": self.init_latency_from_first_recieved,
             "latency_from_client_s": self.start_hop_latency_from_client,
-            "workflow_placement_decision": workflow_placement_decision,
+            "workflow_placement_decision": filtered_workflow_placement_decision,
             "redirector_execution_data": self.redirector_execution_data.to_dict() if self.redirector_execution_data else None,
         }
 

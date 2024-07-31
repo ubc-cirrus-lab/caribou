@@ -332,8 +332,13 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         workflow_run_sample.start_hop_data.input_payload_size_to_first_function = input_payload_size
         workflow_run_sample.start_hop_data.wpd_data_size = workflow_placement_decision_size
         workflow_run_sample.start_hop_data.consumed_read_capacity = consumed_read_capacity
-        workflow_run_sample.start_hop_data.start_hop_latency_from_client = start_hop_latency_from_client
-        workflow_run_sample.start_hop_data.init_latency_from_first_recieved = init_latency_from_first_recieved
+
+        # Only replace the start hop latency if it is not already set (Since it MAY be from a redirector,
+        # and if it is, then we only want to keep the earliest start time, aka when it first reached the client)
+        if workflow_run_sample.start_hop_data.start_hop_latency_from_client is None:
+            workflow_run_sample.start_hop_data.start_hop_latency_from_client = start_hop_latency_from_client
+
+        workflow_run_sample.start_hop_data.init_latency_from_first_recieved = init_latency_from_first_recieved # Debug only message
 
         # Handle Execution Data Updates
         execution_data = workflow_run_sample.get_execution_data(function_executed, request_id)
@@ -383,6 +388,10 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         finish_time_from_invocation_start: float = self._extract_float_from_log_entry(
             log_entry, r"FINISH_TIME_FROM_INVOCATION_START \((.*?)\)", "finish_time_from_invocation_start"
         )
+        start_hop_latency_from_client_str: str = self._extract_from_string(log_entry, r"INIT_LATENCY_FROM_CLIENT \((.*?)\)")
+        start_hop_latency_from_client: float = 0.0
+        if start_hop_latency_from_client_str and start_hop_latency_from_client_str != "N/A":
+            start_hop_latency_from_client: float = float(start_hop_latency_from_client_str)
 
         # from_provider_region = self._format_region({"provider": from_provider, "region": from_region})
         to_provider_region = self._format_region({"provider": to_provider, "region": to_region})
@@ -408,10 +417,14 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         execution_data = workflow_run_sample.start_hop_data.get_redirector_execution_data(redirecting_instance, request_id)
         successor_data = execution_data.get_successor_data(redirecting_instance)
         successor_data.invocation_time_from_function_start = invocation_time_from_function_start
-        successor_data.finish_time_from_invocation_start = finish_time_from_invocation_start
+        successor_data.finish_time_from_invocation_start = finish_time_from_invocation_start # Used for debugging Purposes
         successor_data.output_payload_data_size = output_payload_size
         successor_data.destination_region = to_provider_region
         successor_data.task_type = REDIRECT_ONLY_TASK_TYPE
+
+        # We want to replace the start hop latency with when it was first recieved by any of our functions.
+        # In this case it is the redirector function.
+        workflow_run_sample.start_hop_data.start_hop_latency_from_client = start_hop_latency_from_client
 
     def _extract_invoked_logs(
         self,
