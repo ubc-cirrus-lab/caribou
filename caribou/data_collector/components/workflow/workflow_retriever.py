@@ -38,7 +38,7 @@ class WorkflowRetriever(DataRetriever):
         return {
             "workflow_runtime_samples": runtime_samples,
             "daily_invocation_counts": summarized_workflow.get("daily_invocation_counts", {}),
-            "daily_failure_counts": summarized_workflow.get("daily_failure_counts", {}),
+            "daily_user_code_failure_counts": summarized_workflow.get("daily_user_code_failure_counts", {}),
             "start_hop_summary": start_hop_summary,
             "instance_summary": instance_summary,
         }
@@ -127,122 +127,116 @@ class WorkflowRetriever(DataRetriever):
 
         self._handle_region_to_region_transmission(log, instance_summary)
 
-    # pylint: disable=too-many-branches, too-many-nested-blocks
     def _handle_execution_data(self, log: dict[str, Any], instance_summary: dict[str, Any]) -> None:
         for execution_information in log["execution_data"]:
-            instance = execution_information["instance_name"]
-            provider_region = execution_information["provider_region"]
+            # Handle the single execution data entry
+            self._handle_single_execution_data_entry(execution_information, instance_summary)
 
-            # Create the missing dictionary entries
-            if instance not in instance_summary:
-                instance_summary[instance] = {}
-            if "invocations" not in instance_summary[instance]:
-                instance_summary[instance]["invocations"] = 0
-            if "cpu_utilization" not in instance_summary[instance]:
-                instance_summary[instance]["cpu_utilization"] = []
-            if "executions" not in instance_summary[instance]:
-                instance_summary[instance]["executions"] = {
-                    "at_region": {},
-                    "successor_instances": set(),
-                }
-            if provider_region not in instance_summary[instance]["executions"]["at_region"]:
-                instance_summary[instance]["executions"]["at_region"][provider_region] = []
+    # pylint: disable=too-many-branches, too-many-nested-blocks
+    def _handle_single_execution_data_entry(self, execution_information: dict[str, Any], instance_summary: dict[str, Any]) -> None:
+        instance = execution_information["instance_name"]
+        provider_region = execution_information["provider_region"]
 
-            # Append the number of invocations
-            instance_summary[instance]["invocations"] += 1
-
-            # Append an entry of the cpu utilization
-            instance_summary[instance]["cpu_utilization"].append(execution_information["cpu_utilization"])
-
-            # Process execution data
-            execution_data = {
-                "duration_s": execution_information["duration_s"],
-                "cpu_utilization": execution_information["cpu_utilization"],
-                "data_transfer_during_execution_gb": execution_information["data_transfer_during_execution_gb"],
-                "successor_invocations": {},
+        # Create the missing dictionary entries
+        if instance not in instance_summary:
+            instance_summary[instance] = {}
+        if "invocations" not in instance_summary[instance]:
+            instance_summary[instance]["invocations"] = 0
+        if "cpu_utilization" not in instance_summary[instance]:
+            instance_summary[instance]["cpu_utilization"] = []
+        if "executions" not in instance_summary[instance]:
+            instance_summary[instance]["executions"] = {
+                "at_region": {},
+                "successor_instances": set(),
             }
+            
+        if provider_region not in instance_summary[instance]["executions"]["at_region"]:
+            instance_summary[instance]["executions"]["at_region"][provider_region] = []
 
-            successor_data: Optional[dict[str, Any]] = execution_information.get("successor_data", None)
-            if successor_data is not None:
-                for successor, successor_info in successor_data.items():
-                    execution_data["successor_invocations"][successor] = {
-                        "invocation_time_from_function_start_s": successor_info[
-                            "invocation_time_from_function_start_s"
-                        ],
-                    }
-                    instance_summary[instance]["executions"]["successor_instances"].add(successor)
+        # Append the number of invocations
+        instance_summary[instance]["invocations"] += 1
 
-            instance_summary[instance]["executions"]["at_region"][provider_region].append(execution_data)
+        # Append an entry of the cpu utilization
+        instance_summary[instance]["cpu_utilization"].append(execution_information["cpu_utilization"])
 
-            # Deal with the successor non-execution data
-            successor_data = execution_information.get("successor_data", None)
-            if successor_data is not None:
-                for successor, successor_info in successor_data.items():
-                    # Get the task type of the successor data
-                    task_type = successor_info.get("task_type", None)
+        # Process execution data
+        execution_data = {
+            "duration_s": execution_information["duration_s"],
+            "cpu_utilization": execution_information["cpu_utilization"],
+            "data_transfer_during_execution_gb": execution_information["data_transfer_during_execution_gb"],
+            "successor_invocations": {},
+        }
 
-                    if task_type == CONDITIONALLY_NOT_INVOKE_TASK_TYPE:
-                        # Create the missing dictionary entries
-                        caller = instance
-                        callee = successor
-                        if caller not in instance_summary:
-                            instance_summary[caller] = {}
-                        if "to_instance" not in instance_summary[caller]:
-                            instance_summary[caller]["to_instance"] = {}
-                        if callee not in instance_summary[caller]["to_instance"]:
-                            instance_summary[caller]["to_instance"][callee] = {
-                                "invoked": 0,
-                                "non_executions": 0,
-                                "invocation_probability": 0.0,
-                                "sync_size_gb": [],
-                                "sns_only_size_gb": [],
-                                "transfer_sizes_gb": [],
-                                "regions_to_regions": {},
-                                "non_execution_info": {},
-                            }
+        successor_data: Optional[dict[str, Any]] = execution_information.get("successor_data", None)
+        if successor_data is not None:
+            for successor, successor_info in successor_data.items():
+                execution_data["successor_invocations"][successor] = {
+                    "invocation_time_from_function_start_s": successor_info[
+                        "invocation_time_from_function_start_s"
+                    ],
+                }
+                instance_summary[instance]["executions"]["successor_instances"].add(successor)
 
-                        # Mark this as a non-execution
-                        instance_summary[caller]["to_instance"][callee]["non_executions"] += 1
+        instance_summary[instance]["executions"]["at_region"][provider_region].append(execution_data)
 
-                        # Add the sync info
-                        sync_info = successor_info.get("sync_info", None)
-                        if sync_info is not None:
-                            for sync_to_from_instance, sync_instance_info in sync_info.items():
-                                # Add dictionary entries
-                                if (
+        # Deal with the successor non-execution data
+        successor_data = execution_information.get("successor_data", None)
+        if successor_data is not None:
+            for successor, successor_info in successor_data.items():
+                # Get the task type of the successor data
+                task_type = successor_info.get("task_type", None)
+
+                if task_type == CONDITIONALLY_NOT_INVOKE_TASK_TYPE:
+                    # Create the missing dictionary entries
+                    caller = instance
+                    callee = successor
+                    if caller not in instance_summary:
+                        instance_summary[caller] = {}
+                    if "to_instance" not in instance_summary[caller]:
+                        instance_summary[caller]["to_instance"] = {}
+                    if callee not in instance_summary[caller]["to_instance"]:
+                        instance_summary[caller]["to_instance"][callee] = {
+                            "invoked": 0,
+                            "non_executions": 0,
+                            "invocation_probability": 0.0,
+                            "sync_size_gb": [],
+                            "sns_only_size_gb": [],
+                            "transfer_sizes_gb": [],
+                            "regions_to_regions": {},
+                            "non_execution_info": {},
+                        }
+
+                    # Mark this as a non-execution
+                    instance_summary[caller]["to_instance"][callee]["non_executions"] += 1
+
+                    # Add the sync info
+                    sync_info = successor_info.get("sync_info", None)
+                    if sync_info is not None:
+                        for sync_to_from_instance, sync_instance_info in sync_info.items():
+                            # Add dictionary entries
+                            if (
+                                sync_to_from_instance
+                                not in instance_summary[caller]["to_instance"][callee]["non_execution_info"]
+                            ):
+                                # parsed_sync_to_from_instance = sync_to_from_instance.split(">")
+                                # sync_predecessor_instance = parsed_sync_to_from_instance[0]
+                                # sync_node_instance = parsed_sync_to_from_instance[1]
+                                instance_summary[caller]["to_instance"][callee]["non_execution_info"][
                                     sync_to_from_instance
-                                    not in instance_summary[caller]["to_instance"][callee]["non_execution_info"]
-                                ):
-                                    # parsed_sync_to_from_instance = sync_to_from_instance.split(">")
-                                    # sync_predecessor_instance = parsed_sync_to_from_instance[0]
-                                    # sync_node_instance = parsed_sync_to_from_instance[1]
-                                    instance_summary[caller]["to_instance"][callee]["non_execution_info"][
-                                        sync_to_from_instance
-                                    ] = {
-                                        # "consumed_write_capacity": [],
-                                        "sync_data_response_size_gb": [],
-                                        "sns_transfer_size_gb": [],
-                                        "regions_to_regions": {},
-                                    }
+                                ] = {
+                                    # "consumed_write_capacity": [],
+                                    "sync_data_response_size_gb": [],
+                                    "sns_transfer_size_gb": [],
+                                    "regions_to_regions": {},
+                                }
 
-                                # # Get the consumed write capacity and sync data response size
-                                # consumed_write_capacity = sync_instance_info.get("consumed_write_capacity", None)
-                                # sync_data_response_size = sync_instance_info.get("sync_data_response_size_gb", None)
-                                # if consumed_write_capacity is not None and sync_data_response_size is not None:
-                                #     instance_summary[caller]["to_instance"][callee]["non_execution_info"][
-                                #         sync_to_from_instance
-                                #     ]["consumed_write_capacity"].append(consumed_write_capacity)
-                                #     instance_summary[caller]["to_instance"][callee]["non_execution_info"][
-                                #         sync_to_from_instance
-                                #     ]["sync_data_response_size_gb"].append(sync_data_response_size)
-
-                                # Get the consumed write capacity and sync data response size
-                                sync_data_response_size = sync_instance_info.get("sync_data_response_size_gb", None)
-                                if sync_data_response_size is not None:
-                                    instance_summary[caller]["to_instance"][callee]["non_execution_info"][
-                                        sync_to_from_instance
-                                    ]["sync_data_response_size_gb"].append(sync_data_response_size)
-
+                            # Get the consumed write capacity and sync data response size
+                            sync_data_response_size = sync_instance_info.get("sync_data_response_size_gb", None)
+                            if sync_data_response_size is not None:
+                                instance_summary[caller]["to_instance"][callee]["non_execution_info"][
+                                    sync_to_from_instance
+                                ]["sync_data_response_size_gb"].append(sync_data_response_size)
+                                
     # pylint: disable=too-many-branches, too-many-statements
     def _handle_region_to_region_transmission(self, log: dict[str, Any], instance_summary: dict[str, Any]) -> None:
         for data in log["transmission_data"]:
@@ -299,7 +293,6 @@ class WorkflowRetriever(DataRetriever):
                     ] = {
                         "transfer_size_gb_to_transfer_latencies_s": {},
                         "best_fit_line": {},
-                        # "simulated_transfer_latencies_s": [],
                     }
 
                 # Add an entry for the transfer size
@@ -356,51 +349,6 @@ class WorkflowRetriever(DataRetriever):
                 # Aka via non-execution, a node calls some potentially far descendant
                 simulated_sync_predecessor = data.get("simulated_sync_predecessor", None)
                 sync_node_insance = to_instance
-
-                # # Create the missing dictionary entries (For from simulated_sync_predecessor to sync_node_insance)
-                # if simulated_sync_predecessor not in instance_summary:
-                #     instance_summary[simulated_sync_predecessor] = {}
-                # if "to_instance" not in instance_summary[simulated_sync_predecessor]:
-                #     instance_summary[simulated_sync_predecessor]["to_instance"] = {}
-                # if sync_node_insance not in instance_summary[simulated_sync_predecessor]["to_instance"]:
-                #     instance_summary[simulated_sync_predecessor]["to_instance"][sync_node_insance] = {
-                #         "invoked": 0,
-                #         "non_executions": 0,
-                #         "invocation_probability": 0.0,
-                #         "sync_sizes_gb": [],
-                #         "sns_only_size_gb": [],
-                #         "transfer_sizes_gb": [],
-                #         "regions_to_regions": {},
-                #         "non_execution_info": {},
-                #     }
-                # if (
-                #     from_region
-                #     not in instance_summary[simulated_sync_predecessor]["to_instance"][sync_node_insance][
-                #         "regions_to_regions"
-                #     ]
-                # ):
-                #     instance_summary[simulated_sync_predecessor]["to_instance"][sync_node_insance][
-                #         "regions_to_regions"
-                #     ][from_region] = {}
-                # if (
-                #     to_region
-                #     not in instance_summary[simulated_sync_predecessor]["to_instance"][sync_node_insance][
-                #         "regions_to_regions"
-                #     ][from_region]
-                # ):
-                #     instance_summary[simulated_sync_predecessor]["to_instance"][sync_node_insance][
-                #         "regions_to_regions"
-                #     ][from_region][to_region] = {
-                #         "transfer_size_gb_to_transfer_latencies_s": {},
-                #         "best_fit_line": {},
-                #         "simulated_transfer_latencies_s": [],
-                #     }
-
-                # # Add an entry to the simulated_transfer_latencies_s
-                # instance_summary[simulated_sync_predecessor]["to_instance"][sync_node_insance]["regions_to_regions"][
-                #     from_region
-                # ][to_region]["simulated_transfer_latencies_s"].append(data["transmission_latency_s"])
-
                 sync_to_from_instance = f"{simulated_sync_predecessor}>{sync_node_insance}"
                 # Add dictionary entries
                 if (
@@ -448,17 +396,6 @@ class WorkflowRetriever(DataRetriever):
                 ]["regions_to_regions"][from_region][to_region]["transfer_latencies_s"].append(
                     data["transmission_latency_s"]
                 )
-
-                # # Get the consumed write capacity and sync data response size
-                # consumed_write_capacity = sync_instance_info.get("consumed_write_capacity", None)
-                # sync_data_response_size = sync_instance_info.get("sync_data_response_size_gb", None)
-                # if consumed_write_capacity is not None and sync_data_response_size is not None:
-                #     instance_summary[caller]["to_instance"][callee]["non_execution_info"][
-                #         sync_to_from_instance
-                #     ]["consumed_write_capacity"].append(consumed_write_capacity)
-                #     instance_summary[caller]["to_instance"][callee]["non_execution_info"][
-                #         sync_to_from_instance
-                #     ]["sync_data_response_size_gb"].append(sync_data_response_size)
 
     def _reorganize_start_hop_summary(self, start_hop_summary: dict[str, Any]) -> None:
         # Here we simply average the workflow_placement_decision_size_gb
@@ -577,15 +514,6 @@ class WorkflowRetriever(DataRetriever):
                 if non_execution_info is not None:
                     # Summarize the consumed write capacity and sync data response size
                     for sync_call_from_to_instance, sync_call_entry in non_execution_info.items():
-                        # consumed_write_capacity = sync_call_entry.get("consumed_write_capacity", [])
-                        # if consumed_write_capacity != []:
-                        #     consumed_write_capacity = sum(consumed_write_capacity) / len(consumed_write_capacity)
-                        #     # Round to the nearest whole number
-                        #     non_execution_info[sync_call_from_to_instance]["consumed_write_capacity"]
-                        #  = consumed_write_capacity
-                        # else:
-                        #     non_execution_info[sync_call_from_to_instance]["consumed_write_capacity"] = 0.0
-
                         sync_data_response_size = sync_call_entry.get("sync_data_response_size_gb", [])
                         if sync_data_response_size != []:
                             sync_data_response_size_gb = sum(sync_data_response_size) / len(sync_data_response_size)
