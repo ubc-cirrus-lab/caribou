@@ -104,8 +104,8 @@ class WorkflowRetriever(DataRetriever):
 
                 start_hop_data_transfer_size = float(start_hop_log.get("data_transfer_size_gb", 0.0))
 
-                # Round start hop data transfer size to nearest 1 KB
-                start_hop_data_transfer_size = self._round_to_kb(start_hop_data_transfer_size, 1)
+                # # Round start hop data transfer size to nearest 1 KB
+                # start_hop_data_transfer_size = self._round_to_kb(start_hop_data_transfer_size, 1)
 
                 # Add the transfer size to the summary
                 from_client["transfer_sizes_gb"].append(start_hop_data_transfer_size)
@@ -135,8 +135,8 @@ class WorkflowRetriever(DataRetriever):
                 "data_size_gb", None
             )
             if workflow_placement_decision_size is not None:
-                # Round to nearest 1 KB
-                workflow_placement_decision_size = self._round_to_kb(workflow_placement_decision_size, 1)
+                # # Round to nearest 1 KB
+                # workflow_placement_decision_size = self._round_to_kb(workflow_placement_decision_size, 1)
                 start_hop_summary["workflow_placement_decision_size_gb"].append(workflow_placement_decision_size)
 
             # Now also fill in at_redirector data
@@ -344,9 +344,12 @@ class WorkflowRetriever(DataRetriever):
                         sync_information_sync_size
                     )
 
+                # # Round to nearest kb (as dynamodb write is charged in kb)
+                # transmission_data_transfer_size = self._round_to_kb(transmission_data_transfer_size, 1)
+
                 instance_summary[from_instance]["to_instance"][to_instance]["transfer_sizes_gb"].append(
-                    self._round_to_kb(transmission_data_transfer_size, 1)
-                )  # Round to nearest kb (as dynamodb write is charged in kb)
+                    transmission_data_transfer_size
+                )  
 
                 # Add an entry for the transfer latency
                 # (Only for cases where successor_invoked is True)
@@ -430,9 +433,9 @@ class WorkflowRetriever(DataRetriever):
             start_hop_summary["workflow_placement_decision_size_gb"] = sum(workflow_placement_decision_size_gb) / len(
                 workflow_placement_decision_size_gb
             )
-            start_hop_summary["workflow_placement_decision_size_gb"] = self._round_to_kb(
-                start_hop_summary["workflow_placement_decision_size_gb"], 1
-            )
+            # start_hop_summary["workflow_placement_decision_size_gb"] = self._round_to_kb(
+            #     start_hop_summary["workflow_placement_decision_size_gb"], 1
+            # )
 
         from_client = start_hop_summary["from_client"]
         for at_region_info in from_client["received_region"].values():
@@ -529,6 +532,7 @@ class WorkflowRetriever(DataRetriever):
 
                         duration_to_auxiliary_data[duration].append(new_execution)
 
+                    cpu_utilizations = [min(1.0, max(0.0, cpu)) for cpu in cpu_utilizations]
                     average_cpu_utilization = sum(cpu_utilizations) / len(cpu_utilizations)
                     instance_val["executions"]["at_region"][region] = {
                         "cpu_utilization": average_cpu_utilization,
@@ -552,20 +556,26 @@ class WorkflowRetriever(DataRetriever):
                         sync_data_response_size = sync_call_entry.get("sync_data_response_size_gb", [])
                         if sync_data_response_size != []:
                             sync_data_response_size_gb = sum(sync_data_response_size) / len(sync_data_response_size)
-                            # Round to the nearest kb
+
+                            # # Round to the nearest kb
+                            # sync_data_response_size_gb = self._round_to_kb(sync_data_response_size_gb, 1, False)
+
                             non_execution_info[sync_call_from_to_instance][
                                 "sync_data_response_size_gb"
-                            ] = self._round_to_kb(sync_data_response_size_gb, 1, False)
+                            ] = sync_data_response_size_gb
                         else:
                             non_execution_info[sync_call_from_to_instance]["sync_data_response_size_gb"] = 0.0
 
                         sns_transfer_size = sync_call_entry.get("sns_transfer_size_gb", [])
                         if sns_transfer_size != []:
                             sns_transfer_size_gb = sum(sns_transfer_size) / len(sns_transfer_size)
-                            # Round to the nearest kb
-                            non_execution_info[sync_call_from_to_instance]["sns_transfer_size_gb"] = self._round_to_kb(
-                                sns_transfer_size_gb, 1, False
-                            )
+
+                            # # Round to the nearest kb
+                            # sns_transfer_size_gb = self._round_to_kb(
+                            #     sns_transfer_size_gb, 1, False
+                            # )
+
+                            non_execution_info[sync_call_from_to_instance]["sns_transfer_size_gb"] = sns_transfer_size_gb
                         else:
                             non_execution_info[sync_call_from_to_instance]["sns_transfer_size_gb"] = 0.0
 
@@ -575,8 +585,12 @@ class WorkflowRetriever(DataRetriever):
                 sync_sizes_gb = to_instance.get("sync_size_gb", [])
                 if sync_sizes_gb:
                     average_sync_size = sum(sync_sizes_gb) / len(sync_sizes_gb)
-                    # Round to nearest 1 KB
-                    to_instance["sync_size_gb"] = self._round_to_kb(average_sync_size, 1, False)
+                    
+                    # # Round to nearest 1 KB
+                    # average_sync_size = self._round_to_kb(average_sync_size, 1, False)
+
+
+                    to_instance["sync_size_gb"] = average_sync_size
                 else:
                     del to_instance["sync_size_gb"]
 
@@ -584,8 +598,11 @@ class WorkflowRetriever(DataRetriever):
                 sns_only_size_gb = to_instance.get("sns_only_size_gb", [])
                 if sns_only_size_gb:
                     average_sns_only_size = sum(sns_only_size_gb) / len(sns_only_size_gb)
-                    # Round to nearest 1 KB
-                    to_instance["sns_only_size_gb"] = self._round_to_kb(average_sns_only_size, 1, False)
+
+                    # # Round to nearest 1 KB
+                    # average_sns_only_size = self._round_to_kb(average_sns_only_size, 1, False)
+
+                    to_instance["sns_only_size_gb"] = average_sns_only_size
                 else:
                     del to_instance["sns_only_size_gb"]
 
