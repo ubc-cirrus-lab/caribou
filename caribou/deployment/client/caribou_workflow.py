@@ -218,6 +218,9 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
                         f"({(finish_time - invocation_start_time).total_seconds()}) s and "
                         f"CALL_START_TO_FINISH ({(finish_time - call_start_time).total_seconds()}) s"
                     )
+                    # NOTE: Ensure that the log time is the time when the function first invokes the successor
+                    # This is considered the start time of the invocation, and it is used to determined when
+                    # the function starts and may be used to calculate transmission latency.
                     self.log_for_retrieval(log_message, workflow_placement_decision["run_id"], invocation_start_time)
 
                 # We don't call the function if it is conditional and the condition is not met.
@@ -283,6 +286,9 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
                     f"SYNC_DATA_RESPONSE_SIZE ({sync_data_response_size}) GB with "
                     f"UPLOAD_RTT ({upload_rtt}) s"
                 )
+            # NOTE: Ensure that the log time is the time when the function first invokes the successor
+            # This is considered the start time of the invocation, and it is used to determined when
+            # the function starts and may be used to calculate transmission latency.
             self.log_for_retrieval(log_message, workflow_placement_decision["run_id"], invocation_start_time)
 
         # Wrap the payload and add the workflow_placement decision
@@ -863,7 +869,7 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
                         f"EXCEEDS_MAXIMUM_HOPS_FROM_CLIENT_REQUEST ({MAXIMUM_HOPS_FROM_CLIENT_REQUEST})"
                     )
                     self.log_for_retrieval(
-                        log_message, run_id, self._function_start_time
+                        log_message, run_id
                     )
                     raise RuntimeError("The number of hops from the client request exceeds the "
                                        "maximum number of hops allowed."
@@ -910,7 +916,7 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
                                 f"OVERRIDING_WORKFLOW_PLACEMENT_SIZE ({overriden_workflow_placement_size}) GB"
                             )
                             self.log_for_retrieval(
-                                log_message, workflow_placement_decision["run_id"], self._function_start_time
+                                log_message, workflow_placement_decision["run_id"]
                             )
 
                         # Get the desired first function provider and region, this determines where the first function should be placed
@@ -932,7 +938,7 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
                             f"with TIME_FROM_FUNCTION_START ({time_from_function_start}) s"
                         )
                         self.log_for_retrieval(
-                            log_message, workflow_placement_decision["run_id"], self._function_start_time
+                            log_message, workflow_placement_decision["run_id"]
                         )
 
                         # Get the current region and provider
@@ -991,6 +997,8 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
                                 init_latency_from_client = str((self._function_start_time - datetime_invoked_at_client).total_seconds())
 
                             # Log the redirection information
+                            # NOTE: Ensure that the log time is the time when the function first recieved the message
+                            # As this can be used to determine when the message was first recieved by a workflow.
                             size_of_output_payload_gb = len(json.dumps(redirect_payload).encode("utf-8")) / (1024**3)
                             log_message = (
                                 f"REDIRECT: "
@@ -1060,6 +1068,8 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
                         init_latency_from_client = str((self._function_start_time - datetime_invoked_at_client).total_seconds())
                     
                     # Log the entry point information
+                    # NOTE: Ensure that the log time is the time when the function first recieved the message
+                    # As this can be used to determine when the message was first recieved.
                     wpd_data_size = workflow_placement_decision.get("data_size", 0.0)
                     wpd_consumed_read_capacity = workflow_placement_decision.get("consumed_read_capacity", 0.0)
                     time_from_function_start = str((datetime.now(GLOBAL_TIME_ZONE) - self._function_start_time).total_seconds())
@@ -1080,6 +1090,8 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
                     )
                 
                 # Log the Invocation and transmission taint for the function
+                # NOTE: Ensure that the log time is the time when the function first recieved the message
+                # As this is used to calculate the transmission latency.
                 log_message = (
                     f'INVOKED: INSTANCE ({workflow_placement_decision["current_instance_name"]}) '
                     f"called with TAINT ({transmission_taint}) "
@@ -1149,7 +1161,6 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
         self.log_for_retrieval(
             log_message,
             workflow_placement_decision["run_id"],  # type: ignore
-            self._function_start_time,
         )
 
     def get_caribou_metadata(self) -> dict[str, Any]:

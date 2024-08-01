@@ -431,6 +431,11 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         # In this case it is the redirector function.
         workflow_run_sample.start_hop_data.start_hop_latency_from_client = start_hop_latency_from_client
 
+        # Handle start time logs
+        ## Always set by redirector if it exists
+        ## as it is the earliest start time.
+        workflow_run_sample.log_start_time = log_time
+
     def _extract_invoked_logs(
         self,
         workflow_run_sample: WorkflowRunSample,
