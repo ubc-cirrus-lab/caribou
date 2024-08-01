@@ -14,7 +14,21 @@ class StartHopData:  # pylint: disable=too-many-instance-attributes
         self.input_payload_size_to_first_function: Optional[float] = None
         self.wpd_data_size: Optional[float] = None
         self.consumed_read_capacity: Optional[float] = None
-        self.init_latency_from_first_recieved: Optional[float] = None # Debug only message
+
+        # Debug only message, this can include the time from the first
+        # request to the first function, or the time or the time from
+        # the redirector to the first function.
+        self.init_latency_from_first_recieved: Optional[float] = None 
+
+        # Indicate when it arrive at the ENTRY point of the function
+        # from when the function was started (Not from the client or
+        # redirector) This mostly capture the time from pulling wpd
+        # and or checking if it needs to be pulled.
+        self.time_from_function_start_to_entry_point: Optional[float] = None 
+
+        # This indicate when the request was received by the first function
+        # Which CAN be a redirector. This is used to calculate the start hop
+        # from client latency.
         self.start_hop_latency_from_client: Optional[float] = None
 
         # Optional Fields, used only in the case the user wishes
@@ -67,7 +81,7 @@ class StartHopData:  # pylint: disable=too-many-instance-attributes
                 self.input_payload_size_to_first_function is not None,
                 self.wpd_data_size is not None,
                 self.consumed_read_capacity is not None,
-                # self.init_latency_from_first_recieved is not None,
+                self.time_from_function_start_to_entry_point is not None,
                 self.start_hop_latency_from_client is not None,
             ]
         )
@@ -94,8 +108,8 @@ class StartHopData:  # pylint: disable=too-many-instance-attributes
             "destination": self.destination_provider_region,
             "request_source": self.request_source,
             "data_transfer_size_gb": self.input_payload_size_to_first_function,
-            # "latency_from_recieved_s": self.init_latency_from_first_recieved,
             "latency_from_client_s": self.start_hop_latency_from_client,
+            "time_from_function_start_to_entry_point_s": self.time_from_function_start_to_entry_point,
             "workflow_placement_decision": filtered_workflow_placement_decision,
             "redirector_execution_data": self.redirector_execution_data.to_dict() if self.redirector_execution_data else None,
         }

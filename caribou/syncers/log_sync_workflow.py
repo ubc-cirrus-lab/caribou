@@ -315,6 +315,9 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         init_latency_from_first_recieved: float = self._extract_float_from_log_entry(
             log_entry, r"INIT_LATENCY_FIRST_RECIEVED \((.*?)\)", "init_latency_first_recieved"
         )
+        time_from_function_start: float = self._extract_float_from_log_entry(
+            log_entry, r"TIME_FROM_FUNCTION_START \((.*?)\)", "time_from_function_start"
+        )
         start_hop_latency_from_client_str: str = self._extract_from_string(log_entry, r"INIT_LATENCY_FROM_CLIENT \((.*?)\)")
         start_hop_latency_from_client: float = 0.0
         if start_hop_latency_from_client_str and start_hop_latency_from_client_str != "N/A":
@@ -332,6 +335,8 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         workflow_run_sample.start_hop_data.input_payload_size_to_first_function = input_payload_size
         workflow_run_sample.start_hop_data.wpd_data_size = workflow_placement_decision_size
         workflow_run_sample.start_hop_data.consumed_read_capacity = consumed_read_capacity
+        workflow_run_sample.start_hop_data.time_from_function_start_to_entry_point = time_from_function_start
+        
 
         # Only replace the start hop latency if it is not already set (Since it MAY be from a redirector,
         # and if it is, then we only want to keep the earliest start time, aka when it first reached the client)
@@ -399,7 +404,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         # Handle Execution Data Updates of Start Hop
         execution_data = workflow_run_sample.start_hop_data.get_redirector_execution_data(redirecting_instance, request_id)
         execution_data.provider_region = self._format_region(provider_region)
-        execution_data.lambda_insights = self._insights_logs.get(request_id, {})
+        execution_data.lambda_insights = self._insights_logs.get(request_id, None)
         execution_data.input_payload_size += input_payload_size
 
         # Handle transmission data updates
@@ -454,7 +459,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         execution_data.user_execution_duration = user_execution_duration
         execution_data.execution_duration = execution_duration
         execution_data.provider_region = self._format_region(provider_region)
-        execution_data.lambda_insights = self._insights_logs.get(request_id, {})
+        execution_data.lambda_insights = self._insights_logs.get(request_id, None)
 
     # pylint: disable=too-many-statements
     def _extract_invoking_successor_logs(
