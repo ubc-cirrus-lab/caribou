@@ -58,6 +58,7 @@ class RuntimeCalculator(InputCalculator):
                 to_region_name,
                 transmission_size,
                 True,
+                False, # Does not affect the latency (as not start hop)
             )
 
         # print(f'SIMULATED transmission_latency_distribution: {transmission_latency_distribution[:5]}\n')
@@ -76,6 +77,7 @@ class RuntimeCalculator(InputCalculator):
         to_instance_name: str,
         to_region_name: str,
         is_sync_predecessor: bool,
+        consider_from_client_latency: bool,
     ) -> tuple[float, float]:
         # Here we pick a random data transfer size, then pick a random latency
 
@@ -103,6 +105,7 @@ class RuntimeCalculator(InputCalculator):
             to_region_name,
             transmission_size,
             is_sync_predecessor,
+            consider_from_client_latency,
         )
         # print(f'transmission_latency_distribution: {transmission_latency_distribution[:5]}\n')
 
@@ -121,6 +124,7 @@ class RuntimeCalculator(InputCalculator):
         to_region_name: str,
         data_transfer_size: float,
         is_sync_predecessor: bool,
+        consider_from_client_latency: bool,
     ) -> list[float]:
         cache_key = f"{from_instance_name}-{to_instance_name}-{from_region_name}-{to_region_name}-{data_transfer_size}"
         if cache_key in self._transmission_latency_distribution_cache:
@@ -140,13 +144,15 @@ class RuntimeCalculator(InputCalculator):
                     is_sync_predecessor,
                 )
         else:
-            transmission_latency_distribution = self._workflow_loader.get_start_hop_latency_distribution(
-                to_region_name, data_transfer_size
-            )
-            if len(transmission_latency_distribution) == 0:
-                transmission_latency_distribution = self._handle_missing_start_hop_latency_distribution(
+            transmission_latency_distribution: list[float] = [0.0]
+            if consider_from_client_latency:
+                transmission_latency_distribution = self._workflow_loader.get_start_hop_latency_distribution(
                     to_region_name, data_transfer_size
                 )
+                if len(transmission_latency_distribution) == 0:
+                    transmission_latency_distribution = self._handle_missing_start_hop_latency_distribution(
+                        to_region_name, data_transfer_size
+                    )
 
         # print(f"transmission_latency_distribution: {transmission_latency_distribution[:5]},
         # From: {from_instance_name}, To: {to_instance_name},
@@ -281,11 +287,11 @@ class RuntimeCalculator(InputCalculator):
         return transmission_size_distribution
 
     def calculate_node_runtimes_and_data_transfer(
-        self, instance_name: str, region_name: str, previous_cumulative_runtime: float, instance_indexer: Indexer
+        self, instance_name: str, region_name: str, previous_cumulative_runtime: float, instance_indexer: Indexer, is_redirector: bool
     ) -> tuple[dict[str, Any], float, float]:
         # Calculate the current runtime of this instance when executed in the given region
         # Get the runtime distribution of the instance in the given region
-        runtime_distribution: list[float] = self._workflow_loader.get_runtime_distribution(instance_name, region_name)
+        runtime_distribution: list[float] = self._workflow_loader.get_runtime_distribution(instance_name, region_name, is_redirector)
         original_runtime_region_name = desired_runtime_region_name = region_name
         if len(runtime_distribution) == 0:
             # No runtime data for this instance in this region, default to home region
@@ -297,7 +303,7 @@ class RuntimeCalculator(InputCalculator):
                     f"Instance {instance_name} has no runtime data in home region "
                     f"{home_region}, this should be impossible."
                 )
-            runtime_distribution = self._workflow_loader.get_runtime_distribution(instance_name, home_region)
+            runtime_distribution = self._workflow_loader.get_runtime_distribution(instance_name, home_region, is_redirector)
             original_runtime_region_name = home_region
 
         # print(f"Instance Name: {instance_name}")
@@ -313,6 +319,7 @@ class RuntimeCalculator(InputCalculator):
             runtime,
             previous_cumulative_runtime,
             instance_indexer,
+            is_redirector,
         )
 
     def _retrieve_runtimes_and_data_transfer(
@@ -323,16 +330,17 @@ class RuntimeCalculator(InputCalculator):
         runtime: float,
         previous_cumulative_runtime: float,
         instance_indexer: Indexer,
+        is_redirector: bool,
     ) -> tuple[dict[str, Any], float, float]:
         # Retrieve the auxiliary_index_translation
-        auxiliary_index_translation = self._workflow_loader.get_auxiliary_index_translation(instance_name)
+        auxiliary_index_translation = self._workflow_loader.get_auxiliary_index_translation(instance_name, is_redirector)
 
         # print(f"Auxiliary Index Translation: {auxiliary_index_translation}")
 
         # Get the auxiliary data distribution of the instance in the given region
         # TODO: Cache this
         execution_auxiliary_data: list[list[float]] = self._workflow_loader.get_auxiliary_data_distribution(
-            instance_name, original_runtime_region_name, runtime
+            instance_name, original_runtime_region_name, runtime, is_redirector
         )
 
         # print(f"Execution Auxiliary Data: {execution_auxiliary_data}")

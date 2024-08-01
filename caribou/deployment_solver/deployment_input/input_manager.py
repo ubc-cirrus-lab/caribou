@@ -117,6 +117,14 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         self._invocation_probability_cache[key] = invocation_probability
         return invocation_probability
 
+    def get_start_hop_retrieve_wpd_probability(self) -> float:
+        """
+        Return the probability of workflow placement decision being retrieved at
+        the first function (or redirector) rather than the client CLI.
+        """
+        # If not, retrieve the value from the workflow loader
+        return self._workflow_loader.get_start_hop_retrieve_wpd_probability()
+
     def get_all_regions(self) -> list[str]:
         return self._region_viability_loader.get_available_regions()
 
@@ -189,6 +197,7 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         to_region_index: int,
         cumulative_runtime: float,
         to_instance_is_sync_node: bool,
+        consider_from_client_latency: bool,
     ) -> dict[str, Any]:
         # Convert the instance and region indices to their names
         ## For start hop, from_instance_index and from_region_index will be -1
@@ -205,7 +214,7 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
 
         # Get a transmission size and latency sample
         transmission_size, transmission_latency = self._runtime_calculator.calculate_transmission_size_and_latency(
-            from_instance_name, from_region_name, to_instance_name, to_region_name, to_instance_is_sync_node
+            from_instance_name, from_region_name, to_instance_name, to_region_name, to_instance_is_sync_node, consider_from_client_latency,
         )
 
         sns_transmission_size = transmission_size
@@ -346,7 +355,7 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         return {"non_execution_info": non_execution_info_list}
 
     def get_node_runtimes_and_data_transfer(
-        self, instance_index: int, region_index: int, previous_cumulative_runtime: float
+        self, instance_index: int, region_index: int, previous_cumulative_runtime: float, is_redirector: bool
     ) -> tuple[dict[str, Any], float, float]:
         # Convert the instance and region indices to their names
         instance_name: str = self._instance_indexer.index_to_value(instance_index)
@@ -354,7 +363,7 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
 
         # Get the node runtimes and data transfer information
         node_runtime_data_transfer_data = self._runtime_calculator.calculate_node_runtimes_and_data_transfer(
-            instance_name, region_name, previous_cumulative_runtime, self._instance_indexer
+            instance_name, region_name, previous_cumulative_runtime, self._instance_indexer, is_redirector
         )
 
         return node_runtime_data_transfer_data
@@ -371,6 +380,7 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         dynamodb_read_capacity: float,
         dynamodb_write_capacity: float,
         is_invoked: bool,
+        is_redirector: bool,
     ) -> dict[str, float]:
         # Convert the instance and region indices to their names
         instance_name: str = self._instance_indexer.index_to_value(instance_index)
@@ -393,6 +403,7 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
             data_output_sizes_str_dict,
             data_transfer_during_execution,
             is_invoked,
+            is_redirector,
         )
         return {
             "cost": self._cost_calculator.calculate_instance_cost(
@@ -472,3 +483,6 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
             "read_capacity_units": read_capacity_units,
             "workflow_placement_decision_size": workflow_placement_decision_size_gb,
         }
+
+    def get_home_region_index(self) -> int:
+        return self._region_indexer.value_to_index(self._workflow_loader.get_home_region())

@@ -55,7 +55,7 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
     def calculate_virtual_start_instance_carbon(
         self,
         data_input_sizes: dict[Optional[str], float],
-        data_output_sizes: dict[Optional[str], float],  # pylint: disable=unused-argument
+        data_output_sizes: dict[Optional[str], float],
     ) -> float:
         transmission_carbon = 0.0
 
@@ -63,7 +63,7 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
         # As it pulls wpd data from the system region.
         current_region_name = f"aws:{GLOBAL_SYSTEM_REGION}"
         data_input_sizes = {  # Alter the data input size such that the -1 or from region is the SYSTEM Region
-            current_region_name: data_input_sizes[None]
+            current_region_name: data_input_sizes.get(None, 0.0)
         }
 
         # Even if the function is not invoked, we model
@@ -82,6 +82,7 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
         data_output_sizes: dict[Optional[str], float],
         data_transfer_during_execution: float,
         is_invoked: bool,
+        is_redirector: bool,
     ) -> tuple[float, float]:
         execution_carbon = 0.0
         transmission_carbon = 0.0
@@ -91,7 +92,7 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
         # If the function is actually invoked
         if is_invoked:
             # Calculate the carbon from running the execution
-            execution_carbon += self._calculate_execution_carbon(instance_name, region_name, execution_time)
+            execution_carbon += self._calculate_execution_carbon(instance_name, region_name, execution_time, is_redirector)
 
         # Even if the function is not invoked, we model
         # Each node as an abstract instance to consider
@@ -166,15 +167,15 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
 
         return total_transmission_carbon
 
-    def _calculate_execution_carbon(self, instance_name: str, region_name: str, execution_latency: float) -> float:
+    def _calculate_execution_carbon(self, instance_name: str, region_name: str, execution_latency: float, is_redirector: bool) -> float:
         # Calculate the carbon from running the execution (solely for cpu and memory)
-        compute_factor, memory_factor, power_factor = self._get_execution_conversion_ratio(instance_name, region_name)
+        compute_factor, memory_factor, power_factor = self._get_execution_conversion_ratio(instance_name, region_name, is_redirector)
         cloud_provider_usage_kwh = execution_latency * (compute_factor + memory_factor)
         execution_carbon = cloud_provider_usage_kwh * power_factor
 
         return execution_carbon
 
-    def _get_execution_conversion_ratio(self, instance_name: str, region_name: str) -> tuple[float, float, float]:
+    def _get_execution_conversion_ratio(self, instance_name: str, region_name: str, is_redirector: bool) -> tuple[float, float, float]:
         # Check if the conversion ratio is in the cache
         cache_key = f"{instance_name}_{region_name}"
         if cache_key in self._execution_conversion_ratio_cache:
@@ -211,7 +212,7 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
         memory = memory / 1024
 
         # Get the average cpu utilization of the instance
-        utilization = self._workflow_loader.get_average_cpu_utilization(instance_name, region_name)
+        utilization = self._workflow_loader.get_average_cpu_utilization(instance_name, region_name, is_redirector)
         # average_cpu_power = (0.74 + utilization * (3.5 - 0.74)) / 1000
         average_cpu_power = min_cpu_power + utilization * (max_cpu_power - min_cpu_power)
 
