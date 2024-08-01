@@ -204,7 +204,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
             self._check_to_forget()
 
         if run_id not in self._collected_logs:
-            # If we don't need to actually load the log, we can can return here
+            # If we don't need to actually load the log, we can return here
             # We still need to collect the other logs as they might contain
             # information about the already collected logs
             if self._forgetting or run_id in self._blacklisted_run_ids:

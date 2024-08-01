@@ -11,8 +11,14 @@ class InstanceNode:
         # The region ID of the current location of the node
         self.region_id: int = -1
 
-        # The instance index
-        self.instance_id = instane_id
+        # The instance index (Nominal)
+        self.nominal_instance_id: int = instane_id
+
+        # An instance MAY also be an redirector, in that
+        # case its actual instance_id is the same as the start hop.
+        # In this case this will be overwritten with the redirector instance id.
+        # Otherwise it will be the same as the nominal instance id.
+        self.actual_instance_id: int = instane_id if instane_id >= 0 else -1
 
         # Denotes if it was invoked (Any of its incoming edges were invoked)
         # Default is False
@@ -56,7 +62,8 @@ class InstanceNode:
         # read/write capacity
 
         # TODO: If instance ID == -1, this is a virtual start node
-        if self.instance_id == -1:
+        # if self.nominal_instance_id == -1:
+        if self.actual_instance_id == -1:
             # print(f"Calculate Virtual Node (Virtual Start Node {self.instance_id}):")
             calculated_metrics = self._input_manager.calculate_cost_and_carbon_virtual_start_instance(
                 self.tracked_data_input_sizes,
@@ -69,7 +76,8 @@ class InstanceNode:
             # print(f"Calculate Real Node, {self.instance_id} -> {self.invoked}:")
             calculated_metrics = self._input_manager.calculate_cost_and_carbon_of_instance(
                 self.execution_time,
-                self.instance_id,
+                # self.nominal_instance_id,
+                self.actual_instance_id,
                 self.region_id,
                 self.tracked_data_input_sizes,
                 self.tracked_data_output_sizes,
@@ -78,6 +86,7 @@ class InstanceNode:
                 self.tracked_dynamodb_read_capacity,
                 self.tracked_dynamodb_write_capacity,
                 self.invoked,
+                self.is_redirector,
             )
 
         # We only care about the runtime if the node was invoked
@@ -88,3 +97,8 @@ class InstanceNode:
             "execution_carbon": calculated_metrics["execution_carbon"],
             "transmission_carbon": calculated_metrics["transmission_carbon"],
         }
+
+    @property
+    def is_redirector(self) -> int:
+        # Redirector node have nominal_instance_id == -1
+        return self.nominal_instance_id == -1

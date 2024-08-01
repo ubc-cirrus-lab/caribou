@@ -19,10 +19,12 @@ class DeploymentMetricsCalculator(ABC):
         instance_indexer: InstanceIndexer,
         tail_latency_threshold: int = TAIL_LATENCY_THRESHOLD,
         record_transmission_execution_carbon: bool = False,
+        consider_from_client_latency: bool = False,
     ):
         # Not all variables are relevant for other parts
         self._input_manager: InputManager = input_manager
         self._tail_latency_threshold: int = tail_latency_threshold
+        self._consider_from_client_latency: bool = consider_from_client_latency
 
         # Set up the DAG structure and get the prerequisites and successor dictionaries
         dag: DAG = DAG(list(workflow_config.instances.values()), instance_indexer)
@@ -48,7 +50,8 @@ class DeploymentMetricsCalculator(ABC):
 
     def calculate_workflow(self, deployment: list[int]) -> dict[str, float]:
         # Create an new workflow instance and configure regions
-        workflow_instance = WorkflowInstance(self._input_manager, deployment)
+        start_hop_index = self._topological_order[0] # The first instance in the topological order is the start hop
+        workflow_instance = WorkflowInstance(self._input_manager, deployment, start_hop_index, self._consider_from_client_latency)
 
         # Build the partial workflow instance (Partial DAG)
         for instance_index in self._topological_order:
@@ -73,8 +76,6 @@ class DeploymentMetricsCalculator(ABC):
 
         # Calculate the overall cost, runtime, and carbon footprint of the deployment
         worklflow_metrics = workflow_instance.calculate_overall_cost_runtime_carbon()
-
-        # print("\n________________________________________________")
 
         return worklflow_metrics
 
