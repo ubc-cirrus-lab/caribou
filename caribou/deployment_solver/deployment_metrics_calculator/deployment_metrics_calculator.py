@@ -77,6 +77,8 @@ class DeploymentMetricsCalculator(ABC):
         # Calculate the overall cost, runtime, and carbon footprint of the deployment
         worklflow_metrics = workflow_instance.calculate_overall_cost_runtime_carbon()
 
+        print(f"_________________________________\n")
+
         return worklflow_metrics
 
     def _is_invoked(self, from_instance_index: int, to_instance_index: int) -> bool:

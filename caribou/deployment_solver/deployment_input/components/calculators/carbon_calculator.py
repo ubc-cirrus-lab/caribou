@@ -59,13 +59,6 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
     ) -> float:
         transmission_carbon = 0.0
 
-        # We model the virtual start hop cost where the SYSTEM Region
-        # As it pulls wpd data from the system region.
-        current_region_name = f"aws:{GLOBAL_SYSTEM_REGION}"
-        data_input_sizes = {  # Alter the data input size such that the -1 or from region is the SYSTEM Region
-            current_region_name: data_input_sizes.get(None, 0.0)
-        }
-
         # Even if the function is not invoked, we model
         # Each node as an abstract instance to consider
         # data transfer carbon

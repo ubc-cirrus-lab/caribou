@@ -395,6 +395,9 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         # print(f"dynamodb_read_capacity: {dynamodb_read_capacity}")
         # print(f"dynamodb_write_capacity: {dynamodb_write_capacity}\n")
         data_output_sizes_str_dict = self._get_converted_region_name_dict(data_output_sizes)
+        print(f"data_output_sizes_str_dict: {data_output_sizes_str_dict}")
+        print(f"data_input_sizes: {self._get_converted_region_name_dict(data_input_sizes)}")
+        print(f"sns_data_call_and_output_sizes: {self._get_converted_region_name_dict(sns_data_call_and_output_sizes)}")
         execution_carbon, transmission_carbon = self._carbon_calculator.calculate_instance_carbon(
             execution_time,
             instance_name,
@@ -433,6 +436,10 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         # print(f"dynamodb_read_capacity: {dynamodb_read_capacity}")
         # print(f"dynamodb_write_capacity: {dynamodb_write_capacity}\n")
         data_output_sizes_str_dict = self._get_converted_region_name_dict(data_output_sizes)
+
+        print(f"data_output_sizes_str_dict: {data_output_sizes_str_dict}")
+        print(f"data_input_sizes: {self._get_converted_region_name_dict(data_input_sizes)}")
+        print(f"sns_data_call_and_output_sizes: {self._get_converted_region_name_dict(sns_data_call_and_output_sizes)}")
         return {
             "cost": self._cost_calculator.calculate_virtual_start_instance_cost(
                 data_output_sizes_str_dict,
@@ -447,10 +454,17 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         }
 
     def _get_converted_region_name_dict(self, input_region_index_dict: dict[int, Any]) -> dict[Optional[str], Any]:
+        system_region_full_name: str = f"aws:{GLOBAL_SYSTEM_REGION}"
         return {
-            self._region_indexer.index_to_value(region_index) if region_index != -1 else None: value
+            (self._region_indexer.index_to_value(region_index) if region_index >= 0 
+            else system_region_full_name if region_index == -2 # -2 Indicates the system region
+            else None): value
             for region_index, value in input_region_index_dict.items()
         }
+        # return {
+        #     self._region_indexer.index_to_value(region_index) if region_index >= 0 else None: value
+        #     for region_index, value in input_region_index_dict.items()
+        # }
 
     def calculate_dynamodb_capacity_unit_of_sync_edges(
         self, sync_edge_upload_edges_auxiliary_data: list[tuple[float, float]]

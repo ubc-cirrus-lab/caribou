@@ -81,8 +81,10 @@ class WorkflowInstance:
                 virtual_client_node = self._get_node(-2)
             else:
                 # Redirector does not exist, wpd is pulled at the start hop instance
-                wpd_retrieval_node = self._get_node(-1)
-                virtual_client_node = wpd_retrieval_node
+                wpd_retrieval_node = start_hop_node
+
+                # There also exists a virtual client node
+                virtual_client_node = self._get_node(-1)
 
         # Set node invoked flags (Can be either virtual or real)
         # Note: redirector_node will always be wpd_retrieval_node if it exists
@@ -117,11 +119,10 @@ class WorkflowInstance:
         workflow_placement_decision_size = start_hop_node_info["workflow_placement_decision_size"]
 
         ## Data is downloaded from the system region to the wpd_retrieval_node node
-        ## Although -1 does not denote that the data is downloaded from the system region
-        ## We will do this seperation in the carbon calculator
+        ## We define -2 as the system region location. 
         self._manage_data_transfer_dict(
             wpd_retrieval_node.tracked_data_input_sizes,
-            -1,
+            -2,
             workflow_placement_decision_size,
         )
 
@@ -446,13 +447,13 @@ class WorkflowInstance:
             cumulative_transmission_carbon += node_carbon_cost_runtime["transmission_carbon"]
             max_runtime = max(max_runtime, node_carbon_cost_runtime["runtime"])
 
-        # print("\nFinal Results:")
-        # print(f"Cost: {cumulative_cost} $")
-        # print(f"Runtime: {max_runtime} s")
-        # print(
-        #     f"Carbon: EX- {cumulative_execution_carbon}, TR- {cumulative_transmission_carbon}, "
-        #     f"overall- {cumulative_execution_carbon + cumulative_transmission_carbon}"
-        # )
+        print("\nFinal Results:")
+        print(f"Cost: {cumulative_cost} $")
+        print(f"Runtime: {max_runtime} s")
+        print(
+            f"Carbon: EX- {cumulative_execution_carbon}, TR- {cumulative_transmission_carbon}, "
+            f"overall- {cumulative_execution_carbon + cumulative_transmission_carbon}"
+        )
 
         return {
             "cost": cumulative_cost,
