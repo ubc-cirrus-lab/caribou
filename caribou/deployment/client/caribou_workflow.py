@@ -1062,6 +1062,7 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
                     # Log the entry point information
                     wpd_data_size = workflow_placement_decision.get("data_size", 0.0)
                     wpd_consumed_read_capacity = workflow_placement_decision.get("consumed_read_capacity", 0.0)
+                    time_from_function_start = str((datetime.now(GLOBAL_TIME_ZONE) - self._function_start_time).total_seconds())
                     log_message = (
                         f"ENTRY_POINT: Entry Point INSTANCE "
                         f'({workflow_placement_decision["current_instance_name"]}) '
@@ -1069,6 +1070,7 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
                         f'({size_of_input_payload_gb}) GB and is REDIRECTED ({redirected}) with '
                         f"INIT_LATENCY_FROM_CLIENT ({init_latency_from_client}) s "
                         f"INIT_LATENCY_FIRST_RECIEVED ({init_latency_first_received}) s "
+                        f"TIME_FROM_FUNCTION_START ({time_from_function_start}) s "
                         f"from REQUEST_SOURCE ({request_source}) with "
                         f"WORKFLOW_PLACEMENT_DECISION_SIZE ({wpd_data_size}) GB "
                         f"and CONSUMED_READ_CAPACITY ({wpd_consumed_read_capacity})"
