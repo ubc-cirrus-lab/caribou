@@ -1,5 +1,7 @@
 from typing import Any, Optional
+
 from caribou.syncers.components.execution_data import ExecutionData
+
 
 class StartHopData:  # pylint: disable=too-many-instance-attributes
     def __init__(self) -> None:
@@ -18,13 +20,13 @@ class StartHopData:  # pylint: disable=too-many-instance-attributes
         # Debug only message, this can include the time from the first
         # request to the first function, or the time or the time from
         # the redirector to the first function.
-        self.init_latency_from_first_recieved: Optional[float] = None 
+        self.init_latency_from_first_recieved: Optional[float] = None
 
         # Indicate when it arrive at the ENTRY point of the function
         # from when the function was started (Not from the client or
         # redirector) This mostly capture the time from pulling wpd
         # and or checking if it needs to be pulled.
-        self.time_from_function_start_to_entry_point: Optional[float] = None 
+        self.time_from_function_start_to_entry_point: Optional[float] = None
 
         # This indicate when the request was received by the first function
         # Which CAN be a redirector. This is used to calculate the start hop
@@ -89,7 +91,9 @@ class StartHopData:  # pylint: disable=too-many-instance-attributes
         # For redirected fields (Redirector Only)
         redirected_fields_completed: bool = True
         if self.redirector_execution_data is not None:
-            redirected_fields_completed = self.redirector_execution_data.is_completed if len(self.encountered_request_ids) == 1 else False
+            redirected_fields_completed = (
+                self.redirector_execution_data.is_completed if len(self.encountered_request_ids) == 1 else False
+            )
 
         return required_fields_completed and redirected_fields_completed
 
@@ -102,7 +106,9 @@ class StartHopData:  # pylint: disable=too-many-instance-attributes
         }
 
         # Filter out fields that are None
-        filtered_workflow_placement_decision = {key: value for key, value in workflow_placement_decision.items() if value is not None}
+        filtered_workflow_placement_decision = {
+            key: value for key, value in workflow_placement_decision.items() if value is not None
+        }
 
         start_hop_info = {
             "destination": self.destination_provider_region,
@@ -111,7 +117,9 @@ class StartHopData:  # pylint: disable=too-many-instance-attributes
             "latency_from_client_s": self.start_hop_latency_from_client,
             "time_from_function_start_to_entry_point_s": self.time_from_function_start_to_entry_point,
             "workflow_placement_decision": filtered_workflow_placement_decision,
-            "redirector_execution_data": self.redirector_execution_data.to_dict() if self.redirector_execution_data else None,
+            "redirector_execution_data": self.redirector_execution_data.to_dict()
+            if self.redirector_execution_data
+            else None,
         }
 
         # Filter out fields that are None

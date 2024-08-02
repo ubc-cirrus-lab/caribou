@@ -223,7 +223,6 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
                         break
                 elif all_within_threshold:
                     break
-        
 
         # print(f"Cost: {costs_distribution_list}")
         # print(f"Runtime: {runtimes_distribution_list}")

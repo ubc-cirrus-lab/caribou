@@ -52,8 +52,8 @@ class StochasticHeuristicDeploymentAlgorithm(DeploymentAlgorithm):
 
         generated_deployments: set[tuple[int, ...]] = {tuple(deployment) for deployment, _ in deployments}
         for _ in range(self._num_iterations):
-        # for i in range(self._num_iterations):
-        #     print(len(generated_deployments), self._max_number_combinations, i, self._num_iterations)
+            # for i in range(self._num_iterations):
+            #     print(len(generated_deployments), self._max_number_combinations, i, self._num_iterations)
             if len(generated_deployments) >= self._max_number_combinations:
                 break
 

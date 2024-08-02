@@ -64,14 +64,18 @@ class InstanceNode:
         # TODO: If instance ID == -1, this is a virtual start node
         # if self.nominal_instance_id == -1:
         if self.actual_instance_id == -1:
-            print(f"Calculate Virtual Node (Virtual Start Node {self.nominal_instance_id} ({self.actual_instance_id})):")
-            print({
-                "tracked_data_input_sizes": self.tracked_data_input_sizes,
-                "tracked_data_output_sizes": self.tracked_data_output_sizes,
-                "sns_data_call_and_output_sizes": self.sns_data_call_and_output_sizes,
-                "tracked_dynamodb_read_capacity": self.tracked_dynamodb_read_capacity,
-                "tracked_dynamodb_write_capacity": self.tracked_dynamodb_write_capacity,
-            })
+            print(
+                f"Calculate Virtual Node (Virtual Start Node {self.nominal_instance_id} ({self.actual_instance_id})):"
+            )
+            print(
+                {
+                    "tracked_data_input_sizes": self.tracked_data_input_sizes,
+                    "tracked_data_output_sizes": self.tracked_data_output_sizes,
+                    "sns_data_call_and_output_sizes": self.sns_data_call_and_output_sizes,
+                    "tracked_dynamodb_read_capacity": self.tracked_dynamodb_read_capacity,
+                    "tracked_dynamodb_write_capacity": self.tracked_dynamodb_write_capacity,
+                }
+            )
             calculated_metrics = self._input_manager.calculate_cost_and_carbon_virtual_start_instance(
                 self.tracked_data_input_sizes,
                 self.tracked_data_output_sizes,
@@ -81,18 +85,20 @@ class InstanceNode:
             )
         else:
             print(f"Calculate Real Node, {self.nominal_instance_id} ({self.actual_instance_id}) -> {self.invoked}:")
-            print({
-                "execution_time": self.execution_time,
-                "region_id": self.region_id,
-                "tracked_data_input_sizes": self.tracked_data_input_sizes,
-                "tracked_data_output_sizes": self.tracked_data_output_sizes,
-                "sns_data_call_and_output_sizes": self.sns_data_call_and_output_sizes,
-                "data_transfer_during_execution": self.data_transfer_during_execution,
-                "tracked_dynamodb_read_capacity": self.tracked_dynamodb_read_capacity,
-                "tracked_dynamodb_write_capacity": self.tracked_dynamodb_write_capacity,
-                "invoked": self.invoked,
-                "is_redirector": self.is_redirector,
-            })
+            print(
+                {
+                    "execution_time": self.execution_time,
+                    "region_id": self.region_id,
+                    "tracked_data_input_sizes": self.tracked_data_input_sizes,
+                    "tracked_data_output_sizes": self.tracked_data_output_sizes,
+                    "sns_data_call_and_output_sizes": self.sns_data_call_and_output_sizes,
+                    "data_transfer_during_execution": self.data_transfer_during_execution,
+                    "tracked_dynamodb_read_capacity": self.tracked_dynamodb_read_capacity,
+                    "tracked_dynamodb_write_capacity": self.tracked_dynamodb_write_capacity,
+                    "invoked": self.invoked,
+                    "is_redirector": self.is_redirector,
+                }
+            )
             calculated_metrics = self._input_manager.calculate_cost_and_carbon_of_instance(
                 self.execution_time,
                 # self.nominal_instance_id,
@@ -111,12 +117,14 @@ class InstanceNode:
         # We only care about the runtime if the node was invoked
         runtime = self.cumulative_runtimes["current"] if self.invoked else 0.0
 
-        print({
-            "cost": calculated_metrics["cost"],
-            "runtime": runtime,
-            "execution_carbon": calculated_metrics["execution_carbon"],
-            "transmission_carbon": calculated_metrics["transmission_carbon"],
-        })
+        print(
+            {
+                "cost": calculated_metrics["cost"],
+                "runtime": runtime,
+                "execution_carbon": calculated_metrics["execution_carbon"],
+                "transmission_carbon": calculated_metrics["transmission_carbon"],
+            }
+        )
         print()
 
         return {
@@ -127,6 +135,6 @@ class InstanceNode:
         }
 
     @property
-    def is_redirector(self) -> int:
+    def is_redirector(self) -> bool:
         # Redirector node have nominal_instance_id == -1
         return self.nominal_instance_id == -1
