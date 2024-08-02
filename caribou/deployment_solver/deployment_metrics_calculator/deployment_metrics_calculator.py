@@ -58,7 +58,6 @@ class DeploymentMetricsCalculator(ABC):  # pylint: disable=too-many-instance-att
         # Build the partial workflow instance (Partial DAG)
         for instance_index in self._topological_order:
             predecessor_instance_indices = self._prerequisites_dictionary[instance_index]
-
             # Add the start hop if this is the first instance
             if len(predecessor_instance_indices) == 0:
                 # This is the first instance, add start hop
