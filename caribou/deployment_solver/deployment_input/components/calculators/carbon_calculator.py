@@ -22,7 +22,6 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
         self._carbon_loader: CarbonLoader = carbon_loader
         self._datacenter_loader: DatacenterLoader = datacenter_loader
         self._workflow_loader: WorkflowLoader = workflow_loader
-        # self._runtime_calculator: RuntimeCalculator = runtime_calculator
         self._consider_cfe: bool = consider_cfe
 
         # Conversion ratio cache
