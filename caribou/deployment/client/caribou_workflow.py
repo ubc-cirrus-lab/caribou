@@ -818,337 +818,34 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
         def _register_handler(func: Callable[..., Any]) -> Callable[..., Any]:
             handler_name = name if name is not None else func.__name__
 
-            def wrapper(*args, **kwargs):  # type: ignore  # pylint: disable=unused-argument, too-many-branches
+            def wrapper(*args, **kwargs):  # type: ignore  # pylint: disable=unused-argument
                 self._function_start_time = datetime.now(GLOBAL_TIME_ZONE)
 
-                # Retrieve the argument and check if it is a dictionary.
-                # (Currently only support dictionary arguments)
-                argument_raw: Any = args[0]
-                if not isinstance(argument_raw, dict):
-                    # TODO: Make this error message more informative
-                    raise RuntimeError(
-                        "Something went wrong, the input is not valid and was ",
-                        "not converted to a dictioanry. Please refer to documentation "
-                        f"for accepted format. Type: {type(argument_raw)}, Argument: {argument_raw}.",
-                    )
-
-                # Determine the invocation type (SNS or direct)
-                size_of_input_payload_gb: float = -1.0  # Default value
-                if (
-                    "Records" in argument_raw
-                    and len(argument_raw["Records"]) == 1
-                    and "Sns" in argument_raw["Records"][0]
-                    and "Message" in argument_raw["Records"][0]["Sns"]
-                ):
-                    # For an SNS message, the argument will not be directly available as a dictionary
-                    # But must be loaded from the SNS Message inside of the argument
-                    raw_sns_message: str = argument_raw["Records"][0]["Sns"]["Message"]
-                    size_of_input_payload_gb = (
-                        len(raw_sns_message.encode("utf-8")) / (1024**3) if entry_point else -1.0
-                    )
-
-                    caribou_wrapper_argument = json.loads(raw_sns_message, cls=CustomDecoder)
-                else:
-                    # For non-SNS invocations, the argument is already a dictionary
-                    # the argument is simply the event (argument_raw).
-                    caribou_wrapper_argument = argument_raw
-
-                    # Convert the argument to a string to get the size of the payload
-                    size_of_input_payload_gb = (
-                        len(json.dumps(caribou_wrapper_argument).encode("utf-8")) / (1024**3) if entry_point else -1.0
-                    )
-
-                # Check if the argument is a dictionary (At this point it SHOULD be a dictionary)
-                if not isinstance(caribou_wrapper_argument, dict):
-                    # TODO: Make this error message more informative
-                    raise RuntimeError(
-                        "Something went wrong, the argument is not a dictionary. ",
-                        "Please check the format of the argument, refer to documentation "
-                        f"for proper format. Argument: {caribou_wrapper_argument}, ",
-                        f"Type: {type(caribou_wrapper_argument)}.",
-                    )
-
-                # Get the number of redirects from client request
-                self._number_of_hops_from_client_request = (
-                    max(int(caribou_wrapper_argument.get("number_of_hops_from_client_request", 0)), 0) + 1
+                # Retrieve the argument and check if it it is valid
+                caribou_wrapper_argument, size_of_input_payload_gb = self._retrieve_caribou_wrapper_argument(
+                    args, entry_point
                 )
 
-                # Check if the number of hops from the client request exceeds the maximum number of hops
-                # Used to prevent infinite loops (If the workflow placement decision is incorrect for
-                # any reason, this will prevent the function from being called infinitely)
-                if self._number_of_hops_from_client_request > MAXIMUM_HOPS_FROM_CLIENT_REQUEST:
-                    run_id: str = caribou_wrapper_argument.get("run_id", "UNKNOWN")
+                # Ensure that the number of hops from the client request is within the constraints
+                self._ensure_hops_within_constraints(caribou_wrapper_argument)
 
-                    # Log the error message
-                    log_message = (
-                        f"EXCEED_HOP_ERROR: "
-                        f"NUMBER_OF_HOPS_FROM_CLIENT_REQUEST ({self._number_of_hops_from_client_request}) "
-                        f"EXCEEDS_MAXIMUM_HOPS_FROM_CLIENT_REQUEST ({MAXIMUM_HOPS_FROM_CLIENT_REQUEST})"
-                    )
-                    self.log_for_retrieval(log_message, run_id)
-                    raise RuntimeError(
-                        "The number of hops from the client request exceeds the "
-                        "maximum number of hops allowed."
-                        f"Mumber of hops: {self._number_of_hops_from_client_request}, "
-                        f"Maximum number of hops: {MAXIMUM_HOPS_FROM_CLIENT_REQUEST}"
-                    )
+                # Retrieve the workflow placement decision from the wrapper
+                self._current_workflow_placement_decision = (
+                    workflow_placement_decision
+                ) = self._retrieve_wpd_from_wrapper_or_system(
+                    caribou_wrapper_argument,
+                    entry_point,
+                    allow_placement_decision_override,
+                    size_of_input_payload_gb,
+                    handler_name,
+                )
 
-                # If this is an entry point, it is possible to have no placement decision
-                # configured. Entry point functions can also act as a redirector
-                # to an entry point in another region.
-                if "workflow_placement_decision" not in caribou_wrapper_argument:
-                    if entry_point:
-                        # In this case, there are no workflow placement decisions in the caribou_wrapper_argument
-                        # We need to get the workflow placement decision from the platform (System region)
-                        pulled_decision_from_platform: bool = True
-                        (
-                            workflow_placement_decision,
-                            wpd_data_size,
-                            wpd_consumed_read_capacity,
-                        ) = self.get_workflow_placement_decision_from_platform()  # pylint: disable=line-too-long
-                        workflow_placement_decision["data_size"] = wpd_data_size
-                        workflow_placement_decision["consumed_read_capacity"] = wpd_consumed_read_capacity
+                # Log some caribou information on the function invocation
+                self._log_invoked_information(
+                    caribou_wrapper_argument, workflow_placement_decision, entry_point, size_of_input_payload_gb
+                )
 
-                        # Generate a run id for the workflow instance
-                        run_id = uuid.uuid4().hex
-                        workflow_placement_decision["run_id"] = run_id
-
-                        # Determine if the request should be sent to the home region
-                        send_to_home_region = random.random() < self._home_region_threshold
-                        workflow_placement_decision["send_to_home_region"] = send_to_home_region
-                        workflow_placement_decision["time_key"] = self._get_time_key(workflow_placement_decision)
-
-                        # For debug and testing purposes, we allow for overriding the
-                        # workflow placement decision. IMPORTANT: This is only for debugging
-                        # and testing purposes, a misconfiguration can cause infinite loops
-                        # Which may not terminate until it reaches the maximum number of hops (As a fail-safe)
-                        debug_workflow_placement_override: Optional[dict[str, Any]] = caribou_wrapper_argument.get(
-                            "debug_workflow_placement_override", None
-                        )
-                        if allow_placement_decision_override and debug_workflow_placement_override is not None:
-                            workflow_placement_decision = debug_workflow_placement_override[
-                                "workflow_placement_decision"
-                            ]  # Override the current workflow placement decision
-
-                            # We should log the size of the debug_workflow_placement_override
-                            # to correctly account for its size for cost and carbon calculations
-                            overriden_workflow_placement_size = len(
-                                json.dumps(debug_workflow_placement_override).encode("utf-8")
-                            ) / (1024**3)
-                            log_message = (
-                                f"WPD_OVERRIDE: WPD was overriden by debug_workflow_placement_override "
-                                f"OVERRIDING_WORKFLOW_PLACEMENT_SIZE ({overriden_workflow_placement_size}) GB"
-                            )
-                            self.log_for_retrieval(log_message, workflow_placement_decision["run_id"])
-
-                        # Get the desired first function provider and region,
-                        # this determines where the first function should be placed
-                        (
-                            desired_first_function_provider,
-                            desired_first_function_region,
-                            first_function_identifier,
-                        ) = self._get_current_node_desired_workflow_placement_decision(workflow_placement_decision)
-                        retrieved_wpd_time = datetime.now(GLOBAL_TIME_ZONE)
-
-                        # Log if and what decision to retrieve WPD from platform
-                        ## Note: Here we intentially log the wpd size and consumed capacity of the retrieved WPD
-                        ## Regardless of override, as the override is only for testing and debugging purposes,
-                        ## and thus its size may not be representative of the actual size of the WPD.
-                        time_from_function_start = (retrieved_wpd_time - self._function_start_time).total_seconds()
-                        log_message = (
-                            f"RETRIVE_WPD: "
-                            f'SEND_TO_HOME_DECISION ({workflow_placement_decision["send_to_home_region"]}) '
-                            f'TIME_KEY ({workflow_placement_decision["time_key"]}) '
-                            f"RETRIEVED_PLACEMENT_DECISION_FROM_PLATFORM ({pulled_decision_from_platform}) "
-                            f"WORKFLOW_PLACEMENT_DECISION_SIZE ({wpd_data_size}) GB "
-                            f"and CONSUMED_READ_CAPACITY ({wpd_consumed_read_capacity}) "
-                            f"with TIME_FROM_FUNCTION_START ({time_from_function_start}) s"
-                        )
-                        self.log_for_retrieval(log_message, workflow_placement_decision["run_id"])
-
-                        # Get the current region and provider
-                        current_region: str = os.environ["AWS_REGION"]
-                        current_provider: str = str(Provider.AWS.value)
-
-                        # Check if the current function is indeed placed in the
-                        # desired region (And if it will need to redirect)
-                        need_for_redirect: bool = (
-                            desired_first_function_provider != current_provider
-                            or desired_first_function_region != current_region
-                        )
-
-                        # Default assumption is that the request will not be permitted to redirect
-                        # Just to avoid any potential issues, do not want an infinite loop
-                        permit_redirection: bool = caribou_wrapper_argument.get("permit_redirection", False)
-                        was_redirected: bool = caribou_wrapper_argument.get("redirected", False)
-                        ## IMPORTANT: If the request was redirected, do not allow further
-                        ## redirections, to avoid infinite loops BE VERY CAREFUL WITH CHANGING THIS,
-                        ## AS INCORECT CONFIGURATION CAN CAUSE INFINITE LOOPS
-                        if (
-                            need_for_redirect is True and permit_redirection is True and was_redirected is False
-                        ):  # If the request is permitted to redirect
-                            transmission_taint = uuid.uuid4().hex
-
-                            # Redirect the request to the desired provider and region
-                            redirect_payload: dict[str, Any] = {
-                                "payload": caribou_wrapper_argument.get("payload", {}),
-                                "workflow_placement_decision": workflow_placement_decision,
-                                "time_first_recieved": self._function_start_time.strftime(TIME_FORMAT),
-                                "transmission_taint": transmission_taint,
-                                "permit_redirection": False,  # IMPORTANT: Do not allow further redirections
-                                "redirected": True,  # IMPORTANT: Mark that this request has been redirected
-                                "number_of_hops_from_client_request": self._number_of_hops_from_client_request,
-                            }
-
-                            # Get the time the request was sent from the client (if available)
-                            time_request_sent: Optional[str] = caribou_wrapper_argument.get("time_request_sent", None)
-                            if time_request_sent is not None:
-                                redirect_payload["time_request_sent"] = time_request_sent
-
-                            # Get the request source (if available)
-                            request_source_fc: Optional[str] = caribou_wrapper_argument.get("request_source", None)
-                            if request_source_fc is not None:
-                                redirect_payload["request_source"] = request_source_fc
-
-                            # Directly invoke and send the request to the desired provider and region
-                            invocation_start_time = datetime.now(GLOBAL_TIME_ZONE)
-                            RemoteClientFactory.get_remote_client(
-                                desired_first_function_provider, desired_first_function_region
-                            ).invoke_function(
-                                message=json.dumps(redirect_payload),
-                                identifier=first_function_identifier,
-                            )
-                            invocation_finish_time = datetime.now(GLOBAL_TIME_ZONE)
-
-                            # Get the time the request was sent from the client (if available)
-                            init_latency_from_client = "N/A"
-                            if time_request_sent is not None:
-                                # If the time_request_sent is in the argument, convert it to a proper format
-                                datetime_invoked_at_client = datetime.strptime(time_request_sent, TIME_FORMAT)
-
-                                # Get s from the time difference
-                                # Note due to desync between client and server, the time difference can be negative
-                                init_latency_from_client = str(
-                                    (self._function_start_time - datetime_invoked_at_client).total_seconds()
-                                )
-
-                            # Log the redirection information
-                            # NOTE: Ensure that the log time is the time when the function first recieved the message
-                            # As this can be used to determine when the message was first recieved by a workflow.
-                            size_of_output_payload_gb = len(json.dumps(redirect_payload).encode("utf-8")) / (1024**3)
-                            log_message = (
-                                f"REDIRECT: "
-                                f'REDIRECTING_INSTANCE ({workflow_placement_decision["current_instance_name"]}) '
-                                f"FROM_REGION ({current_region}) FROM_PROVIDER ({current_provider}) "
-                                f"TO_REGION ({desired_first_function_region}) "
-                                f"TO_PROVIDER ({desired_first_function_provider}) "
-                                f'of WORKFLOW {f"{self.name}-{self.version}"} called with '
-                                f"INPUT_PAYLOAD_SIZE ({size_of_input_payload_gb}) GB "
-                                f"OUTPUT_PAYLOAD_SIZE ({size_of_output_payload_gb}) GB "
-                                f"Invoking IDENTIFIER ({first_function_identifier}) with TAINT ({transmission_taint}) "
-                                f"NUMBER_OF_HOPS_FROM_CLIENT_REQUEST ({self._number_of_hops_from_client_request}) "
-                                f"INVOCATION_TIME_FROM_FUNCTION_START "
-                                f"({(invocation_start_time - self._function_start_time).total_seconds()}) s and "
-                                f"FINISH_TIME_FROM_INVOCATION_START "
-                                f"({(invocation_finish_time - invocation_start_time).total_seconds()}) s "
-                                f"INIT_LATENCY_FROM_CLIENT ({init_latency_from_client}) s"
-                            )
-                            self.log_for_retrieval(
-                                log_message, workflow_placement_decision["run_id"], self._function_start_time
-                            )
-
-                            # Log the CPU model (From Redirector)
-                            self._log_cpu_model(workflow_placement_decision, True)
-                            return {
-                                "statusCode": 200,
-                                "message": (
-                                    f"Redirecting to Provider: {desired_first_function_provider}, "
-                                    f"Region: {desired_first_function_region}"
-                                ),
-                            }
-
-                        # If the function is correctly placed in the desired region, we can proceed
-                        # Lets set the potentially missing parameters in the caribou_wrapper_argument
-                        caribou_wrapper_argument["workflow_placement_decision"] = workflow_placement_decision
-                    else:
-                        # This should never happen, as only entry points can have no workflow placement decision
-                        raise RuntimeError(
-                            "Could not get workflow_placement decision from message. ",
-                            f"Workflow_ID {self.name}-{self.version}, Function {handler_name} ",
-                            "is not an entry point, so it should have a workflow placement decision.",
-                        )
-
-                # Get the workflow_placement decision from the message received
-                if "workflow_placement_decision" not in caribou_wrapper_argument:
-                    raise RuntimeError("Could not get workflow_placement decision from message")
-                self._current_workflow_placement_decision = workflow_placement_decision = caribou_wrapper_argument[
-                    "workflow_placement_decision"
-                ]
                 payload = caribou_wrapper_argument.get("payload", {})
-
-                transmission_taint = caribou_wrapper_argument.get("transmission_taint", "N/A")
-                redirected: bool = caribou_wrapper_argument.get("redirected", False)
-                request_source: str = caribou_wrapper_argument.get("request_source", "Unknown")
-                if entry_point:  # If entry point, log additional information
-                    # Get the time the request was first recieved by the function (Or from a redirect)
-                    time_first_recieved: Optional[str] = caribou_wrapper_argument.get("time_first_recieved", None)
-                    if time_first_recieved is not None:
-                        # If the time_first_recieved is in the argument, convert it to a proper format
-                        datetime_first_received = datetime.strptime(time_first_recieved, TIME_FORMAT)
-                        init_latency_first_received = str(
-                            (self._function_start_time - datetime_first_received).total_seconds()
-                        )
-                    else:
-                        # datetime_first_received = self._function_start_time
-                        init_latency_first_received = str(0.0)
-
-                    # Get the time the request was sent from the client (if available)
-                    init_latency_from_client = "N/A"
-                    time_invoked_at_client: Optional[str] = caribou_wrapper_argument.get("time_request_sent", None)
-                    if time_invoked_at_client is not None:
-                        # If the time_request_sent is in the argument, convert it to a proper format
-                        datetime_invoked_at_client = datetime.strptime(time_invoked_at_client, TIME_FORMAT)
-
-                        # Get s from the time difference
-                        # Note due to desync between client and server, the time difference can be negative
-                        init_latency_from_client = str(
-                            (self._function_start_time - datetime_invoked_at_client).total_seconds()
-                        )
-
-                    # Log the entry point information
-                    # NOTE: Ensure that the log time is the time when the function first recieved the message
-                    # As this can be used to determine when the message was first recieved.
-                    wpd_data_size = workflow_placement_decision.get("data_size", 0.0)
-                    wpd_consumed_read_capacity = workflow_placement_decision.get("consumed_read_capacity", 0.0)
-                    time_from_function_start = (
-                        datetime.now(GLOBAL_TIME_ZONE) - self._function_start_time
-                    ).total_seconds()
-                    log_message = (
-                        f"ENTRY_POINT: Entry Point INSTANCE "
-                        f'({workflow_placement_decision["current_instance_name"]}) '
-                        f'of workflow {f"{self.name}-{self.version}"} called with PAYLOAD_SIZE '
-                        f"({size_of_input_payload_gb}) GB and is REDIRECTED ({redirected}) with "
-                        f"INIT_LATENCY_FROM_CLIENT ({init_latency_from_client}) s "
-                        f"INIT_LATENCY_FIRST_RECIEVED ({init_latency_first_received}) s "
-                        f"TIME_FROM_FUNCTION_START ({time_from_function_start}) s "
-                        f"from REQUEST_SOURCE ({request_source}) with "
-                        f"WORKFLOW_PLACEMENT_DECISION_SIZE ({wpd_data_size}) GB "
-                        f"and CONSUMED_READ_CAPACITY ({wpd_consumed_read_capacity})"
-                    )
-                    self.log_for_retrieval(
-                        log_message, workflow_placement_decision["run_id"], self._function_start_time
-                    )
-
-                # Log the Invocation and transmission taint for the function
-                # NOTE: Ensure that the log time is the time when the function first recieved the message
-                # As this is used to calculate the transmission latency.
-                log_message = (
-                    f'INVOKED: INSTANCE ({workflow_placement_decision["current_instance_name"]}) '
-                    f"called with TAINT ({transmission_taint}) "
-                    f"with NUMBER_OF_HOPS_FROM_CLIENT_REQUEST ({self._number_of_hops_from_client_request})"
-                )
-                self.log_for_retrieval(log_message, workflow_placement_decision["run_id"], self._function_start_time)
-
                 result: Any = None
                 self._run_id_to_successor_index[workflow_placement_decision["run_id"]] = 0
                 try:
@@ -1208,6 +905,365 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
             return wrapper
 
         return _register_handler
+
+    def _log_invoked_information(
+        self,
+        caribou_wrapper_argument: dict[str, Any],
+        workflow_placement_decision: dict[str, Any],
+        entry_point: bool,
+        size_of_input_payload_gb: float,
+    ) -> None:
+        transmission_taint = caribou_wrapper_argument.get("transmission_taint", "N/A")
+        redirected: bool = caribou_wrapper_argument.get("redirected", False)
+        request_source: str = caribou_wrapper_argument.get("request_source", "Unknown")
+        if entry_point:  # If entry point, log additional information
+            # Get the time the request was first recieved by the function (Or from a redirect)
+            time_first_recieved: Optional[str] = caribou_wrapper_argument.get("time_first_recieved", None)
+            if time_first_recieved is not None:
+                # If the time_first_recieved is in the argument, convert it to a proper format
+                datetime_first_received = datetime.strptime(time_first_recieved, TIME_FORMAT)
+                init_latency_first_received = str((self._function_start_time - datetime_first_received).total_seconds())
+            else:
+                # datetime_first_received = self._function_start_time
+                init_latency_first_received = str(0.0)
+
+            # Get the time the request was sent from the client (if available)
+            init_latency_from_client = "N/A"
+            time_invoked_at_client: Optional[str] = caribou_wrapper_argument.get("time_request_sent", None)
+            if time_invoked_at_client is not None:
+                # If the time_request_sent is in the argument, convert it to a proper format
+                datetime_invoked_at_client = datetime.strptime(time_invoked_at_client, TIME_FORMAT)
+
+                # Get s from the time difference
+                # Note due to desync between client and server, the time difference can be negative
+                init_latency_from_client = str((self._function_start_time - datetime_invoked_at_client).total_seconds())
+
+            # Log the entry point information
+            # NOTE: Ensure that the log time is the time when the function first recieved the message
+            # As this can be used to determine when the message was first recieved.
+            wpd_data_size = workflow_placement_decision.get("data_size", 0.0)
+            wpd_consumed_read_capacity = workflow_placement_decision.get("consumed_read_capacity", 0.0)
+            time_from_function_start = (datetime.now(GLOBAL_TIME_ZONE) - self._function_start_time).total_seconds()
+            log_message = (
+                f"ENTRY_POINT: Entry Point INSTANCE "
+                f'({workflow_placement_decision["current_instance_name"]}) '
+                f'of workflow {f"{self.name}-{self.version}"} called with PAYLOAD_SIZE '
+                f"({size_of_input_payload_gb}) GB and is REDIRECTED ({redirected}) with "
+                f"INIT_LATENCY_FROM_CLIENT ({init_latency_from_client}) s "
+                f"INIT_LATENCY_FIRST_RECIEVED ({init_latency_first_received}) s "
+                f"TIME_FROM_FUNCTION_START ({time_from_function_start}) s "
+                f"from REQUEST_SOURCE ({request_source}) with "
+                f"WORKFLOW_PLACEMENT_DECISION_SIZE ({wpd_data_size}) GB "
+                f"and CONSUMED_READ_CAPACITY ({wpd_consumed_read_capacity})"
+            )
+            self.log_for_retrieval(log_message, workflow_placement_decision["run_id"], self._function_start_time)
+
+        # Log the Invocation and transmission taint for the function
+        # NOTE: Ensure that the log time is the time when the function first recieved the message
+        # As this is used to calculate the transmission latency.
+        log_message = (
+            f'INVOKED: INSTANCE ({workflow_placement_decision["current_instance_name"]}) '
+            f"called with TAINT ({transmission_taint}) "
+            f"with NUMBER_OF_HOPS_FROM_CLIENT_REQUEST ({self._number_of_hops_from_client_request})"
+        )
+        self.log_for_retrieval(log_message, workflow_placement_decision["run_id"], self._function_start_time)
+
+    def _retrieve_wpd_from_wrapper_or_system(
+        self,
+        caribou_wrapper_argument: dict[str, Any],
+        entry_point: bool,
+        allow_placement_decision_override: bool,
+        size_of_input_payload_gb: float,
+        handler_name: str,
+    ) -> dict[str, Any]:
+        # If this is an entry point, it is possible to have no placement decision
+        # configured. Entry point functions can also act as a redirector
+        # to an entry point in another region.
+        if "workflow_placement_decision" not in caribou_wrapper_argument:
+            if entry_point:
+                # In this case, there are no workflow placement decisions in the caribou_wrapper_argument
+                # We need to get the workflow placement decision from the platform (System region)
+                workflow_placement_decision = self._retrieve_wpd_from_platform(
+                    caribou_wrapper_argument, allow_placement_decision_override
+                )
+
+                # Get the desired first function provider and region,
+                # this determines where the first function should be placed
+                (
+                    desired_first_function_provider,
+                    desired_first_function_region,
+                    first_function_identifier,
+                ) = self._get_current_node_desired_workflow_placement_decision(workflow_placement_decision)
+
+                # Get the current region and provider
+                current_region: str = os.environ["AWS_REGION"]
+                current_provider: str = str(Provider.AWS.value)
+
+                # Check if the current function is indeed placed in the
+                # desired region (And if it will need to redirect)
+                need_for_redirect: bool = (
+                    desired_first_function_provider != current_provider
+                    or desired_first_function_region != current_region
+                )
+
+                # Default assumption is that the request will not be permitted to redirect
+                # Just to avoid any potential issues, do not want an infinite loop
+                permit_redirection: bool = caribou_wrapper_argument.get("permit_redirection", False)
+                was_redirected: bool = caribou_wrapper_argument.get("redirected", False)
+                ## IMPORTANT: If the request was redirected, do not allow further
+                ## redirections, to avoid infinite loops BE VERY CAREFUL WITH CHANGING THIS,
+                ## AS INCORECT CONFIGURATION CAN CAUSE INFINITE LOOPS
+                if (
+                    need_for_redirect is True and permit_redirection is True and was_redirected is False
+                ):  # If the request is permitted to redirect
+                    transmission_taint = uuid.uuid4().hex
+
+                    # Redirect the request to the desired provider and region
+                    redirect_payload: dict[str, Any] = {
+                        "payload": caribou_wrapper_argument.get("payload", {}),
+                        "workflow_placement_decision": workflow_placement_decision,
+                        "time_first_recieved": self._function_start_time.strftime(TIME_FORMAT),
+                        "transmission_taint": transmission_taint,
+                        "permit_redirection": False,  # IMPORTANT: Do not allow further redirections
+                        "redirected": True,  # IMPORTANT: Mark that this request has been redirected
+                        "number_of_hops_from_client_request": self._number_of_hops_from_client_request,
+                    }
+
+                    # Get the time the request was sent from the client (if available)
+                    time_request_sent: Optional[str] = caribou_wrapper_argument.get("time_request_sent", None)
+                    if time_request_sent is not None:
+                        redirect_payload["time_request_sent"] = time_request_sent
+
+                    # Get the request source (if available)
+                    request_source_fc: Optional[str] = caribou_wrapper_argument.get("request_source", None)
+                    if request_source_fc is not None:
+                        redirect_payload["request_source"] = request_source_fc
+
+                    # Directly invoke and send the request to the desired provider and region
+                    invocation_start_time = datetime.now(GLOBAL_TIME_ZONE)
+                    RemoteClientFactory.get_remote_client(
+                        desired_first_function_provider, desired_first_function_region
+                    ).invoke_function(
+                        message=json.dumps(redirect_payload),
+                        identifier=first_function_identifier,
+                    )
+                    invocation_finish_time = datetime.now(GLOBAL_TIME_ZONE)
+
+                    # Get the time the request was sent from the client (if available)
+                    init_latency_from_client = "N/A"
+                    if time_request_sent is not None:
+                        # If the time_request_sent is in the argument, convert it to a proper format
+                        datetime_invoked_at_client = datetime.strptime(time_request_sent, TIME_FORMAT)
+
+                        # Get s from the time difference
+                        # Note due to desync between client and server, the time difference can be negative
+                        init_latency_from_client = str(
+                            (self._function_start_time - datetime_invoked_at_client).total_seconds()
+                        )
+
+                    # Log the redirection information
+                    # NOTE: Ensure that the log time is the time when the function first recieved the message
+                    # As this can be used to determine when the message was first recieved by a workflow.
+                    size_of_output_payload_gb = len(json.dumps(redirect_payload).encode("utf-8")) / (1024**3)
+                    log_message = (
+                        f"REDIRECT: "
+                        f'REDIRECTING_INSTANCE ({workflow_placement_decision["current_instance_name"]}) '
+                        f"FROM_REGION ({current_region}) FROM_PROVIDER ({current_provider}) "
+                        f"TO_REGION ({desired_first_function_region}) "
+                        f"TO_PROVIDER ({desired_first_function_provider}) "
+                        f'of WORKFLOW {f"{self.name}-{self.version}"} called with '
+                        f"INPUT_PAYLOAD_SIZE ({size_of_input_payload_gb}) GB "
+                        f"OUTPUT_PAYLOAD_SIZE ({size_of_output_payload_gb}) GB "
+                        f"Invoking IDENTIFIER ({first_function_identifier}) with TAINT ({transmission_taint}) "
+                        f"NUMBER_OF_HOPS_FROM_CLIENT_REQUEST ({self._number_of_hops_from_client_request}) "
+                        f"INVOCATION_TIME_FROM_FUNCTION_START "
+                        f"({(invocation_start_time - self._function_start_time).total_seconds()}) s and "
+                        f"FINISH_TIME_FROM_INVOCATION_START "
+                        f"({(invocation_finish_time - invocation_start_time).total_seconds()}) s "
+                        f"INIT_LATENCY_FROM_CLIENT ({init_latency_from_client}) s"
+                    )
+                    self.log_for_retrieval(
+                        log_message, workflow_placement_decision["run_id"], self._function_start_time
+                    )
+
+                    # Log the CPU model (From Redirector)
+                    self._log_cpu_model(workflow_placement_decision, True)
+                    return {
+                        "statusCode": 200,
+                        "message": (
+                            f"Redirecting to Provider: {desired_first_function_provider}, "
+                            f"Region: {desired_first_function_region}"
+                        ),
+                    }
+
+                # If the function is correctly placed in the desired region, we can proceed
+                # Lets set the potentially missing parameters in the caribou_wrapper_argument
+                caribou_wrapper_argument["workflow_placement_decision"] = workflow_placement_decision
+            else:
+                # This should never happen, as only entry points can have no workflow placement decision
+                raise RuntimeError(
+                    "Could not get workflow_placement decision from message. ",
+                    f"Workflow_ID {self.name}-{self.version}, Function {handler_name} ",
+                    "is not an entry point, so it should have a workflow placement decision.",
+                )
+
+        # Get the workflow_placement decision from the message received
+        if "workflow_placement_decision" not in caribou_wrapper_argument:
+            raise RuntimeError("Could not get workflow_placement decision from message")
+
+        return caribou_wrapper_argument["workflow_placement_decision"]
+
+    def _retrieve_wpd_from_platform(
+        self, caribou_wrapper_argument: dict[str, Any], allow_placement_decision_override: bool
+    ) -> dict[str, Any]:
+        # In this case, there are no workflow placement decisions in the caribou_wrapper_argument
+        # We need to get the workflow placement decision from the platform (System region)
+        pulled_decision_from_platform: bool = True
+        (
+            workflow_placement_decision,
+            wpd_data_size,
+            wpd_consumed_read_capacity,
+        ) = self.get_workflow_placement_decision_from_platform()  # pylint: disable=line-too-long
+        workflow_placement_decision["data_size"] = wpd_data_size
+        workflow_placement_decision["consumed_read_capacity"] = wpd_consumed_read_capacity
+
+        # Generate a run id for the workflow instance
+        run_id = uuid.uuid4().hex
+        workflow_placement_decision["run_id"] = run_id
+
+        # Determine if the request should be sent to the home region
+        send_to_home_region = random.random() < self._home_region_threshold
+        workflow_placement_decision["send_to_home_region"] = send_to_home_region
+        workflow_placement_decision["time_key"] = self._get_time_key(workflow_placement_decision)
+
+        # For debug and testing purposes, we allow for overriding the
+        # workflow placement decision. IMPORTANT: This is only for debugging
+        # and testing purposes, a misconfiguration can cause infinite loops
+        # Which may not terminate until it reaches the maximum number of hops (As a fail-safe)
+        debug_workflow_placement_override: Optional[dict[str, Any]] = caribou_wrapper_argument.get(
+            "debug_workflow_placement_override", None
+        )
+        if allow_placement_decision_override and debug_workflow_placement_override is not None:
+            workflow_placement_decision = debug_workflow_placement_override[
+                "workflow_placement_decision"
+            ]  # Override the current workflow placement decision
+
+            # We should log the size of the debug_workflow_placement_override
+            # to correctly account for its size for cost and carbon calculations
+            overriden_workflow_placement_size = len(json.dumps(debug_workflow_placement_override).encode("utf-8")) / (
+                1024**3
+            )
+            log_message = (
+                f"WPD_OVERRIDE: WPD was overriden by debug_workflow_placement_override "
+                f"OVERRIDING_WORKFLOW_PLACEMENT_SIZE ({overriden_workflow_placement_size}) GB"
+            )
+            self.log_for_retrieval(log_message, workflow_placement_decision["run_id"])
+
+        retrieved_wpd_time = datetime.now(GLOBAL_TIME_ZONE)
+
+        # Log if and what decision to retrieve WPD from platform
+        ## Note: Here we intentially log the wpd size and consumed capacity of the retrieved WPD
+        ## Regardless of override, as the override is only for testing and debugging purposes,
+        ## and thus its size may not be representative of the actual size of the WPD.
+        time_from_function_start = (retrieved_wpd_time - self._function_start_time).total_seconds()
+        log_message = (
+            f"RETRIVE_WPD: "
+            f'SEND_TO_HOME_DECISION ({workflow_placement_decision["send_to_home_region"]}) '
+            f'TIME_KEY ({workflow_placement_decision["time_key"]}) '
+            f"RETRIEVED_PLACEMENT_DECISION_FROM_PLATFORM ({pulled_decision_from_platform}) "
+            f"WORKFLOW_PLACEMENT_DECISION_SIZE ({wpd_data_size}) GB "
+            f"and CONSUMED_READ_CAPACITY ({wpd_consumed_read_capacity}) "
+            f"with TIME_FROM_FUNCTION_START ({time_from_function_start}) s"
+        )
+        self.log_for_retrieval(log_message, workflow_placement_decision["run_id"])
+
+        return workflow_placement_decision
+
+    def _retrieve_caribou_wrapper_argument(
+        self, args: tuple[Any, ...], entry_point: bool
+    ) -> tuple[dict[str, Any], float]:
+        # Retrieve the argument and check if it is a dictionary.
+        # (Currently only support dictionary arguments)
+        argument_raw = args[0]
+
+        if not isinstance(argument_raw, dict):
+            # TODO: Make this error message more informative
+            raise RuntimeError(
+                "Something went wrong, the input is not valid and was ",
+                "not converted to a dictioanry. Please refer to documentation "
+                f"for accepted format. Type: {type(argument_raw)}, Argument: {argument_raw}.",
+            )
+
+        # Determine the invocation type (SNS or direct)
+        size_of_input_payload_gb: float = -1.0  # Default value
+        if (
+            "Records" in argument_raw
+            and len(argument_raw["Records"]) == 1
+            and "Sns" in argument_raw["Records"][0]
+            and "Message" in argument_raw["Records"][0]["Sns"]
+        ):
+            # For an SNS message, the argument will not be directly available as a dictionary
+            # But must be loaded from the SNS Message inside of the argument
+            raw_sns_message: str = argument_raw["Records"][0]["Sns"]["Message"]
+            size_of_input_payload_gb = len(raw_sns_message.encode("utf-8")) / (1024**3) if entry_point else -1.0
+
+            caribou_wrapper_argument = json.loads(raw_sns_message, cls=CustomDecoder)
+        else:
+            # For non-SNS invocations, the argument is already a dictionary
+            # the argument is simply the event (argument_raw).
+            caribou_wrapper_argument = argument_raw
+
+            # Convert the argument to a string to get the size of the payload
+            size_of_input_payload_gb = (
+                len(json.dumps(caribou_wrapper_argument).encode("utf-8")) / (1024**3) if entry_point else -1.0
+            )
+
+        # Check if the argument is a dictionary (At this point it SHOULD be a dictionary)
+        if not isinstance(caribou_wrapper_argument, dict):
+            # TODO: Make this error message more informative
+            raise RuntimeError(
+                "Something went wrong, the argument is not a dictionary. ",
+                "Please check the format of the argument, refer to documentation "
+                f"for proper format. Argument: {caribou_wrapper_argument}, ",
+                f"Type: {type(caribou_wrapper_argument)}.",
+            )
+
+        return caribou_wrapper_argument, size_of_input_payload_gb
+
+    def _ensure_hops_within_constraints(self, caribou_wrapper_argument: dict[str, Any]) -> None:
+        """
+        Ensure that the number of hops from the client request is within the constraints.
+
+        This method is used to ensure that the number of hops from the client request
+        does not exceed the maximum number of hops allowed.
+
+        :param caribou_wrapper_argument: The argument passed to the Caribou wrapper.
+        """
+
+        # Get the number of redirects from client request
+        self._number_of_hops_from_client_request = (
+            max(int(caribou_wrapper_argument.get("number_of_hops_from_client_request", 0)), 0) + 1
+        )
+
+        # Check if the number of hops from the client request exceeds the maximum number of hops
+        # Used to prevent infinite loops (If the workflow placement decision is incorrect for
+        # any reason, this will prevent the function from being called infinitely)
+        if self._number_of_hops_from_client_request > MAXIMUM_HOPS_FROM_CLIENT_REQUEST:
+            run_id: str = caribou_wrapper_argument.get("run_id", "UNKNOWN")
+
+            # Log the error message
+            log_message = (
+                f"EXCEED_HOP_ERROR: "
+                f"NUMBER_OF_HOPS_FROM_CLIENT_REQUEST ({self._number_of_hops_from_client_request}) "
+                f"EXCEEDS_MAXIMUM_HOPS_FROM_CLIENT_REQUEST ({MAXIMUM_HOPS_FROM_CLIENT_REQUEST})"
+            )
+            self.log_for_retrieval(log_message, run_id)
+            raise RuntimeError(
+                "The number of hops from the client request exceeds the "
+                "maximum number of hops allowed."
+                f"Mumber of hops: {self._number_of_hops_from_client_request}, "
+                f"Maximum number of hops: {MAXIMUM_HOPS_FROM_CLIENT_REQUEST}"
+            )
 
     def _log_cpu_model(self, workflow_placement_decision: dict[str, Any], from_redirector: bool = False) -> None:
         # Log the CPU model used in the instance

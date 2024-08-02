@@ -124,12 +124,14 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
                 if self._carbon_free_intra_region_transmission:
                     continue
 
-                # Get the carbon intensity of the region (If data transfer is within the same region)
-                # Otherwise it will be inter-region data transfer, and thus we use the average carbon intensity
-                # of the USA.
-                transmission_network_carbon_intensity = self._carbon_loader.get_grid_carbon_intensity(
-                    current_region_name, self._hourly_carbon_setting
-                )
+                if current_region_name is not None:
+                    # Get the carbon intensity of the region (if known)
+                    # (If data transfer is within the same region)
+                    # Otherwise it will be inter-region data transfer,
+                    # and thus we use the average carbon intensity of the USA.
+                    transmission_network_carbon_intensity = self._carbon_loader.get_grid_carbon_intensity(
+                        current_region_name, self._hourly_carbon_setting
+                    )
 
             # TODO: At some point, actually change this from looking at average carbon
             # intensity of a country or continent to looking at the average carbon intensity
@@ -145,7 +147,7 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
         current_region_is_home_region = current_region_name == self._workflow_loader.get_home_region()
         if not self._carbon_free_dt_during_execution_at_home_region or not current_region_is_home_region:
             transmission_network_carbon_intensity = average_carbon_intensity_of_usa
-            if current_region_is_home_region:
+            if current_region_is_home_region and current_region_name is not None:
                 # Here we make the assumption that the user code accesses data from the home region
                 # thus the grid carbon intensity will be the same as the home region if it is at the home region.
                 # Otherwise, we use the average carbon intensity of the USA.
