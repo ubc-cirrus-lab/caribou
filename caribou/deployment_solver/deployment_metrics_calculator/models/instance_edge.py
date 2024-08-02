@@ -19,7 +19,9 @@ class InstanceEdge:
         # invoked conditionally.
         self.conditionally_invoked: bool = False
 
-    def get_transmission_information(self, successor_is_sync_node: bool, consider_from_client_latency: bool) -> Optional[dict[str, Any]]:
+    def get_transmission_information(
+        self, successor_is_sync_node: bool, consider_from_client_latency: bool
+    ) -> Optional[dict[str, Any]]:
         # Check the edge if it is a real edge
         # First get the parent node
         # If the parent node is invoked, then the edge is real
@@ -50,7 +52,7 @@ class InstanceEdge:
                 to_region_id,
                 cumulative_runtime,
                 successor_is_sync_node,
-                consider_from_client_latency
+                consider_from_client_latency,
             )
         else:
             # This is the case where the edge is conditionally NOT invoked, and thus

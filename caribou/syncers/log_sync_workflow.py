@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 import json
 import re
 from datetime import datetime, timedelta
@@ -12,12 +13,12 @@ from caribou.common.constants import (
     INVOKE_SUCCESSOR_ONLY_TASK_TYPE,
     KEEP_ALIVE_DATA_COUNT,
     LOG_VERSION,
+    REDIRECT_ONLY_TASK_TYPE,
     SYNC_UPLOAD_AND_INVOKE_TASK_TYPE,
     SYNC_UPLOAD_ONLY_TASK_TYPE,
     TIME_FORMAT,
     TIME_FORMAT_DAYS,
     WORKFLOW_SUMMARY_TABLE,
-    REDIRECT_ONLY_TASK_TYPE,
 )
 from caribou.common.models.remote_client.remote_client import RemoteClient
 from caribou.common.models.remote_client.remote_client_factory import RemoteClientFactory
@@ -163,15 +164,16 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         # Those logs starts with "REPORT" and contains "Init Duration"
         if log_entry.startswith("REPORT"):
             request_id = self._extract_from_string(log_entry, r"RequestId: (.*?)\t")
-            if "Init Duration" in log_entry and request_id is not None:
-                self._tainted_cold_start_samples.add(request_id)
+            if request_id is not None:
+                if "Init Duration" in log_entry:
+                    self._tainted_cold_start_samples.add(request_id)
 
-            # Add the request id of AWS report to list of completed request IDs
-            # But first check if it is a duplicate (Already encountered)
-            if request_id in self._encountered_completed_request_ids:
-                self._encountered_duplicate_completed_request_ids.add(request_id)
+                # Add the request id of AWS report to list of completed request IDs
+                # But first check if it is a duplicate (Already encountered)
+                if request_id in self._encountered_completed_request_ids:
+                    self._encountered_duplicate_completed_request_ids.add(request_id)
 
-            self._encountered_completed_request_ids.add(request_id)
+                self._encountered_completed_request_ids.add(request_id)
 
         # Ensure that the log entry is a valid log entry and has the correct version
         # Those logs starts with "[CARIBOU]" and contains "LOG_VERSION"
@@ -286,8 +288,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
                 self._daily_user_code_failure_set[log_day_str].add(run_id)
             elif message.startswith("WPD_OVERRIDE"):
                 self._extract_debug_wpd_override(workflow_run_sample, message)
-            elif (message.startswith("INFORMING_SYNC_NODE") or
-                  message.startswith("DEBUG_MESSAGE")):
+            elif message.startswith("INFORMING_SYNC_NODE") or message.startswith("DEBUG_MESSAGE"):
                 # Debug message, we can ignore
                 pass
             else:
@@ -303,25 +304,33 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         log_time: datetime,
         request_id: str,
     ) -> None:
-        function_executed: str = self._extract_string_from_log_entry(log_entry, r"INSTANCE \((.*?)\)", "function_executed")
-        input_payload_size: float = self._extract_float_from_log_entry(log_entry, r"PAYLOAD_SIZE \((.*?)\)", "data_transfer_size")
+        function_executed: str = self._extract_string_from_log_entry(
+            log_entry, r"INSTANCE \((.*?)\)", "function_executed"
+        )
+        input_payload_size: float = self._extract_float_from_log_entry(
+            log_entry, r"PAYLOAD_SIZE \((.*?)\)", "data_transfer_size"
+        )
         workflow_placement_decision_size: float = self._extract_float_from_log_entry(
             log_entry, r"WORKFLOW_PLACEMENT_DECISION_SIZE \((.*?)\)", "workflow_placement_decision_size"
         )
-        consumed_read_capacity: str = self._extract_float_from_log_entry(
+        consumed_read_capacity: float = self._extract_float_from_log_entry(
             log_entry, r"CONSUMED_READ_CAPACITY \((.*?)\)", "consumed_read_capacity"
         )
-        request_source: str = self._extract_string_from_log_entry(log_entry, r"REQUEST_SOURCE \((.*?)\)", "request_source")
+        request_source: str = self._extract_string_from_log_entry(
+            log_entry, r"REQUEST_SOURCE \((.*?)\)", "request_source"
+        )
         init_latency_from_first_recieved: float = self._extract_float_from_log_entry(
             log_entry, r"INIT_LATENCY_FIRST_RECIEVED \((.*?)\)", "init_latency_first_recieved"
         )
         time_from_function_start: float = self._extract_float_from_log_entry(
             log_entry, r"TIME_FROM_FUNCTION_START \((.*?)\)", "time_from_function_start"
         )
-        start_hop_latency_from_client_str: str = self._extract_from_string(log_entry, r"INIT_LATENCY_FROM_CLIENT \((.*?)\)")
+        start_hop_latency_from_client_str: Optional[str] = self._extract_from_string(
+            log_entry, r"INIT_LATENCY_FROM_CLIENT \((.*?)\)"
+        )
         start_hop_latency_from_client: float = 0.0
         if start_hop_latency_from_client_str and start_hop_latency_from_client_str != "N/A":
-            start_hop_latency_from_client: float = float(start_hop_latency_from_client_str)
+            start_hop_latency_from_client = float(start_hop_latency_from_client_str)
 
         # Handle start time logs
         ## Should only be set if it is not already set
@@ -336,14 +345,15 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         workflow_run_sample.start_hop_data.wpd_data_size = workflow_placement_decision_size
         workflow_run_sample.start_hop_data.consumed_read_capacity = consumed_read_capacity
         workflow_run_sample.start_hop_data.time_from_function_start_to_entry_point = time_from_function_start
-        
 
         # Only replace the start hop latency if it is not already set (Since it MAY be from a redirector,
         # and if it is, then we only want to keep the earliest start time, aka when it first reached the client)
         if workflow_run_sample.start_hop_data.start_hop_latency_from_client is None:
             workflow_run_sample.start_hop_data.start_hop_latency_from_client = start_hop_latency_from_client
 
-        workflow_run_sample.start_hop_data.init_latency_from_first_recieved = init_latency_from_first_recieved # Debug only message
+        workflow_run_sample.start_hop_data.init_latency_from_first_recieved = (
+            init_latency_from_first_recieved  # Debug only message
+        )
 
         # Handle Execution Data Updates
         execution_data = workflow_run_sample.get_execution_data(function_executed, request_id)
@@ -355,7 +365,9 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         log_entry: str,
     ) -> None:
         retrieved_placement_decision_from_platform: bool = self._extract_boolean_from_log_entry(
-            log_entry, r"RETRIEVED_PLACEMENT_DECISION_FROM_PLATFORM \((.*?)\)", "retrieved_placement_decision_from_platform"
+            log_entry,
+            r"RETRIEVED_PLACEMENT_DECISION_FROM_PLATFORM \((.*?)\)",
+            "retrieved_placement_decision_from_platform",
         )
 
         # Handle start hop updates
@@ -381,11 +393,17 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         log_time: datetime,
         request_id: str,
     ) -> None:
-        redirecting_instance: str = self._extract_string_from_log_entry(log_entry, r"REDIRECTING_INSTANCE \((.*?)\)", "redirecting_instance")
+        redirecting_instance: str = self._extract_string_from_log_entry(
+            log_entry, r"REDIRECTING_INSTANCE \((.*?)\)", "redirecting_instance"
+        )
         to_region: str = self._extract_string_from_log_entry(log_entry, r"TO_REGION \((.*?)\)", "to_region")
         to_provider: str = self._extract_string_from_log_entry(log_entry, r"TO_PROVIDER \((.*?)\)", "to_provider")
-        input_payload_size: float = self._extract_float_from_log_entry(log_entry, r"INPUT_PAYLOAD_SIZE \((.*?)\)", "input_payload_size")
-        output_payload_size: float = self._extract_float_from_log_entry(log_entry, r"OUTPUT_PAYLOAD_SIZE \((.*?)\)", "output_payload_size")
+        input_payload_size: float = self._extract_float_from_log_entry(
+            log_entry, r"INPUT_PAYLOAD_SIZE \((.*?)\)", "input_payload_size"
+        )
+        output_payload_size: float = self._extract_float_from_log_entry(
+            log_entry, r"OUTPUT_PAYLOAD_SIZE \((.*?)\)", "output_payload_size"
+        )
         taint: str = self._extract_string_from_log_entry(log_entry, r"TAINT \((.*?)\)", "taint")
         invocation_time_from_function_start: float = self._extract_float_from_log_entry(
             log_entry, r"INVOCATION_TIME_FROM_FUNCTION_START \((.*?)\)", "invocation_time_from_function_start"
@@ -393,16 +411,20 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         finish_time_from_invocation_start: float = self._extract_float_from_log_entry(
             log_entry, r"FINISH_TIME_FROM_INVOCATION_START \((.*?)\)", "finish_time_from_invocation_start"
         )
-        start_hop_latency_from_client_str: str = self._extract_from_string(log_entry, r"INIT_LATENCY_FROM_CLIENT \((.*?)\)")
+        start_hop_latency_from_client_str: Optional[str] = self._extract_from_string(
+            log_entry, r"INIT_LATENCY_FROM_CLIENT \((.*?)\)"
+        )
         start_hop_latency_from_client: float = 0.0
         if start_hop_latency_from_client_str and start_hop_latency_from_client_str != "N/A":
-            start_hop_latency_from_client: float = float(start_hop_latency_from_client_str)
+            start_hop_latency_from_client = float(start_hop_latency_from_client_str)
 
         # from_provider_region = self._format_region({"provider": from_provider, "region": from_region})
         to_provider_region = self._format_region({"provider": to_provider, "region": to_region})
 
         # Handle Execution Data Updates of Start Hop
-        execution_data = workflow_run_sample.start_hop_data.get_redirector_execution_data(redirecting_instance, request_id)
+        execution_data = workflow_run_sample.start_hop_data.get_redirector_execution_data(
+            redirecting_instance, request_id
+        )
         execution_data.provider_region = self._format_region(provider_region)
         execution_data.lambda_insights = self._insights_logs.get(request_id, None)
         execution_data.input_payload_size += input_payload_size
@@ -416,13 +438,17 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         transmission_data.payload_transmission_size = output_payload_size
         transmission_data.successor_invoked = True
         transmission_data.from_direct_successor = True
-        transmission_data.redirector_transmission = True # Indicate that this is a redirector transmission
+        transmission_data.redirector_transmission = True  # Indicate that this is a redirector transmission
 
         # Handle Redirector execution (and successor) data updates
-        execution_data = workflow_run_sample.start_hop_data.get_redirector_execution_data(redirecting_instance, request_id)
+        execution_data = workflow_run_sample.start_hop_data.get_redirector_execution_data(
+            redirecting_instance, request_id
+        )
         successor_data = execution_data.get_successor_data(redirecting_instance)
         successor_data.invocation_time_from_function_start = invocation_time_from_function_start
-        successor_data.finish_time_from_invocation_start = finish_time_from_invocation_start # Used for debugging Purposes
+        successor_data.finish_time_from_invocation_start = (
+            finish_time_from_invocation_start  # Used for debugging Purposes
+        )
         successor_data.output_payload_data_size = output_payload_size
         successor_data.destination_region = to_provider_region
         successor_data.task_type = REDIRECT_ONLY_TASK_TYPE
@@ -451,7 +477,9 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
     def _extract_executed_logs(
         self, workflow_run_sample: WorkflowRunSample, log_entry: str, provider_region: dict[str, str], request_id: str
     ) -> None:
-        function_executed: str = self._extract_string_from_log_entry(log_entry, r"INSTANCE \((.*?)\)", "function_executed")
+        function_executed: str = self._extract_string_from_log_entry(
+            log_entry, r"INSTANCE \((.*?)\)", "function_executed"
+        )
         user_execution_duration: float = self._extract_float_from_log_entry(
             log_entry, r"USER_EXECUTION_TIME \((.*?)\)", "user_execution_duration"
         )
@@ -487,8 +515,12 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         finish_time_from_invocation_start: float = self._extract_float_from_log_entry(
             log_entry, r"FINISH_TIME_FROM_INVOCATION_START \((.*?)\)", "finish_time_from_invocation_start"
         )
-        destination_provider: str = self._extract_string_from_log_entry(log_entry, r"PROVIDER \((.*?)\)", "destination_provider")
-        destination_region: str = self._extract_string_from_log_entry(log_entry, r"REGION \((.*?)\)", "destination_region")
+        destination_provider: str = self._extract_string_from_log_entry(
+            log_entry, r"PROVIDER \((.*?)\)", "destination_provider"
+        )
+        destination_region: str = self._extract_string_from_log_entry(
+            log_entry, r"REGION \((.*?)\)", "destination_region"
+        )
         successor_invoked: bool = self._extract_boolean_from_log_entry(
             log_entry, r"SUCCESSOR_INVOKED \((.*?)\)", "successor_invoked"
         )
@@ -577,9 +609,15 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
     ) -> None:
         taint: str = self._extract_string_from_log_entry(log_entry, r"TAINT \((.*?)\)", "taint")
         caller_function: str = self._extract_string_from_log_entry(log_entry, r"INSTANCE \((.*?)\)", "caller_function")
-        successor_function: str = self._extract_string_from_log_entry(log_entry, r"SUCCESSOR \((.*?)\)", "successor_function")
-        proxy_for_instance: str = self._extract_string_from_log_entry(log_entry, r"PREDECESSOR_INSTANCE \((.*?)\)", "proxy_for_instance")
-        sync_node_instance: str = self._extract_string_from_log_entry(log_entry, r"SYNC_NODE \((.*?)\)", "sync_node_instance")
+        successor_function: str = self._extract_string_from_log_entry(
+            log_entry, r"SUCCESSOR \((.*?)\)", "successor_function"
+        )
+        proxy_for_instance: str = self._extract_string_from_log_entry(
+            log_entry, r"PREDECESSOR_INSTANCE \((.*?)\)", "proxy_for_instance"
+        )
+        sync_node_instance: str = self._extract_string_from_log_entry(
+            log_entry, r"SYNC_NODE \((.*?)\)", "sync_node_instance"
+        )
         successor_invoked: bool = self._extract_boolean_from_log_entry(
             log_entry, r"SUCCESSOR_INVOKED \((.*?)\)", "successor_invoked"
         )
@@ -592,17 +630,21 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         data_transfer_size: float = self._extract_float_from_log_entry(
             log_entry, r"PAYLOAD_SIZE \((.*?)\)", "data_transfer_size"
         )
-        invocation_time_from_function_start: float = self._extract_float_from_log_entry(
-            log_entry, r"INVOCATION_TIME_FROM_FUNCTION_START \((.*?)\)", "invocation_time_from_function_start"
+        # invocation_time_from_function_start: float = self._extract_float_from_log_entry(
+        #     log_entry, r"INVOCATION_TIME_FROM_FUNCTION_START \((.*?)\)", "invocation_time_from_function_start"
+        # )
+        # finish_time_from_invocation_start: float = self._extract_float_from_log_entry(
+        #     log_entry, r"FINISH_TIME_FROM_INVOCATION_START \((.*?)\)", "finish_time_from_invocation_start"
+        # )
+        # call_start_to_finish_time: float = self._extract_float_from_log_entry(
+        #     log_entry, r"CALL_START_TO_FINISH \((.*?)\)", "call_start_to_finish_time"
+        # )
+        destination_provider: str = self._extract_string_from_log_entry(
+            log_entry, r"PROVIDER \((.*?)\)", "destination_provider"
         )
-        finish_time_from_invocation_start: float = self._extract_float_from_log_entry(
-            log_entry, r"FINISH_TIME_FROM_INVOCATION_START \((.*?)\)", "finish_time_from_invocation_start"
+        destination_region: str = self._extract_string_from_log_entry(
+            log_entry, r"REGION \((.*?)\)", "destination_region"
         )
-        call_start_to_finish_time: float = self._extract_float_from_log_entry(
-            log_entry, r"CALL_START_TO_FINISH \((.*?)\)", "call_start_to_finish_time"
-        )
-        destination_provider: str = self._extract_string_from_log_entry(log_entry, r"PROVIDER \((.*?)\)", "destination_provider")
-        destination_region: str = self._extract_string_from_log_entry(log_entry, r"REGION \((.*?)\)", "destination_region")
 
         # Handle transmission data updates
         if successor_invoked:
@@ -646,14 +688,18 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         sync_data_response_size: float = self._extract_float_from_log_entry(
             log_entry, r"SYNC_DATA_RESPONSE_SIZE \((.*?)\)", "sync_data_response_size"
         )
-        destination_provider: str = self._extract_string_from_log_entry(log_entry, r"PROVIDER \((.*?)\)", "destination_provider")
-        destination_region: str = self._extract_string_from_log_entry(log_entry, r"REGION \((.*?)\)", "destination_region")
+        destination_provider: str = self._extract_string_from_log_entry(
+            log_entry, r"PROVIDER \((.*?)\)", "destination_provider"
+        )
+        destination_region: str = self._extract_string_from_log_entry(
+            log_entry, r"REGION \((.*?)\)", "destination_region"
+        )
         invocation_time_from_function_start: float = self._extract_float_from_log_entry(
             log_entry, r"INVOCATION_TIME_FROM_FUNCTION_START \((.*?)\)", "invocation_time_from_function_start"
         )
-        finish_time_from_invocation_start: float = self._extract_float_from_log_entry(
-            log_entry, r"FINISH_TIME_FROM_INVOCATION_START \((.*?)\)", "finish_time_from_invocation_start"
-        )
+        # finish_time_from_invocation_start: float = self._extract_float_from_log_entry(
+        #     log_entry, r"FINISH_TIME_FROM_INVOCATION_START \((.*?)\)", "finish_time_from_invocation_start"
+        # )
 
         # Execution and successor data updates
         execution_data = workflow_run_sample.get_execution_data(caller_function, request_id)
@@ -668,12 +714,18 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         )
 
     def _extract_cpu_model(self, workflow_run_sample: WorkflowRunSample, log_entry: str, request_id: str) -> None:
-        function_executed: str = self._extract_string_from_log_entry(log_entry, r"INSTANCE \((.*?)\)", "function_executed")
-        from_redirector: bool = self._extract_boolean_from_log_entry(log_entry, r"FROM_REDIRECTOR \((.*?)\)", "from_redirector")
+        function_executed: str = self._extract_string_from_log_entry(
+            log_entry, r"INSTANCE \((.*?)\)", "function_executed"
+        )
+        from_redirector: bool = self._extract_boolean_from_log_entry(
+            log_entry, r"FROM_REDIRECTOR \((.*?)\)", "from_redirector"
+        )
         cpu_model: str = self._extract_string_from_log_entry(log_entry, r"CPU_MODEL \((.*?)\)", "cpu_model")
-        cpu_model = cpu_model.replace("<", "(").replace(">", ")") # Convert back to the original format
+        cpu_model = cpu_model.replace("<", "(").replace(">", ")")  # Convert back to the original format
         if from_redirector:
-            execution_data = workflow_run_sample.start_hop_data.get_redirector_execution_data(function_executed, request_id)
+            execution_data = workflow_run_sample.start_hop_data.get_redirector_execution_data(
+                function_executed, request_id
+            )
         else:
             execution_data = workflow_run_sample.get_execution_data(function_executed, request_id)
         execution_data.cpu_model = cpu_model
@@ -684,9 +736,15 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
     def _extract_download_data_from_sync_table(
         self, workflow_run_sample: WorkflowRunSample, log_entry: str, request_id: str
     ) -> None:
-        function_executed: str = self._extract_string_from_log_entry(log_entry, r"INSTANCE \((.*?)\)", "function_executed")
-        download_size: float = self._extract_float_from_log_entry(log_entry, r"DOWNLOAD_SIZE \((.*?)\)", "download_size")
-        download_time: float = self._extract_float_from_log_entry(log_entry, r"DOWNLOAD_TIME \((.*?)\)", "download_time")
+        function_executed: str = self._extract_string_from_log_entry(
+            log_entry, r"INSTANCE \((.*?)\)", "function_executed"
+        )
+        download_size: float = self._extract_float_from_log_entry(
+            log_entry, r"DOWNLOAD_SIZE \((.*?)\)", "download_size"
+        )
+        download_time: float = self._extract_float_from_log_entry(
+            log_entry, r"DOWNLOAD_TIME \((.*?)\)", "download_time"
+        )
         consumed_read_capacity: float = self._extract_float_from_log_entry(
             log_entry, r"CONSUMED_READ_CAPACITY \((.*?)\)", "consumed_read_capacity"
         )
@@ -841,18 +899,20 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
             # If the list of duplicate completed request ids is not empty, we need to
             # check if the workflow run sample have any of these request ids
             if len(self._encountered_duplicate_completed_request_ids) > 0:
-                common_request_ids: set[str] = workflow_run_sample.request_ids & self._encountered_duplicate_completed_request_ids
+                common_request_ids: set[str] = (
+                    workflow_run_sample.request_ids & self._encountered_duplicate_completed_request_ids
+                )
 
                 # First remove the common request ids from _encountered_duplicate_completed_request_ids
                 # As we don't need to check them again, as they should only be present in ONE workflow run sample
                 self._encountered_duplicate_completed_request_ids -= common_request_ids
 
                 continue
-            
+
             # Now we check if the workflow run sample is valid and complete
             if not workflow_run_sample.is_valid_and_complete():
                 continue
-            
+
             # Now all checks have passed, we can add the logs to the list
             log = workflow_run_sample.to_dict()
 

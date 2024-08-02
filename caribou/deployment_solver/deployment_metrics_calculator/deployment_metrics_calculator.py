@@ -10,7 +10,7 @@ from caribou.deployment_solver.models.region_indexer import RegionIndexer
 from caribou.deployment_solver.workflow_config import WorkflowConfig
 
 
-class DeploymentMetricsCalculator(ABC):
+class DeploymentMetricsCalculator(ABC):  # pylint: disable=too-many-instance-attributes
     def __init__(
         self,
         workflow_config: WorkflowConfig,
@@ -50,8 +50,10 @@ class DeploymentMetricsCalculator(ABC):
 
     def calculate_workflow(self, deployment: list[int]) -> dict[str, float]:
         # Create an new workflow instance and configure regions
-        start_hop_index = self._topological_order[0] # The first instance in the topological order is the start hop
-        workflow_instance = WorkflowInstance(self._input_manager, deployment, start_hop_index, self._consider_from_client_latency)
+        start_hop_index = self._topological_order[0]  # The first instance in the topological order is the start hop
+        workflow_instance = WorkflowInstance(
+            self._input_manager, deployment, start_hop_index, self._consider_from_client_latency
+        )
 
         # Build the partial workflow instance (Partial DAG)
         for instance_index in self._topological_order:
@@ -77,7 +79,7 @@ class DeploymentMetricsCalculator(ABC):
         # Calculate the overall cost, runtime, and carbon footprint of the deployment
         worklflow_metrics = workflow_instance.calculate_overall_cost_runtime_carbon()
 
-        print(f"_________________________________\n")
+        print("_________________________________\n")
 
         return worklflow_metrics
 

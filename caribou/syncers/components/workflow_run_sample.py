@@ -61,7 +61,7 @@ class WorkflowRunSample:  # pylint: disable=too-many-instance-attributes
         # Set the request ID if it is not set
         if self.execution_data[instance_name].request_id is None:
             self.execution_data[instance_name].request_id = request_id
-            
+
         return self.execution_data[instance_name]
 
     def is_valid_and_complete(self) -> bool:
@@ -118,4 +118,3 @@ class WorkflowRunSample:  # pylint: disable=too-many-instance-attributes
                 "unique_cpu_models": list(self.cpu_models),
             },
         )
-    

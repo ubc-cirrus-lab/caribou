@@ -58,7 +58,7 @@ class RuntimeCalculator(InputCalculator):
                 to_region_name,
                 transmission_size,
                 True,
-                False, # Does not affect the latency (as not start hop)
+                False,  # Does not affect the latency (as not start hop)
             )
 
         # print(f'SIMULATED transmission_latency_distribution: {transmission_latency_distribution[:5]}\n')
@@ -144,7 +144,7 @@ class RuntimeCalculator(InputCalculator):
                     is_sync_predecessor,
                 )
         else:
-            transmission_latency_distribution: list[float] = [0.0]
+            transmission_latency_distribution = [0.0]
             if consider_from_client_latency:
                 transmission_latency_distribution = self._workflow_loader.get_start_hop_latency_distribution(
                     to_region_name, data_transfer_size
@@ -287,11 +287,18 @@ class RuntimeCalculator(InputCalculator):
         return transmission_size_distribution
 
     def calculate_node_runtimes_and_data_transfer(
-        self, instance_name: str, region_name: str, previous_cumulative_runtime: float, instance_indexer: Indexer, is_redirector: bool
+        self,
+        instance_name: str,
+        region_name: str,
+        previous_cumulative_runtime: float,
+        instance_indexer: Indexer,
+        is_redirector: bool,
     ) -> tuple[dict[str, Any], float, float]:
         # Calculate the current runtime of this instance when executed in the given region
         # Get the runtime distribution of the instance in the given region
-        runtime_distribution: list[float] = self._workflow_loader.get_runtime_distribution(instance_name, region_name, is_redirector)
+        runtime_distribution: list[float] = self._workflow_loader.get_runtime_distribution(
+            instance_name, region_name, is_redirector
+        )
         original_runtime_region_name = desired_runtime_region_name = region_name
         if len(runtime_distribution) == 0:
             # No runtime data for this instance in this region, default to home region
@@ -303,7 +310,9 @@ class RuntimeCalculator(InputCalculator):
                     f"Instance {instance_name} has no runtime data in home region "
                     f"{home_region}, this should be impossible."
                 )
-            runtime_distribution = self._workflow_loader.get_runtime_distribution(instance_name, home_region, is_redirector)
+            runtime_distribution = self._workflow_loader.get_runtime_distribution(
+                instance_name, home_region, is_redirector
+            )
             original_runtime_region_name = home_region
 
         # print(f"Instance Name: {instance_name}")
@@ -333,7 +342,9 @@ class RuntimeCalculator(InputCalculator):
         is_redirector: bool,
     ) -> tuple[dict[str, Any], float, float]:
         # Retrieve the auxiliary_index_translation
-        auxiliary_index_translation = self._workflow_loader.get_auxiliary_index_translation(instance_name, is_redirector)
+        auxiliary_index_translation = self._workflow_loader.get_auxiliary_index_translation(
+            instance_name, is_redirector
+        )
 
         # print(f"Auxiliary Index Translation: {auxiliary_index_translation}")
 

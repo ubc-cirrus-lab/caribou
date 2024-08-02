@@ -142,7 +142,7 @@ class WorkflowRetriever(DataRetriever):
             # Now also fill in at_redirector data
             redirector_execution_data: dict[str, Any] = start_hop_log.get("redirector_execution_data", None)
             if redirector_execution_data:
-                at_redirector = start_hop_summary['at_redirector']
+                at_redirector = start_hop_summary["at_redirector"]
                 self._handle_single_execution_data_entry(redirector_execution_data, at_redirector)
 
     def _extend_instance_summary(  # pylint: disable=too-many-branches
@@ -158,7 +158,9 @@ class WorkflowRetriever(DataRetriever):
             self._handle_single_execution_data_entry(execution_information, instance_summary)
 
     # pylint: disable=too-many-branches, too-many-nested-blocks
-    def _handle_single_execution_data_entry(self, execution_information: dict[str, Any], instance_summary: dict[str, Any]) -> None:
+    def _handle_single_execution_data_entry(
+        self, execution_information: dict[str, Any], instance_summary: dict[str, Any]
+    ) -> None:
         instance = execution_information["instance_name"]
         provider_region = execution_information["provider_region"]
 
@@ -174,7 +176,7 @@ class WorkflowRetriever(DataRetriever):
                 "at_region": {},
                 "successor_instances": set(),
             }
-            
+
         if provider_region not in instance_summary[instance]["executions"]["at_region"]:
             instance_summary[instance]["executions"]["at_region"][provider_region] = []
 
@@ -260,7 +262,7 @@ class WorkflowRetriever(DataRetriever):
                                 instance_summary[caller]["to_instance"][callee]["non_execution_info"][
                                     sync_to_from_instance
                                 ]["sync_data_response_size_gb"].append(sync_data_response_size)
-                                
+
     # pylint: disable=too-many-branches, too-many-statements
     def _handle_region_to_region_transmission(self, log: dict[str, Any], instance_summary: dict[str, Any]) -> None:
         for data in log["transmission_data"]:
@@ -348,7 +350,7 @@ class WorkflowRetriever(DataRetriever):
 
                 instance_summary[from_instance]["to_instance"][to_instance]["transfer_sizes_gb"].append(
                     transmission_data_transfer_size
-                )  
+                )
 
                 # Add an entry for the transfer latency
                 # (Only for cases where successor_invoked is True)
@@ -574,7 +576,9 @@ class WorkflowRetriever(DataRetriever):
                             #     sns_transfer_size_gb, 1, False
                             # )
 
-                            non_execution_info[sync_call_from_to_instance]["sns_transfer_size_gb"] = sns_transfer_size_gb
+                            non_execution_info[sync_call_from_to_instance][
+                                "sns_transfer_size_gb"
+                            ] = sns_transfer_size_gb
                         else:
                             non_execution_info[sync_call_from_to_instance]["sns_transfer_size_gb"] = 0.0
 
@@ -584,10 +588,9 @@ class WorkflowRetriever(DataRetriever):
                 sync_sizes_gb = to_instance.get("sync_size_gb", [])
                 if sync_sizes_gb:
                     average_sync_size = sum(sync_sizes_gb) / len(sync_sizes_gb)
-                    
+
                     # # Round to nearest 1 KB
                     # average_sync_size = self._round_to_kb(average_sync_size, 1, False)
-
 
                     to_instance["sync_size_gb"] = average_sync_size
                 else:

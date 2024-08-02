@@ -30,7 +30,7 @@ class TransmissionData:  # pylint: disable=too-many-instance-attributes
         self.consumed_write_capacity: Optional[float] = None
         self.sync_data_response_size: Optional[float] = None
         self.from_direct_successor: Optional[bool] = None
-        self.redirector_transmission: Optional[bool] = None # TODO: Examine if we should remove or keep this
+        self.redirector_transmission: Optional[bool] = None  # TODO: Examine if we should remove or keep this
 
         # If not from a direct successor,
         # this will significantly affect what we want to collect
@@ -67,7 +67,7 @@ class TransmissionData:  # pylint: disable=too-many-instance-attributes
             "to_region": self.to_region,
             "successor_invoked": self.successor_invoked,
             "from_direct_successor": self.from_direct_successor,
-            "redirector_transmission": self.redirector_transmission, # TODO: Examine if we should remove or keep this
+            "redirector_transmission": self.redirector_transmission,  # TODO: Examine if we should remove or keep this
             "sync_information": sync_information,
         }
 

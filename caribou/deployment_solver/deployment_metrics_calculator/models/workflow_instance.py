@@ -7,8 +7,14 @@ from caribou.deployment_solver.deployment_metrics_calculator.models.instance_nod
 from caribou.deployment_solver.deployment_metrics_calculator.models.simulated_instance_edge import SimulatedInstanceEdge
 
 
-class WorkflowInstance:
-    def __init__(self, input_manager: InputManager, instance_deployment_regions: list[int], start_hop_instance_index: int, consider_from_client_latency: bool) -> None:
+class WorkflowInstance:  # pylint: disable=too-many-instance-attributes
+    def __init__(
+        self,
+        input_manager: InputManager,
+        instance_deployment_regions: list[int],
+        start_hop_instance_index: int,
+        consider_from_client_latency: bool,
+    ) -> None:
         self._input_manager: InputManager = input_manager
         self._consider_from_client_latency: bool = consider_from_client_latency
         self._start_hop_instance_id: int = start_hop_instance_index
@@ -16,15 +22,16 @@ class WorkflowInstance:
         # This is the flag that determines if the WPD is retrieved at the function or not.
         # This is an important flag as it determines if the start hop is a possible
         # redirector function or not. Start hop will be a redirector function in the case
-        # where the region at the start hop is not the home region, and the WPD is 
+        # where the region at the start hop is not the home region, and the WPD is
         # retrieved at the function.
         self._has_retrieved_wpd_at_function: bool = self._retrieved_wpd_at_function()
-        
+
         # If wpd is retrieved in the function AND that the start hop is not at the home region,
         # then we will also have a redirector function.
         self._redirector_exists: bool = (
-            self._has_retrieved_wpd_at_function and
-            not instance_deployment_regions[self._start_hop_instance_id] == self._input_manager.get_home_region_index()
+            self._has_retrieved_wpd_at_function
+            and not instance_deployment_regions[self._start_hop_instance_id]
+            == self._input_manager.get_home_region_index()
         )
 
         # The ID is the at instance index
@@ -41,18 +48,19 @@ class WorkflowInstance:
         self._configure_node_regions(instance_deployment_regions)
 
     def _configure_node_regions(self, instance_deployment_regions: list[int]) -> None:
+        virtual_client_node: InstanceNode
         if self._redirector_exists:
             # Create the virtual client node
-            virtual_client_node: InstanceNode = self._get_node(-2)
-            virtual_client_node.region_id = -1 # From unknown region
+            virtual_client_node = self._get_node(-2)
+            virtual_client_node.region_id = -1  # From unknown region
 
             # Create the redirector function node, which is present in the home region.
-            redirector_node: InstanceNode = self._get_node(-1)
+            redirector_node = self._get_node(-1)
             redirector_node.region_id = self._input_manager.get_home_region_index()
             redirector_node.actual_instance_id = self._start_hop_instance_id
         else:
             # Create the virtual client node
-            virtual_client_node: InstanceNode = self._get_node(-1)
+            virtual_client_node = self._get_node(-1)
             virtual_client_node.region_id = -1
 
         # Configure the regions of the other nodes
@@ -92,16 +100,17 @@ class WorkflowInstance:
         virtual_client_node.invoked = True
         start_hop_node.invoked = True
 
-        # Create an new edge that goes from virtual client to the start hop 
+        # Create an new edge that goes from virtual client to the start hop
         # (or redirector if it exists)
+        virtual_client_to_first_node_edge: InstanceEdge
         if redirector_node is not None:
-            virtual_client_to_first_node_edge: InstanceEdge = self._create_edge(
-                virtual_client_node.nominal_instance_id,
-                redirector_node.nominal_instance_id)
+            virtual_client_to_first_node_edge = self._create_edge(
+                virtual_client_node.nominal_instance_id, redirector_node.nominal_instance_id
+            )
         else:
-            virtual_client_to_first_node_edge: InstanceEdge = self._create_edge(
-                virtual_client_node.nominal_instance_id,
-                start_hop_node.nominal_instance_id)
+            virtual_client_to_first_node_edge = self._create_edge(
+                virtual_client_node.nominal_instance_id, start_hop_node.nominal_instance_id
+            )
 
         # It is impossible for the virtual client edge NOT to be invoked
         virtual_client_to_first_node_edge.conditionally_invoked = True
@@ -119,7 +128,7 @@ class WorkflowInstance:
         workflow_placement_decision_size = start_hop_node_info["workflow_placement_decision_size"]
 
         ## Data is downloaded from the system region to the wpd_retrieval_node node
-        ## We define -2 as the system region location. 
+        ## We define -2 as the system region location.
         self._manage_data_transfer_dict(
             wpd_retrieval_node.tracked_data_input_sizes,
             -2,
@@ -191,7 +200,9 @@ class WorkflowInstance:
         if node_invoked:
             # We only care about simulated edges IFF the node was invoked
             # As it determines the actual runtime of the node (and represent SNS call)
-            simulated_predecessor_edges: list[SimulatedInstanceEdge] = self._get_predecessor_edges(nominal_instance_id, True)
+            simulated_predecessor_edges: list[SimulatedInstanceEdge] = self._get_predecessor_edges(
+                nominal_instance_id, True
+            )
             for simulated_edge in simulated_predecessor_edges:
                 self._handle_simulated_edge(simulated_edge, edge_reached_time_to_sns_data)
 
@@ -204,9 +215,9 @@ class WorkflowInstance:
                 current_node.cumulative_runtimes,
                 current_node.execution_time,
                 data_transfer_during_execution,
-            # ) = self._input_manager.get_node_runtimes_and_data_transfer(
-            #     instance_index, current_node.region_id, cumulative_runtime
-            # )
+                # ) = self._input_manager.get_node_runtimes_and_data_transfer(
+                #     instance_index, current_node.region_id, cumulative_runtime
+                # )
             ) = self._input_manager.get_node_runtimes_and_data_transfer(
                 actual_instance_id, current_node.region_id, cumulative_runtime, current_node.is_redirector
             )
@@ -305,7 +316,9 @@ class WorkflowInstance:
         node_invoked: bool = False
 
         # Materialize the edge
-        transmission_info = current_edge.get_transmission_information(successor_is_sync_node, self._consider_from_client_latency)
+        transmission_info = current_edge.get_transmission_information(
+            successor_is_sync_node, self._consider_from_client_latency
+        )
         if transmission_info:
             if current_edge.conditionally_invoked:
                 # For the normal execution case, we should get the size of data transfer, and the transfer latency.

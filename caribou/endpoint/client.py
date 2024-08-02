@@ -12,12 +12,12 @@ from caribou.common.constants import (
     DEPLOYMENT_MANAGER_RESOURCE_TABLE,
     DEPLOYMENT_RESOURCES_TABLE,
     GLOBAL_TIME_ZONE,
+    HOME_REGION_THRESHOLD,
     TIME_FORMAT,
     WORKFLOW_INSTANCE_TABLE,
     WORKFLOW_PLACEMENT_DECISION_TABLE,
     WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE,
     WORKFLOW_SUMMARY_TABLE,
-    HOME_REGION_THRESHOLD
 )
 from caribou.common.models.endpoints import Endpoints
 from caribou.common.models.remote_client.aws_remote_client import AWSRemoteClient
@@ -87,7 +87,7 @@ class Client:
             "time_request_sent": current_time,
             "workflow_placement_decision": workflow_placement_decision,
             "number_of_hops_from_client_request": 0,
-            "permit_redirection": False, # We don't want to redirect the request (As we should already send it to the correct region)
+            "permit_redirection": False,  # We don't want to redirect the request.
             "redirected": False,
             "request_source": "Caribou CLI",
             # "wpd_data_size": wpd_data_size,

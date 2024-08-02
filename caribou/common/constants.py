@@ -3,9 +3,9 @@ from datetime import timezone
 # Caribou Wrapper Constants
 ## Determines the percentage of requests ALWAYS
 ## being sent to the home region (Entire workflow)
-HOME_REGION_THRESHOLD = 0.1 # 10% of the time run in home region
+HOME_REGION_THRESHOLD = 0.1  # 10% of the time run in home region
 
-MAXIMUM_HOPS_FROM_CLIENT_REQUEST = 20 # If the request has been forwarded or gone through X hops, it is dropped
+MAXIMUM_HOPS_FROM_CLIENT_REQUEST = 20  # If the request has been forwarded or gone through X hops, it is dropped
 
 # Workflow Placement Tables
 WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE = "workflow_placement_solver_staging_area_table"
@@ -63,9 +63,9 @@ SOLVER_INPUT_GRID_CARBON_DEFAULT = 500.0
 SOLVER_INPUT_AVERAGE_MEMORY_POWER_DEFAULT = 3.92e-06
 SOLVER_INPUT_PUE_DEFAULT = 1.11
 SOLVER_INPUT_CFE_DEFAULT = 0.0
-SOLVER_INPUT_COMPUTE_COST_DEFAULT = 1.66667e-05 # of x86_64 architecture Ohio region
-SOLVER_INPUT_INVOCATION_COST_DEFAULT = 2e-07 # of x86_64 architecture Ohio region
-SOLVER_INPUT_TRANSMISSION_COST_DEFAULT = 0.09 # Global data transfer cost
+SOLVER_INPUT_COMPUTE_COST_DEFAULT = 1.66667e-05  # of x86_64 architecture Ohio region
+SOLVER_INPUT_INVOCATION_COST_DEFAULT = 2e-07  # of x86_64 architecture Ohio region
+SOLVER_INPUT_TRANSMISSION_COST_DEFAULT = 0.09  # Global data transfer cost
 SOLVER_INPUT_MIN_CPU_POWER_DEFAULT = 0.00074
 SOLVER_INPUT_MAX_CPU_POWER_DEFAULT = 0.0035
 SOLVER_INPUT_SNS_REQUEST_COST_DEFAULT = 0.50 / 1000000  # 0.50 USD per 1 million requests (At Ohio region)

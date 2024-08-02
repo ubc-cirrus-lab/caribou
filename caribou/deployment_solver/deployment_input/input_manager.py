@@ -214,7 +214,12 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
 
         # Get a transmission size and latency sample
         transmission_size, transmission_latency = self._runtime_calculator.calculate_transmission_size_and_latency(
-            from_instance_name, from_region_name, to_instance_name, to_region_name, to_instance_is_sync_node, consider_from_client_latency,
+            from_instance_name,
+            from_region_name,
+            to_instance_name,
+            to_region_name,
+            to_instance_is_sync_node,
+            consider_from_client_latency,
         )
 
         sns_transmission_size = transmission_size
@@ -456,9 +461,13 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
     def _get_converted_region_name_dict(self, input_region_index_dict: dict[int, Any]) -> dict[Optional[str], Any]:
         system_region_full_name: str = f"aws:{GLOBAL_SYSTEM_REGION}"
         return {
-            (self._region_indexer.index_to_value(region_index) if region_index >= 0 
-            else system_region_full_name if region_index == -2 # -2 Indicates the system region
-            else None): value
+            (
+                self._region_indexer.index_to_value(region_index)
+                if region_index >= 0
+                else system_region_full_name
+                if region_index == -2  # -2 Indicates the system region
+                else None
+            ): value
             for region_index, value in input_region_index_dict.items()
         }
         # return {
