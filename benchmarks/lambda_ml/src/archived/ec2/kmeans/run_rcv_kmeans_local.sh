@@ -1,0 +1,24 @@
+#!/bin/bash
+# 10 thread on one machine
+# ./run_rcv_kmeans_local.sh 10 100 3 47236 127.0.0.1:26000 ~/dataset/rcv10/
+# one thread on one machine
+# nohup python -u rcv_kmeans.py --init-method tcp://127.0.0.1:26000 --rank 0 --world-size 1 --epochs 100 -k 10 --features 47236 --root ~/dataset/rcv-1/ --no-cuda > rcv1_kmeans_w1_k10.log 2>&1 &
+
+world_size=$1
+epochs=$2
+n_cluster=$3
+n_features=$4
+master_ip=$5
+root=$6
+
+for ((i=0; i<$world_size; i++)); do
+  source /home/ubuntu/envs/pytorch/bin/activate
+  cd /home/ubuntu/code/lambda/ec2/kmeans
+  file_path="${root}/${i}_${world_size}"
+  dir_name="rcv1_kmeans_w${world_size}_k${n_cluster}"
+  if [ -d ~/logs/$dir_name ]; then rm -rf ~/logs/$dir_name; fi
+  mkdir ~/logs/$dir_name
+  log_name=$i"_"$world_size".log"
+  rm -f ~/logs/$dir_name/$log_name
+  nohup python -u rcv_kmeans.py --init-method tcp://${master_ip} --rank $i --world-size $world_size --communication all-reduce --epochs $epochs -k $n_cluster --features $n_features --root $root --train-file $file_path --no-cuda > ~/logs/$dir_name/$log_name 2>&1 &
+done

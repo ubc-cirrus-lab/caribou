@@ -1,0 +1,60 @@
+// ps_service.proto
+syntax = "proto2";
+
+package ps_service;
+
+import "google/protobuf/empty.proto";
+
+message Grad {
+    required string id = 1;
+    required double learning_rate = 2;
+    optional int32 length = 3;
+    repeated double data = 4;
+    required int32 n_iter = 5;
+    required int32 worker_id = 6;
+}
+
+message Update {
+    required string id = 1;
+    optional int32 length = 2;
+    repeated double data = 3;
+    required int32 n_iter = 4;
+    required int32 worker_id = 5;
+}
+
+message Model {
+    required string id = 1;
+    optional int32 length = 2;
+    repeated double data = 3;
+}
+
+message RegisterRequest {
+    required string id = 1;
+    required int32 length = 2;
+    required int32 parallelism = 3;
+}
+
+message ExistRequest {
+    required string id = 1;
+}
+
+message WorkerRequest {
+    required string id = 1;
+    required int32 n_iter = 2;
+    required int32 worker_id = 3;
+}
+
+message Status {
+  required bool status = 1;
+}
+
+service ParameterServer {
+    rpc ping (google.protobuf.Empty) returns (Status) {}
+    rpc register_model (RegisterRequest) returns (Status) {}
+    rpc exist_model (ExistRequest) returns (Status) {}
+    rpc can_pull (WorkerRequest) returns (Status) {}
+    rpc can_push (WorkerRequest) returns (Status) {}
+    rpc pull_model (WorkerRequest) returns (Model) {}
+    rpc push_grad (Grad) returns (Status) {}
+    rpc push_update (Update) returns (Status) {}
+}

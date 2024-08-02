@@ -1,0 +1,4 @@
+['CenterCrop', 'ColorJitter', 'Compose', 'FiveCrop', 'Grayscale', 'Lambda', 'LinearTransformation', 'Normalize', 'Pad', 'RandomAffine', 'RandomApply', 'RandomChoice', 'RandomCrop', 'RandomErasing', 'RandomGrayscale', 'RandomHorizontalFlip', 'RandomOrder', 'RandomPerspective', 'RandomResizedCrop', 'RandomRotation', 'RandomSizedCrop', 'RandomVerticalFlip', 'Resize', 'Scale', 'TenCrop', 'ToPILImage', 'ToTensor', '__builtins__', '__cached__', '__doc__', '__file__', '__loader__', '__name__', '__package__', '__path__', '__spec__', 'functional', 'transforms']
+Namespace(backend='gloo', batch_size=320, epochs=20, init_method='tcp://127.0.0.1:23456', learning_rate=0.001, no_cuda=True, rank=3, root='/home/ubuntu/cifar10', world_size=10)
+Files already downloaded and verified
+Files already downloaded and verified
