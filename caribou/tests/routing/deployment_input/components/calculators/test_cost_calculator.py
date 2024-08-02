@@ -1,106 +1,225 @@
 import unittest
 from unittest.mock import MagicMock, patch
+import math
 from caribou.deployment_solver.deployment_input.components.calculators.cost_calculator import CostCalculator
 from caribou.deployment_solver.deployment_input.components.loaders.datacenter_loader import DatacenterLoader
 from caribou.deployment_solver.deployment_input.components.loaders.workflow_loader import WorkflowLoader
-from caribou.deployment_solver.deployment_input.components.calculators.runtime_calculator import RuntimeCalculator
 
 
 class TestCostCalculator(unittest.TestCase):
     def setUp(self):
-        # Create the CostCalculator object
+        # Create mocks for the datacenter and workflow loaders
         self.datacenter_loader = MagicMock(spec=DatacenterLoader)
         self.workflow_loader = MagicMock(spec=WorkflowLoader)
-        self.runtime_calculator = MagicMock(spec=RuntimeCalculator)
-        self.cost_calculator = CostCalculator(self.datacenter_loader, self.workflow_loader, self.runtime_calculator)
 
-    def test_init(self):
-        # Check that the attributes were initialized correctly
-        self.assertEqual(self.cost_calculator._datacenter_loader, self.datacenter_loader)
-        self.assertEqual(self.cost_calculator._workflow_loader, self.workflow_loader)
-        self.assertEqual(self.cost_calculator._runtime_calculator, self.runtime_calculator)
-        self.assertEqual(self.cost_calculator._execution_conversion_ratio_cache, {})
-        self.assertEqual(self.cost_calculator._transmission_conversion_ratio_cache, {})
-
-    @patch.object(CostCalculator, "_get_transmission_conversion_ratio")
-    def test_calculate_transmission_cost(self, mock_get_transmission_conversion_ratio):
-        # Set up the mock
-        mock_get_transmission_conversion_ratio.return_value = 1.0
-
-        # Call the method
-        result = self.cost_calculator.calculate_transmission_cost("from_region_name", "to_region_name", 2.0)
-
-        # Check that the result is correct
-        self.assertEqual(result, 1.0 * 2.0)
-
-        # Check that the mock was called with the correct arguments
-        mock_get_transmission_conversion_ratio.assert_called_once_with("from_region_name", "to_region_name")
-
-    @patch.object(CostCalculator, "_get_execution_conversion_ratio")
-    def test_calculate_execution_cost(self, mock_get_execution_conversion_ratio):
-        # Set up the mock
-        mock_get_execution_conversion_ratio.return_value = (1.0, 2.0)
-
-        # Call the method
-        result = self.cost_calculator.calculate_execution_cost("instance_name", "region_name", 3.0)
-
-        # Check that the result is correct
-        self.assertEqual(result, 1.0 * 3.0 + 2.0)
-
-        # Check that the mock was called with the correct arguments
-        mock_get_execution_conversion_ratio.assert_called_once_with("instance_name", "region_name")
-
-    def test_get_transmission_conversion_ratio(self):
-        # Set up the mock
-        self.cost_calculator._datacenter_loader.get_transmission_cost.return_value = 1.0
-
-        # Call the method
-        result = self.cost_calculator._get_transmission_conversion_ratio(
-            "provider1:from_region_name", "provider2:to_region_name"
+        # Create an instance of CostCalculator with mocks
+        self.cost_calculator = CostCalculator(
+            datacenter_loader=self.datacenter_loader,
+            workflow_loader=self.workflow_loader,
+            consider_intra_region_transfer_for_sns=True,
         )
 
-        # Check that the result is correct
-        self.assertEqual(result, 1.0)
+    def test_calculate_virtual_start_instance_cost(self):
+        # Mock the methods for DynamoDB and SNS costs
+        self.datacenter_loader.get_dynamodb_read_write_cost.return_value = (0.02, 0.03)
+        self.datacenter_loader.get_sns_request_cost.return_value = 0.001
 
-        # Check that the mock was called with the correct arguments
-        self.cost_calculator._datacenter_loader.get_transmission_cost.assert_called_once_with(
-            "provider2:to_region_name", False
+        # Define the test data
+        sns_data_call_and_output_sizes = {"aws:us-east-1": [0.005, 0.01]}
+        dynamodb_read_capacity = 100
+        dynamodb_write_capacity = 200
+
+        # Call the method under test
+        cost = self.cost_calculator.calculate_virtual_start_instance_cost(
+            data_output_sizes={},
+            sns_data_call_and_output_sizes=sns_data_call_and_output_sizes,
+            dynamodb_read_capacity=dynamodb_read_capacity,
+            dynamodb_write_capacity=dynamodb_write_capacity,
         )
 
-        # Check that the _transmission_conversion_ratio_cache attribute was updated correctly
-        self.assertEqual(
-            self.cost_calculator._transmission_conversion_ratio_cache,
-            {"provider1:from_region_name_provider2:to_region_name": 1.0},
+        # Calculate expected cost
+        expected_dynamodb_cost = 100 * 0.02 + 200 * 0.03
+        expected_sns_cost = sum(
+            math.ceil(size * 1024**2 / 64) * 0.001 for size in sns_data_call_and_output_sizes["aws:us-east-1"]
         )
+        expected_cost = expected_dynamodb_cost + expected_sns_cost
+
+        # Assert the cost calculation is correct
+        self.assertEqual(cost, expected_cost)
+
+    def test_calculate_instance_cost_invoked(self):
+        # Mock the methods for DynamoDB, SNS, execution costs, and data transfer
+        self.cost_calculator._calculate_execution_cost = MagicMock(return_value=0.5)
+        self.cost_calculator._calculate_sns_cost = MagicMock(return_value=0.3)
+        self.cost_calculator._calculate_data_transfer_cost = MagicMock(return_value=0.4)
+        self.cost_calculator._calculate_dynamodb_cost = MagicMock(return_value=0.2)
+
+        # Define the test data
+        execution_time = 100.0
+        instance_name = "test_instance"
+        current_region_name = "aws:us-west-2"
+        data_output_sizes = {"aws:us-east-1": 0.1}
+        sns_data_call_and_output_sizes = {"aws:us-east-1": [0.02, 0.04]}
+        dynamodb_read_capacity = 50.0
+        dynamodb_write_capacity = 100.0
+        is_invoked = True
+
+        # Call the method under test
+        cost = self.cost_calculator.calculate_instance_cost(
+            execution_time,
+            instance_name,
+            current_region_name,
+            data_output_sizes,
+            sns_data_call_and_output_sizes,
+            dynamodb_read_capacity,
+            dynamodb_write_capacity,
+            is_invoked,
+        )
+
+        # Calculate expected cost
+        expected_cost = 0.5 + 0.3 + 0.4 + 0.2
+
+        # Assert the cost calculation is correct
+        self.assertEqual(cost, expected_cost)
+
+    def test_calculate_instance_cost_not_invoked(self):
+        # Mock the methods for data transfer and DynamoDB costs
+        self.cost_calculator._calculate_data_transfer_cost = MagicMock(return_value=0.4)
+        self.cost_calculator._calculate_dynamodb_cost = MagicMock(return_value=0.2)
+
+        # Define the test data
+        execution_time = 0.0
+        instance_name = "test_instance"
+        current_region_name = "aws:us-west-2"
+        data_output_sizes = {"aws:us-east-1": 0.1}
+        sns_data_call_and_output_sizes = {"aws:us-east-1": [0.02, 0.04]}
+        dynamodb_read_capacity = 50.0
+        dynamodb_write_capacity = 100.0
+        is_invoked = False
+
+        # Call the method under test
+        cost = self.cost_calculator.calculate_instance_cost(
+            execution_time,
+            instance_name,
+            current_region_name,
+            data_output_sizes,
+            sns_data_call_and_output_sizes,
+            dynamodb_read_capacity,
+            dynamodb_write_capacity,
+            is_invoked,
+        )
+
+        # Calculate expected cost
+        expected_cost = 0.4 + 0.2
+
+        # Assert the cost calculation is correct
+        self.assertEqual(cost, expected_cost)
+
+    def test_calculate_dynamodb_cost(self):
+        # Mock the methods for DynamoDB read/write costs
+        self.datacenter_loader.get_dynamodb_read_write_cost.return_value = (0.02, 0.03)
+
+        # Define the test data
+        current_region_name = "aws:us-east-1"
+        dynamodb_read_capacity = 50
+        dynamodb_write_capacity = 100
+
+        # Call the private method under test
+        cost = self.cost_calculator._calculate_dynamodb_cost(
+            current_region_name, dynamodb_read_capacity, dynamodb_write_capacity
+        )
+
+        # Calculate expected cost
+        expected_cost = 50 * 0.02 + 100 * 0.03
+
+        # Assert the cost calculation is correct
+        self.assertEqual(cost, expected_cost)
+
+    def test_calculate_sns_cost(self):
+        # Mock the SNS request cost and transmission cost methods
+        self.datacenter_loader.get_sns_request_cost.return_value = 0.001
+        self.datacenter_loader.get_transmission_cost.return_value = 0.05
+
+        # Define the test data
+        current_region_name = "aws:us-west-2"
+        sns_data_call_and_output_sizes = {"aws:us-west-2": [0.005, 0.01], "aws:us-east-1": [0.002, 0.004]}
+
+        # Call the private method under test
+        cost = self.cost_calculator._calculate_sns_cost(current_region_name, sns_data_call_and_output_sizes)
+
+        # Calculate expected cost
+        expected_cost = 0
+        # Account for intra-region SNS data transfer
+        if self.cost_calculator._consider_intra_region_transfer_for_sns:
+            expected_cost += sum(sns_data_call_and_output_sizes["aws:us-west-2"]) * 0.05
+        # Calculate SNS invocation costs
+        for region, sizes in sns_data_call_and_output_sizes.items():
+            for size in sizes:
+                requests = math.ceil(size * 1024**2 / 64)
+                expected_cost += requests * 0.001
+
+        # Assert the cost calculation is correct using assertAlmostEqual for precision
+        self.assertAlmostEqual(cost, expected_cost, places=3)
+
+    def test_calculate_data_transfer_cost(self):
+        # Mock the transmission cost method
+        self.datacenter_loader.get_transmission_cost.return_value = 0.05
+
+        # Define the test data
+        current_region_name = "aws:us-west-2"
+        data_output_sizes = {"aws:us-east-1": 0.1, "aws:us-west-2": 0.2}
+
+        # Call the private method under test
+        cost = self.cost_calculator._calculate_data_transfer_cost(current_region_name, data_output_sizes)
+
+        # Calculate expected cost
+        expected_cost = 0.1 * 0.05  # Only count data transfer out of the current region
+
+        # Assert the cost calculation is correct
+        self.assertEqual(cost, expected_cost)
+
+    def test_calculate_execution_cost(self):
+        # Mock the method for execution conversion ratio
+        self.cost_calculator._get_execution_conversion_ratio = MagicMock(return_value=(0.1, 0.05))
+
+        # Define the test data
+        instance_name = "test_instance"
+        region_name = "aws:us-west-2"
+        execution_time = 10.0
+
+        # Call the private method under test
+        cost = self.cost_calculator._calculate_execution_cost(instance_name, region_name, execution_time)
+
+        # Calculate expected cost
+        expected_cost = 0.1 * 10.0 + 0.05
+
+        # Assert the cost calculation is correct
+        self.assertEqual(cost, expected_cost)
 
     def test_get_execution_conversion_ratio(self):
-        # Set up the mocks
-        self.cost_calculator._workflow_loader.get_memory.return_value = 2048.0
-        self.cost_calculator._workflow_loader.get_architecture.return_value = "architecture"
-        self.cost_calculator._datacenter_loader.get_compute_cost.return_value = 3.0
-        self.cost_calculator._datacenter_loader.get_invocation_cost.return_value = 4.0
+        # Mock the method for getting memory and architecture
+        self.workflow_loader.get_memory.return_value = 2048
+        self.workflow_loader.get_architecture.return_value = "x86_64"
+        self.datacenter_loader.get_compute_cost.return_value = 0.2
+        self.datacenter_loader.get_invocation_cost.return_value = 0.05
 
-        # Call the method
-        result = self.cost_calculator._get_execution_conversion_ratio("instance_name", "provider:region_name")
+        # Define the test data
+        instance_name = "test_instance"
+        region_name = "aws:us-west-2"
 
-        # Check that the result is correct
-        self.assertEqual(result, (3.0 * 2.0, 4.0))
+        # Call the private method under test
+        ratio = self.cost_calculator._get_execution_conversion_ratio(instance_name, region_name)
 
-        # Check that the mocks were called with the correct arguments
-        self.cost_calculator._workflow_loader.get_memory.assert_called_once_with("instance_name", "provider")
-        self.cost_calculator._workflow_loader.get_architecture.assert_called_once_with("instance_name", "provider")
-        self.cost_calculator._datacenter_loader.get_compute_cost.assert_called_once_with(
-            "provider:region_name", "architecture"
-        )
-        self.cost_calculator._datacenter_loader.get_invocation_cost.assert_called_once_with(
-            "provider:region_name", "architecture"
-        )
+        # Calculate expected ratio
+        expected_ratio = (0.2 * (2048 / 1024), 0.05)
 
-        # Check that the _execution_conversion_ratio_cache attribute was updated correctly
-        self.assertEqual(
-            self.cost_calculator._execution_conversion_ratio_cache,
-            {"instance_name_provider:region_name": (3.0 * 2.0, 4.0)},
-        )
+        # Assert the conversion ratio calculation is correct
+        self.assertEqual(ratio, expected_ratio)
+
+        # Assert the cache is updated correctly
+        cache_key = f"{instance_name}_{region_name}"
+        self.assertIn(cache_key, self.cost_calculator._execution_conversion_ratio_cache)
+        self.assertEqual(self.cost_calculator._execution_conversion_ratio_cache[cache_key], expected_ratio)
 
 
 if __name__ == "__main__":
