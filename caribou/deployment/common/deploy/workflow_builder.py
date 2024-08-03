@@ -66,7 +66,6 @@ class WorkflowBuilder:
                 merged_env_vars = self.merge_environment_variables(
                     function.environment_variables, config.environment_variables
                 )
-                print("function_deployment_name!!!!!workflow name"+function_deployment_name + workflow_deployment_name)
                 home_region_resources.append(
                     Function(
                         name=function_deployment_name,
