@@ -330,6 +330,11 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         start_hop_latency_from_client: float = 0.0
         if start_hop_latency_from_client_str and start_hop_latency_from_client_str != "N/A":
             start_hop_latency_from_client = float(start_hop_latency_from_client_str)
+        overriden_workflow_placement_size: Optional[float] = None
+        if self._does_field_exist(log_entry, "OVERRIDEN_WORKFLOW_PLACEMENT_SIZE"):
+            overriden_workflow_placement_size = self._extract_float_from_log_entry(
+                log_entry, r"OVERRIDEN_WORKFLOW_PLACEMENT_SIZE \((.*?)\)", "overriden_workflow_placement_size"
+            )
 
         # Handle start time logs
         ## Should only be set if it is not already set
@@ -344,6 +349,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         workflow_run_sample.start_hop_data.wpd_data_size = workflow_placement_decision_size
         workflow_run_sample.start_hop_data.consumed_read_capacity = consumed_read_capacity
         workflow_run_sample.start_hop_data.time_from_function_start_to_entry_point = time_from_function_start
+        workflow_run_sample.start_hop_data.start_hop_instance_name = function_executed
 
         # Only replace the start hop latency if it is not already set (Since it MAY be from a redirector,
         # and if it is, then we only want to keep the earliest start time, aka when it first reached the client)
@@ -360,6 +366,12 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
             # As it would had been taken care of in the redirector.
             execution_data = workflow_run_sample.get_execution_data(function_executed, request_id)
             execution_data.input_payload_size += user_input_payload_size
+
+        # Handle overriden_workflow_placement_size (Debugging purposes)
+        if overriden_workflow_placement_size:
+            workflow_run_sample.start_hop_data.overridden_wpd_data_size = (
+                overriden_workflow_placement_size  # TODO: Remove
+            )
 
     def _extract_retrieve_wpd_logs(
         self,
@@ -411,13 +423,10 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         # from_provider_region = self._format_region({"provider": from_provider, "region": from_region})
         to_provider_region = self._format_region({"provider": to_provider, "region": to_region})
 
-        # Handle Execution Data Updates of Start Hop
-        execution_data = workflow_run_sample.start_hop_data.get_redirector_execution_data(
-            redirecting_instance, request_id
-        )
-        execution_data.provider_region = self._format_region(provider_region)
-        execution_data.lambda_insights = self._insights_logs.get(request_id, None)
-        execution_data.input_payload_size += input_payload_size
+        # Handle the recipient execution data (Recieving from the redirector)
+        callee_function = redirecting_instance  # Have the same function name as the redirector
+        recipient_execution_data = workflow_run_sample.get_execution_data(callee_function, None)
+        recipient_execution_data.input_payload_size += output_payload_size
 
         # Handle transmission data updates
         transmission_data = workflow_run_sample.get_transmission_data(taint)
@@ -434,6 +443,10 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         execution_data = workflow_run_sample.start_hop_data.get_redirector_execution_data(
             redirecting_instance, request_id
         )
+        execution_data.provider_region = self._format_region(provider_region)
+        execution_data.lambda_insights = self._insights_logs.get(request_id, None)
+        execution_data.input_payload_size += input_payload_size
+
         successor_data = execution_data.get_successor_data(redirecting_instance)
         successor_data.invocation_time_from_function_start = invocation_time_from_function_start
         successor_data.finish_time_from_invocation_start = (
