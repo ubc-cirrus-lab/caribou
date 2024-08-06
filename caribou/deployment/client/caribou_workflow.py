@@ -941,7 +941,7 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
                 # Get s from the time difference
                 # Note due to desync between client and server, the time difference can be negative
                 init_latency_from_client = str((self._function_start_time - datetime_invoked_at_client).total_seconds())
-            
+
             # Retrieve the user payload size if available (Aka if this is redirected)
             # Otherwise the size of input is the size of the user payload
             size_of_input_payload_gb = workflow_placement_decision.get("user_payload_size", size_of_input_payload_gb)
@@ -1039,7 +1039,7 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
         transmission_taint = uuid.uuid4().hex
 
         # Set the user payload size in the workflow placement decision
-        workflow_placement_decision['user_payload_size'] = size_of_input_payload_gb
+        workflow_placement_decision["user_payload_size"] = size_of_input_payload_gb
 
         # Redirect the request to the desired provider and region
         redirect_payload: dict[str, Any] = {

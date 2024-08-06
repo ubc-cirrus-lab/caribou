@@ -46,6 +46,10 @@ class ExecutionData:  # pylint: disable=too-many-instance-attributes
         # All data regarding the transmission.
         self.successor_data: dict[str, ExecutionToSuccessorData] = {}
 
+        # Optional Fields, used to indicate if we downloaded wpd
+        # data from the platform, and how much data was downloaded.
+        self.downloaded_wpd_data_size: Optional[float] = None
+
     def get_successor_data(self, successor_instance_name: str) -> ExecutionToSuccessorData:
         if successor_instance_name not in self.successor_data:
             self.successor_data[successor_instance_name] = ExecutionToSuccessorData(successor_instance_name)
@@ -67,6 +71,9 @@ class ExecutionData:  # pylint: disable=too-many-instance-attributes
 
         if self.download_size:
             total_input_data_size += self.download_size
+
+        if self.downloaded_wpd_data_size:
+            total_input_data_size += self.downloaded_wpd_data_size
 
         for successor_data in self.successor_data.values():
             total_input_data_size += successor_data.get_total_input_data_size()
