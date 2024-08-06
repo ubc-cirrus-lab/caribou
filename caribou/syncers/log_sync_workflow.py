@@ -902,12 +902,11 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
                 common_request_ids: set[str] = (
                     workflow_run_sample.request_ids & self._encountered_duplicate_completed_request_ids
                 )
-
-                # First remove the common request ids from _encountered_duplicate_completed_request_ids
-                # As we don't need to check them again, as they should only be present in ONE workflow run sample
-                self._encountered_duplicate_completed_request_ids -= common_request_ids
-
-                continue
+                if len(common_request_ids) > 0:
+                    # First remove the common request ids from _encountered_duplicate_completed_request_ids
+                    # As we don't need to check them again, as they should only be present in ONE workflow run sample
+                    self._encountered_duplicate_completed_request_ids -= common_request_ids
+                    continue
 
             # Now we check if the workflow run sample is valid and complete
             if not workflow_run_sample.is_valid_and_complete():

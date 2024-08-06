@@ -32,6 +32,15 @@ class TransmissionData:  # pylint: disable=too-many-instance-attributes
         self.from_direct_successor: Optional[bool] = None
         self.redirector_transmission: Optional[bool] = None  # TODO: Examine if we should remove or keep this
 
+        # Optional Fields, used only in the case the user wishes
+        # to override the workflow placement decision.
+        # In that case an extra input is added to the FIRST function
+        # from the client, either to the re-director or the first function
+        # if no redirection is required. We then subtract the overridden
+        # data size from the data transfer size to the first function
+        # to emulate the data transfer size for a non-testing scenario.
+        self.overridden_wpd_data_size: Optional[float] = None
+
         # If not from a direct successor,
         # this will significantly affect what we want to collect
         # Here we have (starting instance -> uninvoked successor instance,
@@ -57,7 +66,7 @@ class TransmissionData:  # pylint: disable=too-many-instance-attributes
 
         # Only return the fields that are not None
         result = {
-            "transmission_size_gb": self.payload_transmission_size,
+            "transmission_size_gb": (self.payload_transmission_size - self.overridden_wpd_data_size) if self.overridden_wpd_data_size else self.payload_transmission_size,
             "transmission_latency_s": self.transmission_latency,
             "from_instance": self.from_instance,
             "uninvoked_instance": self.uninvoked_instance,

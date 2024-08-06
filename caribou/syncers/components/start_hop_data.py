@@ -35,6 +35,7 @@ class StartHopData:  # pylint: disable=too-many-instance-attributes
 
         # Optional Fields, used only in the case the user wishes
         # to override the workflow placement decision.
+        # This is only for debug/testing purposes. 
         self.overridden_wpd_data_size: Optional[float] = None
 
         # Indicate if the placement decision was retrieved from the platform
@@ -100,7 +101,7 @@ class StartHopData:  # pylint: disable=too-many-instance-attributes
     def to_dict(self) -> dict[str, Any]:
         workflow_placement_decision = {
             "data_size_gb": self.wpd_data_size,
-            "overridden_data_size_gb": self.overridden_wpd_data_size,
+            # "overridden_data_size_gb": self.overridden_wpd_data_size,
             "consumed_read_capacity": self.consumed_read_capacity,
             "retrieved_wpd_at_function": self.retrieved_wpd_at_function,
         }
