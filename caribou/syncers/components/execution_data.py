@@ -146,9 +146,9 @@ class ExecutionData:  # pylint: disable=too-many-instance-attributes
         # Only the relevant entries
         return all(
             [
-                self.instance_name,
-                self.request_id,
-                self.lambda_insights,
+                self.instance_name is not None,
+                self.request_id is not None,
+                self.lambda_insights is not None,
             ]
         )
 

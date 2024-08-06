@@ -11,8 +11,14 @@ class InstanceNode:
         # The region ID of the current location of the node
         self.region_id: int = -1
 
-        # The instance index
-        self.instance_id = instane_id
+        # The instance index (Nominal)
+        self.nominal_instance_id: int = instane_id
+
+        # An instance MAY also be an redirector, in that
+        # case its actual instance_id is the same as the start hop.
+        # In this case this will be overwritten with the redirector instance id.
+        # Otherwise it will be the same as the nominal instance id.
+        self.actual_instance_id: int = instane_id if instane_id >= 0 else -1
 
         # Denotes if it was invoked (Any of its incoming edges were invoked)
         # Default is False
@@ -41,6 +47,9 @@ class InstanceNode:
         # node invokes the successor
         self.cumulative_runtimes: dict[str, Any] = {"current": 0.0, "successors": {}}
 
+        # Store the node execution time
+        self.execution_time: float = 0.0
+
     def get_cumulative_runtime(self, successor_instance_index: int) -> float:
         # Get the cumulative runtime of the successor edge
         # If there are no specifiec runtime for the successor
@@ -51,28 +60,81 @@ class InstanceNode:
         # Calculate the cost and carbon of the node
         # based on the input/output size and dynamodb
         # read/write capacity
-        # print(f'Calculating cost and carbon for node: {self.instance_id}')
-        # print(f"cumulative_runtimes: {self.cumulative_runtimes}")
-        calculated_metrics = self._input_manager.calculate_cost_and_carbon_of_instance(
-            self.cumulative_runtimes["current"],
-            self.instance_id,
-            self.region_id,
-            self.tracked_data_input_sizes,
-            self.tracked_data_output_sizes,
-            self.sns_data_call_and_output_sizes,
-            self.data_transfer_during_execution,
-            self.tracked_dynamodb_read_capacity,
-            self.tracked_dynamodb_write_capacity,
-            self.invoked,
-        )
-        # print(calculated_metrics)
+
+        # TODO: If instance ID == -1, this is a virtual start node
+        # if self.nominal_instance_id == -1:
+        if self.actual_instance_id == -1:
+            print(
+                f"Calculate Virtual Node (Virtual Start Node {self.nominal_instance_id} ({self.actual_instance_id})):"
+            )
+            print(
+                {
+                    "tracked_data_input_sizes": self.tracked_data_input_sizes,
+                    "tracked_data_output_sizes": self.tracked_data_output_sizes,
+                    "sns_data_call_and_output_sizes": self.sns_data_call_and_output_sizes,
+                    "tracked_dynamodb_read_capacity": self.tracked_dynamodb_read_capacity,
+                    "tracked_dynamodb_write_capacity": self.tracked_dynamodb_write_capacity,
+                }
+            )
+            calculated_metrics = self._input_manager.calculate_cost_and_carbon_virtual_start_instance(
+                self.tracked_data_input_sizes,
+                self.tracked_data_output_sizes,
+                self.sns_data_call_and_output_sizes,
+                self.tracked_dynamodb_read_capacity,
+                self.tracked_dynamodb_write_capacity,
+            )
+        else:
+            print(f"Calculate Real Node, {self.nominal_instance_id} ({self.actual_instance_id}) -> {self.invoked}:")
+            print(
+                {
+                    "execution_time": self.execution_time,
+                    "region_id": self.region_id,
+                    "tracked_data_input_sizes": self.tracked_data_input_sizes,
+                    "tracked_data_output_sizes": self.tracked_data_output_sizes,
+                    "sns_data_call_and_output_sizes": self.sns_data_call_and_output_sizes,
+                    "data_transfer_during_execution": self.data_transfer_during_execution,
+                    "tracked_dynamodb_read_capacity": self.tracked_dynamodb_read_capacity,
+                    "tracked_dynamodb_write_capacity": self.tracked_dynamodb_write_capacity,
+                    "invoked": self.invoked,
+                    "is_redirector": self.is_redirector,
+                }
+            )
+            calculated_metrics = self._input_manager.calculate_cost_and_carbon_of_instance(
+                self.execution_time,
+                # self.nominal_instance_id,
+                self.actual_instance_id,
+                self.region_id,
+                self.tracked_data_input_sizes,
+                self.tracked_data_output_sizes,
+                self.sns_data_call_and_output_sizes,
+                self.data_transfer_during_execution,
+                self.tracked_dynamodb_read_capacity,
+                self.tracked_dynamodb_write_capacity,
+                self.invoked,
+                self.is_redirector,
+            )
 
         # We only care about the runtime if the node was invoked
         runtime = self.cumulative_runtimes["current"] if self.invoked else 0.0
+
+        print(
+            {
+                "cost": calculated_metrics["cost"],
+                "runtime": runtime,
+                "execution_carbon": calculated_metrics["execution_carbon"],
+                "transmission_carbon": calculated_metrics["transmission_carbon"],
+            }
+        )
+        print()
+
         return {
             "cost": calculated_metrics["cost"],
-            # "carbon": calculated_metrics['carbon'],
             "runtime": runtime,
             "execution_carbon": calculated_metrics["execution_carbon"],
             "transmission_carbon": calculated_metrics["transmission_carbon"],
         }
+
+    @property
+    def is_redirector(self) -> bool:
+        # Redirector node have nominal_instance_id == -1
+        return self.nominal_instance_id == -1

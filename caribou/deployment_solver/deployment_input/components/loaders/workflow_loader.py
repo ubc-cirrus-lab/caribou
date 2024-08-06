@@ -53,19 +53,29 @@ class WorkflowLoader(InputLoader):
     def get_home_region(self) -> str:
         return self._home_region
 
-    def get_wpd_size(self) -> list[float]:
+    def get_workflow_placement_decision_size(self) -> float:
         # Workflow Placement Decision Size
         return self._workflow_data.get("start_hop_summary", {}).get("workflow_placement_decision_size_gb", 0.0)
+
+    def get_start_hop_retrieve_wpd_probability(self) -> float:
+        return self._workflow_data.get("start_hop_summary", {}).get(
+            "wpd_at_function_probability", 1
+        )  # Default to always retrieve WPD at function arrival
 
     def get_start_hop_size_distribution(self) -> list[float]:
         # Start hop size distribution, if not available, return the WPD size
         # As it will always send at least the WPD size
-        return self._workflow_data.get("start_hop_summary", {}).get("transfer_sizes_gb", [self.get_wpd_size()])
+        return (
+            self._workflow_data.get("start_hop_summary", {})
+            .get("from_client", {})
+            .get("transfer_sizes_gb", [self.get_workflow_placement_decision_size()])
+        )
 
     def get_start_hop_best_fit_line(self, to_region_name: str) -> Optional[dict[str, float]]:
         best_fit_line = (
             self._workflow_data.get("start_hop_summary", {})
-            .get("regions_to_regions", {})
+            .get("from_client", {})
+            .get("received_region", {})
             .get(to_region_name, {})
             .get("best_fit_line", None)
         )
@@ -81,7 +91,8 @@ class WorkflowLoader(InputLoader):
 
         start_hop_latency_distribution = (
             self._workflow_data.get("start_hop_summary", {})
-            .get("regions_to_regions", {})
+            .get("from_client", {})
+            .get("received_region", {})
             .get(to_region_name, {})
             .get("transfer_size_gb_to_transfer_latencies_s", {})
             .get(str(data_transfer_size), [])
@@ -104,16 +115,38 @@ class WorkflowLoader(InputLoader):
         self._start_hop_latency_distribution_cache[cache_key] = start_hop_latency_distribution
         return start_hop_latency_distribution
 
-    def get_average_cpu_utilization(self, instance_name: str) -> float:
-        # Get the average CPU utilization for the instance
-        # If not available, default to 0.5 (Average cpu utilization of
-        # hyperscale cloud providers)
-        return self._workflow_data.get("instance_summary", {}).get(instance_name, {}).get("cpu_utilization", 0.5)
+    def get_average_cpu_utilization(self, instance_name: str, region_name: str, is_redirector: bool) -> float:
+        executions_data: dict[str, Any]
+        if not is_redirector:
+            executions_data = self._workflow_data.get("instance_summary", {})
+        else:
+            executions_data = self._workflow_data.get("start_hop_summary", {}).get("at_redirector", {})
 
-    def get_runtime_distribution(self, instance_name: str, region_name: str) -> list[float]:
+        # Get the average CPU utilization for the instance (at specific region if possible
+        # if not then try to get the average cpu utilization for the instance on all regions)
+        # If that is not even available (Should be impossible), default to 0.5 (Average cpu utilization of
+        # hyperscale cloud providers)
+        cpu_utilization = (
+            executions_data.get(instance_name, {})
+            .get("executions", {})
+            .get("at_region", {})
+            .get(region_name, {})
+            .get("cpu_utilization", None)
+        )
+        if cpu_utilization is None:
+            cpu_utilization = executions_data.get(instance_name, {}).get("cpu_utilization", 0.5)
+
+        return cpu_utilization
+
+    def get_runtime_distribution(self, instance_name: str, region_name: str, is_redirector: bool) -> list[float]:
+        executions_data: dict[str, Any]
+        if not is_redirector:
+            executions_data = self._workflow_data.get("instance_summary", {})
+        else:
+            executions_data = self._workflow_data.get("start_hop_summary", {}).get("at_redirector", {})
+
         return (
-            self._workflow_data.get("instance_summary", {})
-            .get(instance_name, {})
+            executions_data.get(instance_name, {})
             .get("executions", {})
             .get("at_region", {})
             .get(region_name, {})
@@ -121,14 +154,19 @@ class WorkflowLoader(InputLoader):
         )
 
     def get_auxiliary_data_distribution(
-        self, instance_name: str, region_name: str, runtime: float
+        self, instance_name: str, region_name: str, runtime: float, is_redirector: bool
     ) -> list[list[float]]:
         # Round the duration to the nearest 10 ms
         runtime = self._round_to_ms(runtime, 10)
 
+        executions_data: dict[str, Any]
+        if not is_redirector:
+            executions_data = self._workflow_data.get("instance_summary", {})
+        else:
+            executions_data = self._workflow_data.get("start_hop_summary", {}).get("at_redirector", {})
+
         auxiliary_data_distribution: list[list[float]] = (
-            self._workflow_data.get("instance_summary", {})
-            .get(instance_name, {})
+            executions_data.get(instance_name, {})
             .get("executions", {})
             .get("at_region", {})
             .get(region_name, {})
@@ -138,12 +176,15 @@ class WorkflowLoader(InputLoader):
 
         return auxiliary_data_distribution
 
-    def get_auxiliary_index_translation(self, instance_name: str) -> dict[str, int]:
+    def get_auxiliary_index_translation(self, instance_name: str, is_redirector: bool) -> dict[str, int]:
+        executions_data: dict[str, Any]
+        if not is_redirector:
+            executions_data = self._workflow_data.get("instance_summary", {})
+        else:
+            executions_data = self._workflow_data.get("start_hop_summary", {}).get("at_redirector", {})
+
         auxiliary_index_translation: dict[str, int] = (
-            self._workflow_data.get("instance_summary", {})
-            .get(instance_name, {})
-            .get("executions", {})
-            .get("auxiliary_index_translation", {})
+            executions_data.get(instance_name, {}).get("executions", {}).get("auxiliary_index_translation", {})
         )
 
         return auxiliary_index_translation

@@ -10,7 +10,7 @@ from caribou.deployment_solver.models.region_indexer import RegionIndexer
 from caribou.deployment_solver.workflow_config import WorkflowConfig
 
 
-class DeploymentMetricsCalculator(ABC):
+class DeploymentMetricsCalculator(ABC):  # pylint: disable=too-many-instance-attributes
     def __init__(
         self,
         workflow_config: WorkflowConfig,
@@ -19,10 +19,12 @@ class DeploymentMetricsCalculator(ABC):
         instance_indexer: InstanceIndexer,
         tail_latency_threshold: int = TAIL_LATENCY_THRESHOLD,
         record_transmission_execution_carbon: bool = False,
+        consider_from_client_latency: bool = False,
     ):
         # Not all variables are relevant for other parts
         self._input_manager: InputManager = input_manager
         self._tail_latency_threshold: int = tail_latency_threshold
+        self._consider_from_client_latency: bool = consider_from_client_latency
 
         # Set up the DAG structure and get the prerequisites and successor dictionaries
         dag: DAG = DAG(list(workflow_config.instances.values()), instance_indexer)
@@ -48,25 +50,21 @@ class DeploymentMetricsCalculator(ABC):
 
     def calculate_workflow(self, deployment: list[int]) -> dict[str, float]:
         # Create an new workflow instance and configure regions
-        workflow_instance = WorkflowInstance(self._input_manager, deployment)
+        start_hop_index = self._topological_order[0]  # The first instance in the topological order is the start hop
+        workflow_instance = WorkflowInstance(
+            self._input_manager, deployment, start_hop_index, self._consider_from_client_latency
+        )
 
         # Build the partial workflow instance (Partial DAG)
         for instance_index in self._topological_order:
             predecessor_instance_indices = self._prerequisites_dictionary[instance_index]
-
             # Add the start hop if this is the first instance
             if len(predecessor_instance_indices) == 0:
                 # This is the first instance, add start hop
                 workflow_instance.add_start_hop(instance_index)
 
             # Add the node to the workflow instance
-            # print(
-            #     f"\nWORKFLOW: Instantialized Instance: {instance_index}
-            # ({self._input_manager._instance_indexer.index_to_value(instance_index)})"
-            # )
             node_invoked: bool = workflow_instance.add_node(instance_index)
-
-            # print(f"WORKFLOW: Instance Invoked: {node_invoked}")
 
             # Add the edges to the workflow
             for successor_instance_index in self._successor_dictionary[instance_index]:
@@ -74,108 +72,15 @@ class DeploymentMetricsCalculator(ABC):
                 # we still need to add the edge to the workflow instance (for data transfer calculations)
                 is_invoked: bool = self._is_invoked(instance_index, successor_instance_index) if node_invoked else False
 
-                # print(f"WORKFLOW: Successor Invoked: {is_invoked} -> {successor_instance_index}")
-
                 # Add the edge to the workflow instance
                 workflow_instance.add_edge(instance_index, successor_instance_index, is_invoked)
 
         # Calculate the overall cost, runtime, and carbon footprint of the deployment
-        # print("\n\nCalculating Metrics for the Workflow Instance:")
         worklflow_metrics = workflow_instance.calculate_overall_cost_runtime_carbon()
 
-        # print("\n________________________________________________")
+        print("_________________________________\n")
 
         return worklflow_metrics
-
-    # def calculate_workflow(self, deployment: list[int]) -> dict[str, float]:
-    #     total_cost = 0.0
-    #     total_carbon = 0.0
-
-    #     # Keep track of instances of the node that will get invoked in this round.
-    #     invoked_instance_set: set = set([0])
-
-    #     # Secondary dictionary to keep track of what called what
-    #     invoked_child_dictionary: dict[int, set[int]] = {}
-
-    #     # Keep track of the runtime of the instances that were invoked in this round.
-    #     cumulative_runtime_of_instances: list[float] = [0.0] * len(deployment)
-
-    #     for instance_index in self._topological_order:
-    #         region_index = deployment[instance_index]
-    #         if instance_index in invoked_instance_set:  # Only care about the invoked instances
-    #             predecessor_instance_indices = self._prerequisites_dictionary[instance_index]
-
-    #             # First deal with transmission cost/carbon/runtime
-    #             cumulative_runtime = 0.0
-    #             if len(predecessor_instance_indices) == 0:
-    #                 # This is the first instance, deal with home region transmission cost
-    #                 (
-    #                     transmission_cost,
-    #                     transmission_carbon,
-    #                     transmission_runtime,
-    #                 ) = self._input_manager.get_transmission_cost_carbon_latency(
-    #                     -1, instance_index, self._home_region_index, region_index
-    #                 )
-
-    #                 total_cost += transmission_cost
-    #                 total_carbon += transmission_carbon
-
-    #                 cumulative_runtime += transmission_runtime
-    #             else:  # This is not the first instance
-    #                 max_runtime = 0.0
-    #                 for predecessor_instance_index in predecessor_instance_indices:
-    #                     # Only care about the parents that invoke the current instance
-    #                     if instance_index in invoked_child_dictionary.get(predecessor_instance_index, set()):
-    #                         parent_runtime = cumulative_runtime_of_instances[predecessor_instance_index]
-
-    #                         # Calculate transmission cost/carbon/runtime TO current instance
-    #                         (
-    #                             transmission_cost,
-    #                             transmission_carbon,
-    #                             transmission_runtime,
-    #                         ) = self._input_manager.get_transmission_cost_carbon_latency(
-    #                             predecessor_instance_index,
-    #                             instance_index,
-    #                             deployment[predecessor_instance_index],
-    #                             region_index,
-    #                         )
-
-    #                         total_cost += transmission_cost
-    #                         total_carbon += transmission_carbon
-    #                         runtime_from_path = parent_runtime + transmission_runtime
-    #                         max_runtime = max(max_runtime, runtime_from_path)
-
-    #                 cumulative_runtime += max_runtime
-
-    #             # Deal with execution cost/carbon/runtime
-    #             (
-    #                 execution_cost,
-    #                 execution_carbon,
-    #                 execution_runtime,
-    #             ) = self._input_manager.get_execution_cost_carbon_latency(instance_index, region_index)
-
-    #             total_cost += execution_cost
-    #             total_carbon += execution_carbon
-    #             cumulative_runtime += execution_runtime
-
-    #             # Update the cumulative runtime of the instance
-    #             cumulative_runtime_of_instances[instance_index] = cumulative_runtime
-
-    #             # Determine if the next instances will be invoked
-    #             cumulative_invoked_instance_set = set()
-    #             for successor_instance_index in self._successor_dictionary[instance_index]:
-    #                 if self._is_invoked(instance_index, successor_instance_index):
-    #                     invoked_instance_set.add(successor_instance_index)
-    #                     cumulative_invoked_instance_set.add(successor_instance_index)
-
-    #             invoked_child_dictionary[instance_index] = cumulative_invoked_instance_set
-
-    #     # At this point we may have 1 or more leaf nodes, we need to get the max runtime from them.
-    #     return {
-    #         "cost": total_cost,
-    #         "runtime": max(cumulative_runtime_of_instances),
-    #         "carbon": total_carbon,
-    #     }
 
     def _is_invoked(self, from_instance_index: int, to_instance_index: int) -> bool:
         invocation_probability = self._input_manager.get_invocation_probability(from_instance_index, to_instance_index)

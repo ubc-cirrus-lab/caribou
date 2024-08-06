@@ -12,6 +12,7 @@ from caribou.common.constants import (
     DEPLOYMENT_MANAGER_RESOURCE_TABLE,
     DEPLOYMENT_RESOURCES_TABLE,
     GLOBAL_TIME_ZONE,
+    HOME_REGION_THRESHOLD,
     TIME_FORMAT,
     WORKFLOW_INSTANCE_TABLE,
     WORKFLOW_PLACEMENT_DECISION_TABLE,
@@ -36,9 +37,9 @@ class Client:
     def __init__(self, workflow_id: Optional[str] = None) -> None:
         self._workflow_id = workflow_id
         self._endpoints = Endpoints()
-        self._home_region_threshold = 0.1  # 10% of the time run in home region
+        self._home_region_threshold = HOME_REGION_THRESHOLD  # fractional % of the time run in home region
 
-    def run(self, input_data: Optional[str] = None) -> None:
+    def run(self, input_data: Optional[str] = None) -> str:
         current_time = datetime.now(GLOBAL_TIME_ZONE).strftime(TIME_FORMAT)
 
         if self._workflow_id is None:
@@ -76,14 +77,21 @@ class Client:
         workflow_placement_decision["send_to_home_region"] = send_to_home_region
 
         run_id = uuid.uuid4().hex
+        workflow_placement_decision["run_id"] = run_id  # Run_id is stored in the workflow_placement_decision
+        workflow_placement_decision["data_size"] = wpd_data_size
+        workflow_placement_decision["consumed_read_capacity"] = consumed_read_capacity
         print(f"Run ID for current run: {run_id}")
         wrapped_input_data = {
-            "input_data": input_data,
+            # "input_data": input_data,
+            "payload": input_data,
             "time_request_sent": current_time,
             "workflow_placement_decision": workflow_placement_decision,
-            "wpd_data_size": wpd_data_size,
-            "wpd_consumed_read_capacity": consumed_read_capacity,
-            "run_id": run_id,
+            "number_of_hops_from_client_request": 0,
+            "permit_redirection": False,  # We don't want to redirect the request.
+            "redirected": False,
+            "request_source": "Caribou CLI",
+            # "wpd_data_size": wpd_data_size,
+            # "wpd_consumed_read_capacity": consumed_read_capacity,
         }
 
         json_payload = json.dumps(wrapped_input_data)
@@ -91,6 +99,8 @@ class Client:
             message=json_payload,
             identifier=identifier,
         )
+
+        return run_id
 
     def _get_time_key(self, workflow_placement_decision: dict[str, Any]) -> str:
         if "current_deployment" not in workflow_placement_decision["workflow_placement"]:

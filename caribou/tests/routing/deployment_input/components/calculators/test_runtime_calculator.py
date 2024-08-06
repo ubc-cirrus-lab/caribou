@@ -1,133 +1,195 @@
 import unittest
 from unittest.mock import MagicMock, patch
-import numpy as np
-from caribou.deployment_solver.deployment_input.components.calculators.runtime_calculator import RuntimeCalculator
+from caribou.deployment_solver.deployment_input.components.calculator import InputCalculator
 from caribou.deployment_solver.deployment_input.components.loaders.performance_loader import PerformanceLoader
 from caribou.deployment_solver.deployment_input.components.loaders.workflow_loader import WorkflowLoader
+from caribou.deployment_solver.models.indexer import Indexer
+from caribou.deployment_solver.deployment_input.components.calculators.runtime_calculator import RuntimeCalculator
 
 
 class TestRuntimeCalculator(unittest.TestCase):
-    def test_calculate_runtime_distribution(self):
-        # Arrange
-        mock_performance_loader = MagicMock(spec=PerformanceLoader)
-        mock_workflow_loader = MagicMock(spec=WorkflowLoader)
-        runtime_calculator = RuntimeCalculator(mock_performance_loader, mock_workflow_loader)
-        mock_workflow_loader.get_runtime_distribution.side_effect = [[], [0.2, 0.1, 0.3]]
+    def setUp(self):
+        # Mock the loaders
+        self.performance_loader = MagicMock(spec=PerformanceLoader)
+        self.workflow_loader = MagicMock(spec=WorkflowLoader)
 
-        # Act
-        runtime_distribution = runtime_calculator.calculate_runtime_distribution("instance1", "region1")
+        # Create an instance of RuntimeCalculator with mocks
+        self.runtime_calculator = RuntimeCalculator(self.performance_loader, self.workflow_loader)
 
-        # Assert
-        np.testing.assert_array_equal(runtime_distribution, np.array([0.2, 0.1, 0.3]))
+        # Define test data
+        self.from_instance_name = "instance1"
+        self.to_instance_name = "instance2"
+        self.from_region_name = "region1"
+        self.to_region_name = "region2"
+        self.data_transfer_size = 1.0
 
-    def test_calculate_runtime_distribution_no_runtime_data(self):
-        # Arrange
-        mock_performance_loader = MagicMock(spec=PerformanceLoader)
-        mock_workflow_loader = MagicMock(spec=WorkflowLoader)
-        runtime_calculator = RuntimeCalculator(mock_performance_loader, mock_workflow_loader)
-        mock_workflow_loader.get_runtime_distribution.side_effect = [[], []]
+    def test_reset_cache(self):
+        # Ensure cache is cleared
+        self.runtime_calculator.reset_cache()
+        self.assertEqual(self.runtime_calculator._transmission_latency_distribution_cache, {})
+        self.assertEqual(self.runtime_calculator._transmission_size_distribution_cache, {})
 
-        # Act
-        runtime_distribution = runtime_calculator.calculate_runtime_distribution("instance1", "region1")
+    @patch("random.random", return_value=0.0)
+    def test_calculate_transmission_size_and_latency(self, mock_random):
+        # Mock the distribution methods
+        self.workflow_loader.get_data_transfer_size_distribution.return_value = [0.1, 0.2, 0.3]
+        self.workflow_loader.get_latency_distribution.return_value = [0.4, 0.5, 0.6]
 
-        # Assert
-        np.testing.assert_array_equal(runtime_distribution, np.array([0.0]))
+        # Call the method
+        transmission_size, transmission_latency = self.runtime_calculator.calculate_transmission_size_and_latency(
+            self.from_instance_name,
+            self.from_region_name,
+            self.to_instance_name,
+            self.to_region_name,
+            is_sync_predecessor=False,
+            consider_from_client_latency=False,
+        )
+
+        # Verify results
+        self.assertEqual(transmission_size, 0.1)
+        self.assertEqual(transmission_latency, 0.4)
+
+    @patch("random.random", return_value=0.0)
+    def test_calculate_simulated_transmission_size_and_latency(self, mock_random):
+        # Mock the distribution methods
+        self.workflow_loader.get_non_execution_sns_transfer_size.return_value = 0.1
+        self.workflow_loader.get_non_execution_transfer_latency_distribution.return_value = [0.2, 0.3, 0.4]
+
+        # Call the method
+        (
+            transmission_size,
+            transmission_latency,
+        ) = self.runtime_calculator.calculate_simulated_transmission_size_and_latency(
+            self.from_instance_name,
+            self.to_instance_name,
+            self.from_instance_name,
+            self.to_instance_name,
+            self.from_region_name,
+            self.to_region_name,
+        )
+
+        # Verify results
+        self.assertEqual(transmission_size, 0.1)
+        self.assertEqual(transmission_latency, 0.2)
+
+    @patch("random.random", return_value=0.0)
+    def test_calculate_node_runtimes_and_data_transfer(self, mock_random):
+        # Setup mock data
+        self.workflow_loader.get_runtime_distribution.return_value = [5.0, 5.1, 5.2]
+        self.workflow_loader.get_auxiliary_index_translation.return_value = {
+            "data_transfer_during_execution_gb": 0,
+            "successor_instance": 1,
+        }
+        self.workflow_loader.get_auxiliary_data_distribution.return_value = [[0.1, 0.2], [0.2, 0.3]]
+
+        self.performance_loader.get_relative_performance.side_effect = (
+            lambda x: 1.0 if x == self.from_region_name else 0.9
+        )
+
+        instance_indexer = MagicMock(spec=Indexer)
+        instance_indexer.value_to_index.side_effect = lambda x: 1 if x == "successor_instance" else 0
+
+        # Call the method
+        (
+            runtime_data,
+            current_execution_time,
+            data_transfer,
+        ) = self.runtime_calculator.calculate_node_runtimes_and_data_transfer(
+            self.from_instance_name,
+            self.from_region_name,
+            previous_cumulative_runtime=0.0,
+            instance_indexer=instance_indexer,
+            is_redirector=False,
+        )
+
+        # Verify results
+        self.assertEqual(runtime_data["current"], 5.0)
+        self.assertEqual(current_execution_time, 5.0)
+        self.assertEqual(data_transfer, 0.1)
 
     def test_get_transmission_size_distribution(self):
-        # Arrange
-        mock_performance_loader = MagicMock(spec=PerformanceLoader)
-        mock_workflow_loader = MagicMock(spec=WorkflowLoader)
-        runtime_calculator = RuntimeCalculator(mock_performance_loader, mock_workflow_loader)
-        mock_workflow_loader.get_data_transfer_size_distribution.return_value = [0.2, 0.1, 0.3]
+        # Setup cache
+        self.runtime_calculator._transmission_size_distribution_cache = {
+            f"{self.from_instance_name}-{self.to_instance_name}": [0.1, 0.2, 0.3]
+        }
 
-        # Act
-        transmission_size_distribution = runtime_calculator.get_transmission_size_distribution(
-            "instance1", "instance2", "region1", "region2"
+        # Call the method
+        size_distribution = self.runtime_calculator._get_transmission_size_distribution(
+            self.from_instance_name, self.to_instance_name
         )
 
-        # Assert
-        np.testing.assert_array_equal(transmission_size_distribution, np.array([0.2, 0.1, 0.3]))
-        mock_workflow_loader.get_data_transfer_size_distribution.assert_called_once_with(
-            "instance1", "instance2", "region1", "region2"
-        )
-
-    def test_get_transmission_size_distribution_no_from_instance(self):
-        # Arrange
-        mock_performance_loader = MagicMock(spec=PerformanceLoader)
-        mock_workflow_loader = MagicMock(spec=WorkflowLoader)
-        runtime_calculator = RuntimeCalculator(mock_performance_loader, mock_workflow_loader)
-        mock_workflow_loader.get_start_hop_size_distribution.return_value = [0.2, 0.1, 0.3]
-
-        # Act
-        transmission_size_distribution = runtime_calculator.get_transmission_size_distribution(
-            None, "instance2", "region1", "region2"
-        )
-
-        # Assert
-        np.testing.assert_array_equal(transmission_size_distribution, np.array([0.2, 0.1, 0.3]))
-        mock_workflow_loader.get_start_hop_size_distribution.assert_called_once_with("region2")
+        # Verify cache was used
+        self.assertEqual(size_distribution, [0.1, 0.2, 0.3])
+        self.workflow_loader.get_data_transfer_size_distribution.assert_not_called()
 
     def test_get_transmission_latency_distribution(self):
-        # Arrange
-        mock_performance_loader = MagicMock(spec=PerformanceLoader)
-        mock_workflow_loader = MagicMock(spec=WorkflowLoader)
-        runtime_calculator = RuntimeCalculator(mock_performance_loader, mock_workflow_loader)
-        mock_workflow_loader.get_latency_distribution.return_value = [0.2, 0.1, 0.3]
+        # Setup cache
+        self.runtime_calculator._transmission_latency_distribution_cache = {
+            f"{self.from_instance_name}-{self.to_instance_name}-{self.from_region_name}-{self.to_region_name}-{self.data_transfer_size}": [
+                0.1,
+                0.2,
+                0.3,
+            ]
+        }
 
-        # Act
-        transmission_latency_distribution = runtime_calculator.get_transmission_latency_distribution(
-            "instance1", "instance2", "region1", "region2", 1.0
+        # Call the method
+        latency_distribution = self.runtime_calculator._get_transmission_latency_distribution(
+            self.from_instance_name,
+            self.from_region_name,
+            self.to_instance_name,
+            self.to_region_name,
+            self.data_transfer_size,
+            is_sync_predecessor=False,
+            consider_from_client_latency=False,
         )
 
-        # Assert
-        np.testing.assert_array_equal(transmission_latency_distribution, np.array([0.2, 0.1, 0.3]))
-        mock_workflow_loader.get_latency_distribution.assert_called_once_with(
-            "instance1", "instance2", "region1", "region2", 1.0
+        # Verify cache was used
+        self.assertEqual(latency_distribution, [0.1, 0.2, 0.3])
+        self.workflow_loader.get_latency_distribution.assert_not_called()
+
+    @patch("random.random", return_value=0.0)
+    def test_handle_missing_transmission_latency_distribution(self, mock_random):
+        # Mock the loader methods
+        self.performance_loader.get_transmission_latency_distribution.return_value = [0.2, 0.3, 0.4]
+        self.workflow_loader.get_home_region.return_value = self.from_region_name
+        self.workflow_loader.get_latency_distribution.return_value = [0.5, 0.6, 0.7]
+
+        # Call the method
+        missing_distribution = self.runtime_calculator._handle_missing_transmission_latency_distribution(
+            self.from_instance_name,
+            self.from_region_name,
+            self.to_instance_name,
+            self.to_region_name,
+            self.data_transfer_size,
+            is_sync_predecessor=False,
         )
 
-    def test_get_transmission_latency_distribution_no_from_instance(self):
-        # Arrange
-        mock_performance_loader = MagicMock(spec=PerformanceLoader)
-        mock_workflow_loader = MagicMock(spec=WorkflowLoader)
-        runtime_calculator = RuntimeCalculator(mock_performance_loader, mock_workflow_loader)
-        mock_workflow_loader.get_start_hop_latency_distribution.return_value = [0.2, 0.1, 0.3]
+        # Verify results
+        self.assertEqual(missing_distribution, [0.5, 0.6, 0.7])
 
-        # Act
-        transmission_latency_distribution = runtime_calculator.get_transmission_latency_distribution(
-            None, "instance2", "region1", "region2", 1.0
+    def test_handle_missing_start_hop_latency_distribution(self):
+        # Mock the loader methods
+        self.workflow_loader.get_home_region.return_value = self.from_region_name
+        self.workflow_loader.get_start_hop_latency_distribution.return_value = [0.3, 0.4, 0.5]
+        self.performance_loader.get_transmission_latency_distribution.return_value = [0.2, 0.3, 0.4]
+
+        # Call the method
+        start_hop_distribution = self.runtime_calculator._handle_missing_start_hop_latency_distribution(
+            self.to_region_name, self.data_transfer_size
         )
 
-        # Assert
-        np.testing.assert_array_equal(transmission_latency_distribution, np.array([0.2, 0.1, 0.3]))
-        mock_workflow_loader.get_start_hop_latency_distribution.assert_called_once_with("region2", 1.0)
+        # Verify results
+        self.assertEqual(start_hop_distribution, [0.5, 0.7, 0.9])
 
-    @patch("random.random", return_value=0.2)
-    def test_get_transmission_latency_distribution_with_data_transfer_size(self, mock_random):
-        # Arrange
-        mock_performance_loader = MagicMock(spec=PerformanceLoader)
-        mock_workflow_loader = MagicMock(spec=WorkflowLoader)
-        runtime_calculator = RuntimeCalculator(mock_performance_loader, mock_workflow_loader)
-        mock_performance_loader.get_transmission_latency_distribution.return_value = [0.2, 0.1, 0.3]
-        mock_workflow_loader.get_home_region.return_value = "region1"
-        mock_workflow_loader.get_data_transfer_size_distribution.return_value = [100, 200, 300]
-        mock_workflow_loader.get_latency_distribution.return_value = [0.1, 0.2, 0.3]
-        mock_random.return_value = 0  # Always select the first element
+    def test_handle_missing_start_hop_latency_distribution_home_region(self):
+        # Mock the loader methods
+        self.workflow_loader.get_home_region.return_value = self.to_region_name
 
-        # Act
-        transmission_latency_distribution = runtime_calculator.get_transmission_latency_distribution(
-            "instance1", "instance2", "region1", "region2", None
-        )
-
-        # Assert
-        np.testing.assert_array_almost_equal(transmission_latency_distribution, np.array([0.2, 0.1, 0.3]))
-        mock_performance_loader.get_transmission_latency_distribution.assert_called_with("region1", "region1")
-        mock_workflow_loader.get_home_region.assert_called_once()
-        mock_workflow_loader.get_data_transfer_size_distribution.assert_called_once_with(
-            "instance1", "instance2", "region1", "region1"
-        )
-        mock_workflow_loader.get_latency_distribution.assert_called_once_with(
-            "instance1", "instance2", "region1", "region1", 100
-        )
+        # Expect a ValueError if the home region has no latency data
+        with self.assertRaises(ValueError):
+            self.runtime_calculator._handle_missing_start_hop_latency_distribution(
+                self.to_region_name, self.data_transfer_size
+            )
 
 
 if __name__ == "__main__":

@@ -3,6 +3,7 @@ from typing import Any, Optional
 
 from caribou.common.constants import TIME_FORMAT
 from caribou.syncers.components.execution_data import ExecutionData
+from caribou.syncers.components.start_hop_data import StartHopData
 from caribou.syncers.components.transmission_data import TransmissionData
 
 
@@ -23,12 +24,7 @@ class WorkflowRunSample:  # pylint: disable=too-many-instance-attributes
         self.transmission_data: dict[str, TransmissionData] = {}
 
         # Start hop informations
-        self.start_hop_latency: float = 0.0
-        self.start_hop_data_transfer_size: float = 0.0
-        self.start_hop_instance_name: Optional[str] = None
-        self.start_hop_destination: Optional[str] = None
-        self.start_hop_wpd_data_size: Optional[float] = None
-        self.start_hop_wpd_consumed_read_capacity: Optional[float] = None
+        self.start_hop_data: StartHopData = StartHopData()
 
         # Encountered CPUs in the run.
         self.cpu_models: set[str] = set()
@@ -61,6 +57,11 @@ class WorkflowRunSample:  # pylint: disable=too-many-instance-attributes
 
         if instance_name not in self.execution_data:
             self.execution_data[instance_name] = ExecutionData(instance_name)
+
+        # Set the request ID if it is not set
+        if self.execution_data[instance_name].request_id is None:
+            self.execution_data[instance_name].request_id = request_id
+
         return self.execution_data[instance_name]
 
     def is_valid_and_complete(self) -> bool:
@@ -72,6 +73,7 @@ class WorkflowRunSample:  # pylint: disable=too-many-instance-attributes
             and self.log_end_time is not None
             and not self._has_duplicate_instances()
             and not self._has_incomplete_execution_data()
+            and self.start_hop_data.is_completed
         )
 
     def _has_duplicate_instances(self) -> bool:
@@ -112,15 +114,7 @@ class WorkflowRunSample:  # pylint: disable=too-many-instance-attributes
                 "runtime_s": self.duration.total_seconds(),
                 "execution_data": self._get_formatted_execution_data(),
                 "transmission_data": self._get_formatted_invocation_transmission_data(),
-                "start_hop_info": {
-                    "destination": self.start_hop_destination,
-                    "data_transfer_size_gb": self.start_hop_data_transfer_size,
-                    "latency_s": self.start_hop_latency,
-                    "workflow_placement_decision": {
-                        "data_size_gb": self.start_hop_wpd_data_size,
-                        "consumed_read_capacity": self.start_hop_wpd_consumed_read_capacity,
-                    },
-                },
+                "start_hop_info": self.start_hop_data.to_dict(),
                 "unique_cpu_models": list(self.cpu_models),
             },
         )

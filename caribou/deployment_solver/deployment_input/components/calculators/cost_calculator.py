@@ -1,6 +1,7 @@
 import math
 from typing import Optional
 
+from caribou.common.constants import GLOBAL_SYSTEM_REGION
 from caribou.deployment_solver.deployment_input.components.calculator import InputCalculator
 from caribou.deployment_solver.deployment_input.components.loaders.datacenter_loader import DatacenterLoader
 from caribou.deployment_solver.deployment_input.components.loaders.workflow_loader import WorkflowLoader
@@ -22,9 +23,38 @@ class CostCalculator(InputCalculator):
         self._transmission_conversion_ratio_cache: dict[str, float] = {}
         self._consider_intra_region_transfer_for_sns: bool = consider_intra_region_transfer_for_sns
 
+    def calculate_virtual_start_instance_cost(
+        self,
+        data_output_sizes: dict[Optional[str], float],  # pylint: disable=unused-argument
+        sns_data_call_and_output_sizes: dict[Optional[str], list[float]],
+        dynamodb_read_capacity: float,
+        dynamodb_write_capacity: float,
+    ) -> float:
+        total_cost = 0.0
+
+        # We model the virtual start hop cost where the current region is the SYSTEM Region
+        # As it pulls wpd data from the system region.
+        current_region_name = f"aws:{GLOBAL_SYSTEM_REGION}"
+
+        # Add the cost of SNS (Our current orchastration service)
+        # Here we say that current region is None, such that we never
+        # incur additional cost from intra-region transfer of SNS as it is not
+        # ever going to be intra-region with any functions
+        total_cost += self._calculate_sns_cost(None, sns_data_call_and_output_sizes)
+
+        # We do not ever incur egress cost, as we assume client request is not
+        # from a AWS or other cloud provider region and thus egrees cost is 0.0
+
+        # Calculate the dynamodb read/write capacity cost
+        total_cost += self._calculate_dynamodb_cost(
+            current_region_name, dynamodb_read_capacity, dynamodb_write_capacity
+        )
+
+        return total_cost
+
     def calculate_instance_cost(
         self,
-        runtime: float,
+        execution_time: float,
         instance_name: str,
         current_region_name: str,
         data_output_sizes: dict[Optional[str], float],
@@ -39,7 +69,7 @@ class CostCalculator(InputCalculator):
         # We must consider the cost of execution and SNS
         if is_invoked:
             # Calculate execution cost of the instance itself
-            total_cost += self._calculate_execution_cost(instance_name, current_region_name, runtime)
+            total_cost += self._calculate_execution_cost(instance_name, current_region_name, execution_time)
 
             # Add the cost of SNS (Our current orchastration service)
             total_cost += self._calculate_sns_cost(current_region_name, sns_data_call_and_output_sizes)
@@ -72,7 +102,7 @@ class CostCalculator(InputCalculator):
         return total_dynamodb_cost
 
     def _calculate_sns_cost(
-        self, current_region_name: str, sns_data_call_and_output_sizes: dict[Optional[str], list[float]]
+        self, current_region_name: Optional[str], sns_data_call_and_output_sizes: dict[Optional[str], list[float]]
     ) -> float:
         total_sns_cost = 0.0
 
@@ -81,13 +111,12 @@ class CostCalculator(InputCalculator):
         # INSIDE the current region (As data_output_size already
         # includes data transfer outside the region and contains
         # sns_data_output_sizes)
-        if self._consider_intra_region_transfer_for_sns:
+        if self._consider_intra_region_transfer_for_sns and current_region_name:
             _, total_data_output_size = sns_data_call_and_output_sizes.get(current_region_name, (0, 0.0))
 
             # Calculate the cost of data transfer
             # This is simply the egress cost of data transfer
-            # In a region
-            # Get the cost of transmission
+            # In a region, get the cost of transmission
             transmission_cost_gb: float = self._datacenter_loader.get_transmission_cost(current_region_name, True)
 
             total_sns_cost += total_data_output_size * transmission_cost_gb
@@ -125,9 +154,9 @@ class CostCalculator(InputCalculator):
 
         return total_data_output_size * transmission_cost_gb
 
-    def _calculate_execution_cost(self, instance_name: str, region_name: str, runtime: float) -> float:
+    def _calculate_execution_cost(self, instance_name: str, region_name: str, execution_time: float) -> float:
         cost_from_compute_s, invocation_cost = self._get_execution_conversion_ratio(instance_name, region_name)
-        return cost_from_compute_s * runtime + invocation_cost
+        return cost_from_compute_s * execution_time + invocation_cost
 
     def _get_execution_conversion_ratio(self, instance_name: str, region_name: str) -> tuple[float, float]:
         # Check if the conversion ratio is in the cache

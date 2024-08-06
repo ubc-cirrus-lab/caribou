@@ -3,7 +3,6 @@ from typing import Any
 from caribou.common.constants import (
     PROVIDER_REGION_TABLE,
     PROVIDER_TABLE,
-    SOLVER_INPUT_AVERAGE_CPU_POWER_DEFAULT,
     SOLVER_INPUT_AVERAGE_MEMORY_POWER_DEFAULT,
     SOLVER_INPUT_CFE_DEFAULT,
     SOLVER_INPUT_COMPUTE_COST_DEFAULT,
@@ -40,11 +39,6 @@ class DatacenterLoader(InputLoader):
             providers.add(provider)
 
         self._provider_data = self._retrieve_provider_data(providers)  # ignore as not yet implemented
-
-    def get_average_cpu_power(self, region_name: str) -> float:
-        return self._datacenter_data.get(region_name, {}).get(
-            "average_cpu_power", SOLVER_INPUT_AVERAGE_CPU_POWER_DEFAULT
-        )
 
     def get_average_memory_power(self, region_name: str) -> float:
         return self._datacenter_data.get(region_name, {}).get(

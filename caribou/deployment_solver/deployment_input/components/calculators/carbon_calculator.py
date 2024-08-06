@@ -1,5 +1,6 @@
 from typing import Optional
 
+from caribou.common.constants import AVERAGE_USA_CARBON_INTENSITY
 from caribou.deployment_solver.deployment_input.components.calculator import InputCalculator
 from caribou.deployment_solver.deployment_input.components.loaders.carbon_loader import CarbonLoader
 from caribou.deployment_solver.deployment_input.components.loaders.datacenter_loader import DatacenterLoader
@@ -7,21 +8,21 @@ from caribou.deployment_solver.deployment_input.components.loaders.workflow_load
 
 
 class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-attributes
-    _energy_factor_of_transmission: float = 0.005,
-    _consider_home_region_for_transmission: bool = True,
-    _consider_cfe: bool = False
-
     def __init__(
         self,
         carbon_loader: CarbonLoader,
         datacenter_loader: DatacenterLoader,
         workflow_loader: WorkflowLoader,
+        energy_factor_of_transmission: float = 0.001,
+        carbon_free_intra_region_transmission: bool = False,
+        carbon_free_dt_during_execution_at_home_region: bool = False,
+        consider_cfe: bool = False,
     ) -> None:
         super().__init__()
         self._carbon_loader: CarbonLoader = carbon_loader
         self._datacenter_loader: DatacenterLoader = datacenter_loader
         self._workflow_loader: WorkflowLoader = workflow_loader
-        # self._runtime_calculator: RuntimeCalculator = runtime_calculator
+        self._consider_cfe: bool = consider_cfe
 
         # Conversion ratio cache
         self._execution_conversion_ratio_cache: dict[str, tuple[float, float, float]] = {}
@@ -30,6 +31,19 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
         # Carbon setting - hourly or average policy
         self._hourly_carbon_setting: Optional[str] = None  # None indicates the default setting -> Average everything
 
+        # Energy factor and if considering home region for transmission carbon calculation
+        self._energy_factor_of_transmission: float = energy_factor_of_transmission
+
+        # This denotes if we should consider the intra region for transmission carbon calculation
+        # Meaning that if this is true, we consider data transfer within the same region as incrring
+        # transmission carbon.
+        self._carbon_free_intra_region_transmission: bool = carbon_free_intra_region_transmission
+
+        # Consider the case of data transfer during execution being free at home region
+        # of the user workflow. (Basically making the assumption that functions deployed
+        # at user specified home region will not incurr carbon from data transfer )
+        self._carbon_free_dt_during_execution_at_home_region: bool = carbon_free_dt_during_execution_at_home_region
+
     def alter_carbon_setting(self, carbon_setting: Optional[str]) -> None:
         self._hourly_carbon_setting = carbon_setting
 
@@ -37,15 +51,30 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
         self._execution_conversion_ratio_cache = {}
         self._transmission_conversion_ratio_cache = {}
 
+    def calculate_virtual_start_instance_carbon(
+        self,
+        data_input_sizes: dict[Optional[str], float],
+        data_output_sizes: dict[Optional[str], float],
+    ) -> float:
+        transmission_carbon = 0.0
+
+        # Even if the function is not invoked, we model
+        # Each node as an abstract instance to consider
+        # data transfer carbon
+        transmission_carbon += self._calculate_data_transfer_carbon(None, data_input_sizes, data_output_sizes, 0.0)
+
+        return transmission_carbon
+
     def calculate_instance_carbon(
         self,
-        runtime: float,
+        execution_time: float,
         instance_name: str,
         region_name: str,
         data_input_sizes: dict[Optional[str], float],
         data_output_sizes: dict[Optional[str], float],
         data_transfer_during_execution: float,
         is_invoked: bool,
+        is_redirector: bool,
     ) -> tuple[float, float]:
         execution_carbon = 0.0
         transmission_carbon = 0.0
@@ -55,7 +84,9 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
         # If the function is actually invoked
         if is_invoked:
             # Calculate the carbon from running the execution
-            execution_carbon += self._calculate_execution_carbon(instance_name, region_name, runtime)
+            execution_carbon += self._calculate_execution_carbon(
+                instance_name, region_name, execution_time, is_redirector
+            )
 
         # Even if the function is not invoked, we model
         # Each node as an abstract instance to consider
@@ -68,77 +99,84 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
 
     def _calculate_data_transfer_carbon(
         self,
-        current_region_name: str,
+        current_region_name: Optional[str],
         data_input_sizes: dict[Optional[str], float],
-        data_output_sizes: dict[Optional[str], float],
+        data_output_sizes: dict[Optional[str], float],  # pylint: disable=unused-argument
         data_transfer_during_execution: float,
     ) -> float:
         total_transmission_carbon: float = 0.0
-        current_region_carbon_intensity = self._carbon_loader.get_grid_carbon_intensity(
-            current_region_name, self._hourly_carbon_setting
-        )
+        average_carbon_intensity_of_usa: float = AVERAGE_USA_CARBON_INTENSITY
 
-        # Make a new dictionary where the key is other region name
-        # and the value is the data transfer size (If data_input sizes
-        # and data_output sizes have the same key, we add the values)
-        data_transfer_sizes = {
-            k: data_input_sizes.get(k, 0) + data_output_sizes.get(k, 0)
-            for k in set(data_input_sizes) | set(data_output_sizes)
-        }
-
-        # print(f'data_input_sizes: {data_input_sizes}')
-        # print(f'data_output_sizes: {data_output_sizes}')
-        # print(f'data_transfer_sizes: {data_transfer_sizes}\n')
-
-        # Deal with carbon that we can track
-        for other_region_name, data_transfer_gb in data_transfer_sizes.items():
+        # Since the energy factor of transmission denotes the energy consumption
+        # of the data transfer from and to destination, we do not want to double count.
+        # Thus we can simply take a look at the data_input_sizes and ignore the data_output_sizes.
+        data_transfer_accounted_by_wrapper = data_input_sizes
+        for from_region_name, data_transfer_gb in data_transfer_accounted_by_wrapper.items():
+            transmission_network_carbon_intensity = average_carbon_intensity_of_usa
             # If consider_home_region_for_transmission is true,
             # then we consider there are transmission carbon EVEN for
             # data transfer within the same region.
             # Otherwise, we skip the data transfer within the same region
-            if current_region_name == other_region_name:
-                if not self._consider_home_region_for_transmission:
+            if from_region_name == current_region_name:
+                # If its intra region transmission, and if we
+                # want to consider it as free, then we skip it.
+                if self._carbon_free_intra_region_transmission:
                     continue
 
-            carbon_intensity_of_transmission_route = current_region_carbon_intensity
-            if other_region_name is not None:
-                other_region_carbon_intensity: float = self._carbon_loader.get_grid_carbon_intensity(
-                    other_region_name, self._hourly_carbon_setting
-                )
+                if current_region_name is not None:
+                    # Get the carbon intensity of the region (if known)
+                    # (If data transfer is within the same region)
+                    # Otherwise it will be inter-region data transfer,
+                    # and thus we use the average carbon intensity of the USA.
+                    transmission_network_carbon_intensity = self._carbon_loader.get_grid_carbon_intensity(
+                        current_region_name, self._hourly_carbon_setting
+                    )
 
-                # Calculate the carbon from data transfer of the carbon intensity of the route
-                # TODO: Look into changing this if its not appropriate
-                carbon_intensity_of_transmission_route = (
-                    other_region_carbon_intensity + current_region_carbon_intensity
-                ) / 2
-
+            # TODO: At some point, actually change this from looking at average carbon
+            # intensity of a country or continent to looking at the average carbon intensity
+            # of the route between the two regions.
             total_transmission_carbon += (
-                data_transfer_gb * self._energy_factor_of_transmission * carbon_intensity_of_transmission_route
+                data_transfer_gb * self._energy_factor_of_transmission * transmission_network_carbon_intensity
             )
 
         # Calculate the carbon from data transfer
         # Of data that we CANNOT track represented by data_transfer_during_execution
-        # Right now we are just assuming they are from the home region
-        # if not ((current_region_name == self._workflow_loader.get_home_region()) and not ):
-        if self._consider_home_region_for_transmission or (
-            current_region_name != self._workflow_loader.get_home_region()
-        ):
-            # Perhaps use global carbon intensity
+        # This may come from the data transfer of user code during execution OR
+        # From Lambda runtimes or some AWS internal data transfer.
+        current_region_is_home_region = current_region_name == self._workflow_loader.get_home_region()
+        if not self._carbon_free_dt_during_execution_at_home_region or not current_region_is_home_region:
+            transmission_network_carbon_intensity = average_carbon_intensity_of_usa
+            if current_region_is_home_region and current_region_name is not None:
+                # Here we make the assumption that the user code accesses data from the home region
+                # thus the grid carbon intensity will be the same as the home region if it is at the home region.
+                # Otherwise, we use the average carbon intensity of the USA.
+                transmission_network_carbon_intensity = self._carbon_loader.get_grid_carbon_intensity(
+                    current_region_name, self._hourly_carbon_setting
+                )
+
             total_transmission_carbon += (
-                data_transfer_during_execution * self._energy_factor_of_transmission * current_region_carbon_intensity
+                data_transfer_during_execution
+                * self._energy_factor_of_transmission
+                * transmission_network_carbon_intensity
             )
 
         return total_transmission_carbon
 
-    def _calculate_execution_carbon(self, instance_name: str, region_name: str, execution_latency: float) -> float:
+    def _calculate_execution_carbon(
+        self, instance_name: str, region_name: str, execution_latency: float, is_redirector: bool
+    ) -> float:
         # Calculate the carbon from running the execution (solely for cpu and memory)
-        compute_factor, memory_factor, power_factor = self._get_execution_conversion_ratio(instance_name, region_name)
+        compute_factor, memory_factor, power_factor = self._get_execution_conversion_ratio(
+            instance_name, region_name, is_redirector
+        )
         cloud_provider_usage_kwh = execution_latency * (compute_factor + memory_factor)
         execution_carbon = cloud_provider_usage_kwh * power_factor
 
         return execution_carbon
 
-    def _get_execution_conversion_ratio(self, instance_name: str, region_name: str) -> tuple[float, float, float]:
+    def _get_execution_conversion_ratio(
+        self, instance_name: str, region_name: str, is_redirector: bool
+    ) -> tuple[float, float, float]:
         # Check if the conversion ratio is in the cache
         cache_key = f"{instance_name}_{region_name}"
         if cache_key in self._execution_conversion_ratio_cache:
@@ -175,7 +213,7 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
         memory = memory / 1024
 
         # Get the average cpu utilization of the instance
-        utilization = self._workflow_loader.get_average_cpu_utilization(instance_name)
+        utilization = self._workflow_loader.get_average_cpu_utilization(instance_name, region_name, is_redirector)
         # average_cpu_power = (0.74 + utilization * (3.5 - 0.74)) / 1000
         average_cpu_power = min_cpu_power + utilization * (max_cpu_power - min_cpu_power)
 

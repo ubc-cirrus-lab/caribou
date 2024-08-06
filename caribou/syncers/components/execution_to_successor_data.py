@@ -13,11 +13,11 @@ class ExecutionToSuccessorData:  # pylint: disable=too-many-instance-attributes
 
         # May be used for future analysis
         self.invocation_time_from_function_start: Optional[float] = None
-        self.finish_time_from_function_start: Optional[float] = None
+        self.finish_time_from_invocation_start: Optional[float] = None
 
         # Invocation data size (Payload data size)
         # Output data
-        self.payload_data_size: Optional[float] = None
+        self.output_payload_data_size: Optional[float] = None
 
         # Upload data size (To DynamoDB or S3)
         # Output data
@@ -42,8 +42,8 @@ class ExecutionToSuccessorData:  # pylint: disable=too-many-instance-attributes
     def get_total_output_data_size(self) -> float:
         total_upload_data_size = 0.0
 
-        if self.payload_data_size:
-            total_upload_data_size += self.payload_data_size
+        if self.output_payload_data_size:
+            total_upload_data_size += self.output_payload_data_size
 
         if self.upload_data_size:
             total_upload_data_size += self.upload_data_size
@@ -68,6 +68,7 @@ class ExecutionToSuccessorData:  # pylint: disable=too-many-instance-attributes
             "task_type": self.task_type,
             "invocation_time_from_function_start_s": self.invocation_time_from_function_start,
             "sync_info": self.invoking_sync_node_data_output if self.invoking_sync_node_data_output else None,
+            "consumed_write_capacity": self.consumed_write_capacity if self.consumed_write_capacity else None,
         }
 
         # Filter out fields that are None

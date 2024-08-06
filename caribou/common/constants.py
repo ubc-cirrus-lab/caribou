@@ -1,4 +1,11 @@
-import pytz
+from datetime import timezone
+
+# Caribou Wrapper Constants
+## Determines the percentage of requests ALWAYS
+## being sent to the home region (Entire workflow)
+HOME_REGION_THRESHOLD = 0.1  # 10% of the time run in home region
+
+MAXIMUM_HOPS_FROM_CLIENT_REQUEST = 20  # If the request has been forwarded or gone through X hops, it is dropped
 
 # Workflow Placement Tables
 WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE = "workflow_placement_solver_staging_area_table"
@@ -52,13 +59,13 @@ WORKFLOW_SUMMARY_TABLE = "workflow_summary_table"
 SOLVER_INPUT_GRID_CARBON_DEFAULT = 500.0
 
 ## Datacenter Loader
-SOLVER_INPUT_AVERAGE_CPU_POWER_DEFAULT = 100.0
-SOLVER_INPUT_AVERAGE_MEMORY_POWER_DEFAULT = 100.0
-SOLVER_INPUT_PUE_DEFAULT = 1.0
+# SOLVER_INPUT_AVERAGE_CPU_POWER_DEFAULT = 100.0
+SOLVER_INPUT_AVERAGE_MEMORY_POWER_DEFAULT = 3.92e-06
+SOLVER_INPUT_PUE_DEFAULT = 1.11
 SOLVER_INPUT_CFE_DEFAULT = 0.0
-SOLVER_INPUT_COMPUTE_COST_DEFAULT = 100.0
-SOLVER_INPUT_INVOCATION_COST_DEFAULT = 100.0
-SOLVER_INPUT_TRANSMISSION_COST_DEFAULT = 100.0
+SOLVER_INPUT_COMPUTE_COST_DEFAULT = 1.66667e-05  # of x86_64 architecture Ohio region
+SOLVER_INPUT_INVOCATION_COST_DEFAULT = 2e-07  # of x86_64 architecture Ohio region
+SOLVER_INPUT_TRANSMISSION_COST_DEFAULT = 0.09  # Global data transfer cost
 SOLVER_INPUT_MIN_CPU_POWER_DEFAULT = 0.00074
 SOLVER_INPUT_MAX_CPU_POWER_DEFAULT = 0.0035
 SOLVER_INPUT_SNS_REQUEST_COST_DEFAULT = 0.50 / 1000000  # 0.50 USD per 1 million requests (At Ohio region)
@@ -107,8 +114,13 @@ LOG_VERSION = "0.0.4"
 # Tail latency threshold
 TAIL_LATENCY_THRESHOLD = 95
 
+# Average USA Carbon Intensity of Electric Grid
+## Contiguous United States Carbon intensity of energy grid
+## of Consumption in 2023 according to Electric Maps - gCO2e/kWh
+AVERAGE_USA_CARBON_INTENSITY = 410
+
 # datetime
-GLOBAL_TIME_ZONE = pytz.utc
+GLOBAL_TIME_ZONE = timezone.utc
 TIME_FORMAT = "%Y-%m-%d %H:%M:%S,%f%z"
 TIME_FORMAT_DAYS = "%Y-%m-%d%z"
 
@@ -123,6 +135,7 @@ KEEP_ALIVE_DATA_COUNT = 10  # Keep sample it is part of any of the 10 samples fo
 BUFFER_LAMBDA_INSIGHTS_GRACE_PERIOD = 30  # 30 minutes
 
 ## Successor task types
+REDIRECT_ONLY_TASK_TYPE = "REDIRECT_ONLY"
 INVOKE_SUCCESSOR_ONLY_TASK_TYPE = "INVOKE_SUCCESSOR_ONLY"
 SYNC_UPLOAD_AND_INVOKE_TASK_TYPE = "SYNC_UPLOAD_AND_INVOKE"
 SYNC_UPLOAD_ONLY_TASK_TYPE = "SYNC_UPLOAD_ONLY"
@@ -130,7 +143,7 @@ CONDITIONALLY_NOT_INVOKE_TASK_TYPE = "CONDITIONALLY_NOT_INVOKE"
 
 # Caribou Wrapper parameters
 ## max workers for async invocations
-MAX_WORKERS = 4
+MAX_WORKERS = 10
 
 ## Orchastration transfer size limitation
 MAX_TRANSFER_SIZE = 256000  # In bytes

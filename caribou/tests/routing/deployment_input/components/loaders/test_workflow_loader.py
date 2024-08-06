@@ -1,7 +1,5 @@
 import unittest
 from unittest.mock import Mock, patch, MagicMock
-
-import numpy as np
 from caribou.common.models.remote_client.remote_client import RemoteClient
 from caribou.deployment_solver.deployment_input.components.loaders.workflow_loader import WorkflowLoader
 from caribou.deployment_solver.workflow_config import WorkflowConfig
@@ -9,45 +7,84 @@ from caribou.deployment_solver.workflow_config import WorkflowConfig
 
 class TestWorkflowLoader(unittest.TestCase):
     def setUp(self):
+        # Mock workflow config
         self.workflow_config = MagicMock(spec=WorkflowConfig)
-        self.workflow_config.home_region = "home_region"
+        self.workflow_config.home_region = "aws:ca-west-1"
         self.workflow_config.instances = {
-            "image_processing_light-0_0_1-GetInput:entry_point:0": {
-                "instance_name": "image_processing_light-0_0_1-GetInput:entry_point:0",
+            "simple_call-0_0_1-f1:entry_point:0": {
+                "instance_name": "simple_call-0_0_1-f1:entry_point:0",
                 "regions_and_providers": {"providers": {}},
-            }
+            },
+            "simple_call-0_0_1-f2:simple_call-0_0_1-f1_0_0:1": {
+                "instance_name": "simple_call-0_0_1-f2:simple_call-0_0_1-f1_0_0:1",
+                "regions_and_providers": {"providers": {}},
+            },
         }
+
+        # Example input data, matching the new format
         self.workflow_data = {
-            "workflow_runtime_samples": [5.857085, 5.740116, 7.248474],
-            "daily_invocation_counts": {"2024-03-12+0000": 3},
-            "start_hop_summary": {"aws:us-east-1": {"3.3527612686157227e-08": [0.52388, 0.514119, 0.519146]}},
-            "instance_summary": {
-                "image_processing_light-0_0_1-GetInput:entry_point:0": {
-                    "invocations": 3,
-                    "executions": {"aws:us-east-1": [1.140042781829834, 1.129507303237915, 1.0891644954681396]},
-                    "to_instance": {
-                        "image_processing_light-0_0_1-Flip:image_processing_light-0_0_1-GetInput_0_0:1": {
-                            "invoked": 3,
-                            "regions_to_regions": {
-                                "aws:us-east-1": {
-                                    "aws:us-east-1": {
-                                        "transfer_sizes": [2.9960647225379944e-06, 2.9960647225379944e-06],
-                                        "transfer_size_to_transfer_latencies": {
-                                            "2.9960647225379944e-06": [1.217899, 1.18531]
-                                        },
-                                    },
-                                }
+            "workflow_runtime_samples": [5.001393, 5.001395, 5.511638],
+            "daily_invocation_counts": {"2024-08-01+0000": 18},
+            "start_hop_summary": {
+                "invoked": 13,
+                "retrieved_wpd_at_function": 11,
+                "wpd_at_function_probability": 0.8461538461538461,
+                "workflow_placement_decision_size_gb": 1.5972182154655457e-06,
+                "from_client": {
+                    "transfer_sizes_gb": [1.9846484065055847e-06, 1.9846484065055847e-06, 2.1280720829963684e-06],
+                    "received_region": {
+                        "aws:ca-west-1": {
+                            "transfer_size_gb_to_transfer_latencies_s": {
+                                "9.5367431640625e-06": [0.31179, 0.16143, 0.250207]
                             },
-                            "non_executions": 0,
-                            "invocation_probability": 0.9,
+                            "best_fit_line": {
+                                "slope_s": 0.0,
+                                "intercept_s": 0.236685125,
+                                "min_latency_s": 0.16567958749999998,
+                                "max_latency_s": 0.3076906625,
+                            },
                         }
                     },
                 },
-                "image_processing_light-0_0_1-Flip:image_processing_light-0_0_1-GetInput_0_0:1": {
-                    "invocations": 3,
-                    "executions": {"aws:us-east-1": [4.638583183288574, 4.554178953170776, 6.073627948760986]},
-                    "to_instance": {},
-                },
+            },
+            "instance_summary": {
+                "simple_call-0_0_1-f1:entry_point:0": {
+                    "invocations": 13,
+                    "cpu_utilization": 0.060168300407512976,
+                    "executions": {
+                        "at_region": {
+                            "aws:ca-west-1": {
+                                "cpu_utilization": 0.0563360316574529,
+                                "durations_s": [5.002, 5.002, 5.025],
+                                "auxiliary_data": {
+                                    "5.01": [[3.6343932151794434e-05, 0.001], [1.291465014219284e-05, 0.001]]
+                                },
+                            }
+                        }
+                    },
+                    "to_instance": {
+                        "simple_call-0_0_1-f2:simple_call-0_0_1-f1_0_0:1": {
+                            "invoked": 13,
+                            "invocation_probability": 1.0,
+                            "transfer_sizes_gb": [1.9157305359840393e-06],
+                            "regions_to_regions": {
+                                "aws:ca-west-1": {
+                                    "aws:ca-west-1": {
+                                        "transfer_size_gb_to_transfer_latencies_s": {
+                                            "9.5367431640625e-06": [0.27353, 0.175446, 0.188676]
+                                        },
+                                        "best_fit_line": {
+                                            "slope_s": 0.0,
+                                            "intercept_s": 0.220738625,
+                                            "min_latency_s": 0.15451703749999998,
+                                            "max_latency_s": 0.2869602125,
+                                        },
+                                    }
+                                }
+                            },
+                        }
+                    },
+                }
             },
         }
 
@@ -57,60 +94,55 @@ class TestWorkflowLoader(unittest.TestCase):
     @patch.object(WorkflowLoader, "_retrieve_workflow_data")
     def test_setup(self, mock_retrieve_workflow_data):
         mock_retrieve_workflow_data.return_value = self.workflow_data
-        self.loader.setup({"aws:region1"})
-        self.assertEqual(self.loader._workflow_data, self.workflow_data)
+        self.loader.setup("workflow_id")
+        self.assertEqual(self.loader.get_workflow_data(), self.workflow_data)
 
     def test_get_home_region(self):
-        self.loader._home_region = "provider_1:region_1"
-        self.assertEqual(self.loader.get_home_region(), "provider_1:region_1")
+        self.assertEqual(self.loader.get_home_region(), "aws:ca-west-1")
 
     def test_get_runtime_distribution(self):
-        self.loader._workflow_data = self.workflow_data
+        self.loader.set_workflow_data(self.workflow_data)
         runtimes = self.loader.get_runtime_distribution(
-            "image_processing_light-0_0_1-GetInput:entry_point:0", "aws:us-east-1"
+            "simple_call-0_0_1-f1:entry_point:0", "aws:ca-west-1", is_redirector=False
         )
-        self.assertEqual(runtimes, [1.140042781829834, 1.129507303237915, 1.0891644954681396])
+        self.assertEqual(runtimes, [5.002, 5.002, 5.025])
 
     def test_get_start_hop_size_distribution(self):
-        self.loader._workflow_data = self.workflow_data
-        start_hop_size_distribution = self.loader.get_start_hop_size_distribution("aws:us-east-1")
+        self.loader.set_workflow_data(self.workflow_data)
+        start_hop_size_distribution = self.loader.get_start_hop_size_distribution()
         self.assertEqual(
-            start_hop_size_distribution, [3.3527612686157227e-08, 3.3527612686157227e-08, 3.3527612686157227e-08]
+            start_hop_size_distribution, [1.9846484065055847e-06, 1.9846484065055847e-06, 2.1280720829963684e-06]
         )
 
     def test_get_start_hop_latency_distribution(self):
-        self.loader._workflow_data = self.workflow_data
-        start_hop_latency = self.loader.get_start_hop_latency_distribution("aws:us-east-1", 3.3527612686157227e-08)
-        self.assertEqual(start_hop_latency, [0.52388, 0.514119, 0.519146])
+        self.loader.set_workflow_data(self.workflow_data)
+        start_hop_latency = self.loader.get_start_hop_latency_distribution("aws:ca-west-1", 9.5367431640625e-06)
+        self.assertEqual(start_hop_latency, [0.31179, 0.16143, 0.250207])
 
     def test_get_data_transfer_size_distribution(self):
-        self.loader._workflow_data = self.workflow_data
+        self.loader.set_workflow_data(self.workflow_data)
         data_transfer_size = self.loader.get_data_transfer_size_distribution(
-            "image_processing_light-0_0_1-GetInput:entry_point:0",
-            "image_processing_light-0_0_1-Flip:image_processing_light-0_0_1-GetInput_0_0:1",
-            "aws:us-east-1",
-            "aws:us-east-1",
+            "simple_call-0_0_1-f1:entry_point:0", "simple_call-0_0_1-f2:simple_call-0_0_1-f1_0_0:1"
         )
-        self.assertEqual(data_transfer_size, [2.9960647225379944e-06, 2.9960647225379944e-06])
+        self.assertEqual(data_transfer_size, [1.9157305359840393e-06])
 
     def test_get_data_transfer_latency_distribution(self):
-        self.loader._workflow_data = self.workflow_data
+        self.loader.set_workflow_data(self.workflow_data)
         data_transfer_latency = self.loader.get_latency_distribution(
-            "image_processing_light-0_0_1-GetInput:entry_point:0",
-            "image_processing_light-0_0_1-Flip:image_processing_light-0_0_1-GetInput_0_0:1",
-            "aws:us-east-1",
-            "aws:us-east-1",
-            2.9960647225379944e-06,
+            "simple_call-0_0_1-f1:entry_point:0",
+            "simple_call-0_0_1-f2:simple_call-0_0_1-f1_0_0:1",
+            "aws:ca-west-1",
+            "aws:ca-west-1",
+            9.5367431640625e-06,
         )
-        self.assertEqual(data_transfer_latency, [1.217899, 1.18531])
+        self.assertEqual(data_transfer_latency, [0.27353, 0.175446, 0.188676])
 
     def test_get_invocation_probability(self):
-        self.loader._workflow_data = self.workflow_data
+        self.loader.set_workflow_data(self.workflow_data)
         invocation_probability = self.loader.get_invocation_probability(
-            "image_processing_light-0_0_1-GetInput:entry_point:0",
-            "image_processing_light-0_0_1-Flip:image_processing_light-0_0_1-GetInput_0_0:1",
+            "simple_call-0_0_1-f1:entry_point:0", "simple_call-0_0_1-f2:simple_call-0_0_1-f1_0_0:1"
         )
-        self.assertEqual(invocation_probability, 0.9)
+        self.assertEqual(invocation_probability, 1.0)
 
     def test_get_vcpu(self):
         self.loader._instances_regions_and_providers = {"instance_1": {"provider_1": {"config": {"vcpu": 2}}}}
