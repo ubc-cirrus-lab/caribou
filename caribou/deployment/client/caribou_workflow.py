@@ -941,6 +941,15 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
                 # Get s from the time difference
                 # Note due to desync between client and server, the time difference can be negative
                 init_latency_from_client = str((self._function_start_time - datetime_invoked_at_client).total_seconds())
+            
+            # Retrieve the user payload size if available (Aka if this is redirected)
+            # Otherwise the size of input is the size of the user payload
+            size_of_input_payload_gb = workflow_placement_decision.get("user_payload_size", size_of_input_payload_gb)
+
+            # Retrieve the overriden workflow placement size if available
+            overriden_workflow_placement_size: Optional[float] = workflow_placement_decision.get(
+                "overriden_workflow_placement_size", None
+            )
 
             # Log the entry point information
             # NOTE: Ensure that the log time is the time when the function first recieved the message
@@ -951,7 +960,7 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
             log_message = (
                 f"ENTRY_POINT: Entry Point INSTANCE "
                 f'({workflow_placement_decision["current_instance_name"]}) '
-                f'of workflow {f"{self.name}-{self.version}"} called with PAYLOAD_SIZE '
+                f'of workflow {f"{self.name}-{self.version}"} called with USER_PAYLOAD_SIZE '
                 f"({size_of_input_payload_gb}) GB and is REDIRECTED ({redirected}) with "
                 f"INIT_LATENCY_FROM_CLIENT ({init_latency_from_client}) s "
                 f"INIT_LATENCY_FIRST_RECIEVED ({init_latency_first_received}) s "
@@ -960,6 +969,8 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
                 f"WORKFLOW_PLACEMENT_DECISION_SIZE ({wpd_data_size}) GB "
                 f"and CONSUMED_READ_CAPACITY ({wpd_consumed_read_capacity})"
             )
+            if overriden_workflow_placement_size is not None:
+                log_message += f" OVERRIDEN_WORKFLOW_PLACEMENT_SIZE ({overriden_workflow_placement_size}) GB"
             self.log_for_retrieval(log_message, workflow_placement_decision["run_id"], self._function_start_time)
         # Log the Invocation and transmission taint for the function
         # NOTE: Ensure that the log time is the time when the function first recieved the message
@@ -969,14 +980,6 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
             f"called with TAINT ({transmission_taint}) "
             f"with NUMBER_OF_HOPS_FROM_CLIENT_REQUEST ({self._number_of_hops_from_client_request})"
         )
-        if entry_point:
-            # If entry point and NOT Redirected, log additional information IFF
-            # it has overriden the workflow placement decision (For debugging purposes)
-            overriden_workflow_placement_size: Optional[float] = workflow_placement_decision.get(
-                "overriden_workflow_placement_size", None
-            )
-            if overriden_workflow_placement_size is not None:
-                log_message += f" OVERRIDEN_WORKFLOW_PLACEMENT_SIZE ({overriden_workflow_placement_size}) GB"
         self.log_for_retrieval(log_message, workflow_placement_decision["run_id"], self._function_start_time)
 
     def _retrieve_wpd_from_wrapper_or_system(
@@ -1035,16 +1038,9 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
         # Generate a unique transmission taint for the redirection
         transmission_taint = uuid.uuid4().hex
 
-        # Retrieve the information if it has been overriden with a wpd.
-        # This will be logged here rather than propogated to the next function.
-        # Of overriden the workflow placement decision (For debugging purposes)
-        overriden_workflow_placement_size: Optional[float] = workflow_placement_decision.get(
-            "overriden_workflow_placement_size", None
-        )
-        if overriden_workflow_placement_size is not None:
-            # Remove the overriden_workflow_placement_size from the workflow_placement_decision
-            del workflow_placement_decision["overriden_workflow_placement_size"]
-            
+        # Set the user payload size in the workflow placement decision
+        workflow_placement_decision['user_payload_size'] = size_of_input_payload_gb
+
         # Redirect the request to the desired provider and region
         redirect_payload: dict[str, Any] = {
             "payload": caribou_wrapper_argument.get("payload", {}),
@@ -1107,8 +1103,6 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
             f"({(invocation_finish_time - invocation_start_time).total_seconds()}) s "
             f"INIT_LATENCY_FROM_CLIENT ({init_latency_from_client}) s"
         )
-        if overriden_workflow_placement_size is not None:
-            log_message += f" OVERRIDEN_WORKFLOW_PLACEMENT_SIZE ({overriden_workflow_placement_size}) GB"
         self.log_for_retrieval(log_message, workflow_placement_decision["run_id"], self._function_start_time)
 
         # Log the CPU model (From Redirector)

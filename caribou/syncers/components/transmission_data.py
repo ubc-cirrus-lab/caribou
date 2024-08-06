@@ -66,7 +66,9 @@ class TransmissionData:  # pylint: disable=too-many-instance-attributes
 
         # Only return the fields that are not None
         result = {
-            "transmission_size_gb": (self.payload_transmission_size - self.overridden_wpd_data_size) if self.overridden_wpd_data_size else self.payload_transmission_size,
+            "transmission_size_gb": max((self.payload_transmission_size - self.overridden_wpd_data_size), 0)
+            if self.overridden_wpd_data_size
+            else self.payload_transmission_size,
             "transmission_latency_s": self.transmission_latency,
             "from_instance": self.from_instance,
             "uninvoked_instance": self.uninvoked_instance,
@@ -76,8 +78,9 @@ class TransmissionData:  # pylint: disable=too-many-instance-attributes
             "to_region": self.to_region,
             "successor_invoked": self.successor_invoked,
             "from_direct_successor": self.from_direct_successor,
-            "redirector_transmission": self.redirector_transmission,  # TODO: Examine if we should remove or keep this
+            "redirector_transmission": self.redirector_transmission,
             "sync_information": sync_information,
+            "overridden_wpd_data_size": self.overridden_wpd_data_size,  # TODO: Remove as this is for debugging purposes
         }
 
         # Filter out fields that are None
