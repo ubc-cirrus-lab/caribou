@@ -67,7 +67,7 @@ class TransmissionData:  # pylint: disable=too-many-instance-attributes
             "to_region": self.to_region,
             "successor_invoked": self.successor_invoked,
             "from_direct_successor": self.from_direct_successor,
-            "redirector_transmission": self.redirector_transmission,  # TODO: Examine if we should remove or keep this
+            "redirector_transmission": self.redirector_transmission,
             "sync_information": sync_information,
         }
 

@@ -286,8 +286,6 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
                 if log_day_str not in self._daily_user_code_failure_set:
                     self._daily_user_code_failure_set[log_day_str] = set()
                 self._daily_user_code_failure_set[log_day_str].add(run_id)
-            elif message.startswith("WPD_OVERRIDE"):
-                self._extract_debug_wpd_override(workflow_run_sample, message)
             elif message.startswith("INFORMING_SYNC_NODE") or message.startswith("DEBUG_MESSAGE"):
                 # Debug message, we can ignore
                 pass
@@ -307,8 +305,8 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         function_executed: str = self._extract_string_from_log_entry(
             log_entry, r"INSTANCE \((.*?)\)", "function_executed"
         )
-        input_payload_size: float = self._extract_float_from_log_entry(
-            log_entry, r"PAYLOAD_SIZE \((.*?)\)", "data_transfer_size"
+        user_input_payload_size: float = self._extract_float_from_log_entry(
+            log_entry, r"USER_PAYLOAD_SIZE \((.*?)\)", "user_input_payload_size"
         )
         workflow_placement_decision_size: float = self._extract_float_from_log_entry(
             log_entry, r"WORKFLOW_PLACEMENT_DECISION_SIZE \((.*?)\)", "workflow_placement_decision_size"
@@ -328,9 +326,15 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         start_hop_latency_from_client_str: Optional[str] = self._extract_from_string(
             log_entry, r"INIT_LATENCY_FROM_CLIENT \((.*?)\)"
         )
+        is_redirected: bool = self._extract_boolean_from_log_entry(log_entry, r"REDIRECTED \((.*?)\)", "is_redirected")
         start_hop_latency_from_client: float = 0.0
         if start_hop_latency_from_client_str and start_hop_latency_from_client_str != "N/A":
             start_hop_latency_from_client = float(start_hop_latency_from_client_str)
+        overriden_workflow_placement_size: Optional[float] = None
+        if self._does_field_exist(log_entry, "OVERRIDEN_WORKFLOW_PLACEMENT_SIZE"):
+            overriden_workflow_placement_size = self._extract_float_from_log_entry(
+                log_entry, r"OVERRIDEN_WORKFLOW_PLACEMENT_SIZE \((.*?)\)", "overriden_workflow_placement_size"
+            )
 
         # Handle start time logs
         ## Should only be set if it is not already set
@@ -341,10 +345,11 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         # Handle Start Hop Updates
         workflow_run_sample.start_hop_data.destination_provider_region = self._format_region(provider_region)
         workflow_run_sample.start_hop_data.request_source = request_source
-        workflow_run_sample.start_hop_data.input_payload_size_to_first_function = input_payload_size
+        workflow_run_sample.start_hop_data.user_payload_size = user_input_payload_size
         workflow_run_sample.start_hop_data.wpd_data_size = workflow_placement_decision_size
         workflow_run_sample.start_hop_data.consumed_read_capacity = consumed_read_capacity
         workflow_run_sample.start_hop_data.time_from_function_start_to_entry_point = time_from_function_start
+        workflow_run_sample.start_hop_data.start_hop_instance_name = function_executed
 
         # Only replace the start hop latency if it is not already set (Since it MAY be from a redirector,
         # and if it is, then we only want to keep the earliest start time, aka when it first reached the client)
@@ -356,8 +361,17 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         )
 
         # Handle Execution Data Updates
-        execution_data = workflow_run_sample.get_execution_data(function_executed, request_id)
-        execution_data.input_payload_size += input_payload_size
+        if not is_redirected:
+            # This is only required if the first function is not a redirector
+            # As it would had been taken care of in the redirector.
+            execution_data = workflow_run_sample.get_execution_data(function_executed, request_id)
+            execution_data.input_payload_size += user_input_payload_size
+
+        # Handle overriden_workflow_placement_size (Debugging purposes)
+        if overriden_workflow_placement_size:
+            workflow_run_sample.start_hop_data.overridden_wpd_data_size = (
+                overriden_workflow_placement_size  # TODO: Remove
+            )
 
     def _extract_retrieve_wpd_logs(
         self,
@@ -372,18 +386,6 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
 
         # Handle start hop updates
         workflow_run_sample.start_hop_data.retrieved_wpd_at_function = retrieved_placement_decision_from_platform
-
-    def _extract_debug_wpd_override(
-        self,
-        workflow_run_sample: WorkflowRunSample,
-        log_entry: str,
-    ) -> None:
-        overridden_wpd_data_size: float = self._extract_float_from_log_entry(
-            log_entry, r"OVERRIDING_WORKFLOW_PLACEMENT_SIZE \((.*?)\)", "overridden_wpd_data_size"
-        )
-
-        # Handle start hop updates
-        workflow_run_sample.start_hop_data.overridden_wpd_data_size = overridden_wpd_data_size
 
     def _extract_redirect_logs(
         self,
@@ -421,13 +423,10 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         # from_provider_region = self._format_region({"provider": from_provider, "region": from_region})
         to_provider_region = self._format_region({"provider": to_provider, "region": to_region})
 
-        # Handle Execution Data Updates of Start Hop
-        execution_data = workflow_run_sample.start_hop_data.get_redirector_execution_data(
-            redirecting_instance, request_id
-        )
-        execution_data.provider_region = self._format_region(provider_region)
-        execution_data.lambda_insights = self._insights_logs.get(request_id, None)
-        execution_data.input_payload_size += input_payload_size
+        # Handle the recipient execution data (Recieving from the redirector)
+        callee_function = redirecting_instance  # Have the same function name as the redirector
+        recipient_execution_data = workflow_run_sample.get_execution_data(callee_function, None)
+        recipient_execution_data.input_payload_size += output_payload_size
 
         # Handle transmission data updates
         transmission_data = workflow_run_sample.get_transmission_data(taint)
@@ -444,6 +443,10 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         execution_data = workflow_run_sample.start_hop_data.get_redirector_execution_data(
             redirecting_instance, request_id
         )
+        execution_data.provider_region = self._format_region(provider_region)
+        execution_data.lambda_insights = self._insights_logs.get(request_id, None)
+        execution_data.input_payload_size += input_payload_size
+
         successor_data = execution_data.get_successor_data(redirecting_instance)
         successor_data.invocation_time_from_function_start = invocation_time_from_function_start
         successor_data.finish_time_from_invocation_start = (
@@ -902,12 +905,11 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
                 common_request_ids: set[str] = (
                     workflow_run_sample.request_ids & self._encountered_duplicate_completed_request_ids
                 )
-
-                # First remove the common request ids from _encountered_duplicate_completed_request_ids
-                # As we don't need to check them again, as they should only be present in ONE workflow run sample
-                self._encountered_duplicate_completed_request_ids -= common_request_ids
-
-                continue
+                if len(common_request_ids) > 0:
+                    # First remove the common request ids from _encountered_duplicate_completed_request_ids
+                    # As we don't need to check them again, as they should only be present in ONE workflow run sample
+                    self._encountered_duplicate_completed_request_ids -= common_request_ids
+                    continue
 
             # Now we check if the workflow run sample is valid and complete
             if not workflow_run_sample.is_valid_and_complete():
@@ -1038,3 +1040,6 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
             raise ValueError(f"Invalid {entry_type}: {bool_extracted_str}")
 
         return bool_extracted
+
+    def _does_field_exist(self, log_entry: str, regex: str) -> bool:
+        return bool(re.search(regex, log_entry))

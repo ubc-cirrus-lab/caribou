@@ -12,7 +12,7 @@ class TestStartHopData(unittest.TestCase):
         """Test the initial state of StartHopData."""
         self.assertIsNone(self.start_hop_data.request_source)
         self.assertIsNone(self.start_hop_data.destination_provider_region)
-        self.assertIsNone(self.start_hop_data.input_payload_size_to_first_function)
+        self.assertIsNone(self.start_hop_data.user_payload_size)
         self.assertIsNone(self.start_hop_data.wpd_data_size)
         self.assertIsNone(self.start_hop_data.consumed_read_capacity)
         self.assertIsNone(self.start_hop_data.init_latency_from_first_recieved)
@@ -52,7 +52,7 @@ class TestStartHopData(unittest.TestCase):
         """Test completion status without redirector data."""
         self.start_hop_data.request_source = "source"
         self.start_hop_data.destination_provider_region = "destination"
-        self.start_hop_data.input_payload_size_to_first_function = 1.0
+        self.start_hop_data.user_payload_size = 1.0
         self.start_hop_data.wpd_data_size = 1.0
         self.start_hop_data.consumed_read_capacity = 1.0
         self.start_hop_data.time_from_function_start_to_entry_point = 1.0
@@ -70,7 +70,7 @@ class TestStartHopData(unittest.TestCase):
         self.start_hop_data.destination_provider_region = "destination"
         self.assertFalse(self.start_hop_data.is_completed)
 
-        self.start_hop_data.input_payload_size_to_first_function = 1.0
+        self.start_hop_data.user_payload_size = 1.0
         self.assertFalse(self.start_hop_data.is_completed)
 
         self.start_hop_data.wpd_data_size = 1.0
@@ -89,7 +89,7 @@ class TestStartHopData(unittest.TestCase):
         """Test incomplete status when there are multiple request IDs with a redirector."""
         self.start_hop_data.request_source = "source"
         self.start_hop_data.destination_provider_region = "destination"
-        self.start_hop_data.input_payload_size_to_first_function = 1.0
+        self.start_hop_data.user_payload_size = 1.0
         self.start_hop_data.wpd_data_size = 1.0
         self.start_hop_data.consumed_read_capacity = 1.0
         self.start_hop_data.time_from_function_start_to_entry_point = 1.0
@@ -105,7 +105,7 @@ class TestStartHopData(unittest.TestCase):
         """Test the dictionary output without redirector data."""
         self.start_hop_data.request_source = "source"
         self.start_hop_data.destination_provider_region = "destination"
-        self.start_hop_data.input_payload_size_to_first_function = 1.0
+        self.start_hop_data.user_payload_size = 1.0
         self.start_hop_data.wpd_data_size = 1.0
         self.start_hop_data.consumed_read_capacity = 1.0
         self.start_hop_data.time_from_function_start_to_entry_point = 1.0
@@ -133,7 +133,7 @@ class TestStartHopData(unittest.TestCase):
         """Test the dictionary output with redirector data."""
         self.start_hop_data.request_source = "source"
         self.start_hop_data.destination_provider_region = "destination"
-        self.start_hop_data.input_payload_size_to_first_function = 1.0
+        self.start_hop_data.user_payload_size = 1.0
         self.start_hop_data.wpd_data_size = 1.0
         self.start_hop_data.consumed_read_capacity = 1.0
         self.start_hop_data.time_from_function_start_to_entry_point = 1.0
@@ -163,7 +163,7 @@ class TestStartHopData(unittest.TestCase):
     def test_to_dict_excludes_none_fields(self) -> None:
         """Test the dictionary output excludes fields that are None."""
         self.start_hop_data.request_source = "source"
-        self.start_hop_data.input_payload_size_to_first_function = 1.0
+        self.start_hop_data.user_payload_size = 1.0
 
         expected_dict = {
             "request_source": "source",

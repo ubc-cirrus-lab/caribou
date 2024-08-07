@@ -29,6 +29,10 @@ class WorkflowRunSample:  # pylint: disable=too-many-instance-attributes
         # Encountered CPUs in the run.
         self.cpu_models: set[str] = set()
 
+        # Flag to indicate if the WPD size has already been attributed to
+        # the appropriate instance. This is to prevent double counting.
+        self._already_attributed_wpd_size: bool = False
+
     @property
     def duration(self) -> timedelta:
         if not self.log_end_time or not self.log_start_time:
@@ -106,6 +110,9 @@ class WorkflowRunSample:  # pylint: disable=too-many-instance-attributes
         if not self.log_start_time:
             raise ValueError("log_start_time is not set")
 
+        if not self._already_attributed_wpd_size:
+            self._attribute_wpd_size()
+
         return (
             self.log_start_time,
             {
@@ -118,3 +125,25 @@ class WorkflowRunSample:  # pylint: disable=too-many-instance-attributes
                 "unique_cpu_models": list(self.cpu_models),
             },
         )
+
+    def _attribute_wpd_size(self) -> None:
+        self._already_attributed_wpd_size = True  # Flag to prevent double counting
+
+        retrieved_wpd_at_function = self.start_hop_data.retrieved_wpd_at_function
+        if not retrieved_wpd_at_function:
+            # No WPD size to attribute,
+            # it was retrieved at the client
+            return
+
+        # Now we need to see if this a redirector exists, if it does
+        # We need to attribute the WPD size to the redirector
+        redirector_execution_data = self.start_hop_data.redirector_execution_data
+        if redirector_execution_data:
+            redirector_execution_data.downloaded_wpd_data_size = self.start_hop_data.wpd_data_size
+        else:
+            # No redirector, we attribute the WPD size to the start hop instance
+            start_hop_instance_name = self.start_hop_data.start_hop_instance_name
+            if start_hop_instance_name is None:
+                raise ValueError("start_hop_instance_name is not set")
+            start_hop_execution_data = self.get_execution_data(start_hop_instance_name, None)
+            start_hop_execution_data.downloaded_wpd_data_size = self.start_hop_data.wpd_data_size

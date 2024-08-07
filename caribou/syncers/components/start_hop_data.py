@@ -10,10 +10,12 @@ class StartHopData:  # pylint: disable=too-many-instance-attributes
         self.request_source: Optional[str] = None
         self.destination_provider_region: Optional[str] = None
 
+        # Start hop instance name
+        self.start_hop_instance_name: Optional[str] = None
+
         # Indicate how much data is transfered to the first function (in GB)
-        # The redirector is NOT included in this calculation (Aka we don't
-        # consider it as a function)
-        self.input_payload_size_to_first_function: Optional[float] = None
+        # or redirector from the Client.
+        self.user_payload_size: Optional[float] = None
         self.wpd_data_size: Optional[float] = None
         self.consumed_read_capacity: Optional[float] = None
 
@@ -35,6 +37,7 @@ class StartHopData:  # pylint: disable=too-many-instance-attributes
 
         # Optional Fields, used only in the case the user wishes
         # to override the workflow placement decision.
+        # This is only for debug/testing purposes.
         self.overridden_wpd_data_size: Optional[float] = None
 
         # Indicate if the placement decision was retrieved from the platform
@@ -80,7 +83,7 @@ class StartHopData:  # pylint: disable=too-many-instance-attributes
             [
                 self.request_source is not None,
                 self.destination_provider_region is not None,
-                self.input_payload_size_to_first_function is not None,
+                self.user_payload_size is not None,
                 self.wpd_data_size is not None,
                 self.consumed_read_capacity is not None,
                 self.time_from_function_start_to_entry_point is not None,
@@ -100,7 +103,6 @@ class StartHopData:  # pylint: disable=too-many-instance-attributes
     def to_dict(self) -> dict[str, Any]:
         workflow_placement_decision = {
             "data_size_gb": self.wpd_data_size,
-            "overridden_data_size_gb": self.overridden_wpd_data_size,
             "consumed_read_capacity": self.consumed_read_capacity,
             "retrieved_wpd_at_function": self.retrieved_wpd_at_function,
         }
@@ -110,16 +112,21 @@ class StartHopData:  # pylint: disable=too-many-instance-attributes
             key: value for key, value in workflow_placement_decision.items() if value is not None
         }
 
+        data_transfer_size_gb: float = self.user_payload_size if self.user_payload_size is not None else 0.0
+        if self.overridden_wpd_data_size is not None:
+            data_transfer_size_gb = max(data_transfer_size_gb - self.overridden_wpd_data_size, 0)
         start_hop_info = {
             "destination": self.destination_provider_region,
             "request_source": self.request_source,
-            "data_transfer_size_gb": self.input_payload_size_to_first_function,
+            "data_transfer_size_gb": data_transfer_size_gb,
             "latency_from_client_s": self.start_hop_latency_from_client,
             "time_from_function_start_to_entry_point_s": self.time_from_function_start_to_entry_point,
             "workflow_placement_decision": filtered_workflow_placement_decision,
             "redirector_execution_data": self.redirector_execution_data.to_dict()
             if self.redirector_execution_data
             else None,
+            # "original_data_size_gb": self.user_payload_size if self.overridden_wpd_data_size is not None else None,
+            # "overridden_wpd_data_size": self.overridden_wpd_data_size,
         }
 
         # Filter out fields that are None
