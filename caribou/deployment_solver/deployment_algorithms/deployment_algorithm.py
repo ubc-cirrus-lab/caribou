@@ -34,6 +34,7 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
         expiry_time_delta_seconds: int = DEFAULT_MONITOR_COOLDOWN,
         n_workers: int = 1,
         record_transmission_execution_carbon: bool = False,
+        deployment_metrics_calculator_type: str = "simple"
     ):
         self._workflow_config = workflow_config
 
@@ -47,16 +48,19 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
         # Complete the setup of the input manager
         self._input_manager.setup(self._region_indexer, self._instance_indexer)
 
-        self._deployment_metrics_calculator: DeploymentMetricsCalculator = GoDeploymentMetricsCalculator(
-            workflow_config,
-            self._input_manager,
-            self._region_indexer,
-            self._instance_indexer,
-            record_transmission_execution_carbon=record_transmission_execution_carbon,
-        )
-        # self._deployment_metrics_calculator: DeploymentMetricsCalculator = SimpleDeploymentMetricsCalculator(
-        #     workflow_config, self._input_manager, self._region_indexer, self._instance_indexer, n_processes=1,
-        # )
+        if deployment_metrics_calculator_type == "go":
+            self._deployment_metrics_calculator: DeploymentMetricsCalculator = GoDeploymentMetricsCalculator(
+                workflow_config,
+                self._input_manager,
+                self._region_indexer,
+                self._instance_indexer,
+                record_transmission_execution_carbon=record_transmission_execution_carbon,
+            )
+        else:
+            self._deployment_metrics_calculator: DeploymentMetricsCalculator = SimpleDeploymentMetricsCalculator(
+                workflow_config, self._input_manager, self._region_indexer, self._instance_indexer,
+                n_processes=n_workers, record_transmission_execution_carbon=record_transmission_execution_carbon
+            )
 
         self._home_region_index = self._region_indexer.value_to_index(self._workflow_config.home_region)
 
@@ -76,7 +80,6 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
         ]
 
     def run(self, hours_to_run: Optional[list[str]] = None) -> None:
-        pdb.set_trace()
         hour_to_run_to_result: dict[str, Any] = {"time_keys_to_staging_area_data": {}, "deployment_metrics": {}}
         if hours_to_run is None:
             hours_to_run = [None]  # type: ignore

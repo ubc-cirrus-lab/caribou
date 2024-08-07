@@ -139,9 +139,11 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
             "carbon_loader": self._carbon_loader.toDict(),
             "workflow_loader": self._workflow_loader.toDict(),
             "consider_cfe": self._carbon_calculator._consider_cfe,
+            "energy_factor": self._carbon_calculator._energy_factor_of_transmission,
+            "carbon_free_intra_region_transmission": self._carbon_calculator._carbon_free_intra_region_transmission,
+            "carbon_free_dt_during_execution_at_home_region": self._carbon_calculator._carbon_free_dt_during_execution_at_home_region,
             "instance_indexer": self._instance_indexer.toDict(),
             "region_indexer": self._region_indexer.toDict(),
-            "energy_factor": self._carbon_calculator._energy_factor_of_transmission,
         }
 
     def __getstate__(self):  # type: ignore

@@ -1,3 +1,4 @@
+import json
 import statistics
 from multiprocessing import Manager, Process
 from queue import Queue
@@ -11,6 +12,7 @@ from caribou.deployment_solver.deployment_input.input_manager import InputManage
 from caribou.deployment_solver.deployment_metrics_calculator.deployment_metrics_calculator import (
     DeploymentMetricsCalculator,
 )
+from caribou.deployment_solver.deployment_metrics_calculator.go_deployment_metrics_calculator import GO_PATH
 from caribou.deployment_solver.models.instance_indexer import InstanceIndexer
 from caribou.deployment_solver.models.region_indexer import RegionIndexer
 from caribou.deployment_solver.workflow_config import WorkflowConfig
@@ -75,7 +77,7 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
             record_transmission_execution_carbon,
         )
         self.n_processes = n_processes
-        # self.batch_size = 10
+        # self.batch_size = 1
         self.batch_size = 200
         if n_processes > 1:
             self._setup(
@@ -86,6 +88,7 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
                 tail_latency_threshold,
                 n_processes,
             )
+        open(f"{GO_PATH}/go_data.json", "w").write(json.dumps(self.toDict(), indent=4))
 
     def _setup(
         self,
@@ -191,7 +194,7 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
         execution_carbon_list: list[float] = []
         transmission_carbon_list: list[float] = []
 
-        # max_number_of_iterations = 10
+        # max_number_of_iterations = 1
         max_number_of_iterations = 2000
         threshold = 0.05
         number_of_iterations = 0
@@ -224,8 +227,6 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
                 elif all_within_threshold:
                     break
 
-        # print(f"Cost: {costs_distribution_list}")
-        # print(f"Runtime: {runtimes_distribution_list}")
         # print("Min Run Time: ", min(runtimes_distribution_list))
         # print("Max Run Time: ", max(runtimes_distribution_list))
         result = {
@@ -252,6 +253,17 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
             _ = self._output_queue.get()
         assert self._input_queue.empty()
         assert self._output_queue.empty()
+
+    def toDict(self):
+        return {
+            "input_manager": self._input_manager.toDict(),
+            "tail_latency_threshold": self._tail_latency_threshold,
+            "successor_dictionary": self._successor_dictionary,
+            "prerequisites_dictionary": self._prerequisites_dictionary,
+            "topological_order": self._topological_order,
+            "home_region_index": self._home_region_index,
+            "record_transmission_execution_carbon": self._record_transmission_execution_carbon,
+        }
 
     def __del__(self) -> None:
         if self.n_processes > 1:
