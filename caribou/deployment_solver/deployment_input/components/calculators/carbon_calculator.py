@@ -127,40 +127,115 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
                     # Get the carbon intensity of the region (if known)
                     # (If data transfer is within the same region)
                     # Otherwise it will be inter-region data transfer,
-                    # and thus we use the average carbon intensity of the USA.
                     transmission_network_carbon_intensity = self._carbon_loader.get_grid_carbon_intensity(
                         current_region_name, self._hourly_carbon_setting
                     )
+            elif from_region_name is not None and current_region_name is not None:
+                # If we know the source and destination regions, we can get the carbon intensity
+                # of the transmission network between the two regions.
+                transmission_network_carbon_intensity = self._get_network_carbon_intensity_of_route_between_two_regions(
+                    from_region_name, current_region_name
+                )
 
-            # TODO: At some point, actually change this from looking at average carbon
-            # intensity of a country or continent to looking at the average carbon intensity
-            # of the route between the two regions.
             total_transmission_carbon += (
                 data_transfer_gb * self._energy_factor_of_transmission * transmission_network_carbon_intensity
             )
 
         # Calculate the carbon from data transfer
-        # Of data that we CANNOT track represented by data_transfer_during_execution
+        # Of data that we CANNOT track represented by data_transfer_during_execution.
+        # There are no way to tell where the data is coming from
         # This may come from the data transfer of user code during execution OR
         # From Lambda runtimes or some AWS internal data transfer.
-        current_region_is_home_region = current_region_name == self._workflow_loader.get_home_region()
+        home_region = self._workflow_loader.get_home_region()
+        current_region_is_home_region = current_region_name == home_region
+
+        # We assume that half of the data transfer is from the home region
+        # and the other half is from the average carbon intensity of the USA.
+        home_region_dtde = internet_dtde = data_transfer_during_execution / 2
+
+        # # For scenerio where DTDE is only from the home region
+        # home_region_dtde = data_transfer_during_execution
+        # internet_dtde = 0.0
+        
+        # If the data transfer is from the internet, we use the average carbon intensity of the USA
+        # And it is always consider inter-region data transfer. (So always apply)
+        total_transmission_carbon += (
+            internet_dtde
+            * self._energy_factor_of_transmission
+            * average_carbon_intensity_of_usa
+        )
+
+        # If the data transfer is from the home region, we use the carbon intensity of the home region
+        # And it is always consider intra-region data transfer. (May or may not apply)
         if not self._carbon_free_dt_during_execution_at_home_region or not current_region_is_home_region:
             transmission_network_carbon_intensity = average_carbon_intensity_of_usa
-            if current_region_is_home_region and current_region_name is not None:
-                # Here we make the assumption that the user code accesses data from the home region
-                # thus the grid carbon intensity will be the same as the home region if it is at the home region.
-                # Otherwise, we use the average carbon intensity of the USA.
-                transmission_network_carbon_intensity = self._carbon_loader.get_grid_carbon_intensity(
-                    current_region_name, self._hourly_carbon_setting
+            if current_region_name is not None:
+                transmission_network_carbon_intensity = self._get_network_carbon_intensity_of_route_between_two_regions(
+                    home_region, current_region_name
                 )
 
             total_transmission_carbon += (
-                data_transfer_during_execution
+                home_region_dtde
                 * self._energy_factor_of_transmission
                 * transmission_network_carbon_intensity
             )
 
+
+        # if not self._carbon_free_dt_during_execution_at_home_region or not current_region_is_home_region:
+        #     transmission_network_carbon_intensity = average_carbon_intensity_of_usa
+        #     # if current_region_is_home_region and current_region_name is not None:
+        #     #     # Here we make the assumption that the user code accesses data from the home region
+        #     #     # thus the grid carbon intensity will be the same as the home region if it is at the home region.
+        #     #     # Otherwise, we use the average carbon intensity of the USA.
+        #     #     transmission_network_carbon_intensity = self._carbon_loader.get_grid_carbon_intensity(
+        #     #         current_region_name, self._hourly_carbon_setting
+        #     #     )
+        #     if current_region_name is not None:
+        #         # There are no way to tell where the data is coming from
+        #         # But lets make the assumption that at least 50% of the data transfer
+        #         # is from the home region, and the other 50% can be from anywhere in the USA.
+        #         transmission_carbon_route_from_home_region = self._get_network_carbon_intensity_of_route_between_two_regions(
+        #             home_region, current_region_name
+        #         )
+
+        #         # transmission_network_carbon_intensity = transmission_carbon_route_from_home_region
+
+        #         # Assume that the data transfer carbon is 50% from the home region and 50% from the average carbon intensity of the USA
+        #         transmission_network_carbon_intensity = (
+        #             0.5 * transmission_carbon_route_from_home_region
+        #             + 0.5 * average_carbon_intensity_of_usa
+        #         )
+
+        #     total_transmission_carbon += (
+        #         data_transfer_during_execution
+        #         * self._energy_factor_of_transmission
+        #         * transmission_network_carbon_intensity
+        #     )
+
         return total_transmission_carbon
+
+    def _get_network_carbon_intensity_of_route_between_two_regions(self, region_one: str, region_two: str) -> float:
+        if region_one == region_two and region_one is not None:
+            region_one_carbon_intensity = self._carbon_loader.get_grid_carbon_intensity(
+                region_one, self._hourly_carbon_setting
+            )
+            return region_one_carbon_intensity
+        # else:
+        #     return AVERAGE_USA_CARBON_INTENSITY
+
+        # Get the carbon intensity of the route betweem two regions.
+        # We can estimate it as the average carbon intensity of the grid 
+        # between the two regions. (No order is assumed)
+        # If we have a better model, we can replace this with that.
+        region_one_carbon_intensity = self._carbon_loader.get_grid_carbon_intensity(
+            region_one, self._hourly_carbon_setting
+        )
+        region_two_carbon_intensity = self._carbon_loader.get_grid_carbon_intensity(
+            region_two, self._hourly_carbon_setting
+        )
+        transmission_network_carbon_intensity = (region_one_carbon_intensity + region_two_carbon_intensity) / 2
+
+        return transmission_network_carbon_intensity
 
     def _calculate_execution_carbon(
         self, instance_name: str, region_name: str, execution_latency: float, is_redirector: bool
