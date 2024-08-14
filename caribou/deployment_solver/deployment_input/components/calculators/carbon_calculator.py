@@ -156,13 +156,11 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
         # # For scenerio where DTDE is only from the home region
         # home_region_dtde = data_transfer_during_execution
         # internet_dtde = 0.0
-        
+
         # If the data transfer is from the internet, we use the average carbon intensity of the USA
         # And it is always consider inter-region data transfer. (So always apply)
         total_transmission_carbon += (
-            internet_dtde
-            * self._energy_factor_of_transmission
-            * average_carbon_intensity_of_usa
+            internet_dtde * self._energy_factor_of_transmission * average_carbon_intensity_of_usa
         )
 
         # If the data transfer is from the home region, we use the carbon intensity of the home region
@@ -175,11 +173,8 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
                 )
 
             total_transmission_carbon += (
-                home_region_dtde
-                * self._energy_factor_of_transmission
-                * transmission_network_carbon_intensity
+                home_region_dtde * self._energy_factor_of_transmission * transmission_network_carbon_intensity
             )
-
 
         # if not self._carbon_free_dt_during_execution_at_home_region or not current_region_is_home_region:
         #     transmission_network_carbon_intensity = average_carbon_intensity_of_usa
@@ -194,13 +189,15 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
         #         # There are no way to tell where the data is coming from
         #         # But lets make the assumption that at least 50% of the data transfer
         #         # is from the home region, and the other 50% can be from anywhere in the USA.
-        #         transmission_carbon_route_from_home_region = self._get_network_carbon_intensity_of_route_between_two_regions(
+        #         transmission_carbon_route_from_home_region =
+        #     self._get_network_carbon_intensity_of_route_between_two_regions(
         #             home_region, current_region_name
         #         )
 
         #         # transmission_network_carbon_intensity = transmission_carbon_route_from_home_region
 
-        #         # Assume that the data transfer carbon is 50% from the home region and 50% from the average carbon intensity of the USA
+        #         # Assume that the data transfer carbon is 50% from the home region and 50%
+        #           from the average carbon intensity of the USA
         #         transmission_network_carbon_intensity = (
         #             0.5 * transmission_carbon_route_from_home_region
         #             + 0.5 * average_carbon_intensity_of_usa
@@ -224,7 +221,7 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
         #     return AVERAGE_USA_CARBON_INTENSITY
 
         # Get the carbon intensity of the route betweem two regions.
-        # We can estimate it as the average carbon intensity of the grid 
+        # We can estimate it as the average carbon intensity of the grid
         # between the two regions. (No order is assumed)
         # If we have a better model, we can replace this with that.
         region_one_carbon_intensity = self._carbon_loader.get_grid_carbon_intensity(
