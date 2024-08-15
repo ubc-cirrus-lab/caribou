@@ -125,8 +125,8 @@ class StartHopData:  # pylint: disable=too-many-instance-attributes
             "redirector_execution_data": self.redirector_execution_data.to_dict()
             if self.redirector_execution_data
             else None,
-            # "original_data_size_gb": self.user_payload_size if self.overridden_wpd_data_size is not None else None,
-            # "overridden_wpd_data_size": self.overridden_wpd_data_size,
+            "original_data_size_gb": self.user_payload_size if self.overridden_wpd_data_size is not None else None,
+            "overridden_wpd_data_size": self.overridden_wpd_data_size,
         }
 
         # Filter out fields that are None

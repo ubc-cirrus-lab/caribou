@@ -237,14 +237,6 @@ class WorkflowInstance:  # pylint: disable=too-many-instance-attributes
         # As that is the one that will actually cause the SNS invocation
         edge_reached_time_to_sns_data.sort(key=lambda x: x[0], reverse=True)
 
-        # parsed_dict: list[tuple[int, int, Any]] = []
-        # for _, (start_runtime, sns_data) in enumerate(edge_reached_time_to_sns_data):
-        #     from_instance_id = sns_data["from_instance_node"].instance_id if sns_data["from_instance_node"] else -1
-        #     to_instance_id = sns_data["to_instance_node"].instance_id
-        #     parsed_dict.append((f"{from_instance_id}>{to_instance_id}", start_runtime,
-        # sns_data["cumulative_runtime"]))
-        # print(f"WIT: Edge Reached Time to SNS Data: {parsed_dict}")
-
         if len(edge_reached_time_to_sns_data) > 0:
             # Get the edge that will invoke the SNS
             sns_edge_data = edge_reached_time_to_sns_data[0][1]
@@ -459,14 +451,6 @@ class WorkflowInstance:  # pylint: disable=too-many-instance-attributes
             cumulative_execution_carbon += node_carbon_cost_runtime["execution_carbon"]
             cumulative_transmission_carbon += node_carbon_cost_runtime["transmission_carbon"]
             max_runtime = max(max_runtime, node_carbon_cost_runtime["runtime"])
-
-        print("\nFinal Results:")
-        print(f"Cost: {cumulative_cost} $")
-        print(f"Runtime: {max_runtime} s")
-        print(
-            f"Carbon: EX- {cumulative_execution_carbon}, TR- {cumulative_transmission_carbon}, "
-            f"overall- {cumulative_execution_carbon + cumulative_transmission_carbon}"
-        )
 
         return {
             "cost": cumulative_cost,

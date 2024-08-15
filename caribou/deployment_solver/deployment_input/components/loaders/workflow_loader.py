@@ -1,7 +1,7 @@
 import math
 from typing import Any, Optional
 
-from caribou.common.constants import (  # SOLVER_INPUT_TRANSMISSION_LATENCY_DEFAULT,
+from caribou.common.constants import (
     SNS_SIZE_DEFAULT,
     SOLVER_INPUT_ARCHITECTURE_DEFAULT,
     SOLVER_INPUT_INVOCATION_PROBABILITY_DEFAULT,
@@ -37,7 +37,6 @@ class WorkflowLoader(InputLoader):
 
         # Caches
         self._data_transfer_size_cache: dict[str, list] = {}
-        # self._start_hop_size_cache: dict[str, list] = {}
         self._runtime_distribution_cache: dict[str, list] = {}
         self._start_hop_latency_distribution_cache: dict[str, list] = {}
 
@@ -412,7 +411,6 @@ class WorkflowLoader(InputLoader):
                 rounded_kb = 1
 
         return rounded_kb * round_to / (1024**2)
-        # return math.ceil(number * (1024**2) / round_to) * round_to / (1024**2)
 
     def _round_to_ms(self, number: float, round_to: int = 1, round_up: bool = True) -> float:
         """
@@ -424,8 +422,6 @@ class WorkflowLoader(InputLoader):
         :param round_up: Whether to round up or to nearest non-zero ms.
         :return: The rounded number in seconds.
         """
-        # return math.ceil(number * 1000 / round_to) * round_to / 1000
-
         rounded_ms = number * 1000 / round_to
         if round_up:
             rounded_ms = math.ceil(rounded_ms)

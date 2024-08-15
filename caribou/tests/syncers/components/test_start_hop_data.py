@@ -124,6 +124,8 @@ class TestStartHopData(unittest.TestCase):
                 "consumed_read_capacity": 1.0,
                 "retrieved_wpd_at_function": True,
             },
+            "original_data_size_gb": 1.0,
+            "overridden_wpd_data_size": 0.5,
         }
 
         self.assertEqual(self.start_hop_data.to_dict(), expected_dict)

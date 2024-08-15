@@ -188,7 +188,6 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
             carbon_data=state.get("_carbon_loader"),
         )
 
-    ######### New functions #########
     def get_transmission_info(
         self,
         from_instance_index: int,
@@ -306,11 +305,6 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         from_region_name: str = self._region_indexer.index_to_value(from_region_index)
         to_region_name: str = self._region_indexer.index_to_value(to_region_index)
 
-        # Get a transmission size and latency sample
-        # print(f"SIMULATED from_instance_name: {from_instance_name}, uninvoked_instance_name:
-        # {uninvoked_instance_name}, simulated_sync_predecessor_name: {simulated_sync_predecessor_name},
-        # sync_node_name: {sync_node_name}, from_region_name: {from_region_name},
-        # to_region_name: {to_region_name}")
         (
             sns_transmission_size,
             transmission_latency,
@@ -391,18 +385,7 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         instance_name: str = self._instance_indexer.index_to_value(instance_index)
         region_name: str = self._region_indexer.index_to_value(region_index)
 
-        # print(f"runtime: {runtime}")
-        # print(f"region_index: {region_index}")
-        # print(f"data_input_sizes: {data_input_sizes}")
-        # print(f"data_output_sizes: {data_output_sizes}")
-        # print(f"sns_data_output_sizes: {sns_data_call_and_output_sizes}")
-        # print(f"data_transfer_during_execution: {data_transfer_during_execution}")
-        # print(f"dynamodb_read_capacity: {dynamodb_read_capacity}")
-        # print(f"dynamodb_write_capacity: {dynamodb_write_capacity}\n")
         data_output_sizes_str_dict = self._get_converted_region_name_dict(data_output_sizes)
-        print(f"data_output_sizes_str_dict: {data_output_sizes_str_dict}")
-        print(f"data_input_sizes: {self._get_converted_region_name_dict(data_input_sizes)}")
-        print(f"sns_data_call_and_output_sizes: {self._get_converted_region_name_dict(sns_data_call_and_output_sizes)}")
         execution_carbon, transmission_carbon = self._carbon_calculator.calculate_instance_carbon(
             execution_time,
             instance_name,
@@ -436,15 +419,7 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         dynamodb_read_capacity: float,
         dynamodb_write_capacity: float,
     ) -> dict[str, float]:
-        # print(f"data_input_sizes: {data_input_sizes}")
-        # print(f"data_output_sizes: {data_output_sizes}")
-        # print(f"dynamodb_read_capacity: {dynamodb_read_capacity}")
-        # print(f"dynamodb_write_capacity: {dynamodb_write_capacity}\n")
         data_output_sizes_str_dict = self._get_converted_region_name_dict(data_output_sizes)
-
-        print(f"data_output_sizes_str_dict: {data_output_sizes_str_dict}")
-        print(f"data_input_sizes: {self._get_converted_region_name_dict(data_input_sizes)}")
-        print(f"sns_data_call_and_output_sizes: {self._get_converted_region_name_dict(sns_data_call_and_output_sizes)}")
         return {
             "cost": self._cost_calculator.calculate_virtual_start_instance_cost(
                 data_output_sizes_str_dict,
@@ -470,10 +445,6 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
             ): value
             for region_index, value in input_region_index_dict.items()
         }
-        # return {
-        #     self._region_indexer.index_to_value(region_index) if region_index >= 0 else None: value
-        #     for region_index, value in input_region_index_dict.items()
-        # }
 
     def calculate_dynamodb_capacity_unit_of_sync_edges(
         self, sync_edge_upload_edges_auxiliary_data: list[tuple[float, float]]
@@ -489,7 +460,7 @@ class InputManager:  # pylint: disable=too-many-instance-attributes
         # Sort the list by the first element
         sync_edge_upload_edges_auxiliary_data.sort(key=lambda x: x[0])
         for entry in sync_edge_upload_edges_auxiliary_data:
-            # The entry is a tuple of (cumulative_runtime, sync_size, transmission_latency)
+            # The entry is a tuple of (cumulative_runtime, sync_size)
             _, sync_size = entry
             cumulative_data_size += sync_size
             write_capacity_units += self._calculate_write_capacity_units(cumulative_data_size)
