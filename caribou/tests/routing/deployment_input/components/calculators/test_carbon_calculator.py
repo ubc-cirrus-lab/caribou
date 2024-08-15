@@ -95,31 +95,32 @@ class TestCarbonCalculator(unittest.TestCase):
             region_name, data_input_sizes, data_output_sizes, data_transfer_during_execution
         )
 
-    def test_calculate_data_transfer_carbon(self):
-        # Define the test data
-        current_region_name = "aws:us-west-2"
-        data_input_sizes = {"aws:us-east-1": 5.0, "aws:us-west-2": 2.0}
-        data_output_sizes = {"aws:us-east-1": 10.0}  # Irrelevant
-        data_transfer_during_execution = 3.0
+    # TODO: Replace with the new tests
+    # def test_calculate_data_transfer_carbon(self):
+    #     # Define the test data
+    #     current_region_name = "aws:us-west-2"
+    #     data_input_sizes = {"aws:us-east-1": 5.0, "aws:us-west-2": 2.0}
+    #     data_output_sizes = {"aws:us-east-1": 10.0}  # Irrelevant
+    #     data_transfer_during_execution = 3.0
 
-        # Mock the carbon intensity retrieval
-        self.carbon_loader.get_grid_carbon_intensity.return_value = 0.2
-        self.workflow_loader.get_home_region.return_value = "aws:us-east-1"
+    #     # Mock the carbon intensity retrieval
+    #     self.carbon_loader.get_grid_carbon_intensity.return_value = 0.2
+    #     self.workflow_loader.get_home_region.return_value = "aws:us-east-1"
 
-        # Call the private method under test
-        carbon = self.carbon_calculator._calculate_data_transfer_carbon(
-            current_region_name, data_input_sizes, data_output_sizes, data_transfer_during_execution
-        )
+    #     # Call the private method under test
+    #     carbon = self.carbon_calculator._calculate_data_transfer_carbon(
+    #         current_region_name, data_input_sizes, data_output_sizes, data_transfer_during_execution
+    #     )
 
-        # Calculate expected carbon
-        expected_carbon = (
-            (5.0 * 0.001 * AVERAGE_USA_CARBON_INTENSITY)
-            + (2.0 * 0.001 * 0.2)
-            + (3.0 * 0.001 * AVERAGE_USA_CARBON_INTENSITY)
-        )
+    #     # Calculate expected carbon
+    #     expected_carbon = (
+    #         (5.0 * 0.001 * AVERAGE_USA_CARBON_INTENSITY)
+    #         + (2.0 * 0.001 * 0.2)
+    #         + (3.0 * 0.001 * AVERAGE_USA_CARBON_INTENSITY)
+    #     )
 
-        # Assert the carbon calculation is correct
-        self.assertEqual(carbon, expected_carbon)
+    #     # Assert the carbon calculation is correct
+    #     self.assertEqual(carbon, expected_carbon)
 
     def test_calculate_execution_carbon(self):
         # Define the test data

@@ -175,6 +175,7 @@ class TestStochasticHeuristicDeploymentAlgorithm(unittest.TestCase):
         self._algorithm._ranker = MagicMock()
         self._algorithm._ranker.number_one_priority = "metric1"
         self._algorithm._best_deployment_metrics = {"metric1": 0.5, "metric2": 1.5}
+        self._algorithm._home_deployment = None
 
         # Act
         result = self._algorithm._generate_and_check_deployment(1)
