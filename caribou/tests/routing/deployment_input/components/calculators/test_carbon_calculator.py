@@ -95,33 +95,6 @@ class TestCarbonCalculator(unittest.TestCase):
             region_name, data_input_sizes, data_output_sizes, data_transfer_during_execution
         )
 
-    # TODO: Replace with the new tests
-    # def test_calculate_data_transfer_carbon(self):
-    #     # Define the test data
-    #     current_region_name = "aws:us-west-2"
-    #     data_input_sizes = {"aws:us-east-1": 5.0, "aws:us-west-2": 2.0}
-    #     data_output_sizes = {"aws:us-east-1": 10.0}  # Irrelevant
-    #     data_transfer_during_execution = 3.0
-
-    #     # Mock the carbon intensity retrieval
-    #     self.carbon_loader.get_grid_carbon_intensity.return_value = 0.2
-    #     self.workflow_loader.get_home_region.return_value = "aws:us-east-1"
-
-    #     # Call the private method under test
-    #     carbon = self.carbon_calculator._calculate_data_transfer_carbon(
-    #         current_region_name, data_input_sizes, data_output_sizes, data_transfer_during_execution
-    #     )
-
-    #     # Calculate expected carbon
-    #     expected_carbon = (
-    #         (5.0 * 0.001 * AVERAGE_USA_CARBON_INTENSITY)
-    #         + (2.0 * 0.001 * 0.2)
-    #         + (3.0 * 0.001 * AVERAGE_USA_CARBON_INTENSITY)
-    #     )
-
-    #     # Assert the carbon calculation is correct
-    #     self.assertEqual(carbon, expected_carbon)
-
     def test_calculate_execution_carbon(self):
         # Define the test data
         instance_name = "test_instance"
@@ -185,6 +158,54 @@ class TestCarbonCalculator(unittest.TestCase):
             self.carbon_calculator._execution_conversion_ratio_cache[f"{instance_name}_{region_name}"],
             (compute_factor, memory_factor, power_factor),
         )
+
+    def test_calculate_data_transfer_carbon_intra_region_free(self):
+        data_input_sizes = {"aws:us-west-2": 10.0}
+        data_output_sizes = {"aws:us-west-2": 5.0}
+        self.carbon_calculator._carbon_free_intra_region_transmission = True
+
+        # Mock the carbon loader
+        self.carbon_loader.get_grid_carbon_intensity.return_value = 0.3
+
+        carbon = self.carbon_calculator._calculate_data_transfer_carbon(
+            "aws:us-west-2", data_input_sizes, data_output_sizes, 0.0
+        )
+
+        # Since intra-region transmission is free, the carbon should be 0
+        self.assertEqual(carbon, 0.0)
+
+    def test_calculate_data_transfer_carbon_inter_region(self):
+        data_input_sizes = {"aws:us-east-1": 10.0}
+        data_output_sizes = {"aws:us-west-2": 5.0}
+
+        # Mock the carbon loader and network intensity calculation
+        self.carbon_calculator._get_network_carbon_intensity_of_route_between_two_regions = MagicMock(return_value=0.3)
+
+        carbon = self.carbon_calculator._calculate_data_transfer_carbon(
+            "aws:us-west-2", data_input_sizes, data_output_sizes, 0.0
+        )
+
+        expected_carbon = 10.0 * 0.001 * 0.3
+        self.assertEqual(carbon, expected_carbon)
+
+    def test_get_network_carbon_intensity_of_route_between_two_regions_identical(self):
+        self.carbon_loader.get_grid_carbon_intensity.return_value = 0.4
+
+        carbon_intensity = self.carbon_calculator._get_network_carbon_intensity_of_route_between_two_regions(
+            "aws:us-west-2", "aws:us-west-2"
+        )
+
+        self.assertEqual(carbon_intensity, 0.4)
+
+    def test_get_network_carbon_intensity_of_route_between_two_regions_different(self):
+        self.carbon_loader.get_grid_carbon_intensity.side_effect = [0.4, 0.6]
+
+        carbon_intensity = self.carbon_calculator._get_network_carbon_intensity_of_route_between_two_regions(
+            "aws:us-west-2", "aws:us-east-1"
+        )
+
+        expected_intensity = (0.4 + 0.6) / 2
+        self.assertEqual(carbon_intensity, expected_intensity)
 
 
 if __name__ == "__main__":

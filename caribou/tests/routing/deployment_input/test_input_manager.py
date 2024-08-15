@@ -73,54 +73,105 @@ class TestInputManager(unittest.TestCase):
         self.input_manager._performance_loader.setup.assert_called_once()
         self.input_manager._carbon_loader.setup.assert_called_once()
 
-    # TODO: replace with the new tests
-    # def test_get_execution_cost_carbon_latency(self):
-    #     self.input_manager._instance_indexer = MagicMock(spec=InstanceIndexer)
-    #     self.input_manager._region_indexer = MagicMock(spec=RegionIndexer)
+    def test_invalid_workflow_id_in_setup(self):
+        self.input_manager._workflow_config.workflow_id = None
 
-    #     self.input_manager._runtime_calculator = MagicMock(spec=RuntimeCalculator)
-    #     self.input_manager._runtime_calculator.calculate_runtime_distribution.return_value = np.array([3])
+        with self.assertRaises(ValueError) as context:
+            self.input_manager.setup(MagicMock(spec=RegionIndexer), MagicMock(spec=InstanceIndexer))
+        self.assertEqual(str(context.exception), "Workflow ID is not set in the config")
 
-    #     self.input_manager._cost_calculator = MagicMock(spec=CostCalculator)
-    #     self.input_manager._carbon_calculator = MagicMock(spec=CarbonCalculator)
+    def test_tail_latency_threshold_validation(self):
+        with self.assertRaises(ValueError) as context:
+            InputManager(self.workflow_config, tail_latency_threshold=49)
+        self.assertEqual(str(context.exception), "Tail threshold must be between 50 and 100")
 
-    #     self.input_manager._execution_latency_distribution_cache = {}
+        with self.assertRaises(ValueError) as context:
+            InputManager(self.workflow_config, tail_latency_threshold=101)
+        self.assertEqual(str(context.exception), "Tail threshold must be between 50 and 100")
 
-    #     self.input_manager.get_execution_cost_carbon_latency(1, 2)  # run the function
+    def test_cache_clearing_in_alter_carbon_setting(self):
+        self.input_manager._carbon_calculator.alter_carbon_setting = MagicMock()
+        self.input_manager._execution_latency_distribution_cache = {"key": [0.5]}
+        self.input_manager._invocation_probability_cache = {"key": 0.5}
 
-    #     # Asset calls
-    #     self.input_manager._instance_indexer.index_to_value.assert_called_once()
-    #     self.input_manager._region_indexer.index_to_value.assert_called_once()
+        self.input_manager.alter_carbon_setting("1")
 
-    #     self.input_manager._runtime_calculator.calculate_runtime_distribution.assert_called_once()
-    #     self.input_manager._cost_calculator.calculate_execution_cost.assert_called_once()
-    #     self.input_manager._carbon_calculator.calculate_execution_carbon.assert_called_once()
+        self.assertEqual(self.input_manager._execution_latency_distribution_cache, {})
+        self.assertEqual(self.input_manager._invocation_probability_cache, {})
 
-    # TODO: replace with the new tests
-    # def test_get_transmission_cost_carbon_latency(self):
-    #     self.input_manager._instance_indexer = MagicMock(spec=InstanceIndexer)
-    #     self.input_manager._region_indexer = MagicMock(spec=RegionIndexer)
+    def test_get_transmission_info(self):
+        self.input_manager._runtime_calculator = MagicMock()
+        self.input_manager._instance_indexer = MagicMock()
+        self.input_manager._region_indexer = MagicMock()
 
-    #     self.input_manager._runtime_calculator = MagicMock(spec=RuntimeCalculator)
-    #     self.input_manager._runtime_calculator.get_transmission_size_distribution.return_value = np.array([3])
-    #     self.input_manager._runtime_calculator.get_transmission_latency_distribution.return_value = np.array([3])
+        self.input_manager._instance_indexer.index_to_value.side_effect = ["node1", "node2"]
+        self.input_manager._region_indexer.index_to_value.side_effect = ["region1", "region2"]
 
-    #     self.input_manager._cost_calculator = MagicMock(spec=CostCalculator)
-    #     self.input_manager._carbon_calculator = MagicMock(spec=CarbonCalculator)
+        self.input_manager._runtime_calculator.calculate_transmission_size_and_latency.return_value = (10.0, 1.0)
 
-    #     self.input_manager._execution_latency_distribution_cache = {}
+        result = self.input_manager.get_transmission_info(
+            from_instance_index=0,
+            from_region_index=0,
+            to_instance_index=1,
+            to_region_index=1,
+            cumulative_runtime=5.0,
+            to_instance_is_sync_node=False,
+            consider_from_client_latency=True,
+        )
 
-    #     self.input_manager.get_transmission_cost_carbon_latency(1, 2, 3, 4)  # run the function
+        self.assertEqual(result["starting_runtime"], 5.0)
+        self.assertEqual(result["cumulative_runtime"], 6.0)
+        self.assertEqual(result["sns_data_transfer_size"], 10.0)
+        self.assertIsNone(result["sync_info"])
 
-    #     # Asset calls
-    #     self.input_manager._instance_indexer.index_to_value.assert_has_calls([call(1), call(2)])
-    #     self.input_manager._region_indexer.index_to_value.assert_has_calls([call(3), call(4)])
+    def test_calculate_cost_and_carbon_of_instance(self):
+        self.input_manager._cost_calculator = MagicMock()
+        self.input_manager._carbon_calculator = MagicMock()
+        self.input_manager._instance_indexer = MagicMock()
+        self.input_manager._region_indexer = MagicMock()
 
-    #     self.input_manager._runtime_calculator.get_transmission_size_distribution.assert_called_once()
-    #     self.input_manager._runtime_calculator.get_transmission_latency_distribution.assert_called_once()
+        # Assume there are multiple regions to convert
+        self.input_manager._instance_indexer.index_to_value.side_effect = ["node1"]
+        self.input_manager._region_indexer.index_to_value.side_effect = lambda idx: f"region{idx}"
 
-    #     self.input_manager._cost_calculator.calculate_transmission_cost.assert_called_once()
-    #     self.input_manager._carbon_calculator.calculate_transmission_carbon.assert_called_once()
+        self.input_manager._cost_calculator.calculate_instance_cost.return_value = 100.0
+        self.input_manager._carbon_calculator.calculate_instance_carbon.return_value = (10.0, 20.0)
+
+        result = self.input_manager.calculate_cost_and_carbon_of_instance(
+            execution_time=10.0,
+            instance_index=0,
+            region_index=0,
+            data_input_sizes={1: 10.0},
+            data_output_sizes={2: 20.0},
+            sns_data_call_and_output_sizes={3: [5.0]},
+            data_transfer_during_execution=15.0,
+            dynamodb_read_capacity=5.0,
+            dynamodb_write_capacity=10.0,
+            is_invoked=True,
+            is_redirector=False,
+        )
+
+        self.assertEqual(result["cost"], 100.0)
+        self.assertEqual(result["execution_carbon"], 10.0)
+        self.assertEqual(result["transmission_carbon"], 20.0)
+
+    def test_missing_home_region_in_setup(self):
+        region_indexer = MagicMock(spec=RegionIndexer)
+        region_indexer.get_value_indices = MagicMock(return_value={"provider2:region2": 0})
+
+        instance_indexer = MagicMock(spec=InstanceIndexer)
+        instance_indexer.get_instance_index = MagicMock(return_value={"node1": 0})
+
+        self.input_manager._workflow_loader = MagicMock()
+        self.input_manager._workflow_loader.get_home_region.return_value = "provider1:region1"
+
+        with self.assertRaises(ValueError) as context:
+            self.input_manager.setup(region_indexer, instance_indexer)
+
+        self.assertEqual(
+            str(context.exception),
+            "Home region of the workflow is not in the requested regions! This should NEVER happen!",
+        )
 
     def test_alter_carbon_setting(self):
         self.input_manager._carbon_calculator.alter_carbon_setting = MagicMock()
