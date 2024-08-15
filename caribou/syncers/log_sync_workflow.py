@@ -286,7 +286,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
                 if log_day_str not in self._daily_user_code_failure_set:
                     self._daily_user_code_failure_set[log_day_str] = set()
                 self._daily_user_code_failure_set[log_day_str].add(run_id)
-            elif message.startswith("INFORMING_SYNC_NODE") or message.startswith("DEBUG_MESSAGE"):
+            elif message.startswith("DEBUG_MESSAGE"):
                 # Debug message, we can ignore
                 pass
             else:
