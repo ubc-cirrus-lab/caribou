@@ -1,13 +1,8 @@
-# DNA Visualization benchmark
+# Text to speech censoring benchmark
 
-This benchmark requires access to the S3 bucket named `caribou-dna-visualization`,
-with the AWS Region set to `us-west-2` (Oregon).
+This benchmark requires access to the s3 bucket with the name `caribou-dna-visualization`.
 
-Alternatively, the user may change the S3 bucket name in `app.py` and the associated `iam_policy.json`, 
-and also modify all instances of `region_name='us-west-2'` to match the region of the bucket.
-
-There needs to be a file in the bucket named `small_sequence.gb` in a folder called `genbank`, 
-or a valid DNA sequence input from https://www.ncbi.nlm.nih.gov/genbank/.
+There needs to be a file in the bucket with the name `sequence.gb` in a folder called `genbank`.
 
 You can deploy the benchmark with the following command:
 
@@ -18,10 +13,7 @@ poetry run caribou deploy
 And then run the benchmark with the following command:
 
 ```bash
-poetry run caribou run dna_visualization-0.0.1 -a '{"gen_file_name": "special_tiny_sequence.gb"}'
-poetry run caribou run dna_visualization-0.0.1 -a '{"gen_file_name": "small_sequence.gb"}'
-
-poetry run caribou run dna_visualization-version_number -a '{"gen_file_name": "small_sequence.gb"}'
+poetry run caribou run dna_visualization-version_number -a '{"gen_file_name": "sequence.gb"}'
 ```
 
 To remove the benchmark, you can use the following command:

@@ -7,9 +7,6 @@ import uuid
 import boto3
 import os
 
-# Change the following bucket name and region to match your setup
-s3_bucket_name = "dn1-caribou-dna-visualization"
-s3_bucket_region_name = "us-east-1"
 
 workflow = CaribouWorkflow(name="dna_visualization", version="0.0.1")
 
@@ -29,9 +26,9 @@ def visualize(event: dict[str, Any]) -> dict[str, Any]:
     local_gen_filename = f"/tmp/genbank-{req_id}.gb"
     local_result_filename = f"/tmp/result-{req_id}.png"
 
-    s3 = boto3.client("s3", region_name=s3_bucket_region_name)
+    s3 = boto3.client("s3")
     s3.download_file(
-        s3_bucket_name,
+        "caribou-dna-visualization",
         f"genbank/{gen_file_name}",
         local_gen_filename,
     )
@@ -43,7 +40,7 @@ def visualize(event: dict[str, Any]) -> dict[str, Any]:
 
     s3.upload_file(
         local_result_filename,
-        s3_bucket_name,
+        "caribou-dna-visualization",
         f"result/{gen_file_name}.png",
     )
 
