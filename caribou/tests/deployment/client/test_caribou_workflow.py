@@ -1,3 +1,5 @@
+from concurrent.futures import Future
+import os
 import unittest
 from datetime import datetime
 from unittest.mock import Mock, patch
@@ -12,6 +14,16 @@ from caribou.deployment.client.caribou_function import (
 )
 import inspect
 from types import FrameType
+from caribou.common.constants import (
+    GLOBAL_TIME_ZONE,
+    HOME_REGION_THRESHOLD,
+    LOG_VERSION,
+    MAX_TRANSFER_SIZE,
+    MAX_WORKERS,
+    MAXIMUM_HOPS_FROM_CLIENT_REQUEST,
+    TIME_FORMAT,
+    WORKFLOW_PLACEMENT_DECISION_TABLE,
+)
 
 
 def invoke_serverless_function(function_name, payload):
@@ -1200,6 +1212,137 @@ class TestCaribouWorkflow(unittest.TestCase):
         # Test with no current_deployment
         del workflow_placement_decision["workflow_placement"]["current_deployment"]
         self.assertEqual(self.workflow._get_time_key(workflow_placement_decision), "N/A")
+
+    def test_invoke_serverless_function_async(self):
+        self.workflow.get_workflow_placement_decision = Mock(return_value={"current_instance_name": "test_instance"})
+        future = Future()
+        future.set_result(None)
+        mock_worker = Mock(return_value=future)
+        self.workflow._thread_pool.submit = mock_worker
+
+        with patch.object(self.workflow, "get_successor_instance_name", return_value=("successor", {})):
+            with patch.object(
+                self.workflow,
+                "get_successor_workflow_placement_decision",
+                return_value=("provider", "region", "identifier"),
+            ):
+                self.workflow.invoke_serverless_function(lambda x: x, payload={"data": "value"})
+
+        mock_worker.assert_called_once()
+
+    def test_get_successor_workflow_placement_decision_home_region(self):
+        workflow_placement_decision = {
+            "send_to_home_region": True,
+            "workflow_placement": {
+                "home_deployment": {
+                    "successor_instance_name": {
+                        "provider_region": {"provider": "provider1", "region": "region1"},
+                        "identifier": "identifier1",
+                    }
+                }
+            },
+        }
+
+        provider, region, identifier = self.workflow.get_successor_workflow_placement_decision(
+            "successor_instance_name", workflow_placement_decision
+        )
+
+        self.assertEqual(provider, "provider1")
+        self.assertEqual(region, "region1")
+        self.assertEqual(identifier, "identifier1")
+
+    def test_get_successor_workflow_placement_decision_current_deployment(self):
+        workflow_placement_decision = {
+            "send_to_home_region": False,
+            "workflow_placement": {
+                "current_deployment": {
+                    "instances": {
+                        "current_time_key": {
+                            "successor_instance_name": {
+                                "provider_region": {"provider": "provider2", "region": "region2"},
+                                "identifier": "identifier2",
+                            }
+                        }
+                    }
+                }
+            },
+            "time_key": "current_time_key",
+        }
+
+        provider, region, identifier = self.workflow.get_successor_workflow_placement_decision(
+            "successor_instance_name", workflow_placement_decision
+        )
+
+        self.assertEqual(provider, "provider2")
+        self.assertEqual(region, "region2")
+        self.assertEqual(identifier, "identifier2")
+
+    def test_log_for_retrieval(self):
+        with patch("caribou.deployment.client.caribou_workflow.logger") as mock_logger:
+            self.workflow.log_for_retrieval("Test message", "123")
+            mock_logger.caribou.assert_called_once_with(
+                "TIME (%s) RUN_ID (%s) MESSAGE (%s) LOG_VERSION (%s)",
+                unittest.mock.ANY,
+                "123",
+                "Test message",
+                LOG_VERSION,
+            )
+
+    def test_log_cpu_model(self):
+        self.workflow.get_cpu_info = Mock(return_value="Intel(R) Xeon(R) CPU @ 2.30GHz")
+        with patch.object(self.workflow, "log_for_retrieval") as mock_log:
+            self.workflow._log_cpu_model({"run_id": "123", "current_instance_name": "test_func"}, from_redirector=True)
+            mock_log.assert_called_once_with(
+                "USED_CPU_MODEL: CPU_MODEL (Intel<R> Xeon<R> CPU @ 2.30GHz) used in INSTANCE (test_func) and from FROM_REDIRECTOR (True)",
+                "123",
+            )
+
+    def test_get_time_key(self):
+        workflow_placement_decision = {
+            "workflow_placement": {"current_deployment": {"time_keys": ["0", "6", "12", "18"]}}
+        }
+        with patch("caribou.deployment.client.caribou_workflow.datetime") as mock_datetime:
+            mock_datetime.now.return_value = datetime(2022, 1, 1, 7, 0, 0)
+            result = self.workflow._get_time_key(workflow_placement_decision)
+            self.assertEqual(result, "6")
+
+    def test_get_predecessor_data(self):
+        self.workflow.get_current_instance_provider_region_instance_name = Mock(
+            return_value=("provider1", "region1", "test_func", "workflow_instance_id")
+        )
+        self.workflow.get_run_id = Mock(return_value="workflow_instance_id")
+        mock_remote_client = Mock()
+        mock_remote_client.get_predecessor_data.return_value = (['{"key": "value"}'], 0.0)
+
+        with patch(
+            "caribou.common.models.remote_client.remote_client_factory.RemoteClientFactory.get_remote_client",
+            return_value=mock_remote_client,
+        ):
+            result = self.workflow.get_predecessor_data()
+
+            self.assertEqual(result, [{"key": "value"}])
+
+    def test_register_function_duplicate_function_name(self):
+        function = lambda x: x
+        name = "test_function"
+        entry_point = True
+        regions_and_providers = {"region1": "provider1"}
+        environment_variables = [{"key": "value"}]
+        allow_placement_decision_override = False
+
+        self.workflow.register_function(
+            function, name, entry_point, regions_and_providers, environment_variables, allow_placement_decision_override
+        )
+
+        with self.assertRaises(RuntimeError, msg=f"Function with function name {function.__name__} already registered"):
+            self.workflow.register_function(
+                function,
+                name,
+                entry_point,
+                regions_and_providers,
+                environment_variables,
+                allow_placement_decision_override,
+            )
 
 
 class TestCustomEncoder(unittest.TestCase):
