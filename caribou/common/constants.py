@@ -75,9 +75,10 @@ SOLVER_INPUT_ECR_MONTHLY_STORAGE_COST_DEFAULT = 0.10  # 0.10 USD per 1 GB per mo
 
 ## Performance Loader
 SOLVER_INPUT_RELATIVE_PERFORMANCE_DEFAULT = 1.0
-SOLVER_HOME_REGION_TRANSMISSION_LATENCY_DEFAULT = (
-    0.22  # TODO: CHANGE THIS, this should be what the average transmission latency at home region between 2 SNS calls
-)
+
+# TODO: Change this to a more accurate value via a benchmark,
+# this should be the average transmission latency for intra region transmission.
+SOLVER_HOME_REGION_TRANSMISSION_LATENCY_DEFAULT = 0.22
 
 ## Workflow Loader
 SOLVER_INPUT_RUNTIME_DEFAULT = -1.0  # Denotes that the runtime is not available
@@ -107,8 +108,6 @@ MINIMAL_SOLVE_THRESHOLD = 10
 DISTANCE_FOR_POTENTIAL_MIGRATION = 4000
 
 # Logging
-# TODO: Change to 0.0.4
-# LOG_VERSION = "0.0.4.dev.5"
 LOG_VERSION = "0.0.4"
 
 # Tail latency threshold
