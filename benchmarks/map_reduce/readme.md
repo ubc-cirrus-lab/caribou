@@ -1,13 +1,7 @@
 # Map Reduce Benchmarks
 
-This benchmark requires access to the s3 bucket with the name `caribou-map-reduce`,
-with the AWS Region set to `us-west-2` (Oregon).
-
-Alternatively, the user may change the S3 bucket name in `app.py` and the associated `iam_policy.json`, 
-and also modify all instances of `region_name='us-west-2'` to match the region of the bucket.
-
-There needs to be a folder inside the input folder `input` with the base dir 
-(`subset_256MB` in our example) containing the input file split in shards.
+This benchmark requires access to the s3 bucket with the name `caribou-map-reduce`.
+There needs to be a folder in the bucket with the base dir (`subset_256MB` in our example) containing the input file split in shards.
 The input file should be split in shards of the same size.
 The number of shards should be specified in the `number_shards` parameter.
 The input file size should be specified in the `input_file_size` parameter and is used by the workflow to determine the number of workers.
@@ -21,10 +15,7 @@ poetry run caribou deploy
 And then run the benchmark with the following command (example):
 
 ```bash
-poetry run caribou run map_reduce-0.0.1 -a '{"input_base_dir": "subset_25_6MB", "number_shards": 120, "input_file_size": 26843545}'
 poetry run caribou run map_reduce-0.0.1 -a '{"input_base_dir": "subset_256MB", "number_shards": 120, "input_file_size": 268435456}'
-
-poetry run caribou run map_reduce-version_number -a '{"input_base_dir": "subset_256MB", "number_shards": 120, "input_file_size": 268435456}'
 ```
 
 To remove the benchmark, you can use the following command:

@@ -12,10 +12,6 @@ from pydub import AudioSegment
 
 from tempfile import TemporaryDirectory
 
-# Change the following bucket name and region to match your setup
-s3_bucket_name = "dn1-caribou-text-2-speech-censoring"
-s3_bucket_region_name = "us-east-1"
-
 workflow = CaribouWorkflow(name="text_2_speech_censoring", version="0.0.1")
 
 
@@ -49,12 +45,12 @@ def get_input(event: dict[str, Any]) -> dict[str, Any]:
 def text_2_speech(event: dict[str, Any]) -> dict[str, Any]:
     input_file = event["input_file"]
 
-    s3 = boto3.client("s3", region_name=s3_bucket_region_name)
+    s3 = boto3.client("s3")
     with TemporaryDirectory() as tmp_dir:
 
         local_name = f"{tmp_dir}/input.txt"
 
-        s3.download_file(s3_bucket_name, input_file, local_name)
+        s3.download_file("caribou-text-2-speech-censoring", input_file, local_name)
 
         with open(local_name, "r") as f:
             message = f.read()
@@ -72,11 +68,11 @@ def text_2_speech(event: dict[str, Any]) -> dict[str, Any]:
 
         remote_name = f"text_2_speech/{workflow.get_run_id()}_{file_name}"
 
-        s3 = boto3.client("s3", region_name=s3_bucket_region_name)
+        s3 = boto3.client("s3")
 
         s3.upload_file(
             local_name,
-            s3_bucket_name,
+            "caribou-text-2-speech-censoring",
             remote_name,
         )
 
@@ -93,12 +89,12 @@ def text_2_speech(event: dict[str, Any]) -> dict[str, Any]:
 def profanity(event: dict[str, Any]) -> dict[str, Any]:
     input_file = event["input_file"]
 
-    s3 = boto3.client("s3", region_name=s3_bucket_region_name)
+    s3 = boto3.client("s3")
     with TemporaryDirectory() as tmp_dir:
 
         local_name = f"{tmp_dir}/input.txt"
 
-        s3.download_file(s3_bucket_name, input_file, local_name)
+        s3.download_file("caribou-text-2-speech-censoring", input_file, local_name)
 
         with open(local_name, "r") as f:
             message = f.read()
@@ -117,7 +113,7 @@ def profanity(event: dict[str, Any]) -> dict[str, Any]:
 
         s3.upload_file(
             local_file_name,
-            s3_bucket_name,
+            "caribou-text-2-speech-censoring",
             remote_file_name,
         )
 
@@ -151,12 +147,12 @@ def extract_indexes(text, char="*") -> list:
 def conversion(event: dict[str, Any]) -> dict[str, Any]:
     file_name = event["file_name"]
 
-    s3 = boto3.client("s3", region_name=s3_bucket_region_name)
+    s3 = boto3.client("s3")
     with TemporaryDirectory() as tmp_dir:
 
         local_name = f"{tmp_dir}/input.txt"
 
-        s3.download_file(s3_bucket_name, file_name, local_name)
+        s3.download_file("caribou-text-2-speech-censoring", file_name, local_name)
 
         dlFile = open(local_name, "rb").read()
         input = BytesIO(dlFile)
@@ -176,7 +172,7 @@ def conversion(event: dict[str, Any]) -> dict[str, Any]:
 
         s3.upload_file(
             local_file_name,
-            s3_bucket_name,
+            "caribou-text-2-speech-censoring",
             remote_file_name,
         )
 
@@ -193,10 +189,10 @@ def conversion(event: dict[str, Any]) -> dict[str, Any]:
 def compression(event: dict[str, Any]) -> dict[str, Any]:
     file_name = event["file_name"]
 
-    s3 = boto3.client("s3", region_name=s3_bucket_region_name)
+    s3 = boto3.client("s3")
     with TemporaryDirectory() as tmp_dir:
         local_name = f"{tmp_dir}/input.wav"
-        s3.download_file(s3_bucket_name, file_name, local_name)
+        s3.download_file("caribou-text-2-speech-censoring", file_name, local_name)
 
         dlFile = open(local_name, "rb").read()
         dlFile = BytesIO(dlFile)
@@ -220,7 +216,7 @@ def compression(event: dict[str, Any]) -> dict[str, Any]:
 
         s3.upload_file(
             local_file_name,
-            s3_bucket_name,
+            "caribou-text-2-speech-censoring",
             remote_file_name,
         )
 
@@ -247,13 +243,13 @@ def censor(event: dict[str, Any]) -> dict[str, Any]:
     if not "file_name" or not "data":
         raise ValueError("No file name or data provided")
 
-    s3 = boto3.client("s3", region_name=s3_bucket_region_name)
+    s3 = boto3.client("s3")
     with TemporaryDirectory() as tmp_dir:
         local_index_name = f"{tmp_dir}/indexes.json"
-        s3.download_file(s3_bucket_name, index_file, local_index_name)
+        s3.download_file("caribou-text-2-speech-censoring", index_file, local_index_name)
 
         local_wav_name = f"{tmp_dir}/speech.wav"
-        s3.download_file(s3_bucket_name, file_name, local_wav_name)
+        s3.download_file("caribou-text-2-speech-censoring", file_name, local_wav_name)
 
         dlFile = open(local_wav_name, "rb").read()
         dlFile = BytesIO(dlFile)
@@ -287,7 +283,7 @@ def censor(event: dict[str, Any]) -> dict[str, Any]:
 
         s3.upload_file(
             os.path.join(tmp_dir, file_name),
-            s3_bucket_name,
+            "caribou-text-2-speech-censoring",
             f"text_2_speech_censoring/{file_name}",
         )
 

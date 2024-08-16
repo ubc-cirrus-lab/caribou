@@ -15,7 +15,7 @@ class CaribouFunction:
         entry_point: bool,
         regions_and_providers: dict,
         environment_variables: list[dict[str, str]],
-        allow_placement_decision_override: bool,
+        allow_placement_decision_override: bool = False,
     ):
         self.function_callable = function_callable
         self.name = name

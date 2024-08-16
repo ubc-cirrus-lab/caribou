@@ -82,7 +82,6 @@ class Client:
         workflow_placement_decision["consumed_read_capacity"] = consumed_read_capacity
         print(f"Run ID for current run: {run_id}")
         wrapped_input_data = {
-            # "input_data": input_data,
             "payload": input_data,
             "time_request_sent": current_time,
             "workflow_placement_decision": workflow_placement_decision,
@@ -90,8 +89,6 @@ class Client:
             "permit_redirection": False,  # We don't want to redirect the request.
             "redirected": False,
             "request_source": "Caribou CLI",
-            # "wpd_data_size": wpd_data_size,
-            # "wpd_consumed_read_capacity": consumed_read_capacity,
         }
 
         json_payload = json.dumps(wrapped_input_data)

@@ -116,15 +116,16 @@ class TestStartHopData(unittest.TestCase):
         expected_dict = {
             "destination": "destination",
             "request_source": "source",
-            "data_transfer_size_gb": 1.0,
+            "data_transfer_size_gb": 0.5,  # Subtract the overridden data size (As they are for testing purposes)
             "latency_from_client_s": 1.0,
             "time_from_function_start_to_entry_point_s": 1.0,
             "workflow_placement_decision": {
                 "data_size_gb": 1.0,
-                "overridden_data_size_gb": 0.5,
                 "consumed_read_capacity": 1.0,
                 "retrieved_wpd_at_function": True,
             },
+            "original_data_size_gb": 1.0,
+            "overridden_wpd_data_size": 0.5,
         }
 
         self.assertEqual(self.start_hop_data.to_dict(), expected_dict)

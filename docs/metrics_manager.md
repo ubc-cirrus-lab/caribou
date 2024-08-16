@@ -242,35 +242,14 @@ Below is an example of the `workflow_summary_table` for a workflow with 2 instan
         "small_sync_example-0_0_1-initial_function:entry_point:0": {
             "latency": 7.561505556106567,
             "provider_region": "aws:us-east-1",
-            "insights": {
-              "duration": 7.561505556106567,
-              "cold_start": false,
-              "memory_utilization": 21,
-              "total_network": 366023,
-              "cpu_total_time": 640
-            },
         },
         "small_sync_example-0_0_1-syncFunction:sync:": {
             "latency": 1.798128366470337,
             "provider_region": "aws:us-east-1",
-            "insights": {
-              "duration": 1.798128366470337,
-              "cold_start": false,
-              "memory_utilization": 21,
-              "total_network": 366023,
-              "cpu_total_time": 640
-            },
         },
         "small_sync_example-0_0_1-secondSyncFunction:sync:": {
             "latency": 1.1149189472198486,
             "provider_region": "aws:us-east-1",
-            "insights": {
-              "duration": 1.1149189472198486,
-              "cold_start": false,
-              "memory_utilization": 21,
-              "total_network": 366023,
-              "cpu_total_time": 640
-            },
         }
       },
       "transmission_data": [

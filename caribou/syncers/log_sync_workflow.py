@@ -82,9 +82,6 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         data_for_upload: str = self._prepare_data_for_upload(self._previous_data)
         self._upload_data(data_for_upload)
 
-        # # TODO: Remove this print statement
-        # print(json.dumps(json.loads(data_for_upload), indent=4))
-
     def _upload_data(self, data_for_upload: str) -> None:
         self._workflow_summary_client.update_value_in_table(
             WORKFLOW_SUMMARY_TABLE,
@@ -286,7 +283,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
                 if log_day_str not in self._daily_user_code_failure_set:
                     self._daily_user_code_failure_set[log_day_str] = set()
                 self._daily_user_code_failure_set[log_day_str].add(run_id)
-            elif message.startswith("INFORMING_SYNC_NODE") or message.startswith("DEBUG_MESSAGE"):
+            elif message.startswith("DEBUG_MESSAGE"):
                 # Debug message, we can ignore
                 pass
             else:
@@ -633,15 +630,6 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         data_transfer_size: float = self._extract_float_from_log_entry(
             log_entry, r"PAYLOAD_SIZE \((.*?)\)", "data_transfer_size"
         )
-        # invocation_time_from_function_start: float = self._extract_float_from_log_entry(
-        #     log_entry, r"INVOCATION_TIME_FROM_FUNCTION_START \((.*?)\)", "invocation_time_from_function_start"
-        # )
-        # finish_time_from_invocation_start: float = self._extract_float_from_log_entry(
-        #     log_entry, r"FINISH_TIME_FROM_INVOCATION_START \((.*?)\)", "finish_time_from_invocation_start"
-        # )
-        # call_start_to_finish_time: float = self._extract_float_from_log_entry(
-        #     log_entry, r"CALL_START_TO_FINISH \((.*?)\)", "call_start_to_finish_time"
-        # )
         destination_provider: str = self._extract_string_from_log_entry(
             log_entry, r"PROVIDER \((.*?)\)", "destination_provider"
         )
@@ -700,9 +688,6 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
         invocation_time_from_function_start: float = self._extract_float_from_log_entry(
             log_entry, r"INVOCATION_TIME_FROM_FUNCTION_START \((.*?)\)", "invocation_time_from_function_start"
         )
-        # finish_time_from_invocation_start: float = self._extract_float_from_log_entry(
-        #     log_entry, r"FINISH_TIME_FROM_INVOCATION_START \((.*?)\)", "finish_time_from_invocation_start"
-        # )
 
         # Execution and successor data updates
         execution_data = workflow_run_sample.get_execution_data(caller_function, request_id)

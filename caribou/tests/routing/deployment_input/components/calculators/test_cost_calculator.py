@@ -221,6 +221,60 @@ class TestCostCalculator(unittest.TestCase):
         self.assertIn(cache_key, self.cost_calculator._execution_conversion_ratio_cache)
         self.assertEqual(self.cost_calculator._execution_conversion_ratio_cache[cache_key], expected_ratio)
 
+    def test_calculate_dynamodb_cost_zero_capacities(self):
+        # Define the test data with zero capacities
+        current_region_name = "aws:us-east-1"
+        dynamodb_read_capacity = 0
+        dynamodb_write_capacity = 0
+
+        # Mock the DynamoDB read/write cost
+        self.datacenter_loader.get_dynamodb_read_write_cost.return_value = (0.02, 0.03)
+
+        # Call the method under test
+        cost = self.cost_calculator._calculate_dynamodb_cost(
+            current_region_name, dynamodb_read_capacity, dynamodb_write_capacity
+        )
+
+        # Assert the cost is zero when capacities are zero
+        self.assertEqual(cost, 0.0)
+
+    def test_calculate_sns_cost_empty_data(self):
+        # Mock the SNS request cost and transmission cost methods
+        self.datacenter_loader.get_sns_request_cost.return_value = 0.001
+        self.datacenter_loader.get_transmission_cost.return_value = 0.05
+
+        # Define the test data with empty sns_data_call_and_output_sizes
+        current_region_name = "aws:us-west-2"
+        sns_data_call_and_output_sizes = {}
+
+        # Call the method under test
+        cost = self.cost_calculator._calculate_sns_cost(current_region_name, sns_data_call_and_output_sizes)
+
+        # Assert the cost is zero when there are no SNS data calls
+        self.assertEqual(cost, 0.0)
+
+    def test_calculate_sns_cost_with_none_region(self):
+        # Define the test data with None as a region name
+        sns_data_call_and_output_sizes = {None: [0.005, 0.01]}
+
+        # Assert that ValueError is raised due to None region
+        with self.assertRaises(ValueError):
+            self.cost_calculator._calculate_sns_cost("aws:us-west-2", sns_data_call_and_output_sizes)
+
+    def test_calculate_data_transfer_cost_empty_data(self):
+        # Mock the transmission cost method to return a specific value
+        self.datacenter_loader.get_transmission_cost.return_value = 0.05
+
+        # Define the test data with empty data_output_sizes
+        current_region_name = "aws:us-west-2"
+        data_output_sizes = {}
+
+        # Call the method under test
+        cost = self.cost_calculator._calculate_data_transfer_cost(current_region_name, data_output_sizes)
+
+        # Assert the cost is zero when there is no data transfer
+        self.assertEqual(cost, 0.0)
+
 
 if __name__ == "__main__":
     unittest.main()

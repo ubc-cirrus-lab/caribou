@@ -102,9 +102,7 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
 
         self._add_expiry_date_to_results(hour_to_run_to_result)
 
-        # TODO: Return the result
         self._upload_result(hour_to_run_to_result)
-        # print(json.dumps(hour_to_run_to_result, indent=4))
 
     def _update_data_for_new_hour(self, hour_to_run: str) -> None:
         self._input_manager.alter_carbon_setting(hour_to_run)

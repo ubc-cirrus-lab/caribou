@@ -30,28 +30,22 @@ from caribou.common.utils import get_function_source
 from caribou.deployment.client.caribou_function import CaribouFunction
 
 # Alter the logging to use CARIBOU level instead of info
-## Define a custom logging level
 CARIBOU_LEVEL = 25
 logging.addLevelName(CARIBOU_LEVEL, "CARIBOU")
 
 
-## Custom logger class
 class CustomLogger(logging.Logger):
     def caribou(self, message: str, *args: Any, **kws: Any) -> None:
         if self.isEnabledFor(CARIBOU_LEVEL):
             self._log(CARIBOU_LEVEL, message, args, **kws)
 
 
-## Replace the default logger class with your custom logger class
 logging.setLoggerClass(CustomLogger)
-
-## Create an instance of your custom logger class
 logger = cast(CustomLogger, logging.getLogger(__name__))
-
-## Set the logging level
 logger.setLevel(logging.INFO)
 
 
+# Define custom encoder and decoder for JSON
 class CustomEncoder(json.JSONEncoder):
     def default(self, o: Any) -> Any:
         if isinstance(o, bytes):
@@ -482,16 +476,6 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
                     "invoked": False,
                 }
             )
-
-        # FOR DEBUG ONLY -> can be safely removed if needed
-        log_message = (
-            f"INFORMING_SYNC_NODE: INSTANCE ({predecessor_instance_name}) informing "
-            f"SYNC_NODE ({successor_instance_name}) of non-execution"
-        )
-        self.log_for_retrieval(
-            log_message,
-            workflow_placement_decision["run_id"],
-        )
 
         return total_sync_data_response_size, total_consumed_write_capacity
 

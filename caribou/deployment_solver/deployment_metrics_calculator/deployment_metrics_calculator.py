@@ -78,8 +78,6 @@ class DeploymentMetricsCalculator(ABC):  # pylint: disable=too-many-instance-att
         # Calculate the overall cost, runtime, and carbon footprint of the deployment
         worklflow_metrics = workflow_instance.calculate_overall_cost_runtime_carbon()
 
-        print("_________________________________\n")
-
         return worklflow_metrics
 
     def _is_invoked(self, from_instance_index: int, to_instance_index: int) -> bool:

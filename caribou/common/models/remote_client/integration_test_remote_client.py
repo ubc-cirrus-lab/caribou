@@ -238,6 +238,7 @@ class IntegrationTestRemoteClient(RemoteClient):  # pylint: disable=too-many-pub
         conn.close()
         return result[0] if result else b""
 
+    # pylint: disable=unused-argument
     def get_key_present_in_table(self, table_name: str, key: str, consistent_read: bool = True) -> bool:
         conn = self._db_connection()
         cursor = conn.cursor()
@@ -469,5 +470,6 @@ class IntegrationTestRemoteClient(RemoteClient):  # pylint: disable=too-many-pub
     def get_logs_between(self, function_instance: str, start: datetime, end: datetime) -> list[str]:
         return []
 
+    # pylint: disable=unused-argument
     def get_insights_logs_between(self, function_instance: str, start: datetime, end: datetime) -> list[str]:
         return []

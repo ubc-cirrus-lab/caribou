@@ -7,10 +7,6 @@ from PIL import Image, ImageFilter
 
 from caribou.deployment.client import CaribouWorkflow
 
-# Change the following bucket name and region to match your setup
-s3_bucket_name = "dn1-caribou-image-processing-benchmark"
-s3_bucket_region_name = "us-east-1"
-
 workflow = CaribouWorkflow(name="image_processing", version="0.0.1")
 
 
@@ -27,13 +23,13 @@ def flip(event: dict[str, Any]) -> dict[str, Any]:
     else:
         raise ValueError("No image name provided")
 
-    s3 = boto3.client("s3", region_name=s3_bucket_region_name)
+    s3 = boto3.client("s3")
 
     with TemporaryDirectory() as tmp_dir:
         remote_image_name_path = f"input/{image_name}"
 
         s3.download_file(
-            s3_bucket_name, remote_image_name_path, f"{tmp_dir}/{image_name}"
+            "caribou-image-processing-benchmark", remote_image_name_path, f"{tmp_dir}/{image_name}"
         )
 
         image = Image.open(f"{tmp_dir}/{image_name}")
@@ -46,7 +42,7 @@ def flip(event: dict[str, Any]) -> dict[str, Any]:
 
         remote_path = f"flipped_images/{image_name}"
 
-        s3.upload_file(tmp_result_file, s3_bucket_name, remote_path)
+        s3.upload_file(tmp_result_file, "caribou-image-processing-benchmark", remote_path)
 
         payload = {
             "path": remote_path,
@@ -61,13 +57,13 @@ def flip(event: dict[str, Any]) -> dict[str, Any]:
 def rotate(event: dict[str, Any]) -> dict[str, Any]:
     path = event["path"]
 
-    s3 = boto3.client("s3", region_name=s3_bucket_region_name)
+    s3 = boto3.client("s3")
 
     with TemporaryDirectory() as tmp_dir:
 
         image_name = path.split("/")[-1]
 
-        s3.download_file(s3_bucket_name, path, f"{tmp_dir}/{image_name}")
+        s3.download_file("caribou-image-processing-benchmark", path, f"{tmp_dir}/{image_name}")
 
         image = Image.open(f"{tmp_dir}/{image_name}")
 
@@ -79,7 +75,7 @@ def rotate(event: dict[str, Any]) -> dict[str, Any]:
 
         remote_path = f"rotated_images/{image_name}"
 
-        s3.upload_file(tmp_result_file, s3_bucket_name, remote_path)
+        s3.upload_file(tmp_result_file, "caribou-image-processing-benchmark", remote_path)
 
         payload = {
             "path": remote_path,
@@ -94,13 +90,13 @@ def rotate(event: dict[str, Any]) -> dict[str, Any]:
 def filter_function(event: dict[str, Any]) -> dict[str, Any]:
     path = event["path"]
 
-    s3 = boto3.client("s3", region_name=s3_bucket_region_name)
+    s3 = boto3.client("s3")
 
     with TemporaryDirectory() as tmp_dir:
 
         image_name = path.split("/")[-1]
 
-        s3.download_file(s3_bucket_name, path, f"{tmp_dir}/{image_name}")
+        s3.download_file("caribou-image-processing-benchmark", path, f"{tmp_dir}/{image_name}")
 
         image = Image.open(f"{tmp_dir}/{image_name}")
 
@@ -112,7 +108,7 @@ def filter_function(event: dict[str, Any]) -> dict[str, Any]:
 
         remote_path = f"filtered_images/{image_name}"
 
-        s3.upload_file(tmp_result_file, s3_bucket_name, remote_path)
+        s3.upload_file(tmp_result_file, "caribou-image-processing-benchmark", remote_path)
 
         payload = {
             "path": remote_path,
@@ -127,13 +123,13 @@ def filter_function(event: dict[str, Any]) -> dict[str, Any]:
 def greyscale(event: dict[str, Any]) -> dict[str, Any]:
     path = event["path"]
 
-    s3 = boto3.client("s3", region_name=s3_bucket_region_name)
+    s3 = boto3.client("s3")
 
     with TemporaryDirectory() as tmp_dir:
 
         image_name = path.split("/")[-1]
 
-        s3.download_file(s3_bucket_name, path, f"{tmp_dir}/{image_name}")
+        s3.download_file("caribou-image-processing-benchmark", path, f"{tmp_dir}/{image_name}")
 
         image = Image.open(f"{tmp_dir}/{image_name}")
 
@@ -145,7 +141,7 @@ def greyscale(event: dict[str, Any]) -> dict[str, Any]:
 
         remote_path = f"greyscale_images/{image_name}"
 
-        s3.upload_file(tmp_result_file, s3_bucket_name, remote_path)
+        s3.upload_file(tmp_result_file, "caribou-image-processing-benchmark", remote_path)
 
         payload = {
             "path": remote_path,
@@ -160,13 +156,13 @@ def greyscale(event: dict[str, Any]) -> dict[str, Any]:
 def resize(event: dict[str, Any]) -> dict[str, Any]:
     path = event["path"]
 
-    s3 = boto3.client("s3", region_name=s3_bucket_region_name)
+    s3 = boto3.client("s3")
 
     with TemporaryDirectory() as tmp_dir:
 
         image_name = path.split("/")[-1]
 
-        s3.download_file(s3_bucket_name, path, f"{tmp_dir}/{image_name}")
+        s3.download_file("caribou-image-processing-benchmark", path, f"{tmp_dir}/{image_name}")
 
         image = Image.open(f"{tmp_dir}/{image_name}")
 
@@ -178,6 +174,6 @@ def resize(event: dict[str, Any]) -> dict[str, Any]:
 
         upload_path = f"resized_images/{image_name}"
 
-        s3.upload_file(tmp_result_file, s3_bucket_name, upload_path)
+        s3.upload_file(tmp_result_file, "caribou-image-processing-benchmark", upload_path)
 
     return {"status": 200}

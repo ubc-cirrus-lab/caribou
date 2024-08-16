@@ -41,7 +41,7 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
 
         # Consider the case of data transfer during execution being free at home region
         # of the user workflow. (Basically making the assumption that functions deployed
-        # at user specified home region will not incurr carbon from data transfer )
+        # at user specified home region will not incur carbon from data transfer)
         self._carbon_free_dt_during_execution_at_home_region: bool = carbon_free_dt_during_execution_at_home_region
 
     def alter_carbon_setting(self, carbon_setting: Optional[str]) -> None:
@@ -78,8 +78,6 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
     ) -> tuple[float, float]:
         execution_carbon = 0.0
         transmission_carbon = 0.0
-
-        # print(f"instance_name: {instance_name}, at region: {region_name}")
 
         # If the function is actually invoked
         if is_invoked:
@@ -127,52 +125,85 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
                     # Get the carbon intensity of the region (if known)
                     # (If data transfer is within the same region)
                     # Otherwise it will be inter-region data transfer,
-                    # and thus we use the average carbon intensity of the USA.
                     transmission_network_carbon_intensity = self._carbon_loader.get_grid_carbon_intensity(
                         current_region_name, self._hourly_carbon_setting
                     )
+            elif from_region_name is not None and current_region_name is not None:
+                # If we know the source and destination regions, we can get the carbon intensity
+                # of the transmission network between the two regions.
+                transmission_network_carbon_intensity = self._get_network_carbon_intensity_of_route_between_two_regions(
+                    from_region_name, current_region_name
+                )
 
-            # TODO: At some point, actually change this from looking at average carbon
-            # intensity of a country or continent to looking at the average carbon intensity
-            # of the route between the two regions.
             total_transmission_carbon += (
                 data_transfer_gb * self._energy_factor_of_transmission * transmission_network_carbon_intensity
             )
 
         # Calculate the carbon from data transfer
-        # Of data that we CANNOT track represented by data_transfer_during_execution
+        # Of data that we CANNOT track represented by data_transfer_during_execution.
+        # There are no way to tell where the data is coming from
         # This may come from the data transfer of user code during execution OR
         # From Lambda runtimes or some AWS internal data transfer.
-        current_region_is_home_region = current_region_name == self._workflow_loader.get_home_region()
+        home_region = self._workflow_loader.get_home_region()
+        current_region_is_home_region = current_region_name == home_region
+
+        # We assume that half of the data transfer is from the home region
+        # and the other half is from the average carbon intensity of the USA.
+        home_region_dtde = internet_dtde = data_transfer_during_execution / 2
+
+        # If the data transfer is from the internet, we use the average carbon intensity of the USA
+        # And it is always consider inter-region data transfer. (So always apply)
+        total_transmission_carbon += (
+            internet_dtde * self._energy_factor_of_transmission * average_carbon_intensity_of_usa
+        )
+
+        # If the data transfer is from the home region, we use the carbon intensity of the home region
+        # And it is always consider intra-region data transfer. (May or may not apply)
         if not self._carbon_free_dt_during_execution_at_home_region or not current_region_is_home_region:
             transmission_network_carbon_intensity = average_carbon_intensity_of_usa
-            if current_region_is_home_region and current_region_name is not None:
-                # Here we make the assumption that the user code accesses data from the home region
-                # thus the grid carbon intensity will be the same as the home region if it is at the home region.
-                # Otherwise, we use the average carbon intensity of the USA.
-                transmission_network_carbon_intensity = self._carbon_loader.get_grid_carbon_intensity(
-                    current_region_name, self._hourly_carbon_setting
+            if current_region_name is not None:
+                transmission_network_carbon_intensity = self._get_network_carbon_intensity_of_route_between_two_regions(
+                    home_region, current_region_name
                 )
 
             total_transmission_carbon += (
-                data_transfer_during_execution
-                * self._energy_factor_of_transmission
-                * transmission_network_carbon_intensity
+                home_region_dtde * self._energy_factor_of_transmission * transmission_network_carbon_intensity
             )
 
         return total_transmission_carbon
 
+    def _get_network_carbon_intensity_of_route_between_two_regions(self, region_one: str, region_two: str) -> float:
+        if region_one == region_two and region_one is not None:
+            region_one_carbon_intensity = self._carbon_loader.get_grid_carbon_intensity(
+                region_one, self._hourly_carbon_setting
+            )
+            return region_one_carbon_intensity
+
+        # Get the carbon intensity of the route betweem two regions.
+        # We can estimate it as the average carbon intensity of the grid
+        # between the two regions. (No order is assumed)
+        # If we have a better model, we can replace this with that.
+        region_one_carbon_intensity = self._carbon_loader.get_grid_carbon_intensity(
+            region_one, self._hourly_carbon_setting
+        )
+        region_two_carbon_intensity = self._carbon_loader.get_grid_carbon_intensity(
+            region_two, self._hourly_carbon_setting
+        )
+        transmission_network_carbon_intensity_gco2e = (region_one_carbon_intensity + region_two_carbon_intensity) / 2
+
+        return transmission_network_carbon_intensity_gco2e
+
     def _calculate_execution_carbon(
-        self, instance_name: str, region_name: str, execution_latency: float, is_redirector: bool
+        self, instance_name: str, region_name: str, execution_latency_s: float, is_redirector: bool
     ) -> float:
         # Calculate the carbon from running the execution (solely for cpu and memory)
-        compute_factor, memory_factor, power_factor = self._get_execution_conversion_ratio(
+        compute_factor_kw_h, memory_factor_kw_h, power_factor_gco2e_kwh = self._get_execution_conversion_ratio(
             instance_name, region_name, is_redirector
         )
-        cloud_provider_usage_kwh = execution_latency * (compute_factor + memory_factor)
-        execution_carbon = cloud_provider_usage_kwh * power_factor
+        cloud_provider_usage_kwh = execution_latency_s * (compute_factor_kw_h + memory_factor_kw_h)
+        execution_carbon_gco2e = cloud_provider_usage_kwh * power_factor_gco2e_kwh
 
-        return execution_carbon
+        return execution_carbon_gco2e
 
     def _get_execution_conversion_ratio(
         self, instance_name: str, region_name: str, is_redirector: bool
@@ -182,12 +213,8 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
         if cache_key in self._execution_conversion_ratio_cache:
             return self._execution_conversion_ratio_cache[cache_key]
 
-        # datacenter loader data
-        ## Get the average power consumption of the instance in the given region (kw_compute)
-        # average_cpu_power: float = self._datacenter_loader.get_average_cpu_power(region_name)
-
         ## Get the average power consumption of the instance in the given region (kw_GB)
-        average_memory_power: float = self._datacenter_loader.get_average_memory_power(region_name)
+        average_memory_power_kw_gb: float = self._datacenter_loader.get_average_memory_power(region_name)
 
         ## Get the carbon free energy of the grid in the given region
         cfe: float = 0.0
@@ -198,29 +225,34 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
         pue: float = self._datacenter_loader.get_pue(region_name)
 
         ## Get the carbon intensity of the grid in the given region (gCO2e/kWh)
-        grid_co2e: float = self._carbon_loader.get_grid_carbon_intensity(region_name, self._hourly_carbon_setting)
+        grid_co2e_gco2e_kwh: float = self._carbon_loader.get_grid_carbon_intensity(
+            region_name, self._hourly_carbon_setting
+        )
 
         ## Get the number of vCPUs and Memory of the instance
         provider, _ = region_name.split(":")  # Get the provider from the region name
         vcpu: float = self._workflow_loader.get_vcpu(instance_name, provider)
-        memory: float = self._workflow_loader.get_memory(instance_name, provider)
+        memory_mb: float = self._workflow_loader.get_memory(instance_name, provider)
 
         # Get the min/max cpu power (In units of kWh)
-        min_cpu_power: float = self._datacenter_loader.get_min_cpu_power(region_name)
-        max_cpu_power: float = self._datacenter_loader.get_max_cpu_power(region_name)
+        min_cpu_power_kw: float = self._datacenter_loader.get_min_cpu_power(region_name)
+        max_cpu_power_kw: float = self._datacenter_loader.get_max_cpu_power(region_name)
 
         # Covert memory in MB to GB
-        memory = memory / 1024
+        memory_gb = memory_mb / 1024
 
         # Get the average cpu utilization of the instance
         utilization = self._workflow_loader.get_average_cpu_utilization(instance_name, region_name, is_redirector)
-        # average_cpu_power = (0.74 + utilization * (3.5 - 0.74)) / 1000
-        average_cpu_power = min_cpu_power + utilization * (max_cpu_power - min_cpu_power)
+        average_cpu_power_kw = min_cpu_power_kw + utilization * (max_cpu_power_kw - min_cpu_power_kw)
 
-        compute_factor = average_cpu_power * vcpu / 3600
-        memory_factor = average_memory_power * memory / 3600
-        power_factor = (1 - cfe) * pue * grid_co2e
+        compute_factor_kw_h = average_cpu_power_kw * vcpu / 3600
+        memory_factor_kw_h = average_memory_power_kw_gb * memory_gb / 3600
+        power_factor_gco2e_kwh = (1 - cfe) * pue * grid_co2e_gco2e_kwh
 
         # Add the conversion ratio to the cache
-        self._execution_conversion_ratio_cache[cache_key] = (compute_factor, memory_factor, power_factor)
+        self._execution_conversion_ratio_cache[cache_key] = (
+            compute_factor_kw_h,
+            memory_factor_kw_h,
+            power_factor_gco2e_kwh,
+        )
         return self._execution_conversion_ratio_cache[cache_key]

@@ -46,30 +46,39 @@ def run_data_collection():
     expected_provider_region_data = [
         (
             "IntegrationTestProvider:rivendell",
-            '{"execution_cost": {"invocation_cost": {"arm64": 2.4e-07, "x86_64": 2.3e-07, "free_tier_invocations": 1000000}, "compute_cost": {"arm64": 1.56138e-05, "x86_64": 1.95172e-05, "free_tier_compute_gb_s": 400000}, "unit": "USD"}, "transmission_cost": {"global_data_transfer": 0.09, "provider_data_transfer": 0.02, "unit": "USD/GB"}, "pue": 1.15, "cfe": 1, "average_memory_power": 0.0003725, "average_cpu_power": 0.00212, "available_architectures": ["arm64", "x86_64"]}',
+            '{"execution_cost": {"invocation_cost": {"arm64": 2.4e-07, "x86_64": 2.3e-07, "free_tier_invocations": 1000000}, "compute_cost": {"arm64": 1.56138e-05, "x86_64": 1.95172e-05, "free_tier_compute_gb_s": 400000}, "unit": "USD"}, "transmission_cost": {"global_data_transfer": 0.09, "provider_data_transfer": 0.02, "unit": "USD/GB"}, "sns_cost": {"cost": 0.011, "unit": "USD"}, "dynamodb_cost": {"cost": 0.021, "unit": "USD"}, "ecr_cost": {"cost": 0.031, "unit": "USD"}, "pue": 1.11, "cfe": 0.0, "average_memory_power": 0.0003725, "max_cpu_power_kWh": 0.0035, "min_cpu_power_kWh": 0.00074, "available_architectures": ["arm64", "x86_64"]}',
         ),
         (
             "IntegrationTestProvider:lothlorien",
-            '{"execution_cost": {"invocation_cost": {"arm64": 2.3e-07, "x86_64": 2.2e-07, "free_tier_invocations": 1000000}, "compute_cost": {"arm64": 1.56118e-05, "x86_64": 1.93172e-05, "free_tier_compute_gb_s": 400000}, "unit": "USD"}, "transmission_cost": {"global_data_transfer": 0.04, "provider_data_transfer": 0.09, "unit": "USD/GB"}, "pue": 1.15, "cfe": 1, "average_memory_power": 0.0003725, "average_cpu_power": 0.00212, "available_architectures": ["arm64", "x86_64"]}',
+            '{"execution_cost": {"invocation_cost": {"arm64": 2.3e-07, "x86_64": 2.2e-07, "free_tier_invocations": 1000000}, "compute_cost": {"arm64": 1.56118e-05, "x86_64": 1.93172e-05, "free_tier_compute_gb_s": 400000}, "unit": "USD"}, "transmission_cost": {"global_data_transfer": 0.04, "provider_data_transfer": 0.09, "unit": "USD/GB"}, "sns_cost": {"cost": 0.012, "unit": "USD"}, "dynamodb_cost": {"cost": 0.022, "unit": "USD"}, "ecr_cost": {"cost": 0.032, "unit": "USD"}, "pue": 1.11, "cfe": 0.0, "average_memory_power": 0.0003725, "max_cpu_power_kWh": 0.0035, "min_cpu_power_kWh": 0.00074, "available_architectures": ["arm64", "x86_64"]}',
         ),
         (
             "IntegrationTestProvider:anduin",
-            '{"execution_cost": {"invocation_cost": {"arm64": 2.2e-07, "x86_64": 2.1e-07, "free_tier_invocations": 1000000}, "compute_cost": {"arm64": 1.56128e-05, "x86_64": 1.91172e-05, "free_tier_compute_gb_s": 400000}, "unit": "USD"}, "transmission_cost": {"global_data_transfer": 0.11, "provider_data_transfer": 0.05, "unit": "USD/GB"}, "pue": 1.15, "cfe": 1, "average_memory_power": 0.0003725, "average_cpu_power": 0.00212, "available_architectures": ["arm64", "x86_64"]}',
+            '{"execution_cost": {"invocation_cost": {"arm64": 2.2e-07, "x86_64": 2.1e-07, "free_tier_invocations": 1000000}, "compute_cost": {"arm64": 1.56128e-05, "x86_64": 1.91172e-05, "free_tier_compute_gb_s": 400000}, "unit": "USD"}, "transmission_cost": {"global_data_transfer": 0.11, "provider_data_transfer": 0.05, "unit": "USD/GB"}, "sns_cost": {"cost": 0.013, "unit": "USD"}, "dynamodb_cost": {"cost": 0.023, "unit": "USD"}, "ecr_cost": {"cost": 0.033, "unit": "USD"}, "pue": 1.11, "cfe": 0.0, "average_memory_power": 0.0003725, "max_cpu_power_kWh": 0.0035, "min_cpu_power_kWh": 0.00074, "available_architectures": ["arm64", "x86_64"]}',
         ),
         (
             "IntegrationTestProvider:fangorn",
-            '{"execution_cost": {"invocation_cost": {"arm64": 2.1e-07, "x86_64": 2e-07, "free_tier_invocations": 1000000}, "compute_cost": {"arm64": 1.56148e-05, "x86_64": 1.89172e-05, "free_tier_compute_gb_s": 400000}, "unit": "USD"}, "transmission_cost": {"global_data_transfer": 0.07, "provider_data_transfer": 0.03, "unit": "USD/GB"}, "pue": 1.15, "cfe": 1, "average_memory_power": 0.0003725, "average_cpu_power": 0.00212, "available_architectures": ["arm64", "x86_64"]}',
+            '{"execution_cost": {"invocation_cost": {"arm64": 2.1e-07, "x86_64": 2e-07, "free_tier_invocations": 1000000}, "compute_cost": {"arm64": 1.56148e-05, "x86_64": 1.89172e-05, "free_tier_compute_gb_s": 400000}, "unit": "USD"}, "transmission_cost": {"global_data_transfer": 0.07, "provider_data_transfer": 0.03, "unit": "USD/GB"}, "sns_cost": {"cost": 0.014, "unit": "USD"}, "dynamodb_cost": {"cost": 0.024, "unit": "USD"}, "ecr_cost": {"cost": 0.034, "unit": "USD"}, "pue": 1.11, "cfe": 0.0, "average_memory_power": 0.0003725, "max_cpu_power_kWh": 0.0035, "min_cpu_power_kWh": 0.00074, "available_architectures": ["arm64", "x86_64"]}',
         ),
     ]
 
+
     for region in provider_region_data:
-        assert region in expected_provider_region_data
+        actual_data = region[1].replace(" ", "").replace("\n", "")
+        found = False
+        for expected_region in expected_provider_region_data:
+            if region[0] == expected_region[0]:
+                expected_data = expected_region[1].replace(" ", "").replace("\n", "")
+                if actual_data == expected_data:
+                    found = True
+                    break
+        assert found, f"Unexpected region data: {region}"
 
     carbon_collector.run()
 
     carbon_region_data = remote_client.select_all_from_table(CARBON_REGION_TABLE)
 
-    assert len(carbon_region_data) == 4
+    
 
     expected_carbon_region_data = [
         (
@@ -85,15 +94,22 @@ def run_data_collection():
             'IntegrationTestProvider:fangorn', '{"averages": {"overall": {"carbon_intensity": 57.265384}, "0": {"carbon_intensity": 57.265384}, "1": {"carbon_intensity": 57.265384}, "2": {"carbon_intensity": 57.265384}, "3": {"carbon_intensity": 57.265384}, "4": {"carbon_intensity": 57.265384}, "5": {"carbon_intensity": 57.265384}, "6": {"carbon_intensity": 57.265384}, "7": {"carbon_intensity": 57.265384}, "8": {"carbon_intensity": 57.265384}, "9": {"carbon_intensity": 57.265384}, "10": {"carbon_intensity": 57.265384}, "11": {"carbon_intensity": 57.265384}, "12": {"carbon_intensity": 57.265384}, "13": {"carbon_intensity": 57.265384}, "14": {"carbon_intensity": 57.265384}, "15": {"carbon_intensity": 57.265384}, "16": {"carbon_intensity": 57.265384}, "17": {"carbon_intensity": 57.265384}, "18": {"carbon_intensity": 57.265384}, "19": {"carbon_intensity": 57.265384}, "20": {"carbon_intensity": 57.265384}, "21": {"carbon_intensity": 57.265384}, "22": {"carbon_intensity": 57.265384}, "23": {"carbon_intensity": 57.265384}}, "units": "gCO2eq/kWh", "transmission_distances": {"IntegrationTestProvider:rivendell": 356.6428494192109, "IntegrationTestProvider:lothlorien": 426.0856966065312, "IntegrationTestProvider:anduin": 429.85848503575806, "IntegrationTestProvider:fangorn": 0.0}, "transmission_distances_unit": "km"}'
         )
     ]
-    
+
+    assert len(carbon_region_data) == 4
     for region in carbon_region_data:
-        assert region in expected_carbon_region_data
+        actual_data = region[1].replace(" ", "").replace("\n", "")
+        found = False
+        for expected_region in expected_carbon_region_data:
+            if region[0] == expected_region[0]:
+                expected_data = expected_region[1].replace(" ", "").replace("\n", "")
+                if actual_data == expected_data:
+                    found = True
+                    break
+        assert found, f"Unexpected region data: {region}"
 
     performance_collector.run()
 
     performance_region_data = remote_client.select_all_from_table(PERFORMANCE_REGION_TABLE)
-
-    assert len(performance_region_data) == 4
 
     expected_performance_region_data = [
         (
@@ -114,7 +130,8 @@ def run_data_collection():
         ),
     ]
 
+    assert len(performance_region_data) == 4
     for region in performance_region_data:
-        assert region in expected_performance_region_data
+        assert region in expected_performance_region_data, f"Unexpected performance data: {region}"
 
     print("Data collection successful.")

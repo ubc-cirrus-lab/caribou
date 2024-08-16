@@ -47,10 +47,11 @@ class RuntimeCalculator(InputCalculator):
         )
 
         if len(transmission_latency_distribution) == 0:
-            # TODO: MAKE SURE THIS WORKS IF NOT THEN USE AN ALTERNATIVE METHOD!!!
-            # Default to transmission latency distribution of what happens when simulated_sync_predecessor_name
-            # Calls sync_node_name as a normal transmission
-            ## This type of transmission will always go to a sync node
+            # Default to transmission latency distribution of what happens when
+            # simulated_sync_predecessor_name Calls sync_node_name as a normal transmission
+            # While this might not be the most accurate, it is the best we can do in this case
+            # However, this can be improved in the future.
+            # This type of transmission will always go to a sync node
             transmission_latency_distribution = self._get_transmission_latency_distribution(
                 simulated_sync_predecessor_name,
                 from_region_name,
@@ -58,10 +59,8 @@ class RuntimeCalculator(InputCalculator):
                 to_region_name,
                 transmission_size,
                 True,
-                False,  # Does not affect the latency (as not start hop)
+                False,  # Does not affect the latency (as it is never the start hop)
             )
-
-        # print(f'SIMULATED transmission_latency_distribution: {transmission_latency_distribution[:5]}\n')
 
         # Pick a transmission latency
         transmission_latency: float = transmission_latency_distribution[
@@ -90,13 +89,7 @@ class RuntimeCalculator(InputCalculator):
         transmission_size: float = transmission_size_distribution[
             int(random.random() * (len(transmission_size_distribution) - 1))
         ]
-        # # TODO: Remove print statements
-        # if not from_instance_name:
-        #     print("Instance Name: Start Hop")
 
-        # print(f"transmission_size_distribution: {transmission_size_distribution}")
-
-        # print(from_instance_name, to_instance_name, from_region_name, to_region_name, transmission_size)
         # Get the transmission latency distribution of the input size
         transmission_latency_distribution: list[float] = self._get_transmission_latency_distribution(
             from_instance_name,
@@ -107,7 +100,6 @@ class RuntimeCalculator(InputCalculator):
             is_sync_predecessor,
             consider_from_client_latency,
         )
-        # print(f'transmission_latency_distribution: {transmission_latency_distribution[:5]}\n')
 
         # Pick a transmission latency
         transmission_latency: float = transmission_latency_distribution[
@@ -154,11 +146,6 @@ class RuntimeCalculator(InputCalculator):
                         to_region_name, data_transfer_size
                     )
 
-        # print(f"transmission_latency_distribution: {transmission_latency_distribution[:5]},
-        # From: {from_instance_name}, To: {to_instance_name},
-        # From Region: {from_region_name}, To Region: {to_region_name},
-        # Size: {data_transfer_size}")
-
         if len(transmission_latency_distribution) == 0:
             # There should never be a case where the size distribution is empty
             # As the missing handling should have taken care of it
@@ -202,7 +189,6 @@ class RuntimeCalculator(InputCalculator):
             average_cloud_ping_transmission_latency_performance - average_cloud_ping_home_region_latency_performance,
             0.0,
         )
-        # print(f"Average Cloud Ping Latency Difference: {average_cloud_ping_latency_difference}")
 
         # Get the measure latency from the home region (actual latency)
         home_region_latency_distribution_measured = self._workflow_loader.get_latency_distribution(
@@ -212,12 +198,12 @@ class RuntimeCalculator(InputCalculator):
             # For cases where its a sync predecessor, there might be no latency data
             # even for the home region, in this case we default to the average latency between
             # two of the same region (A default value)
-            # TODO: Verify or find a better solution
             home_region_latency_distribution_measured = [SOLVER_HOME_REGION_TRANSMISSION_LATENCY_DEFAULT]
 
         # Calculate the multiplier to apply to the added latency
         # For sync nodes this would be x(1 + 4), as it involves one update to sync_decision_table
-        # and one upload to s3, which is 4 times the latency of a normal transmission
+        # and one upload to s3, which is 4 times the latency of a normal transmission.
+        # This is a rough estimate, and it can be improved in the future.
         multiplier = 1.0
         if is_sync_predecessor:
             multiplier += 4.0
@@ -315,10 +301,6 @@ class RuntimeCalculator(InputCalculator):
             )
             original_runtime_region_name = home_region
 
-        # print(f"Instance Name: {instance_name}")
-        # print(f"Original Region: {original_runtime_region_name}", f"Desired Region: {desired_runtime_region_name}")
-        # print(f"Runtime Distribution: {runtime_distribution[:5]}")
-
         # Pick a random runtime from the distribution
         runtime: float = runtime_distribution[int(random.random() * (len(runtime_distribution) - 1))]
         return self._retrieve_runtimes_and_data_transfer(
@@ -346,15 +328,11 @@ class RuntimeCalculator(InputCalculator):
             instance_name, is_redirector
         )
 
-        # print(f"Auxiliary Index Translation: {auxiliary_index_translation}")
-
         # Get the auxiliary data distribution of the instance in the given region
-        # TODO: Cache this
+        # This can be cached in the future for performance improvements
         execution_auxiliary_data: list[list[float]] = self._workflow_loader.get_auxiliary_data_distribution(
             instance_name, original_runtime_region_name, runtime, is_redirector
         )
-
-        # print(f"Execution Auxiliary Data: {execution_auxiliary_data}")
 
         # Pick a random auxiliary data from the distribution
         auxiliary_data: list[float] = execution_auxiliary_data[

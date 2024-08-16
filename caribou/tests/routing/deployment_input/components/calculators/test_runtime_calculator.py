@@ -191,6 +191,87 @@ class TestRuntimeCalculator(unittest.TestCase):
                 self.to_region_name, self.data_transfer_size
             )
 
+    def test_calculate_transmission_size_and_latency_empty_distributions(self):
+        # Mock the distribution methods to return empty lists
+        self.workflow_loader.get_data_transfer_size_distribution.return_value = []
+        self.workflow_loader.get_latency_distribution.return_value = []
+
+        with self.assertRaises(ValueError):
+            self.runtime_calculator.calculate_transmission_size_and_latency(
+                self.from_instance_name,
+                self.from_region_name,
+                self.to_instance_name,
+                self.to_region_name,
+                is_sync_predecessor=False,
+                consider_from_client_latency=False,
+            )
+
+    def test_calculate_simulated_transmission_size_and_latency_empty_latency_distribution(self):
+        # Mock the distribution methods
+        self.workflow_loader.get_non_execution_sns_transfer_size.return_value = 0.1
+        self.workflow_loader.get_non_execution_transfer_latency_distribution.return_value = []
+
+        # Mock fallback method
+        self.runtime_calculator._get_transmission_latency_distribution = MagicMock(return_value=[0.25])
+
+        # Call the method
+        (
+            transmission_size,
+            transmission_latency,
+        ) = self.runtime_calculator.calculate_simulated_transmission_size_and_latency(
+            self.from_instance_name,
+            self.to_instance_name,
+            self.from_instance_name,
+            self.to_instance_name,
+            self.from_region_name,
+            self.to_region_name,
+        )
+
+        # Verify fallback was used
+        self.assertEqual(transmission_size, 0.1)
+        self.assertEqual(transmission_latency, 0.25)
+
+    @patch("random.random", return_value=0.0)
+    def test_calculate_node_runtimes_and_data_transfer_empty_runtime_distribution(self, mock_random):
+        # Setup mocks
+        self.workflow_loader.get_home_region.return_value = "home_region"
+        self.workflow_loader.get_runtime_distribution.side_effect = [
+            [],  # First call: No data in original region
+            [5.0],  # Second call: Data in home region
+        ]
+        self.workflow_loader.get_auxiliary_index_translation.return_value = {
+            "data_transfer_during_execution_gb": 0,
+            "successor_instance": 1,
+        }
+        self.workflow_loader.get_auxiliary_data_distribution.return_value = [[0.0, 0.2], [0.1, 0.3]]
+
+        # Mocking get_relative_performance to return a concrete value
+        self.performance_loader.get_relative_performance.return_value = 1.0
+
+        instance_indexer = MagicMock(spec=Indexer)
+        instance_indexer.value_to_index.side_effect = lambda x: 1 if x == "successor_instance" else 0
+
+        # Call the method
+        (
+            runtime_data,
+            current_execution_time,
+            data_transfer,
+        ) = self.runtime_calculator.calculate_node_runtimes_and_data_transfer(
+            "instance1",
+            "region1",
+            previous_cumulative_runtime=0.0,
+            instance_indexer=instance_indexer,
+            is_redirector=False,
+        )
+
+        # Verify that the fallback to home region worked
+        self.assertEqual(runtime_data["current"], 5.0)
+        self.assertEqual(current_execution_time, 5.0)
+        self.assertEqual(data_transfer, 0.0)
+
+        # Ensure `get_runtime_distribution` was called for both the original and home regions
+        self.workflow_loader.get_runtime_distribution.assert_any_call("instance1", "home_region", False)
+
 
 if __name__ == "__main__":
     unittest.main()

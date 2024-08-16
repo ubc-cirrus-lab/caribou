@@ -32,10 +32,6 @@ class CostCalculator(InputCalculator):
     ) -> float:
         total_cost = 0.0
 
-        # We model the virtual start hop cost where the current region is the SYSTEM Region
-        # As it pulls wpd data from the system region.
-        current_region_name = f"aws:{GLOBAL_SYSTEM_REGION}"
-
         # Add the cost of SNS (Our current orchastration service)
         # Here we say that current region is None, such that we never
         # incur additional cost from intra-region transfer of SNS as it is not
@@ -45,10 +41,12 @@ class CostCalculator(InputCalculator):
         # We do not ever incur egress cost, as we assume client request is not
         # from a AWS or other cloud provider region and thus egrees cost is 0.0
 
+        # We model the virtual start hop cost related to dynamodb read and write
+        # as accessing the system region dynamodb table.
+        system_region_name = f"aws:{GLOBAL_SYSTEM_REGION}"
+
         # Calculate the dynamodb read/write capacity cost
-        total_cost += self._calculate_dynamodb_cost(
-            current_region_name, dynamodb_read_capacity, dynamodb_write_capacity
-        )
+        total_cost += self._calculate_dynamodb_cost(system_region_name, dynamodb_read_capacity, dynamodb_write_capacity)
 
         return total_cost
 
@@ -150,9 +148,9 @@ class CostCalculator(InputCalculator):
         # This is simply the egress cost of data transfer
         # In a region
         # Get the cost of transmission
-        transmission_cost_gb: float = self._datacenter_loader.get_transmission_cost(current_region_name, True)
+        transmission_cost_usd_gb: float = self._datacenter_loader.get_transmission_cost(current_region_name, True)
 
-        return total_data_output_size * transmission_cost_gb
+        return total_data_output_size * transmission_cost_usd_gb
 
     def _calculate_execution_cost(self, instance_name: str, region_name: str, execution_time: float) -> float:
         cost_from_compute_s, invocation_cost = self._get_execution_conversion_ratio(instance_name, region_name)
@@ -166,16 +164,16 @@ class CostCalculator(InputCalculator):
 
         # Get the number of vCPUs and Memory of the instance
         provider, _ = region_name.split(":")
-        memory: float = self._workflow_loader.get_memory(instance_name, provider)
+        memory_mb: float = self._workflow_loader.get_memory(instance_name, provider)
 
         ## datacenter loader data
         architecture: str = self._workflow_loader.get_architecture(instance_name, provider)
         compute_cost: float = self._datacenter_loader.get_compute_cost(region_name, architecture)
         invocation_cost: float = self._datacenter_loader.get_invocation_cost(region_name, architecture)
 
-        # Compute cost in USD /  GB-seconds
+        # Compute cost in USD / GB-seconds
         # Memory in MB, execution_time in seconds, vcpu in vcpu
-        memory_gb: float = memory / 1024
+        memory_gb: float = memory_mb / 1024
         cost_from_compute_s: float = compute_cost * memory_gb  # IN USD / s
 
         # Add the conversion ratio to the cache
