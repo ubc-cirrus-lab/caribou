@@ -1,3 +1,4 @@
+import pathlib
 from datetime import timezone
 
 # Caribou Wrapper Constants
@@ -147,3 +148,7 @@ MAX_WORKERS = 1
 
 ## Orchastration transfer size limitation
 MAX_TRANSFER_SIZE = 256000  # In bytes
+
+
+# Caribou Go Path
+GO_PATH = pathlib.Path(__file__).parents[2].resolve() / "caribou-go"

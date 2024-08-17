@@ -1,21 +1,14 @@
 import ctypes
 import json
-import pdb
-import random
-import time
-from abc import ABC
 
-from caribou.common.constants import TAIL_LATENCY_THRESHOLD
+from caribou.common.constants import TAIL_LATENCY_THRESHOLD, GO_PATH
 from caribou.deployment_solver.deployment_input.input_manager import InputManager
 from caribou.deployment_solver.deployment_metrics_calculator.deployment_metrics_calculator import \
     DeploymentMetricsCalculator
-from caribou.deployment_solver.deployment_metrics_calculator.models.workflow_instance import WorkflowInstance
-from caribou.deployment_solver.models.dag import DAG
 from caribou.deployment_solver.models.instance_indexer import InstanceIndexer
 from caribou.deployment_solver.models.region_indexer import RegionIndexer
 from caribou.deployment_solver.workflow_config import WorkflowConfig
 
-GO_PATH = "/Users/pjavanrood/Documents/Code/caribou-go"
 CaribouGo = ctypes.CDLL(f"{GO_PATH}/caribougo.so")
 SEND_GO = f"{GO_PATH}/data_py_go"
 REC_GO = f"{GO_PATH}/data_go_py"
