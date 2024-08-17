@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 
 import numpy as np
 import requests
@@ -10,7 +10,7 @@ from caribou.data_collector.utils.latency_retriever.latency_retriever import Lat
 
 
 class AWSLatencyRetriever(LatencyRetriever):
-    _percentile_information: dict[str, Any]
+    _percentile_information: Optional[dict[str, Any]] = None
 
     def _get_percentile_information(self) -> dict[str, Any]:
         percentiles = ["p_10", "p_25", "p_50", "p_75", "p_90", "p_98", "p_99"]

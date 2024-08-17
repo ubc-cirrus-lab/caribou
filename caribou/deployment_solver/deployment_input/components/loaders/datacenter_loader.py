@@ -3,12 +3,17 @@ from typing import Any
 from caribou.common.constants import (
     PROVIDER_REGION_TABLE,
     PROVIDER_TABLE,
-    SOLVER_INPUT_AVERAGE_CPU_POWER_DEFAULT,
     SOLVER_INPUT_AVERAGE_MEMORY_POWER_DEFAULT,
     SOLVER_INPUT_CFE_DEFAULT,
     SOLVER_INPUT_COMPUTE_COST_DEFAULT,
+    SOLVER_INPUT_DYNAMODB_READ_COST_DEFAULT,
+    SOLVER_INPUT_DYNAMODB_WRITE_COST_DEFAULT,
+    SOLVER_INPUT_ECR_MONTHLY_STORAGE_COST_DEFAULT,
     SOLVER_INPUT_INVOCATION_COST_DEFAULT,
+    SOLVER_INPUT_MAX_CPU_POWER_DEFAULT,
+    SOLVER_INPUT_MIN_CPU_POWER_DEFAULT,
     SOLVER_INPUT_PUE_DEFAULT,
+    SOLVER_INPUT_SNS_REQUEST_COST_DEFAULT,
     SOLVER_INPUT_TRANSMISSION_COST_DEFAULT,
 )
 from caribou.common.models.remote_client.remote_client import RemoteClient
@@ -35,11 +40,6 @@ class DatacenterLoader(InputLoader):
 
         self._provider_data = self._retrieve_provider_data(providers)  # ignore as not yet implemented
 
-    def get_average_cpu_power(self, region_name: str) -> float:
-        return self._datacenter_data.get(region_name, {}).get(
-            "average_cpu_power", SOLVER_INPUT_AVERAGE_CPU_POWER_DEFAULT
-        )
-
     def get_average_memory_power(self, region_name: str) -> float:
         return self._datacenter_data.get(region_name, {}).get(
             "average_memory_power", SOLVER_INPUT_AVERAGE_MEMORY_POWER_DEFAULT
@@ -50,6 +50,32 @@ class DatacenterLoader(InputLoader):
 
     def get_cfe(self, region_name: str) -> float:
         return self._datacenter_data.get(region_name, {}).get("cfe", SOLVER_INPUT_CFE_DEFAULT)
+
+    def get_max_cpu_power(self, region_name: str) -> float:
+        return self._datacenter_data.get(region_name, {}).get("max_cpu_power_kWh", SOLVER_INPUT_MAX_CPU_POWER_DEFAULT)
+
+    def get_min_cpu_power(self, region_name: str) -> float:
+        return self._datacenter_data.get(region_name, {}).get("min_cpu_power_kWh", SOLVER_INPUT_MIN_CPU_POWER_DEFAULT)
+
+    def get_sns_request_cost(self, region_name: str) -> float:
+        return (
+            self._datacenter_data.get(region_name, {})
+            .get("sns_cost", {})
+            .get("sns_cost", SOLVER_INPUT_SNS_REQUEST_COST_DEFAULT)
+        )
+
+    def get_dynamodb_read_write_cost(self, region_name: str) -> tuple[float, float]:
+        dynamodb_costs = self._datacenter_data.get(region_name, {}).get("dynamodb_cost", {})
+        return dynamodb_costs.get("read_cost", SOLVER_INPUT_DYNAMODB_READ_COST_DEFAULT), dynamodb_costs.get(
+            "write_cost", SOLVER_INPUT_DYNAMODB_WRITE_COST_DEFAULT
+        )
+
+    def get_ecr_storage_cost(self, region_name: str) -> float:
+        return (
+            self._datacenter_data.get(region_name, {})
+            .get("ecr_cost", {})
+            .get("storage_cost", SOLVER_INPUT_ECR_MONTHLY_STORAGE_COST_DEFAULT)
+        )
 
     def get_compute_cost(self, region_name: str, architecture: str) -> float:
         return (

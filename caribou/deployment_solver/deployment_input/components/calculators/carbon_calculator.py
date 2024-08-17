@@ -1,31 +1,27 @@
 from typing import Optional
 
+from caribou.common.constants import AVERAGE_USA_CARBON_INTENSITY
 from caribou.deployment_solver.deployment_input.components.calculator import InputCalculator
-from caribou.deployment_solver.deployment_input.components.calculators.runtime_calculator import RuntimeCalculator
 from caribou.deployment_solver.deployment_input.components.loaders.carbon_loader import CarbonLoader
 from caribou.deployment_solver.deployment_input.components.loaders.datacenter_loader import DatacenterLoader
 from caribou.deployment_solver.deployment_input.components.loaders.workflow_loader import WorkflowLoader
 
 
 class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-attributes
-    # TODO: This needs to be removed when the CPU utilization data is available
-    small_or_large = "small"
-    energy_factor = 0.005
-    home_base_case = energy_factor == 0.005
-
     def __init__(
         self,
         carbon_loader: CarbonLoader,
         datacenter_loader: DatacenterLoader,
         workflow_loader: WorkflowLoader,
-        runtime_calculator: RuntimeCalculator,
+        energy_factor_of_transmission: float = 0.001,
+        carbon_free_intra_region_transmission: bool = False,
+        carbon_free_dt_during_execution_at_home_region: bool = False,
         consider_cfe: bool = False,
     ) -> None:
         super().__init__()
         self._carbon_loader: CarbonLoader = carbon_loader
         self._datacenter_loader: DatacenterLoader = datacenter_loader
         self._workflow_loader: WorkflowLoader = workflow_loader
-        self._runtime_calculator: RuntimeCalculator = runtime_calculator
         self._consider_cfe: bool = consider_cfe
 
         # Conversion ratio cache
@@ -35,6 +31,19 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
         # Carbon setting - hourly or average policy
         self._hourly_carbon_setting: Optional[str] = None  # None indicates the default setting -> Average everything
 
+        # Energy factor and if considering home region for transmission carbon calculation
+        self._energy_factor_of_transmission: float = energy_factor_of_transmission
+
+        # This denotes if we should consider the intra region for transmission carbon calculation
+        # Meaning that if this is true, we consider data transfer within the same region as incrring
+        # transmission carbon.
+        self._carbon_free_intra_region_transmission: bool = carbon_free_intra_region_transmission
+
+        # Consider the case of data transfer during execution being free at home region
+        # of the user workflow. (Basically making the assumption that functions deployed
+        # at user specified home region will not incur carbon from data transfer)
+        self._carbon_free_dt_during_execution_at_home_region: bool = carbon_free_dt_during_execution_at_home_region
+
     def alter_carbon_setting(self, carbon_setting: Optional[str]) -> None:
         self._hourly_carbon_setting = carbon_setting
 
@@ -42,25 +51,170 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
         self._execution_conversion_ratio_cache = {}
         self._transmission_conversion_ratio_cache = {}
 
-    def calculate_execution_carbon(self, instance_name: str, region_name: str, execution_latency: float) -> float:
-        compute_factor, memory_factor, power_factor = self._get_execution_conversion_ratio(instance_name, region_name)
+    def calculate_virtual_start_instance_carbon(
+        self,
+        data_input_sizes: dict[Optional[str], float],
+        data_output_sizes: dict[Optional[str], float],
+    ) -> float:
+        transmission_carbon = 0.0
 
-        cloud_provider_usage_kwh = execution_latency * (compute_factor + memory_factor)
+        # Even if the function is not invoked, we model
+        # Each node as an abstract instance to consider
+        # data transfer carbon
+        transmission_carbon += self._calculate_data_transfer_carbon(None, data_input_sizes, data_output_sizes, 0.0)
 
-        return cloud_provider_usage_kwh * power_factor
+        return transmission_carbon
 
-    def _get_execution_conversion_ratio(self, instance_name: str, region_name: str) -> tuple[float, float, float]:
+    def calculate_instance_carbon(
+        self,
+        execution_time: float,
+        instance_name: str,
+        region_name: str,
+        data_input_sizes: dict[Optional[str], float],
+        data_output_sizes: dict[Optional[str], float],
+        data_transfer_during_execution: float,
+        is_invoked: bool,
+        is_redirector: bool,
+    ) -> tuple[float, float]:
+        execution_carbon = 0.0
+        transmission_carbon = 0.0
+
+        # If the function is actually invoked
+        if is_invoked:
+            # Calculate the carbon from running the execution
+            execution_carbon += self._calculate_execution_carbon(
+                instance_name, region_name, execution_time, is_redirector
+            )
+
+        # Even if the function is not invoked, we model
+        # Each node as an abstract instance to consider
+        # data transfer carbon
+        transmission_carbon += self._calculate_data_transfer_carbon(
+            region_name, data_input_sizes, data_output_sizes, data_transfer_during_execution
+        )
+
+        return execution_carbon, transmission_carbon
+
+    def _calculate_data_transfer_carbon(
+        self,
+        current_region_name: Optional[str],
+        data_input_sizes: dict[Optional[str], float],
+        data_output_sizes: dict[Optional[str], float],  # pylint: disable=unused-argument
+        data_transfer_during_execution: float,
+    ) -> float:
+        total_transmission_carbon: float = 0.0
+        average_carbon_intensity_of_usa: float = AVERAGE_USA_CARBON_INTENSITY
+
+        # Since the energy factor of transmission denotes the energy consumption
+        # of the data transfer from and to destination, we do not want to double count.
+        # Thus we can simply take a look at the data_input_sizes and ignore the data_output_sizes.
+        data_transfer_accounted_by_wrapper = data_input_sizes
+        for from_region_name, data_transfer_gb in data_transfer_accounted_by_wrapper.items():
+            transmission_network_carbon_intensity = average_carbon_intensity_of_usa
+            # If consider_home_region_for_transmission is true,
+            # then we consider there are transmission carbon EVEN for
+            # data transfer within the same region.
+            # Otherwise, we skip the data transfer within the same region
+            if from_region_name == current_region_name:
+                # If its intra region transmission, and if we
+                # want to consider it as free, then we skip it.
+                if self._carbon_free_intra_region_transmission:
+                    continue
+
+                if current_region_name is not None:
+                    # Get the carbon intensity of the region (if known)
+                    # (If data transfer is within the same region)
+                    # Otherwise it will be inter-region data transfer,
+                    transmission_network_carbon_intensity = self._carbon_loader.get_grid_carbon_intensity(
+                        current_region_name, self._hourly_carbon_setting
+                    )
+            elif from_region_name is not None and current_region_name is not None:
+                # If we know the source and destination regions, we can get the carbon intensity
+                # of the transmission network between the two regions.
+                transmission_network_carbon_intensity = self._get_network_carbon_intensity_of_route_between_two_regions(
+                    from_region_name, current_region_name
+                )
+
+            total_transmission_carbon += (
+                data_transfer_gb * self._energy_factor_of_transmission * transmission_network_carbon_intensity
+            )
+
+        # Calculate the carbon from data transfer
+        # Of data that we CANNOT track represented by data_transfer_during_execution.
+        # There are no way to tell where the data is coming from
+        # This may come from the data transfer of user code during execution OR
+        # From Lambda runtimes or some AWS internal data transfer.
+        home_region = self._workflow_loader.get_home_region()
+        current_region_is_home_region = current_region_name == home_region
+
+        # We assume that half of the data transfer is from the home region
+        # and the other half is from the average carbon intensity of the USA.
+        home_region_dtde = internet_dtde = data_transfer_during_execution / 2
+
+        # If the data transfer is from the internet, we use the average carbon intensity of the USA
+        # And it is always consider inter-region data transfer. (So always apply)
+        total_transmission_carbon += (
+            internet_dtde * self._energy_factor_of_transmission * average_carbon_intensity_of_usa
+        )
+
+        # If the data transfer is from the home region, we use the carbon intensity of the home region
+        # And it is always consider intra-region data transfer. (May or may not apply)
+        if not self._carbon_free_dt_during_execution_at_home_region or not current_region_is_home_region:
+            transmission_network_carbon_intensity = average_carbon_intensity_of_usa
+            if current_region_name is not None:
+                transmission_network_carbon_intensity = self._get_network_carbon_intensity_of_route_between_two_regions(
+                    home_region, current_region_name
+                )
+
+            total_transmission_carbon += (
+                home_region_dtde * self._energy_factor_of_transmission * transmission_network_carbon_intensity
+            )
+
+        return total_transmission_carbon
+
+    def _get_network_carbon_intensity_of_route_between_two_regions(self, region_one: str, region_two: str) -> float:
+        if region_one == region_two and region_one is not None:
+            region_one_carbon_intensity = self._carbon_loader.get_grid_carbon_intensity(
+                region_one, self._hourly_carbon_setting
+            )
+            return region_one_carbon_intensity
+
+        # Get the carbon intensity of the route betweem two regions.
+        # We can estimate it as the average carbon intensity of the grid
+        # between the two regions. (No order is assumed)
+        # If we have a better model, we can replace this with that.
+        region_one_carbon_intensity = self._carbon_loader.get_grid_carbon_intensity(
+            region_one, self._hourly_carbon_setting
+        )
+        region_two_carbon_intensity = self._carbon_loader.get_grid_carbon_intensity(
+            region_two, self._hourly_carbon_setting
+        )
+        transmission_network_carbon_intensity_gco2e = (region_one_carbon_intensity + region_two_carbon_intensity) / 2
+
+        return transmission_network_carbon_intensity_gco2e
+
+    def _calculate_execution_carbon(
+        self, instance_name: str, region_name: str, execution_latency_s: float, is_redirector: bool
+    ) -> float:
+        # Calculate the carbon from running the execution (solely for cpu and memory)
+        compute_factor_kw_h, memory_factor_kw_h, power_factor_gco2e_kwh = self._get_execution_conversion_ratio(
+            instance_name, region_name, is_redirector
+        )
+        cloud_provider_usage_kwh = execution_latency_s * (compute_factor_kw_h + memory_factor_kw_h)
+        execution_carbon_gco2e = cloud_provider_usage_kwh * power_factor_gco2e_kwh
+
+        return execution_carbon_gco2e
+
+    def _get_execution_conversion_ratio(
+        self, instance_name: str, region_name: str, is_redirector: bool
+    ) -> tuple[float, float, float]:
         # Check if the conversion ratio is in the cache
         cache_key = f"{instance_name}_{region_name}"
         if cache_key in self._execution_conversion_ratio_cache:
             return self._execution_conversion_ratio_cache[cache_key]
 
-        # datacenter loader data
-        ## Get the average power consumption of the instance in the given region (kw_compute)
-        # average_cpu_power: float = self._datacenter_loader.get_average_cpu_power(region_name)
-
         ## Get the average power consumption of the instance in the given region (kw_GB)
-        average_memory_power: float = self._datacenter_loader.get_average_memory_power(region_name)
+        average_memory_power_kw_gb: float = self._datacenter_loader.get_average_memory_power(region_name)
 
         ## Get the carbon free energy of the grid in the given region
         cfe: float = 0.0
@@ -71,132 +225,34 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
         pue: float = self._datacenter_loader.get_pue(region_name)
 
         ## Get the carbon intensity of the grid in the given region (gCO2e/kWh)
-        grid_co2e: float = self._carbon_loader.get_grid_carbon_intensity(region_name, self._hourly_carbon_setting)
+        grid_co2e_gco2e_kwh: float = self._carbon_loader.get_grid_carbon_intensity(
+            region_name, self._hourly_carbon_setting
+        )
 
         ## Get the number of vCPUs and Memory of the instance
         provider, _ = region_name.split(":")  # Get the provider from the region name
         vcpu: float = self._workflow_loader.get_vcpu(instance_name, provider)
-        memory: float = self._workflow_loader.get_memory(instance_name, provider)
+        memory_mb: float = self._workflow_loader.get_memory(instance_name, provider)
+
+        # Get the min/max cpu power (In units of kWh)
+        min_cpu_power_kw: float = self._datacenter_loader.get_min_cpu_power(region_name)
+        max_cpu_power_kw: float = self._datacenter_loader.get_max_cpu_power(region_name)
 
         # Covert memory in MB to GB
-        memory = memory / 1024
+        memory_gb = memory_mb / 1024
 
-        utilization = self.get_cpu_utilization(instance_name)
-        adjusted_utilization = utilization / vcpu
-        if (utilization / vcpu) > 1:
-            adjusted_utilization = 1
-        average_cpu_power = (0.74 + adjusted_utilization * (3.5 - 0.74)) / 1000
+        # Get the average cpu utilization of the instance
+        utilization = self._workflow_loader.get_average_cpu_utilization(instance_name, region_name, is_redirector)
+        average_cpu_power_kw = min_cpu_power_kw + utilization * (max_cpu_power_kw - min_cpu_power_kw)
 
-        compute_factor = average_cpu_power * vcpu / 3600
-        memory_factor = average_memory_power * memory / 3600
-        power_factor = (1 - cfe) * pue * grid_co2e
+        compute_factor_kw_h = average_cpu_power_kw * vcpu / 3600
+        memory_factor_kw_h = average_memory_power_kw_gb * memory_gb / 3600
+        power_factor_gco2e_kwh = (1 - cfe) * pue * grid_co2e_gco2e_kwh
 
         # Add the conversion ratio to the cache
-        self._execution_conversion_ratio_cache[cache_key] = (compute_factor, memory_factor, power_factor)
+        self._execution_conversion_ratio_cache[cache_key] = (
+            compute_factor_kw_h,
+            memory_factor_kw_h,
+            power_factor_gco2e_kwh,
+        )
         return self._execution_conversion_ratio_cache[cache_key]
-
-    def calculate_transmission_carbon(
-        self, from_region_name: str, to_region_name: str, data_transfer_size: float
-    ) -> float:
-        if self.get_home_base_case() and from_region_name == to_region_name:
-            return 0
-        from_region_carbon_intensity: float = self._carbon_loader.get_grid_carbon_intensity(
-            from_region_name, self._hourly_carbon_setting
-        )
-        to_region_carbon_intensity: float = self._carbon_loader.get_grid_carbon_intensity(
-            to_region_name, self._hourly_carbon_setting
-        )
-
-        transmission_carbon_intensity = (from_region_carbon_intensity + to_region_carbon_intensity) / 2
-        return data_transfer_size * self.get_energy_factor() * transmission_carbon_intensity
-
-    def get_home_base_case(self) -> bool:
-        return self.home_base_case
-
-    def get_energy_factor(self) -> float:
-        return self.energy_factor
-
-    def get_small_or_large(self) -> str:
-        return self.small_or_large
-
-    def get_cpu_utilization(self, instance: str) -> float:
-        # TODO (#224): Retrieve this information from AWS Lambda Insights
-        if self.get_small_or_large() == "small":
-            data = {
-                "dna_visualization-0_0_1-Visualize:entry_point:0": 0.4618928777116529,
-                "image_processing-0_0_1-Flip:entry_point:0": 0.41624727417345264,
-                "image_processing-0_0_1-Rotate:image_processing-0_0_1-Flip_0_0:1": 0.46127630837161965,
-                "image_processing-0_0_1-Filter:image_processing-0_0_1-Rotate_1_0:2": 0.4182879377431907,
-                "image_processing-0_0_1-Greyscale:image_processing-0_0_1-Filter_2_0:3": 0.4522796352583587,
-                "image_processing-0_0_1-Resize:image_processing-0_0_1-Greyscale_3_0:4": 0.4045534859112935,
-                "map_reduce-0_0_1-Input-Processor:entry_point:0": 0.741661790255507,
-                "map_reduce-0_0_1-Mapper-Function:map_reduce-0_0_1-Input-Processor_0_0:1": 0.5478792050245204,
-                "map_reduce-0_0_1-Mapper-Function:map_reduce-0_0_1-Input-Processor_0_1:2": 0.5478792050245204,
-                "map_reduce-0_0_1-Mapper-Function:map_reduce-0_0_1-Input-Processor_0_2:3": 0.5478792050245204,
-                "map_reduce-0_0_1-Mapper-Function:map_reduce-0_0_1-Input-Processor_0_3:4": 0.5478792050245204,
-                "map_reduce-0_0_1-Mapper-Function:map_reduce-0_0_1-Input-Processor_0_4:5": 0.5478792050245204,
-                "map_reduce-0_0_1-Mapper-Function:map_reduce-0_0_1-Input-Processor_0_5:6": 0.5478792050245204,
-                "map_reduce-0_0_1-Shuffler-Function:sync:": 0.8709256844850065,
-                "map_reduce-0_0_1-Reducer-Function:map_reduce-0_0_1-Shuffler-Function__0:13": 0.7165419783873649,
-                "map_reduce-0_0_1-Reducer-Function:map_reduce-0_0_1-Shuffler-Function__1:14": 0.7165419783873649,
-                "map_reduce-0_0_1-Output-Processor:sync:": 0.6889036122129203,
-                "text_2_speech_censoring-0_0_1-GetInput:entry_point:0": 0.5827303870793014,
-                "text_2_speech_censoring-0_0_1-Text2Speech:text_2_speech_censoring-0_0_1-GetInput_0_0:1": 0.1309374174243177,  # pylint: disable=line-too-long
-                "text_2_speech_censoring-0_0_1-Profanity:text_2_speech_censoring-0_0_1-GetInput_0_1:2": 0.2609512655425868,  # pylint: disable=line-too-long
-                "text_2_speech_censoring-0_0_1-Conversion:text_2_speech_censoring-0_0_1-Text2Speech_1_0:3": 0.13728837120707016,  # pylint: disable=line-too-long
-                "text_2_speech_censoring-0_0_1-Censor:sync:": 0.4250452007189924,
-                "text_2_speech_censoring-0_0_1-Compression:text_2_speech_censoring-0_0_1-Conversion_3_0:5": 0.17143307371131536,  # pylint: disable=line-too-long
-                "video_analytics-0_0_1-GetInput:entry_point:0": 0.10284755744053767,
-                "video_analytics-0_0_1-Streaming:video_analytics-0_0_1-GetInput_0_0:1": 0.631461477635479,
-                "video_analytics-0_0_1-Streaming:video_analytics-0_0_1-GetInput_0_1:2": 0.631461477635479,
-                "video_analytics-0_0_1-Streaming:video_analytics-0_0_1-GetInput_0_2:3": 0.631461477635479,
-                "video_analytics-0_0_1-Streaming:video_analytics-0_0_1-GetInput_0_3:4": 0.631461477635479,
-                "video_analytics-0_0_1-Decode:video_analytics-0_0_1-Streaming_1_0:5": 0.17834203510952856,
-                "video_analytics-0_0_1-Decode:video_analytics-0_0_1-Streaming_2_0:6": 0.17834203510952856,
-                "video_analytics-0_0_1-Decode:video_analytics-0_0_1-Streaming_3_0:7": 0.17834203510952856,
-                "video_analytics-0_0_1-Decode:video_analytics-0_0_1-Streaming_4_0:8": 0.17834203510952856,
-                "video_analytics-0_0_1-Recognition:video_analytics-0_0_1-Decode_5_0:9": 0.6306577177541596,
-                "video_analytics-0_0_1-Recognition:video_analytics-0_0_1-Decode_6_0:10": 0.6306577177541596,
-                "video_analytics-0_0_1-Recognition:video_analytics-0_0_1-Decode_7_0:11": 0.6306577177541596,
-                "video_analytics-0_0_1-Recognition:video_analytics-0_0_1-Decode_8_0:12": 0.6306577177541596,
-            }
-        else:
-            data = {
-                "dna_visualization-0_0_1-Visualize:entry_point:0": 0.5382629653059782,
-                "image_processing-0_0_1-Flip:entry_point:0": 0.45136459062281314,
-                "image_processing-0_0_1-Rotate:image_processing-0_0_1-Flip_0_0:1": 0.48623376623376624,
-                "image_processing-0_0_1-Filter:image_processing-0_0_1-Rotate_1_0:2": 0.4986931416896363,
-                "image_processing-0_0_1-Greyscale:image_processing-0_0_1-Filter_2_0:3": 0.5944055944055944,
-                "image_processing-0_0_1-Resize:image_processing-0_0_1-Greyscale_3_0:4": 0.5427480501719045,
-                "map_reduce-0_0_1-Input-Processor:entry_point:0": 0.9926151172893137,
-                "map_reduce-0_0_1-Mapper-Function:map_reduce-0_0_1-Input-Processor_0_0:1": 0.8686737731398618,
-                "map_reduce-0_0_1-Mapper-Function:map_reduce-0_0_1-Input-Processor_0_1:2": 0.8686737731398618,
-                "map_reduce-0_0_1-Mapper-Function:map_reduce-0_0_1-Input-Processor_0_2:3": 0.8686737731398618,
-                "map_reduce-0_0_1-Mapper-Function:map_reduce-0_0_1-Input-Processor_0_3:4": 0.8686737731398618,
-                "map_reduce-0_0_1-Mapper-Function:map_reduce-0_0_1-Input-Processor_0_4:5": 0.8686737731398618,
-                "map_reduce-0_0_1-Mapper-Function:map_reduce-0_0_1-Input-Processor_0_5:6": 0.8686737731398618,
-                "map_reduce-0_0_1-Shuffler-Function:sync:": 0.9475696340797379,
-                "map_reduce-0_0_1-Reducer-Function:map_reduce-0_0_1-Shuffler-Function__0:13": 0.8297268369863651,
-                "map_reduce-0_0_1-Reducer-Function:map_reduce-0_0_1-Shuffler-Function__1:14": 0.8297268369863651,
-                "map_reduce-0_0_1-Output-Processor:sync:": 0.7892834595977611,
-                "text_2_speech_censoring-0_0_1-GetInput:entry_point:0": 0.6309148264984227,
-                "text_2_speech_censoring-0_0_1-Text2Speech:text_2_speech_censoring-0_0_1-GetInput_0_0:1": 0.10565184626978147,  # pylint: disable=line-too-long
-                "text_2_speech_censoring-0_0_1-Profanity:text_2_speech_censoring-0_0_1-GetInput_0_1:2": 0.35193841077811383,  # pylint: disable=line-too-long
-                "text_2_speech_censoring-0_0_1-Conversion:text_2_speech_censoring-0_0_1-Text2Speech_1_0:3": 0.3153414988582105,  # pylint: disable=line-too-long
-                "text_2_speech_censoring-0_0_1-Censor:sync:": 0.5025715297562728,
-                "text_2_speech_censoring-0_0_1-Compression:text_2_speech_censoring-0_0_1-Conversion_3_0:5": 0.3111135075502209,  # pylint: disable=line-too-long
-                "video_analytics-0_0_1-GetInput:entry_point:0": 0.8798283261802574,
-                "video_analytics-0_0_1-Streaming:video_analytics-0_0_1-GetInput_0_0:1": 0.631461477635479,
-                "video_analytics-0_0_1-Streaming:video_analytics-0_0_1-GetInput_0_1:2": 0.631461477635479,
-                "video_analytics-0_0_1-Streaming:video_analytics-0_0_1-GetInput_0_2:3": 0.631461477635479,
-                "video_analytics-0_0_1-Streaming:video_analytics-0_0_1-GetInput_0_3:4": 0.631461477635479,
-                "video_analytics-0_0_1-Decode:video_analytics-0_0_1-Streaming_1_0:5": 0.7592729553352026,
-                "video_analytics-0_0_1-Decode:video_analytics-0_0_1-Streaming_2_0:6": 0.7592729553352026,
-                "video_analytics-0_0_1-Decode:video_analytics-0_0_1-Streaming_3_0:7": 0.7592729553352026,
-                "video_analytics-0_0_1-Decode:video_analytics-0_0_1-Streaming_4_0:8": 0.7592729553352026,
-                "video_analytics-0_0_1-Recognition:video_analytics-0_0_1-Decode_5_0:9": 0.5896474375591176,
-                "video_analytics-0_0_1-Recognition:video_analytics-0_0_1-Decode_6_0:10": 0.5896474375591176,
-                "video_analytics-0_0_1-Recognition:video_analytics-0_0_1-Decode_7_0:11": 0.5896474375591176,
-                "video_analytics-0_0_1-Recognition:video_analytics-0_0_1-Decode_8_0:12": 0.5896474375591176,
-            }
-        return data[instance] if instance in data else 0.5

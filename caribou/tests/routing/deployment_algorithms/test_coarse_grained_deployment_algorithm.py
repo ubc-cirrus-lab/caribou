@@ -48,6 +48,7 @@ class TestCoarseGrainedDeploymentAlgorithm(unittest.TestCase):
         }
         self._algorithm._is_hard_constraint_failed = MagicMock()
         self._algorithm._is_hard_constraint_failed.return_value = False
+        self._algorithm._home_deployment = None
 
         # Act
         result = self._algorithm._generate_and_check_deployment(1)
@@ -69,6 +70,7 @@ class TestCoarseGrainedDeploymentAlgorithm(unittest.TestCase):
         }
         self._algorithm._is_hard_constraint_failed = MagicMock()
         self._algorithm._is_hard_constraint_failed.return_value = False
+        self._algorithm._home_deployment = None
 
         # Act
         result = self._algorithm._generate_and_check_deployment(1)

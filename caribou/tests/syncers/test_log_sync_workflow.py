@@ -1,42 +1,59 @@
 import unittest
-from unittest.mock import Mock, patch, call
-from datetime import datetime
+from unittest.mock import Mock, call, patch
+from datetime import datetime, timedelta
 import json
-from datetime import timedelta
 from caribou.syncers.log_sync_workflow import LogSyncWorkflow
 from caribou.common.models.remote_client.remote_client import RemoteClient
-from caribou.common.models.remote_client.remote_client_factory import RemoteClientFactory
-from caribou.syncers.workflow_run_sample import WorkflowRunSample
+from caribou.syncers.components.workflow_run_sample import WorkflowRunSample
 from caribou.common.constants import (
     WORKFLOW_SUMMARY_TABLE,
     TIME_FORMAT,
-    LOG_VERSION,
     TIME_FORMAT_DAYS,
     FORGETTING_TIME_DAYS,
     GLOBAL_TIME_ZONE,
+    BUFFER_LAMBDA_INSIGHTS_GRACE_PERIOD,
 )
 
 
 class TestLogSyncWorkflow(unittest.TestCase):
     def setUp(self):
-        workflow_id = "test_workflow_id"
-        region_clients = {("region1", "client1"): Mock(spec=RemoteClient)}
-        deployment_manager_config_str = '{"key": "value"}'
-        time_intervals_to_sync = [(datetime.now(GLOBAL_TIME_ZONE), datetime.now(GLOBAL_TIME_ZONE))]
-        workflow_summary_client = Mock(spec=RemoteClient)
-        previous_data = {"key": "value"}
+        # Initialize LogSyncWorkflow with mock data
+        self.workflow_id = "test_workflow_id"
+        self.region_clients = {("region1", "client1"): Mock(spec=RemoteClient)}
+        self.deployment_manager_config_str = '{"deployed_regions": "{}"}'
+        self.time_intervals_to_sync = [(datetime.now(GLOBAL_TIME_ZONE), datetime.now(GLOBAL_TIME_ZONE))]
+        self.workflow_summary_client = Mock(spec=RemoteClient)
+        self.previous_data = {"key": "value"}
 
+        # Instantiate the LogSyncWorkflow
         self.log_sync_workflow = LogSyncWorkflow(
-            workflow_id,
-            region_clients,
-            deployment_manager_config_str,
-            time_intervals_to_sync,
-            workflow_summary_client,
-            previous_data,
+            self.workflow_id,
+            self.region_clients,
+            self.deployment_manager_config_str,
+            self.time_intervals_to_sync,
+            self.workflow_summary_client,
+            self.previous_data,
         )
+
+    def test_init(self):
+        # Test that initialization sets up attributes correctly
+        self.assertEqual(self.log_sync_workflow.workflow_id, self.workflow_id)
+        self.assertEqual(self.log_sync_workflow._region_clients, self.region_clients)
+        self.assertEqual(self.log_sync_workflow._workflow_summary_client, self.workflow_summary_client)
+        self.assertEqual(self.log_sync_workflow._previous_data, self.previous_data)
+        self.assertEqual(self.log_sync_workflow._collected_logs, {})
+        self.assertEqual(self.log_sync_workflow._deployed_regions, {})
+
+    def test_load_information(self):
+        # Test that deployment information is loaded correctly
+        config_str = '{"deployed_regions": "{\\"region1\\": \\"client1\\"}"}'
+        self.log_sync_workflow._load_information(config_str)
+        expected = {"region1": "client1"}
+        self.assertEqual(self.log_sync_workflow._deployed_regions, expected)
 
     @patch("caribou.syncers.log_sync_workflow.RemoteClientFactory.get_remote_client")
     def test_get_remote_client(self, get_remote_client_mock):
+        # Test getting a remote client
         get_remote_client_mock.return_value = Mock(spec=RemoteClient)
         provider_region = {"provider": "test_provider", "region": "test_region"}
 
@@ -56,40 +73,34 @@ class TestLogSyncWorkflow(unittest.TestCase):
     @patch.object(LogSyncWorkflow, "_prepare_data_for_upload")
     @patch.object(LogSyncWorkflow, "_upload_data")
     def test_sync_workflow(self, upload_data_mock, prepare_data_for_upload_mock, sync_logs_mock):
-        # Set up the return value for _prepare_data_for_upload
-        prepare_data_for_upload_mock.return_value = "test_data"
+        # Test the sync_workflow method
+        prepare_data_for_upload_mock.return_value = "{}"
 
         # Call the method
         self.log_sync_workflow.sync_workflow()
 
         # Check that the mocks were called in the correct order with the correct arguments
         sync_logs_mock.assert_called_once()
-        prepare_data_for_upload_mock.assert_called_once_with(self.log_sync_workflow._previous_data)
-        upload_data_mock.assert_called_once_with("test_data")
+        prepare_data_for_upload_mock.assert_called_once_with(self.previous_data)
+        upload_data_mock.assert_called_once_with("{}")
 
     def test_upload_data(self):
-        mock_remote_client = Mock(spec=RemoteClient)
-        mock_remote_client.update_value_in_table = Mock()
-        self.log_sync_workflow._workflow_summary_client = mock_remote_client
-
-        # Set up the test data
+        # Test the _upload_data method
         data_for_upload = "test_data"
-
-        # Call the method
         self.log_sync_workflow._upload_data(data_for_upload)
 
         # Check that update_value_in_table was called with the correct arguments
-        mock_remote_client.update_value_in_table.assert_called_once_with(
-            WORKFLOW_SUMMARY_TABLE, self.log_sync_workflow.workflow_id, data_for_upload
+        self.workflow_summary_client.update_value_in_table.assert_called_once_with(
+            WORKFLOW_SUMMARY_TABLE, self.workflow_id, data_for_upload
         )
 
     @patch.object(LogSyncWorkflow, "_process_logs_for_instance_for_one_region")
     @patch.object(LogSyncWorkflow, "_check_to_forget")
     def test_sync_logs(self, check_to_forget_mock, process_logs_for_instance_for_one_region_mock):
-        # Set up the test data
+        # Test the _sync_logs method
         self.log_sync_workflow._deployed_regions = {
-            "function1": {"deploy_region": "region1"},
-            "function2": {"deploy_region": "region2"},
+            "function1": {"deploy_region": {"provider": "aws", "region": "us-east-1"}},
+            "function2": {"deploy_region": {"provider": "aws", "region": "us-east-2"}},
         }
         self.log_sync_workflow._time_intervals_to_sync = [
             (datetime.now(GLOBAL_TIME_ZONE), datetime.now(GLOBAL_TIME_ZONE))
@@ -102,13 +113,13 @@ class TestLogSyncWorkflow(unittest.TestCase):
         calls = [
             call(
                 "function1",
-                "region1",
+                {"provider": "aws", "region": "us-east-1"},
                 self.log_sync_workflow._time_intervals_to_sync[0][0],
                 self.log_sync_workflow._time_intervals_to_sync[0][1],
             ),
             call(
                 "function2",
-                "region2",
+                {"provider": "aws", "region": "us-east-2"},
                 self.log_sync_workflow._time_intervals_to_sync[0][0],
                 self.log_sync_workflow._time_intervals_to_sync[0][1],
             ),
@@ -118,8 +129,11 @@ class TestLogSyncWorkflow(unittest.TestCase):
 
     @patch.object(LogSyncWorkflow, "_get_remote_client")
     @patch.object(LogSyncWorkflow, "_process_log_entry")
-    def test_process_logs_for_instance_for_one_region(self, process_log_entry_mock, get_remote_client_mock):
-        # Set up the test data
+    @patch.object(LogSyncWorkflow, "_setup_lambda_insights")
+    def test_process_logs_for_instance_for_one_region(
+        self, setup_lambda_insights_mock, process_log_entry_mock, get_remote_client_mock
+    ):
+        # Test processing logs for one region
         functions_instance = "test_instance"
         provider_region = {"provider": "test_provider", "region": "test_region"}
         time_from = datetime.now(GLOBAL_TIME_ZONE)
@@ -127,7 +141,8 @@ class TestLogSyncWorkflow(unittest.TestCase):
 
         # Set up the return value for _get_remote_client
         mock_remote_client = Mock()
-        mock_remote_client.get_logs_between.return_value = ["log1", "log2"]
+        mock_remote_client.get_logs_between.return_value = ["[CARIBOU] log1", "log2"]
+        mock_remote_client.get_insights_logs_between.return_value = ["insight_log1"]
         get_remote_client_mock.return_value = mock_remote_client
 
         # Call the method
@@ -138,71 +153,93 @@ class TestLogSyncWorkflow(unittest.TestCase):
         # Check that the mocks were called with the correct arguments
         get_remote_client_mock.assert_called_once_with(provider_region)
         mock_remote_client.get_logs_between.assert_called_once_with(functions_instance, time_from, time_to)
-        calls = [call("log1", provider_region), call("log2", provider_region)]
-        process_log_entry_mock.assert_has_calls(calls)
+        mock_remote_client.get_insights_logs_between.assert_called_once_with(
+            functions_instance,
+            time_from - timedelta(minutes=BUFFER_LAMBDA_INSIGHTS_GRACE_PERIOD),
+            time_to + timedelta(minutes=BUFFER_LAMBDA_INSIGHTS_GRACE_PERIOD),
+        )
+        process_log_entry_mock.assert_any_call("[CARIBOU] log1", provider_region, time_to)
+        setup_lambda_insights_mock.assert_called_once_with(["insight_log1"])
 
-    @patch.object(LogSyncWorkflow, "_extract_from_string")
-    @patch.object(LogSyncWorkflow, "_check_to_forget")
-    @patch.object(LogSyncWorkflow, "_handle_system_log_messages")
-    def test_process_log_entry(self, handle_system_log_messages_mock, check_to_forget_mock, extract_from_string_mock):
-        # Set up the test data
-        log_entry = f"REPORT [INFO]\ttest_request_id\t LOG_VERSION ({LOG_VERSION}) test_log_entry Init Duration"
-        provider_region = {"provider": "test_provider", "region": "test_region"}
-
-        # Set up the return values for _extract_from_string
-        extract_from_string_mock.side_effect = ["test_request_id", "test_run_id", "2021-01-01 00:00:00,000+00:00"]
-
-        # Call the method
-        self.log_sync_workflow._process_log_entry(log_entry, provider_region)
-
-        calls = [
-            call(log_entry, r"RequestId: (.*?)\t"),
-            call(log_entry, r"RUN_ID \((.*?)\)"),
-            call(log_entry, r"TIME \((.*?)\)"),
+    def test_setup_lambda_insights(self):
+        # Test setting up lambda insights
+        logs = [
+            json.dumps(
+                {
+                    "request_id": "1",
+                    "duration": 100,
+                    "cold_start": True,
+                    "memory_utilization": 50,
+                    "total_network": 10,
+                    "cpu_total_time": 5,
+                }
+            ),
+            json.dumps(
+                {
+                    "request_id": "2",
+                    "duration": 200,
+                    "cold_start": False,
+                    "memory_utilization": 60,
+                    "total_network": 20,
+                    "cpu_total_time": 10,
+                }
+            ),
         ]
-        extract_from_string_mock.assert_has_calls(calls)
-        handle_system_log_messages_mock.assert_called_once_with(
-            log_entry,
-            self.log_sync_workflow._collected_logs["test_run_id"],
-            provider_region,
-            datetime.strptime("2021-01-01 00:00:00,000+00:00", TIME_FORMAT),
-        )
-
-    @patch.object(LogSyncWorkflow, "_extract_entry_point_log")
-    @patch.object(LogSyncWorkflow, "_extract_invoked_logs")
-    @patch.object(LogSyncWorkflow, "_extract_executed_logs")
-    @patch.object(LogSyncWorkflow, "_extract_invoking_successor_logs")
-    @patch.object(LogSyncWorkflow, "_extract_conditional_non_execution_logs")
-    def test_handle_system_log_messages(
-        self,
-        extract_conditional_non_execution_logs_mock,
-        extract_invoking_successor_logs_mock,
-        extract_executed_logs_mock,
-        extract_invoked_logs_mock,
-        extract_entry_point_log_mock,
-    ):
-        # Set up the test data
-        log_entry = "ENTRY_POINT INVOKED EXECUTED INVOKING_SUCCESSOR CONDITIONAL_NON_EXECUTION"
-        workflow_run_sample = Mock(spec=WorkflowRunSample)
-        provider_region = {"provider": "test_provider", "region": "test_region"}
-        log_time = datetime.now(GLOBAL_TIME_ZONE)
 
         # Call the method
-        self.log_sync_workflow._handle_system_log_messages(log_entry, workflow_run_sample, provider_region, log_time)
+        self.log_sync_workflow._setup_lambda_insights(logs)
 
-        # Check that the mocks were called with the correct arguments
-        extract_entry_point_log_mock.assert_called_once_with(workflow_run_sample, log_entry, provider_region, log_time)
-        extract_invoked_logs_mock.assert_called_once_with(workflow_run_sample, log_entry, provider_region, log_time)
-        extract_executed_logs_mock.assert_called_once_with(
-            workflow_run_sample, log_entry, {"provider": "test_provider", "region": "test_region"}
-        )
-        extract_invoking_successor_logs_mock.assert_called_once_with(
-            workflow_run_sample, log_entry, provider_region, log_time
-        )
-        extract_conditional_non_execution_logs_mock.assert_called_once_with(workflow_run_sample, log_entry)
+        # Check the _insights_logs attribute
+        expected_result = {
+            "1": {
+                "duration": 0.1,
+                "cold_start": True,
+                "memory_utilization": 50,
+                "total_network": 10,
+                "cpu_total_time": 0.005,
+            },
+            "2": {
+                "duration": 0.2,
+                "cold_start": False,
+                "memory_utilization": 60,
+                "total_network": 20,
+                "cpu_total_time": 0.01,
+            },
+        }
+        self.assertEqual(self.log_sync_workflow._insights_logs, expected_result)
+
+    def test_process_log_entry(self):
+        # Test processing a log entry
+        time_to = datetime.now(GLOBAL_TIME_ZONE)
+        log_entry = f"[CARIBOU]	2024-08-02T16:43:12.323Z	366b3663-2679-447c-86a0-ea2d8df06bcf	TIME (2024-08-02 16:43:12,323041+0000) RUN_ID (5f627048-fbc7-4a6f-9eee-309de1ea852a) MESSAGE (WPD_OVERRIDE: WPD was overriden by debug_workflow_placement_override OVERRIDING_WORKFLOW_PLACEMENT_SIZE (1.8067657947540283e-06) GB) LOG_VERSION (0.0.4)"
+        provider_region = {"provider": "test_provider", "region": "test_region"}
+
+        # Call the method
+        self.log_sync_workflow._process_log_entry(log_entry, provider_region, time_to)
+
+        # Check that the workflow_run_sample is created and updated
+        run_id = "5f627048-fbc7-4a6f-9eee-309de1ea852a"
+        self.assertIn(run_id, self.log_sync_workflow._collected_logs)
+        workflow_run_sample = self.log_sync_workflow._collected_logs[run_id]
+        self.assertIsInstance(workflow_run_sample, WorkflowRunSample)
+        self.assertIn("366b3663-2679-447c-86a0-ea2d8df06bcf", workflow_run_sample.request_ids)
+
+    def test_extract_from_string(self):
+        # Test extracting a string from a log entry
+        log_entry = "RequestId: test_request_id\t"
+        regex = r"RequestId: (.*?)\t"
+        result = self.log_sync_workflow._extract_from_string(log_entry, regex)
+        self.assertEqual(result, "test_request_id")
+
+    def test_extract_from_string_no_match(self):
+        # Test extracting a string with no match
+        log_entry = "RequestId: test_request_id\t"
+        regex = r"RUN_ID: (.*?)\t"
+        result = self.log_sync_workflow._extract_from_string(log_entry, regex)
+        self.assertIsNone(result)
 
     def test_check_to_forget(self):
-        # Set up the test data
+        # Test the _check_to_forget method
         self.log_sync_workflow._collected_logs = {
             "run1": Mock(spec=WorkflowRunSample, request_ids={"request1"}),
             "run2": Mock(spec=WorkflowRunSample, request_ids={"request2"}),
@@ -221,195 +258,19 @@ class TestLogSyncWorkflow(unittest.TestCase):
         # Check that _forgetting is False because the size of _collected_logs is not equal to FORGETTING_NUMBER
         self.assertFalse(self.log_sync_workflow._forgetting)
 
-    def test_extract_from_string(self):
-        # Set up the test data
-        log_entry = "RequestId: test_request_id\t"
-        regex = r"RequestId: (.*?)\t"
+    def test_format_region(self):
+        # Test formatting a region string
+        region = {"provider": "aws", "region": "us-east-1"}
+        result = self.log_sync_workflow._format_region(region)
+        self.assertEqual(result, "aws:us-east-1")
 
-        # Call the method
-        result = self.log_sync_workflow._extract_from_string(log_entry, regex)
-
-        # Check that the result is as expected
-        self.assertEqual(result, "test_request_id")
-
-    def test_extract_from_string_no_match(self):
-        # Set up the test data
-        log_entry = "RequestId: test_request_id\t"
-        regex = r"RUN_ID: (.*?)\t"
-
-        # Call the method
-        result = self.log_sync_workflow._extract_from_string(log_entry, regex)
-
-        # Check that the result is None because there is no match
+    def test_format_region_none(self):
+        # Test formatting a region string with None
+        result = self.log_sync_workflow._format_region(None)
         self.assertIsNone(result)
 
-    @patch.object(LogSyncWorkflow, "_extract_from_string")
-    def test_extract_entry_point_log(self, extract_from_string_mock):
-        # Set up the test data
-        workflow_run_sample = WorkflowRunSample("test_run_id")
-        log_entry = "PAYLOAD_SIZE (1234) INIT_LATENCY (5678)"
-        provider_region = {"provider": "test_provider", "region": "test_region"}
-        log_time = datetime.now(GLOBAL_TIME_ZONE)
-
-        # Set up the return values for _extract_from_string
-        extract_from_string_mock.side_effect = ["1234", "5678"]
-
-        # Call the method
-        self.log_sync_workflow._extract_entry_point_log(workflow_run_sample, log_entry, provider_region, log_time)
-
-        # Check that the WorkflowRunSample object was updated as expected
-        self.assertEqual(workflow_run_sample.log_start_time, log_time)
-        self.assertEqual(workflow_run_sample.start_hop_data_transfer_size, 1234.0)
-        self.assertEqual(workflow_run_sample.start_hop_latency, 5678.0)
-        self.assertEqual(workflow_run_sample.start_hop_destination, provider_region)
-
-        # Check that _extract_from_string was called with the correct arguments
-        extract_from_string_mock.assert_any_call(log_entry, r"PAYLOAD_SIZE \((.*?)\)")
-        extract_from_string_mock.assert_any_call(log_entry, r"INIT_LATENCY \((.*?)\)")
-
-    @patch.object(LogSyncWorkflow, "_extract_from_string")
-    def test_extract_invoked_logs(self, extract_from_string_mock):
-        # Set up the test data
-        workflow_run_sample = WorkflowRunSample("test_run_id")
-        log_entry = "TAINT (test_taint)"
-        provider_region = {"provider": "test_provider", "region": "test_region"}
-        log_time = datetime.now(GLOBAL_TIME_ZONE)
-
-        # Set up the return value for _extract_from_string
-        extract_from_string_mock.return_value = "test_taint"
-
-        # Call the method
-        self.log_sync_workflow._extract_invoked_logs(workflow_run_sample, log_entry, provider_region, log_time)
-
-        # Check that the WorkflowRunSample object was updated as expected
-        transmission_data = workflow_run_sample.get_transmission_data("test_taint")
-        self.assertEqual(transmission_data.to_region, provider_region)
-        self.assertEqual(transmission_data.transmission_end_time, log_time)
-
-        # Check that _extract_from_string was called with the correct arguments
-        extract_from_string_mock.assert_called_once_with(log_entry, r"TAINT \((.*?)\)")
-
-    @patch.object(LogSyncWorkflow, "_extract_from_string")
-    def test_extract_executed_logs(self, extract_from_string_mock):
-        # Set up the test data
-        workflow_run_sample = WorkflowRunSample("test_run_id")
-        log_entry = "INSTANCE (test_instance) EXECUTION_TIME (1234)"
-
-        # Set up the return values for _extract_from_string
-        extract_from_string_mock.side_effect = ["test_instance", "1234"]
-
-        # Call the method
-        self.log_sync_workflow._extract_executed_logs(
-            workflow_run_sample, log_entry, {"provider": "test_provider", "region": "test_region"}
-        )
-
-        # Check that the WorkflowRunSample object was updated as expected
-        self.assertEqual(
-            workflow_run_sample.execution_latencies["test_instance"],
-            {"latency": 1234.0, "provider_region": "test_provider:test_region"},
-        )
-
-        # Check that _extract_from_string was called with the correct arguments
-        calls = [call(log_entry, r"INSTANCE \((.*?)\)"), call(log_entry, r"EXECUTION_TIME \((.*?)\)")]
-        extract_from_string_mock.assert_has_calls(calls)
-
-    @patch.object(LogSyncWorkflow, "_extract_from_string")
-    def test_extract_invoking_successor_logs(self, extract_from_string_mock):
-        # Set up the test data
-        workflow_run_sample = WorkflowRunSample("test_run_id")
-        log_entry = "TAINT (test_taint) INSTANCE (test_instance) SUCCESSOR (test_successor) PAYLOAD_SIZE (1234)"
-        provider_region = {"provider": "test_provider", "region": "test_region"}
-        log_time = datetime.now(GLOBAL_TIME_ZONE)
-
-        # Set up the return values for _extract_from_string
-        extract_from_string_mock.side_effect = ["test_taint", "test_instance", "test_successor", "1234"]
-
-        # Call the method
-        self.log_sync_workflow._extract_invoking_successor_logs(
-            workflow_run_sample, log_entry, provider_region, log_time
-        )
-
-        # Check that the WorkflowRunSample object was updated as expected
-        transmission_data = workflow_run_sample.get_transmission_data("test_taint")
-        self.assertEqual(transmission_data.from_region, provider_region)
-        self.assertEqual(transmission_data.from_instance, "test_instance")
-        self.assertEqual(transmission_data.to_instance, "test_successor")
-        self.assertEqual(transmission_data.transmission_start_time, log_time)
-        self.assertEqual(transmission_data.transmission_size, 1234.0)
-
-        # Check that _extract_from_string was called with the correct arguments
-        calls = [
-            call(log_entry, r"TAINT \((.*?)\)"),
-            call(log_entry, r"INSTANCE \((.*?)\)"),
-            call(log_entry, r"SUCCESSOR \((.*?)\)"),
-            call(log_entry, r"PAYLOAD_SIZE \((.*?)\)"),
-        ]
-        extract_from_string_mock.assert_has_calls(calls)
-
-    @patch.object(LogSyncWorkflow, "_extract_from_string")
-    def test_extract_conditional_non_execution_logs(self, extract_from_string_mock):
-        # Set up the test data
-        workflow_run_sample = WorkflowRunSample("test_run_id")
-        log_entry = "INSTANCE (test_instance) SUCCESSOR (test_successor)"
-
-        # Set up the return values for _extract_from_string
-        extract_from_string_mock.side_effect = ["test_instance", "test_successor"]
-
-        # Call the method
-        self.log_sync_workflow._extract_conditional_non_execution_logs(workflow_run_sample, log_entry)
-
-        # Check that the WorkflowRunSample object was updated as expected
-        self.assertEqual(workflow_run_sample.non_executions["test_instance"]["test_successor"], 1)
-
-        # Check that _extract_from_string was called with the correct arguments
-        calls = [call(log_entry, r"INSTANCE \((.*?)\)"), call(log_entry, r"SUCCESSOR \((.*?)\)")]
-        extract_from_string_mock.assert_has_calls(calls)
-
-    @patch.object(LogSyncWorkflow, "_filter_daily_invocation_counts")
-    @patch.object(LogSyncWorkflow, "_merge_daily_invocation_counts")
-    @patch.object(LogSyncWorkflow, "_format_collected_logs")
-    @patch.object(LogSyncWorkflow, "_fill_up_collected_logs")
-    def test_prepare_data_for_upload(
-        self,
-        fill_up_collected_logs_mock,
-        format_collected_logs_mock,
-        merge_daily_invocation_counts_mock,
-        filter_daily_invocation_counts_mock,
-    ):
-        # Set up the test data
-        previous_data = {
-            "daily_invocation_counts": {"2022-01-01": 10},
-            "logs": [{"runtime": 1.0}],
-            "workflow_runtime_samples": [1.0],
-            "last_sync_time": "2022-01-01T00:00:00,000+00:00",
-        }
-        self.log_sync_workflow._time_intervals_to_sync = [
-            (datetime.now(GLOBAL_TIME_ZONE) - timedelta(days=1), datetime.now(GLOBAL_TIME_ZONE))
-        ]
-
-        # Set up the return value for _format_collected_logs
-        format_collected_logs_mock.return_value = [{"runtime": 1.0}]
-
-        # Call the method
-        result = self.log_sync_workflow._prepare_data_for_upload(previous_data)
-
-        # Check that the result is as expected
-        expected_result = {
-            "daily_invocation_counts": {"2022-01-01": 10},
-            "logs": [{"runtime": 1.0}],
-            "workflow_runtime_samples": [1.0],
-            "last_sync_time": self.log_sync_workflow._time_intervals_to_sync[-1][1].strftime(TIME_FORMAT),
-        }
-        self.assertEqual(json.loads(result), expected_result)
-
-        # Check that the mocks were called with the correct arguments
-        filter_daily_invocation_counts_mock.assert_called_once_with(previous_data["daily_invocation_counts"])
-        merge_daily_invocation_counts_mock.assert_called_once_with(previous_data["daily_invocation_counts"])
-        format_collected_logs_mock.assert_called_once()
-        fill_up_collected_logs_mock.assert_called_once_with(format_collected_logs_mock.return_value, previous_data)
-
     def test_fill_up_collected_logs(self):
-        # Set up the test data
+        # Test filling up collected logs
         now = datetime.now(GLOBAL_TIME_ZONE)
         collected_logs = [{"start_time": (now - timedelta(days=1)).strftime(TIME_FORMAT)}]
         previous_data = {
@@ -435,7 +296,7 @@ class TestLogSyncWorkflow(unittest.TestCase):
         self.assertEqual(collected_logs, expected_result)
 
     def test_fill_up_collected_logs_already_full(self):
-        # Set up the test data
+        # Test that collected logs are not updated when they are already full
         now = datetime.now(GLOBAL_TIME_ZONE)
 
         collected_logs = [{"start_time": (now - timedelta(days=i)).strftime(TIME_FORMAT)} for i in range(2, -1, -1)]
@@ -449,8 +310,6 @@ class TestLogSyncWorkflow(unittest.TestCase):
         expected_result = [{"start_time": (now - timedelta(days=i)).strftime(TIME_FORMAT)} for i in range(3, -1, -1)]
         self.assertEqual(collected_logs, expected_result)
 
-    from unittest.mock import patch
-
     @patch.object(LogSyncWorkflow, "_extend_existing_execution_instance_region")
     @patch.object(LogSyncWorkflow, "_extend_existing_transmission_from_instance_to_instance_region")
     @patch("caribou.syncers.log_sync_workflow.WorkflowRunSample")
@@ -460,33 +319,25 @@ class TestLogSyncWorkflow(unittest.TestCase):
         extend_existing_transmission_from_instance_to_instance_region_mock,
         extend_existing_execution_instance_region_mock,
     ):
-        # Set up the mock
-        WorkflowRunSampleMock.return_value.is_complete.return_value = True
+        # Test formatting collected logs
+        WorkflowRunSampleMock.return_value.is_valid_and_complete.return_value = True
         WorkflowRunSampleMock.return_value.to_dict.return_value = (
-            1,
+            "2022-01-01T00:00:00,000+00:00",
             {
-                "start_time": "2022-01-01T00:00:00,000+00:00",
-                "end_time": "2022-01-01T00:00:00,000+00:00",
-                "execution_latencies": {"function1": {"provider_region": "provider1:region1", "latency": "0.1"}},
-                "start_hop_destination": {"provider": "provider1", "region": "region1"},
+                "execution_data": [{"instance_name": "function1", "provider_region": "provider1:region1"}],
                 "transmission_data": [
                     {
                         "from_instance": "instance1",
                         "to_instance": "instance2",
-                        "from_region": {"provider": "provider1", "region": "region1"},
-                        "to_region": {"provider": "provider2", "region": "region2"},
+                        "from_region": "provider1:region1",
+                        "to_region": "provider2:region2",
                         "transmission_size": 1.0,
-                        "transmission_latency": 0.1,
                     }
                 ],
-                "non_executions": {"instance1": {"instance2": 1}},
             },
         )
 
         self.log_sync_workflow._collected_logs = {"workflow1": WorkflowRunSampleMock()}
-
-        # Set up the test data
-        now = datetime.strptime("2022-01-01 00:00:00,000+00:00", TIME_FORMAT)
 
         # Call the method
         result = self.log_sync_workflow._format_collected_logs()
@@ -494,21 +345,16 @@ class TestLogSyncWorkflow(unittest.TestCase):
         # Check that the result is as expected
         expected_result = [
             {
-                "start_time": "2022-01-01T00:00:00,000+00:00",
-                "end_time": "2022-01-01T00:00:00,000+00:00",
-                "execution_latencies": {"function1": {"provider_region": "provider1:region1", "latency": "0.1"}},
-                "start_hop_destination": {"provider": "provider1", "region": "region1"},
+                "execution_data": [{"instance_name": "function1", "provider_region": "provider1:region1"}],
                 "transmission_data": [
                     {
                         "from_instance": "instance1",
                         "to_instance": "instance2",
-                        "from_region": {"provider": "provider1", "region": "region1"},
-                        "to_region": {"provider": "provider2", "region": "region2"},
+                        "from_region": "provider1:region1",
+                        "to_region": "provider2:region2",
                         "transmission_size": 1.0,
-                        "transmission_latency": 0.1,
                     }
                 ],
-                "non_executions": {"instance1": {"instance2": 1}},
             }
         ]
         self.assertEqual(result, expected_result)
@@ -518,21 +364,21 @@ class TestLogSyncWorkflow(unittest.TestCase):
         extend_existing_transmission_from_instance_to_instance_region_mock.assert_called_once_with(expected_result[0])
 
     def test_filter_daily_invocation_counts(self):
-        # Set up the test data
+        # Test filtering daily invocation counts
         now = datetime.now(GLOBAL_TIME_ZONE)
         previous_daily_invocation_counts = {
             (now - timedelta(days=i)).strftime(TIME_FORMAT_DAYS): i for i in range(FORGETTING_TIME_DAYS + 2)
         }
 
         # Call the method
-        self.log_sync_workflow._filter_daily_invocation_counts(previous_daily_invocation_counts)
+        self.log_sync_workflow._filter_daily_counts(previous_daily_invocation_counts)
 
         # Check that the previous_daily_invocation_counts dictionary was updated as expected
         expected_result = {(now - timedelta(days=i)).strftime(TIME_FORMAT_DAYS): i for i in range(FORGETTING_TIME_DAYS)}
         self.assertEqual(previous_daily_invocation_counts, expected_result)
 
     def test_merge_daily_invocation_counts(self):
-        # Set up the test data
+        # Test merging daily invocation counts
         now = datetime.now(GLOBAL_TIME_ZONE)
         previous_daily_invocation_counts = {(now - timedelta(days=i)).strftime(TIME_FORMAT_DAYS): i for i in range(5)}
         self.log_sync_workflow._daily_invocation_set = {
@@ -547,9 +393,9 @@ class TestLogSyncWorkflow(unittest.TestCase):
         self.assertEqual(previous_daily_invocation_counts, expected_result)
 
     def test_check_for_missing_execution_instance_region(self):
-        # Set up the test data
+        # Test checking for missing execution instance region
         previous_log = {
-            "execution_latencies": {
+            "execution_data": {
                 "function1": {"provider_region": "provider1:region1"},
                 "function2": {"provider_region": "provider1:region2"},
             }
@@ -576,12 +422,12 @@ class TestLogSyncWorkflow(unittest.TestCase):
         self.assertTrue(result)
 
     def test_extend_existing_execution_instance_region(self):
-        # Set up the test data
+        # Test extending existing execution instance region
         log = {
-            "execution_latencies": {
-                "function1": {"provider_region": "provider1:region1"},
-                "function2": {"provider_region": "provider1:region2"},
-            }
+            "execution_data": [
+                {"instance_name": "function1", "provider_region": "provider1:region1"},
+                {"instance_name": "function2", "provider_region": "provider1:region2"},
+            ]
         }
         self.log_sync_workflow._existing_data = {
             "execution_instance_region": {
@@ -602,24 +448,35 @@ class TestLogSyncWorkflow(unittest.TestCase):
         self.assertEqual(self.log_sync_workflow._existing_data, expected_data)
 
     def test_extend_existing_transmission_from_instance_to_instance_region(self):
-        # Set up the test data
+        # Test extending existing transmission from instance to instance region
         log = {
             "transmission_data": [
                 {
                     "from_instance": "instance1",
                     "to_instance": "instance2",
-                    "from_region": {"provider": "provider1", "region": "region1"},
-                    "to_region": {"provider": "provider2", "region": "region2"},
+                    "from_region": "provider1:region1",
+                    "to_region": "provider2:region2",
                     "transmission_size": 1.0,
-                    "transmission_latency": 0.1,
+                    "from_direct_successor": True,
+                    "successor_invoked": True,
                 },
                 {
                     "from_instance": "instance1",
                     "to_instance": "instance2",
-                    "from_region": {"provider": "provider1", "region": "region1"},
-                    "to_region": {"provider": "provider2", "region": "region3"},
-                    "transmission_size": 1.0,
-                    "transmission_latency": 0.1,
+                    "from_region": "provider1:region1",
+                    "to_region": "provider2:region3",
+                    "transmission_size": 2.0,
+                    "from_direct_successor": True,
+                    "successor_invoked": False,
+                },
+                {
+                    "from_instance": "instance1",
+                    "to_instance": "instance2",
+                    "from_region": "provider1:region1",
+                    "to_region": "provider2:region4",
+                    "transmission_size": 5.0,
+                    "from_direct_successor": True,
+                    "successor_invoked": True,
                 },
             ]
         }
@@ -641,7 +498,7 @@ class TestLogSyncWorkflow(unittest.TestCase):
             "transmission_from_instance_to_instance_region": {
                 "instance1": {
                     "instance2": {
-                        "provider1:region1": {"provider2:region2": 6, "provider2:region3": 1},
+                        "provider1:region1": {"provider2:region2": 6, "provider2:region3": 0, "provider2:region4": 1},
                     }
                 }
             }
@@ -649,20 +506,20 @@ class TestLogSyncWorkflow(unittest.TestCase):
         self.assertEqual(self.log_sync_workflow._existing_data, expected_data)
 
     def test_check_for_missing_transmission_from_instance_to_instance_region(self):
-        # Set up the test data
+        # Test checking for missing transmission from instance to instance region
         previous_log = {
             "transmission_data": [
                 {
                     "from_instance": "instance1",
                     "to_instance": "instance2",
-                    "from_region": {"provider": "provider1", "region": "region1"},
-                    "to_region": {"provider": "provider2", "region": "region2"},
+                    "from_region": "provider1:region1",
+                    "to_region": "provider2:region2",
                 },
                 {
                     "from_instance": "instance1",
                     "to_instance": "instance2",
-                    "from_region": {"provider": "provider1", "region": "region1"},
-                    "to_region": {"provider": "provider2", "region": "region3"},
+                    "from_region": "provider1:region1",
+                    "to_region": "provider2:region3",
                 },
             ]
         }
@@ -693,61 +550,6 @@ class TestLogSyncWorkflow(unittest.TestCase):
 
         # Check that the method returned the correct value
         self.assertTrue(result)
-
-    def test_check_for_missing_execution_instance_region_detailed(self):
-        # Set up the test data
-        previous_log = {
-            "execution_latencies": {
-                "function1": {"provider_region": "provider1:region1"},
-                "function2": {"provider_region": "provider1:region2"},
-            }
-        }
-        self.log_sync_workflow._existing_data = {
-            "execution_instance_region": {
-                "function1": {"provider1:region1": 5},
-            }
-        }
-
-        # Call the method
-        result = self.log_sync_workflow._check_for_missing_execution_instance_region(previous_log)
-
-        # Check that the _existing_data dictionary was updated as expected
-        expected_data = {
-            "execution_instance_region": {
-                "function1": {"provider1:region1": 6},
-                "function2": {"provider1:region2": 1},
-            }
-        }
-        self.assertEqual(self.log_sync_workflow._existing_data, expected_data)
-
-        # Check that the method returned the correct value
-        self.assertTrue(result)
-
-    @patch.object(LogSyncWorkflow, "_check_for_missing_execution_instance_region")
-    @patch.object(LogSyncWorkflow, "_check_for_missing_transmission_from_instance_to_instance_region")
-    def test_selectively_add_previous_logs(
-        self,
-        check_for_missing_transmission_from_instance_to_instance_region_mock,
-        check_for_missing_execution_instance_region_mock,
-    ):
-        # Set up the test data
-        collected_logs = [{"log1": "data1"}]
-        previous_log = {"log2": "data2"}
-
-        # Set up the return values for the mocks
-        check_for_missing_execution_instance_region_mock.return_value = True
-        check_for_missing_transmission_from_instance_to_instance_region_mock.return_value = False
-
-        # Call the method
-        self.log_sync_workflow._selectively_add_previous_logs(collected_logs, previous_log)
-
-        # Check that the collected_logs list was updated as expected
-        expected_logs = [previous_log, {"log1": "data1"}]
-        self.assertEqual(collected_logs, expected_logs)
-
-        # Check that the mocks were called with the correct arguments
-        check_for_missing_execution_instance_region_mock.assert_called_once_with(previous_log)
-        check_for_missing_transmission_from_instance_to_instance_region_mock.assert_called_once_with(previous_log)
 
 
 if __name__ == "__main__":

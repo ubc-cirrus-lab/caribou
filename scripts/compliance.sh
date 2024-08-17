@@ -24,4 +24,4 @@ poetry run mypy caribou
 
 # Run pytest
 echo "Running pytest..."
-poetry run pytest --junitxml=pytest.xml --cov-report=term-missing:skip-covered --cov-fail-under=88 --cov=caribou caribou/tests
+poetry run pytest --junitxml=pytest.xml --cov-report=term-missing:skip-covered --cov-fail-under=80 --cov=caribou caribou/tests

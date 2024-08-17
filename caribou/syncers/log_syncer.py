@@ -1,9 +1,9 @@
 import json
-import logging
 from datetime import datetime, timedelta
 from typing import Optional
 
 from caribou.common.constants import (
+    BUFFER_LAMBDA_INSIGHTS_GRACE_PERIOD,
     DEPLOYMENT_RESOURCES_TABLE,
     FORGETTING_TIME_DAYS,
     GLOBAL_TIME_ZONE,
@@ -13,8 +13,6 @@ from caribou.common.constants import (
 from caribou.common.models.endpoints import Endpoints
 from caribou.common.models.remote_client.remote_client import RemoteClient
 from caribou.syncers.log_sync_workflow import LogSyncWorkflow
-
-logger = logging.getLogger(__name__)
 
 
 class LogSyncer:
@@ -30,7 +28,9 @@ class LogSyncer:
         )
 
         for workflow_id, deployment_manager_config_str in currently_deployed_workflows.items():
-            previous_data_str = self._workflow_summary_client.get_value_from_table(WORKFLOW_SUMMARY_TABLE, workflow_id)
+            previous_data_str, _ = self._workflow_summary_client.get_value_from_table(
+                WORKFLOW_SUMMARY_TABLE, workflow_id
+            )
             previous_data = json.loads(previous_data_str) if previous_data_str else {}
 
             last_sync_time: Optional[str] = previous_data.get(
@@ -38,7 +38,9 @@ class LogSyncer:
                 None,
             )
 
-            time_intervals_to_sync = self._get_time_intervals_to_sync(last_sync_time)
+            time_intervals_to_sync = self._get_time_intervals_to_sync(
+                last_sync_time, BUFFER_LAMBDA_INSIGHTS_GRACE_PERIOD
+            )
 
             if len(time_intervals_to_sync) == 0:
                 continue
@@ -53,8 +55,15 @@ class LogSyncer:
             )
             log_sync_workflow.sync_workflow()
 
-    def _get_time_intervals_to_sync(self, last_sync_time: Optional[str]) -> list[tuple[datetime, datetime]]:
+    def _get_time_intervals_to_sync(
+        self, last_sync_time: Optional[str], buffer_minutes: float = 30
+    ) -> list[tuple[datetime, datetime]]:
         current_time = datetime.now(GLOBAL_TIME_ZONE)
+
+        # Subtract buffer time to avoid missing logs
+        # As AWS insights might take some time to be available
+        current_time -= timedelta(minutes=buffer_minutes)
+
         start_time = current_time - timedelta(days=FORGETTING_TIME_DAYS)
         if last_sync_time is not None:
             last_sync_time_datetime = datetime.strptime(last_sync_time, TIME_FORMAT)

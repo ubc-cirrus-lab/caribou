@@ -33,6 +33,11 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         self._client_cache: dict[str, Any] = {}
         self._workflow_image_cache: dict[str, dict[str, str]] = {}
 
+        # Allow for override of the deployment resources bucket (Due to S3 bucket name restrictions)
+        self._deployment_resource_bucket: str = os.environ.get(
+            "CARIBOU_OVERRIDE_DEPLOYMENT_RESOURCES_BUCKET", DEPLOYMENT_RESOURCES_BUCKET
+        )
+
     def get_current_provider_region(self) -> str:
         return f"aws_{self._session.region_name}"
 
@@ -76,17 +81,24 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
 
     def set_predecessor_reached(
         self, predecessor_name: str, sync_node_name: str, workflow_instance_id: str, direct_call: bool
-    ) -> list[bool]:
+    ) -> tuple[list[bool], float, float]:
         client = self._client("dynamodb")
 
+        # Record the consumed capacity (Write Capacity Units) for this operation
+        # Refer to: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/read-write-operations.html
+        consumed_write_capacity = 0.0
+
         # Check if the map exists and create it if not
-        client.update_item(
+        mc_response = client.update_item(
             TableName=SYNC_PREDECESSOR_COUNTER_TABLE,
             Key={"id": {"S": workflow_instance_id}},
             UpdateExpression="SET #s = if_not_exists(#s, :empty_map)",
             ExpressionAttributeNames={"#s": sync_node_name},
             ExpressionAttributeValues={":empty_map": {"M": {}}},
+            ReturnConsumedCapacity="TOTAL",
         )
+
+        consumed_write_capacity += mc_response.get("ConsumedCapacity", {}).get("CapacityUnits", 0.0)
 
         # Update the map with the new predecessor_name and direct_call
         if not direct_call:
@@ -97,6 +109,7 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
                 ExpressionAttributeNames={"#s": sync_node_name, "#p": predecessor_name},
                 ExpressionAttributeValues={":direct_call": {"BOOL": direct_call}},
                 ReturnValues="ALL_NEW",
+                ReturnConsumedCapacity="TOTAL",
             )
         else:
             response = client.update_item(
@@ -106,9 +119,19 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
                 ExpressionAttributeNames={"#s": sync_node_name, "#p": predecessor_name},
                 ExpressionAttributeValues={":direct_call": {"BOOL": direct_call}},
                 ReturnValues="ALL_NEW",
+                ReturnConsumedCapacity="TOTAL",
             )
 
-        return [item["BOOL"] for item in response["Attributes"][sync_node_name]["M"].values()]
+        consumed_write_capacity += response.get("ConsumedCapacity", {}).get("CapacityUnits", 0.0)
+
+        # Measure the size of the response
+        response_size = len(json.dumps(response).encode("utf-8")) / (1024**3)
+
+        return (
+            [item["BOOL"] for item in response["Attributes"][sync_node_name]["M"].values()],
+            response_size,
+            consumed_write_capacity,
+        )
 
     def create_sync_tables(self) -> None:
         # Check if table exists
@@ -127,7 +150,9 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
                 else:
                     raise
 
-    def upload_predecessor_data_at_sync_node(self, function_name: str, workflow_instance_id: str, message: str) -> None:
+    def upload_predecessor_data_at_sync_node(
+        self, function_name: str, workflow_instance_id: str, message: str
+    ) -> float:
         client = self._client("dynamodb")
         sync_node_id = f"{function_name}:{workflow_instance_id}"
         response = client.update_item(
@@ -140,24 +165,39 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
                 ":m": {"SS": [message]},
             },
             UpdateExpression="ADD #M :m",
+            ReturnConsumedCapacity="TOTAL",
         )
-        return response
+
+        return response.get("ConsumedCapacity", {}).get("CapacityUnits", 0.0)
 
     def get_predecessor_data(
-        self, current_instance_name: str, workflow_instance_id: str  # pylint: disable=unused-argument
-    ) -> list[str]:
+        self,
+        current_instance_name: str,
+        workflow_instance_id: str,
+        consistent_read: bool = True,  # pylint: disable=unused-argument
+    ) -> tuple[list[str], float]:
         client = self._client("dynamodb")
         sync_node_id = f"{current_instance_name}:{workflow_instance_id}"
+        # Currently we use strongly consistent reads for the sync messages
+        # Refer to: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/read-write-operations.html
         response = client.get_item(
             TableName=SYNC_MESSAGES_TABLE,
             Key={"id": {"S": sync_node_id}},
+            ReturnConsumedCapacity="TOTAL",
+            ConsistentRead=consistent_read,
         )
+
+        # Record the consumed capacity (Read Capacity Units) for the sync node
+        consumed_read_capacity = response.get("ConsumedCapacity", {}).get("CapacityUnits", 0.0)
+
         if "Item" not in response:
-            return []
+            return [], consumed_read_capacity
+
         item = response.get("Item")
         if item is not None and "message" in item:
-            return item["message"]["SS"]
-        return []
+            return item["message"]["SS"], consumed_read_capacity
+
+        return [], consumed_read_capacity
 
     def create_function(
         self,
@@ -289,7 +329,7 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
             ExpressionAttributeValues={":value": {"S": image_name}},
         )
 
-    def _get_deployed_image_uri(self, function_name: str) -> str:
+    def _get_deployed_image_uri(self, function_name: str, consistent_read: bool = True) -> str:
         workflow_instance_id = "-".join(function_name.split("-")[0:2])
 
         function_name_simple = function_name[len(workflow_instance_id) + 1 :].rsplit("_", 1)[0]
@@ -302,6 +342,7 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         response = client.get_item(
             TableName=CARIBOU_WORKFLOW_IMAGES_TABLE,
             Key={"key": {"S": workflow_instance_id}},
+            ConsistentRead=consistent_read,
         )
 
         if "Item" not in response:
@@ -323,9 +364,19 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
             run_command += " && ".join(additional_docker_commands)
         if len(run_command) > 0:
             run_command = f"RUN {run_command}"
+
+        # For AWS lambda insights for CPU and IO logging
+        # https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Lambda-Insights-Getting-Started-docker.html
+        lambda_insight_command = (
+            """RUN curl -O https://lambda-insights-extension.s3-ap-northeast-1.amazonaws.com/amazon_linux/lambda-insights-extension.rpm && """  # pylint: disable=line-too-long
+            """rpm -U lambda-insights-extension.rpm && """
+            """rm -f lambda-insights-extension.rpm"""
+        )
+
         return f"""
         FROM public.ecr.aws/lambda/{runtime.replace("python", "python:")}
         COPY requirements.txt ./
+        {lambda_insight_command}
         {run_command}
         RUN pip3 install --no-cache-dir -r requirements.txt
         COPY app.py ./
@@ -565,15 +616,26 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
             UpdateExpression=update_expression,
         )
 
-    def get_value_from_table(self, table_name: str, key: str) -> str:
+    def get_value_from_table(self, table_name: str, key: str, consistent_read: bool = True) -> tuple[str, float]:
         client = self._client("dynamodb")
-        response = client.get_item(TableName=table_name, Key={"key": {"S": key}})
+        response = client.get_item(
+            TableName=table_name,
+            Key={"key": {"S": key}},
+            ConsistentRead=consistent_read,
+            ReturnConsumedCapacity="TOTAL",
+        )
+
+        # Record the consumed capacity (Read Capacity Units) for the sync node
+        consumed_read_capacity = response.get("ConsumedCapacity", {}).get("CapacityUnits", 0.0)
+
         if "Item" not in response:
-            return ""
+            return "", consumed_read_capacity
+
         item = response.get("Item")
         if item is not None and "value" in item:
-            return item["value"]["S"]
-        return ""
+            return item["value"]["S"], consumed_read_capacity
+
+        return "", consumed_read_capacity
 
     def remove_value_from_table(self, table_name: str, key: str) -> None:
         client = self._client("dynamodb")
@@ -589,27 +651,27 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
             return {item["key"]["S"]: item["value"]["S"] for item in items}
         return {}
 
-    def get_key_present_in_table(self, table_name: str, key: str) -> bool:
+    def get_key_present_in_table(self, table_name: str, key: str, consistent_read: bool = True) -> bool:
         client = self._client("dynamodb")
-        response = client.get_item(TableName=table_name, Key={"key": {"S": key}})
+        response = client.get_item(TableName=table_name, Key={"key": {"S": key}}, ConsistentRead=consistent_read)
         return "Item" in response
 
     def upload_resource(self, key: str, resource: bytes) -> None:
         client = self._client("s3")
         try:
-            client.put_object(Body=resource, Bucket=DEPLOYMENT_RESOURCES_BUCKET, Key=key)
+            client.put_object(Body=resource, Bucket=self._deployment_resource_bucket, Key=key)
         except ClientError as e:
             raise RuntimeError(
-                f"Could not upload resource {key} to S3, does the bucket {DEPLOYMENT_RESOURCES_BUCKET} exist and do you have permission to access it: {str(e)}"  # pylint: disable=line-too-long
+                f"Could not upload resource {key} to S3, does the bucket {self._deployment_resource_bucket} exist and do you have permission to access it: {str(e)}"  # pylint: disable=line-too-long
             ) from e
 
     def download_resource(self, key: str) -> bytes:
         client = self._client("s3")
         try:
-            response = client.get_object(Bucket=DEPLOYMENT_RESOURCES_BUCKET, Key=key)
+            response = client.get_object(Bucket=self._deployment_resource_bucket, Key=key)
         except ClientError as e:
             raise RuntimeError(
-                f"Could not upload resource {key} to S3, does the bucket {DEPLOYMENT_RESOURCES_BUCKET} exist and do you have permission to access it: {str(e)}"  # pylint: disable=line-too-long
+                f"Could not upload resource {key} to S3, does the bucket {self._deployment_resource_bucket} exist and do you have permission to access it: {str(e)}"  # pylint: disable=line-too-long
             ) from e
         return response["Body"].read()
 
@@ -687,9 +749,54 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
 
         return log_events
 
+    def get_insights_logs_between(self, function_instance: str, start: datetime, end: datetime) -> list[str]:
+        time_ms_start = int(start.timestamp() * 1000)
+        time_ms_end = int(end.timestamp() * 1000)
+        client = self._client("logs")
+
+        next_token = None
+
+        log_events: list[str] = []
+        while True:
+            if next_token:
+                response = client.filter_log_events(
+                    logGroupName="/aws/lambda-insights",
+                    logStreamNamePrefix=function_instance,
+                    startTime=time_ms_start,
+                    endTime=time_ms_end,
+                    nextToken=next_token,
+                )
+            else:
+                try:
+                    response = client.filter_log_events(
+                        logGroupName="/aws/lambda-insights",
+                        logStreamNamePrefix=function_instance,
+                        startTime=time_ms_start,
+                        endTime=time_ms_end,
+                    )
+                except client.exceptions.ResourceNotFoundException:
+                    # No logs found
+                    return []
+
+            log_events.extend(event["message"] for event in response.get("events", []))
+
+            next_token = response.get("nextToken")
+            if not next_token:
+                break
+
+        return log_events
+
     def remove_key(self, table_name: str, key: str) -> None:
         client = self._client("dynamodb")
-        client.delete_item(TableName=table_name, Key={"key": {"S": key}})
+
+        try:
+            client.delete_item(TableName=table_name, Key={"key": {"S": key}})
+        except ClientError as e:
+            if e.response["Error"]["Code"] == "ValidationException":
+                print(f"Table '{table_name}' Remove Key '{key}' Error.")
+                print(f"{e.response['Error']['Code']}: {e.response['Error']['Message']}")
+            else:
+                raise
 
     def remove_function(self, function_name: str) -> None:
         client = self._client("lambda")
@@ -747,10 +854,10 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
     def remove_resource(self, key: str) -> None:
         client = self._client("s3")
         try:
-            client.delete_object(Bucket=DEPLOYMENT_RESOURCES_BUCKET, Key=key)
+            client.delete_object(Bucket=self._deployment_resource_bucket, Key=key)
         except ClientError as e:
             raise RuntimeError(
-                f"Could not upload resource {key} to S3, does the bucket {DEPLOYMENT_RESOURCES_BUCKET} exist and do you have permission to access it: {str(e)}"  # pylint: disable=line-too-long
+                f"Could not upload resource {key} to S3, does the bucket {self._deployment_resource_bucket} exist and do you have permission to access it: {str(e)}"  # pylint: disable=line-too-long
             ) from e
 
     def remove_ecr_repository(self, repository_name: str) -> None:
