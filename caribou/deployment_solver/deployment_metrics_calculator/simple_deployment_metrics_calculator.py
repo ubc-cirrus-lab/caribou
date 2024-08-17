@@ -1,7 +1,7 @@
 import statistics
 from multiprocessing import Manager, Process
 from queue import Queue
-from typing import Tuple, Any
+from typing import Any, Tuple
 
 import numpy as np
 import scipy.stats as st
