@@ -1,6 +1,7 @@
 import json
 import logging
 import random
+import uuid
 from datetime import datetime
 from typing import Any, Optional
 
@@ -11,6 +12,7 @@ from caribou.common.constants import (
     DEPLOYMENT_MANAGER_RESOURCE_TABLE,
     DEPLOYMENT_RESOURCES_TABLE,
     GLOBAL_TIME_ZONE,
+    HOME_REGION_THRESHOLD,
     TIME_FORMAT,
     WORKFLOW_INSTANCE_TABLE,
     WORKFLOW_PLACEMENT_DECISION_TABLE,
@@ -21,6 +23,11 @@ from caribou.common.models.endpoints import Endpoints
 from caribou.common.models.remote_client.aws_remote_client import AWSRemoteClient
 from caribou.common.models.remote_client.remote_client_factory import RemoteClientFactory
 
+# Set logging level for Boto3 to WARNING to suppress INFO messages
+# Mainly to suppress 'Found credentials in environment variables.' message
+# May in the future want to make it just targetting the specific logger
+logging.getLogger("botocore").setLevel(logging.WARNING)
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 logger.addHandler(logging.StreamHandler())
@@ -30,25 +37,32 @@ class Client:
     def __init__(self, workflow_id: Optional[str] = None) -> None:
         self._workflow_id = workflow_id
         self._endpoints = Endpoints()
-        self._home_region_threshold = 0.1  # 10% of the time run in home region
+        self._home_region_threshold = HOME_REGION_THRESHOLD  # fractional % of the time run in home region
 
-    def run(self, input_data: Optional[str] = None) -> None:
+    def run(self, input_data: Optional[str] = None) -> str:
+        current_time = datetime.now(GLOBAL_TIME_ZONE).strftime(TIME_FORMAT)
+
         if self._workflow_id is None:
             raise RuntimeError("No workflow id provided")
 
-        result = self._endpoints.get_deployment_algorithm_workflow_placement_decision_client().get_value_from_table(
+        (
+            raw_wpd,
+            consumed_read_capacity,
+        ) = self._endpoints.get_deployment_algorithm_workflow_placement_decision_client().get_value_from_table(
             WORKFLOW_PLACEMENT_DECISION_TABLE, self._workflow_id
         )
 
         if input_data is None:
             input_data = ""
 
-        if result is None or result == "":
+        if raw_wpd is None or raw_wpd == "":
             raise RuntimeError(
                 f"No workflow placement decision found for workflow, did you deploy the workflow and is the workflow id ({self._workflow_id}) correct?"  # pylint: disable=line-too-long
             )
 
-        workflow_placement_decision = json.loads(result)
+        # Get the WPD size
+        wpd_data_size = len(raw_wpd.encode("utf-8")) / (1024**3)
+        workflow_placement_decision = json.loads(raw_wpd)
 
         send_to_home_region = random.random() < self._home_region_threshold
 
@@ -60,22 +74,30 @@ class Client:
             workflow_placement_decision, send_to_home_region
         )
 
-        current_time = datetime.now(GLOBAL_TIME_ZONE).strftime(TIME_FORMAT)
-
         workflow_placement_decision["send_to_home_region"] = send_to_home_region
 
+        run_id = uuid.uuid4().hex
+        workflow_placement_decision["run_id"] = run_id  # Run_id is stored in the workflow_placement_decision
+        workflow_placement_decision["data_size"] = wpd_data_size
+        workflow_placement_decision["consumed_read_capacity"] = consumed_read_capacity
+        print(f"Run ID for current run: {run_id}")
         wrapped_input_data = {
-            "input_data": input_data,
+            "payload": input_data,
             "time_request_sent": current_time,
             "workflow_placement_decision": workflow_placement_decision,
+            "number_of_hops_from_client_request": 0,
+            "permit_redirection": False,  # We don't want to redirect the request.
+            "redirected": False,
+            "request_source": "Caribou CLI",
         }
 
         json_payload = json.dumps(wrapped_input_data)
-
         RemoteClientFactory.get_remote_client(provider, region).invoke_function(
             message=json_payload,
             identifier=identifier,
         )
+
+        return run_id
 
     def _get_time_key(self, workflow_placement_decision: dict[str, Any]) -> str:
         if "current_deployment" not in workflow_placement_decision["workflow_placement"]:
@@ -135,7 +157,9 @@ class Client:
             print("No workflows deployed")
             return
         print("Deployed workflows:")
-        for workflow in deployed_workflows:
+
+        # Sort the workflows by name
+        for workflow in sorted(deployed_workflows):
             print(workflow)
 
     def remove(self) -> None:
@@ -169,11 +193,11 @@ class Client:
 
         self._endpoints.get_data_collector_client().remove_key(WORKFLOW_INSTANCE_TABLE, self._workflow_id)
 
-        self._endpoints.get_datastore_client().remove_key(WORKFLOW_SUMMARY_TABLE, self._workflow_id)
-
         self._endpoints.get_deployment_resources_client().remove_key(
             CARIBOU_WORKFLOW_IMAGES_TABLE, self._workflow_id.replace(".", "_")
         )
+
+        self._endpoints.get_datastore_client().remove_key(WORKFLOW_SUMMARY_TABLE, self._workflow_id)
 
         print(f"Removed workflow {self._workflow_id}")
 

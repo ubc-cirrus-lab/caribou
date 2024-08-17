@@ -38,7 +38,7 @@ class TestLogSyncer(unittest.TestCase):
         mock_deployment_resources_client = MagicMock()
         mock_deployment_resources_client.get_all_values_from_table.return_value = {"workflow1": "config1"}
         mock_workflow_summary_client = MagicMock()
-        mock_workflow_summary_client.get_value_from_table.return_value = '{"last_sync_time": "time1"}'
+        mock_workflow_summary_client.get_value_from_table.return_value = ('{"last_sync_time": "time1"}', 0.0)
 
         # Configure the mock_endpoints
         mock_endpoints.return_value.get_deployment_resources_client.return_value = mock_deployment_resources_client
@@ -77,10 +77,13 @@ class TestLogSyncer(unittest.TestCase):
         last_sync_time = (current_time - timedelta(days=1)).strftime(TIME_FORMAT)
 
         # Call the method
-        result = log_syncer._get_time_intervals_to_sync(last_sync_time)
+        buffer_minutes = 30
+        result = log_syncer._get_time_intervals_to_sync(last_sync_time, buffer_minutes)
 
         # Check that the result is as expected
-        expected_result = [(datetime.strptime(last_sync_time, TIME_FORMAT), current_time)]
+        expected_result = [
+            (datetime.strptime(last_sync_time, TIME_FORMAT), current_time - timedelta(minutes=buffer_minutes))
+        ]
         self.assertEqual(result, expected_result)
 
 

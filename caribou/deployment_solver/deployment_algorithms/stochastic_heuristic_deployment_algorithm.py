@@ -8,9 +8,13 @@ from caribou.deployment_solver.workflow_config import WorkflowConfig
 
 class StochasticHeuristicDeploymentAlgorithm(DeploymentAlgorithm):
     def __init__(
-        self, workflow_config: WorkflowConfig, expiry_time_delta_seconds: int = 604800, n_workers: int = 1
+        self,
+        workflow_config: WorkflowConfig,
+        expiry_time_delta_seconds: int = 604800,
+        n_workers: int = 1,
+        record_transmission_execution_carbon: bool = False,
     ) -> None:
-        super().__init__(workflow_config, expiry_time_delta_seconds, n_workers)
+        super().__init__(workflow_config, expiry_time_delta_seconds, n_workers, record_transmission_execution_carbon)
         self._setup()
 
     def _setup(self) -> None:
@@ -44,9 +48,16 @@ class StochasticHeuristicDeploymentAlgorithm(DeploymentAlgorithm):
 
         generated_deployments: set[tuple[int, ...]] = {tuple(deployment) for deployment, _ in deployments}
         for _ in range(self._num_iterations):
+            if len(generated_deployments) >= self._max_number_combinations:
+                break
+
             new_deployment = self._generate_new_deployment(current_deployment)
             if tuple(new_deployment) in generated_deployments:
                 continue
+            generated_deployments.add(
+                tuple(new_deployment)
+            )  # Add the current deployment to the set (as it is generated)
+
             new_deployment_metrics = self._deployment_metrics_calculator.calculate_deployment_metrics(new_deployment)
 
             if self._is_hard_constraint_failed(new_deployment_metrics):
@@ -55,12 +66,8 @@ class StochasticHeuristicDeploymentAlgorithm(DeploymentAlgorithm):
             if self._is_improvement(new_deployment_metrics, new_deployment, current_deployment):
                 current_deployment = deepcopy(new_deployment)
                 deployments.append((current_deployment, new_deployment_metrics))
-                generated_deployments.add(tuple(current_deployment))
 
             self._temperature *= 0.99
-
-            if len(deployments) >= self._max_number_combinations:
-                break
 
     def _generate_all_possible_coarse_deployments(self) -> list[tuple[list[int], dict[str, float]]]:
         deployments = []
@@ -77,7 +84,10 @@ class StochasticHeuristicDeploymentAlgorithm(DeploymentAlgorithm):
         ):
             return None
         deployment = self._generate_deployment(region_index)
-        deployment_metrics = self._deployment_metrics_calculator.calculate_deployment_metrics(deployment)
+        if deployment == self._home_deployment:
+            deployment_metrics = self._home_deployment_metrics
+        else:
+            deployment_metrics = self._deployment_metrics_calculator.calculate_deployment_metrics(deployment)
 
         if self._is_hard_constraint_failed(deployment_metrics):
             return None

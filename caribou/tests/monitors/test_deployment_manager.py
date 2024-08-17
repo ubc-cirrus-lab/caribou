@@ -39,11 +39,12 @@ class TestDeploymentManager(unittest.TestCase):
         self.mock_endpoints.get_data_collector_client.return_value = mock_client
         mock_client.get_keys.return_value = ["workflow1"]
         mock_client.get_value_from_table.side_effect = [
-            json.dumps({"next_check": "2022-01-01 00:00:00,000+00:00"}),  # workflow_info_raw
-            json.dumps(
-                {"workflow_config": json.dumps({"home_region": "region1", "instances": [1, 2, 3]})}
+            (json.dumps({"next_check": "2022-01-01 00:00:00,000+00:00"}), 0.0),  # workflow_info_raw
+            (
+                json.dumps({"workflow_config": json.dumps({"home_region": "region1", "instances": [1, 2, 3]})}),
+                0.0,
             ),  # workflow_config_from_table
-            json.dumps({}),  # workflow_summary_raw
+            (json.dumps({}), 0.0),  # workflow_summary_raw
         ]
         self.deployment_manager._get_last_solved = MagicMock(return_value=datetime(2022, 1, 1))
         self.deployment_manager._get_total_invocation_counts_since_last_solved = MagicMock(return_value=10)
@@ -202,17 +203,20 @@ class TestDeploymentManager(unittest.TestCase):
         mock_client = MagicMock()
         self.mock_endpoints.get_deployment_manager_client.return_value = mock_client
         mock_client.get_value_from_table.side_effect = [
-            json.dumps(
-                {
-                    "transmission_distances": {
-                        "region1": 1000,
-                        "region2": 5000,
-                        "region3": 3000,
+            (
+                json.dumps(
+                    {
+                        "transmission_distances": {
+                            "region1": 1000,
+                            "region2": 5000,
+                            "region3": 3000,
+                        }
                     }
-                }
+                ),
+                0.0,
             ),
-            json.dumps({"averages": {"overall": {"carbon_intensity": 1}}}),
-            json.dumps({"averages": {"overall": {"carbon_intensity": 2}}}),
+            (json.dumps({"averages": {"overall": {"carbon_intensity": 1}}}), 0.0),
+            (json.dumps({"averages": {"overall": {"carbon_intensity": 2}}}), 0.0),
         ]
 
         # Act
@@ -290,7 +294,10 @@ class TestDeploymentManager(unittest.TestCase):
         # Arrange
         mock_client = MagicMock()
         self.mock_endpoints.get_deployment_manager_client.return_value = mock_client
-        mock_client.get_value_from_table.return_value = json.dumps({"averages": {"overall": {"carbon_intensity": 1}}})
+        mock_client.get_value_from_table.return_value = (
+            json.dumps({"averages": {"overall": {"carbon_intensity": 1}}}),
+            0.0,
+        )
 
         # Act
         result = self.deployment_manager._get_carbon_intensity_system()

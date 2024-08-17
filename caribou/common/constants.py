@@ -1,4 +1,13 @@
-import pytz
+from datetime import timezone
+
+# Caribou Wrapper Constants
+## Determines the percentage of requests ALWAYS
+## being sent to the home region (Entire workflow)
+HOME_REGION_THRESHOLD = 0.1  # 10% of the time run in home region
+
+# Configure max hops from client
+## If the request has been forwarded or gone through X hops from Client, it is dropped
+MAXIMUM_HOPS_FROM_CLIENT_REQUEST = 20
 
 # Workflow Placement Tables
 WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE = "workflow_placement_solver_staging_area_table"
@@ -52,17 +61,25 @@ WORKFLOW_SUMMARY_TABLE = "workflow_summary_table"
 SOLVER_INPUT_GRID_CARBON_DEFAULT = 500.0
 
 ## Datacenter Loader
-SOLVER_INPUT_AVERAGE_CPU_POWER_DEFAULT = 100.0
-SOLVER_INPUT_AVERAGE_MEMORY_POWER_DEFAULT = 100.0
-SOLVER_INPUT_PUE_DEFAULT = 1.0
+SOLVER_INPUT_AVERAGE_MEMORY_POWER_DEFAULT = 0.0003725
+SOLVER_INPUT_PUE_DEFAULT = 1.11
 SOLVER_INPUT_CFE_DEFAULT = 0.0
-SOLVER_INPUT_COMPUTE_COST_DEFAULT = 100.0
-SOLVER_INPUT_INVOCATION_COST_DEFAULT = 100.0
-SOLVER_INPUT_TRANSMISSION_COST_DEFAULT = 100.0
+SOLVER_INPUT_COMPUTE_COST_DEFAULT = 1.66667e-05  # of x86_64 architecture Ohio region
+SOLVER_INPUT_INVOCATION_COST_DEFAULT = 2e-07  # of x86_64 architecture Ohio region
+SOLVER_INPUT_TRANSMISSION_COST_DEFAULT = 0.09  # Global data transfer cost
+SOLVER_INPUT_MIN_CPU_POWER_DEFAULT = 0.00074
+SOLVER_INPUT_MAX_CPU_POWER_DEFAULT = 0.0035
+SOLVER_INPUT_SNS_REQUEST_COST_DEFAULT = 0.50 / 1000000  # 0.50 USD per 1 million requests (At Ohio region)
+SOLVER_INPUT_DYNAMODB_READ_COST_DEFAULT = 0.25 / 1000000  # 0.25 USD per 1 million read request unit (At Ohio region)
+SOLVER_INPUT_DYNAMODB_WRITE_COST_DEFAULT = 1.25 / 1000000  # 1.25 USD per 1 million write request unit (At Ohio region)
+SOLVER_INPUT_ECR_MONTHLY_STORAGE_COST_DEFAULT = 0.10  # 0.10 USD per 1 GB per month (At Ohio region)
 
 ## Performance Loader
 SOLVER_INPUT_RELATIVE_PERFORMANCE_DEFAULT = 1.0
-SOLVER_INPUT_TRANSMISSION_LATENCY_DEFAULT = 1000.0
+
+# Future TODO: Change this to a more accurate value via a benchmark,
+# this should be the average transmission latency for intra region transmission.
+SOLVER_HOME_REGION_TRANSMISSION_LATENCY_DEFAULT = 0.22
 
 ## Workflow Loader
 SOLVER_INPUT_RUNTIME_DEFAULT = -1.0  # Denotes that the runtime is not available
@@ -71,6 +88,9 @@ SOLVER_INPUT_LATENCY_DEFAULT = -1.0  # Denotes that the latency is not available
 SOLVER_INPUT_DATA_TRANSFER_SIZE_DEFAULT = 0.0
 SOLVER_INPUT_INVOCATION_PROBABILITY_DEFAULT = 0.0  # If it is missing, the invocation is never called in the workflow
 SOLVER_INPUT_PROJECTED_MONTHLY_INVOCATIONS_DEFAULT = 0.0
+SYNC_SIZE_DEFAULT = 1.0 / 1024**2  # 1 KB in GB
+SNS_SIZE_DEFAULT = 1.0 / 1024**2  # 1 KB in GB
+
 
 SOLVER_INPUT_VCPU_DEFAULT = -1.0  # Denotes that the vCPU is not available
 SOLVER_INPUT_ARCHITECTURE_DEFAULT = "x86_64"
@@ -89,17 +109,41 @@ MINIMAL_SOLVE_THRESHOLD = 10
 DISTANCE_FOR_POTENTIAL_MIGRATION = 4000
 
 # Logging
-LOG_VERSION = "0.0.3"
+LOG_VERSION = "0.0.4"
 
 # Tail latency threshold
 TAIL_LATENCY_THRESHOLD = 95
 
+# Average USA Carbon Intensity of Electric Grid
+## Contiguous United States Carbon intensity of energy grid
+## of Consumption in 2023 according to Electric Maps - gCO2e/kWh
+AVERAGE_USA_CARBON_INTENSITY = 410
+
 # datetime
-GLOBAL_TIME_ZONE = pytz.utc
+GLOBAL_TIME_ZONE = timezone.utc
 TIME_FORMAT = "%Y-%m-%d %H:%M:%S,%f%z"
 TIME_FORMAT_DAYS = "%Y-%m-%d%z"
 
-# Forgetting factors
+# Log-Syncer parameters
+## Forgetting factors
 FORGETTING_TIME_DAYS = 30  # 30 days
 FORGETTING_NUMBER = 5000  # 5000 invocations
 KEEP_ALIVE_DATA_COUNT = 10  # Keep sample it is part of any of the 10 samples for any execution or transmission
+
+## Grace period for the log-syncer
+## Used as lambda insights can be delayed
+BUFFER_LAMBDA_INSIGHTS_GRACE_PERIOD = 30  # 30 minutes
+
+## Successor task types
+REDIRECT_ONLY_TASK_TYPE = "REDIRECT_ONLY"
+INVOKE_SUCCESSOR_ONLY_TASK_TYPE = "INVOKE_SUCCESSOR_ONLY"
+SYNC_UPLOAD_AND_INVOKE_TASK_TYPE = "SYNC_UPLOAD_AND_INVOKE"
+SYNC_UPLOAD_ONLY_TASK_TYPE = "SYNC_UPLOAD_ONLY"
+CONDITIONALLY_NOT_INVOKE_TASK_TYPE = "CONDITIONALLY_NOT_INVOKE"
+
+# Caribou Wrapper parameters
+## max workers for async invocations
+MAX_WORKERS = 1
+
+## Orchastration transfer size limitation
+MAX_TRANSFER_SIZE = 256000  # In bytes

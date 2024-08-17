@@ -1,3 +1,4 @@
+import os
 import unittest
 from unittest.mock import patch
 from unittest.mock import MagicMock
@@ -372,6 +373,7 @@ class TestAWSRemoteClient(unittest.TestCase):
             ExpressionAttributeNames={"#M": "message"},
             ExpressionAttributeValues={":m": {"SS": [message]}},
             UpdateExpression="ADD #M :m",
+            ReturnConsumedCapacity="TOTAL",
         )
 
     @patch.object(AWSRemoteClient, "_client")
@@ -386,16 +388,18 @@ class TestAWSRemoteClient(unittest.TestCase):
         mock_client.return_value.get_item.assert_called_once_with(
             TableName=SYNC_MESSAGES_TABLE,
             Key={"id": {"S": f"{current_instance_name}:{workflow_instance_id}"}},
+            ReturnConsumedCapacity="TOTAL",
+            ConsistentRead=True,
         )
-        self.assertEqual(result, ["test_message"])
+        self.assertEqual(result, (["test_message"], 0.0))
 
         mock_client.return_value.get_item.return_value = {}
         result = self.aws_client.get_predecessor_data(current_instance_name, workflow_instance_id)
-        self.assertEqual(result, [])
+        self.assertEqual(result, ([], 0.0))
 
         mock_client.return_value.get_item.return_value = {"Item": {}}
         result = self.aws_client.get_predecessor_data(current_instance_name, workflow_instance_id)
-        self.assertEqual(result, [])
+        self.assertEqual(result, ([], 0.0))
 
     @patch.object(AWSRemoteClient, "_client")
     @patch("time.sleep", return_value=None)
@@ -445,7 +449,7 @@ class TestAWSRemoteClient(unittest.TestCase):
         table_name = "test_table"
         key = "test_key"
         mock_client.return_value.get_item.return_value = {"Item": {"key": {"S": key}, "value": {"S": "test_value"}}}
-        result = self.aws_client.get_value_from_table(table_name, key)
+        result, _ = self.aws_client.get_value_from_table(table_name, key)
         self.assertEqual(result, "test_value")
 
     @patch.object(AWSRemoteClient, "_client")
@@ -479,8 +483,13 @@ class TestAWSRemoteClient(unittest.TestCase):
         resource = b"test_resource"
         self.aws_client.upload_resource(key, resource)
         mock_client.assert_called_with("s3")
+
+        deployment_resource_bucket: str = os.environ.get(
+            "CARIBOU_OVERRIDE_DEPLOYMENT_RESOURCES_BUCKET", DEPLOYMENT_RESOURCES_BUCKET
+        )
+
         mock_client.return_value.put_object.assert_called_once_with(
-            Body=resource, Bucket=DEPLOYMENT_RESOURCES_BUCKET, Key=key
+            Body=resource, Bucket=deployment_resource_bucket, Key=key
         )
 
     @patch.object(AWSRemoteClient, "_client")
@@ -508,14 +517,17 @@ class TestAWSRemoteClient(unittest.TestCase):
         client = AWSRemoteClient("region1")
 
         # Mock the return value of update_item
-        mock_dynamodb_client.update_item.return_value = {
-            "Attributes": {"sync_node_name": {"M": {"workflow_instance_id": {"BOOL": True}}}}
+        update_item_return_value = {
+            "Attributes": {"sync_node_name": {"M": {"workflow_instance_id": {"BOOL": True}}}},
+            "ConsumedCapacity": {"CapacityUnits": 5.3},
         }
+        mock_dynamodb_client.update_item.return_value = update_item_return_value
 
         result = client.set_predecessor_reached("predecessor_name", "sync_node_name", "workflow_instance_id", True)
 
         # Check that the return value is correct
-        self.assertEqual(result, [True])
+        update_item_response_size = len(json.dumps(update_item_return_value).encode("utf-8")) / (1024**3)
+        self.assertEqual(result, ([True], update_item_response_size, 5.3 * 2))
 
     @patch.object(AWSRemoteClient, "_client")
     def test_create_sync_tables(self, mock_client):
@@ -596,6 +608,7 @@ class TestAWSRemoteClient(unittest.TestCase):
         expected_result = """
         FROM public.ecr.aws/lambda/python:
         COPY requirements.txt ./
+        RUN curl -O https://lambda-insights-extension.s3-ap-northeast-1.amazonaws.com/amazon_linux/lambda-insights-extension.rpm && rpm -U lambda-insights-extension.rpm && rm -f lambda-insights-extension.rpm
         
         RUN pip3 install --no-cache-dir -r requirements.txt
         COPY app.py ./
@@ -609,6 +622,7 @@ class TestAWSRemoteClient(unittest.TestCase):
         expected_result = """
         FROM public.ecr.aws/lambda/python:
         COPY requirements.txt ./
+        RUN curl -O https://lambda-insights-extension.s3-ap-northeast-1.amazonaws.com/amazon_linux/lambda-insights-extension.rpm && rpm -U lambda-insights-extension.rpm && rm -f lambda-insights-extension.rpm
         RUN command1 && command2
         RUN pip3 install --no-cache-dir -r requirements.txt
         COPY app.py ./
@@ -774,6 +788,33 @@ class TestAWSRemoteClient(unittest.TestCase):
         # Check that filter_log_events was called with the correct arguments
         mock_logs_client.filter_log_events.assert_called_with(
             logGroupName="/aws/lambda/function_instance",
+            startTime=int(start_time.timestamp() * 1000),
+            endTime=int(end_time.timestamp() * 1000),
+        )
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_get_insights_logs_between(self, mock_client):
+        # Mocking the scenario where the logs are retrieved successfully
+        mock_logs_client = MagicMock()
+        mock_client.return_value = mock_logs_client
+
+        client = AWSRemoteClient("region1")
+
+        # Mock the return value of filter_log_events
+        mock_logs_client.filter_log_events.return_value = {"events": [{"message": "log_message"}]}
+
+        start_time = datetime.now()
+        end_time = start_time + timedelta(hours=1)
+
+        result = client.get_insights_logs_between("function_instance", start_time, end_time)
+
+        # Check that the return value is correct
+        self.assertEqual(result, ["log_message"])
+
+        # Check that filter_log_events was called with the correct arguments
+        mock_logs_client.filter_log_events.assert_called_with(
+            logGroupName="/aws/lambda-insights",
+            logStreamNamePrefix="function_instance",
             startTime=int(start_time.timestamp() * 1000),
             endTime=int(end_time.timestamp() * 1000),
         )
