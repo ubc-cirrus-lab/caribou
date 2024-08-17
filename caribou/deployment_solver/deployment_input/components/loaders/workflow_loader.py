@@ -1,5 +1,4 @@
-import math
-from typing import Any, Optional
+from typing import Any
 
 from caribou.common.constants import (
     SNS_SIZE_DEFAULT,
@@ -325,8 +324,6 @@ class WorkflowLoader(InputLoader):
             .get(from_instance_name, {})
             .get("to_instance", {})
             .get(to_instance_name, {})
-            .get("non_execution_info", {})
-            .get(sync_to_from_instance, {})
             .get("regions_to_regions", {})
             .get(from_region_name, {})
             .get(to_region_name, {})

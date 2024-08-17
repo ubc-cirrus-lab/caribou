@@ -5,7 +5,9 @@ from datetime import timezone
 ## being sent to the home region (Entire workflow)
 HOME_REGION_THRESHOLD = 0.1  # 10% of the time run in home region
 
-MAXIMUM_HOPS_FROM_CLIENT_REQUEST = 20  # If the request has been forwarded or gone through X hops, it is dropped
+# Configure max hops from client
+## If the request has been forwarded or gone through X hops from Client, it is dropped
+MAXIMUM_HOPS_FROM_CLIENT_REQUEST = 20
 
 # Workflow Placement Tables
 WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE = "workflow_placement_solver_staging_area_table"
@@ -59,7 +61,6 @@ WORKFLOW_SUMMARY_TABLE = "workflow_summary_table"
 SOLVER_INPUT_GRID_CARBON_DEFAULT = 500.0
 
 ## Datacenter Loader
-# SOLVER_INPUT_AVERAGE_CPU_POWER_DEFAULT = 100.0
 SOLVER_INPUT_AVERAGE_MEMORY_POWER_DEFAULT = 0.0003725
 SOLVER_INPUT_PUE_DEFAULT = 1.11
 SOLVER_INPUT_CFE_DEFAULT = 0.0
@@ -76,7 +77,7 @@ SOLVER_INPUT_ECR_MONTHLY_STORAGE_COST_DEFAULT = 0.10  # 0.10 USD per 1 GB per mo
 ## Performance Loader
 SOLVER_INPUT_RELATIVE_PERFORMANCE_DEFAULT = 1.0
 
-# TODO: Change this to a more accurate value via a benchmark,
+# Future TODO: Change this to a more accurate value via a benchmark,
 # this should be the average transmission latency for intra region transmission.
 SOLVER_HOME_REGION_TRANSMISSION_LATENCY_DEFAULT = 0.22
 
@@ -142,7 +143,7 @@ CONDITIONALLY_NOT_INVOKE_TASK_TYPE = "CONDITIONALLY_NOT_INVOKE"
 
 # Caribou Wrapper parameters
 ## max workers for async invocations
-MAX_WORKERS = 10
+MAX_WORKERS = 1
 
 ## Orchastration transfer size limitation
 MAX_TRANSFER_SIZE = 256000  # In bytes

@@ -1,5 +1,4 @@
 import random
-import time
 from copy import deepcopy
 from typing import Optional
 
@@ -36,7 +35,6 @@ class StochasticHeuristicDeploymentAlgorithm(DeploymentAlgorithm):
             self._max_number_combinations *= len(self._per_instance_permitted_regions[instance])
 
     def _run_algorithm(self) -> list[tuple[list[int], dict[str, float]]]:
-        # start = time.time()
         self._best_deployment_metrics = deepcopy(  # pylint: disable=attribute-defined-outside-init
             self._home_deployment_metrics
         )
@@ -44,7 +42,6 @@ class StochasticHeuristicDeploymentAlgorithm(DeploymentAlgorithm):
         if len(deployments) == 0:
             deployments.append((self._home_deployment, self._home_deployment_metrics))
         self._generate_stochastic_heuristic_deployments(deployments)
-        # print(f"Finished in {time.time() - start:.2f} seconds")
         return deployments
 
     def _generate_stochastic_heuristic_deployments(self, deployments: list[tuple[list[int], dict[str, float]]]) -> None:
