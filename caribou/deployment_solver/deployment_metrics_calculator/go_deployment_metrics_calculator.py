@@ -11,7 +11,6 @@ from caribou.deployment_solver.models.instance_indexer import InstanceIndexer
 from caribou.deployment_solver.models.region_indexer import RegionIndexer
 from caribou.deployment_solver.workflow_config import WorkflowConfig
 
-CaribouGo = ctypes.CDLL(f"{GO_PATH}/caribougo.so")
 SEND_GO = f"{GO_PATH}/data_py_go"
 REC_GO = f"{GO_PATH}/data_go_py"
 
@@ -48,7 +47,7 @@ class GoDeploymentMetricsCalculator(DeploymentMetricsCalculator):
             tail_latency_threshold,
             record_transmission_execution_carbon,
         )
-        # pdb.set_trace()
+        self._caribougo = ctypes.CDLL(f"{GO_PATH}/caribougo.so")
         self.setup_go()
 
     def to_dict(self) -> dict[str, Any]:
@@ -64,19 +63,19 @@ class GoDeploymentMetricsCalculator(DeploymentMetricsCalculator):
 
     def setup_go(self) -> None:
         go_data = json.dumps(self.to_dict())
-        CaribouGo.start()
-        CaribouGo.goRead()
+        self._caribougo.start()
+        self._caribougo.goRead()
         send_to_go(SEND_GO, "Setup", go_data)
         receive_from_go(REC_GO)
 
     def calculate_deployment_metrics(self, deployment: list[int]) -> dict[str, float]:
-        CaribouGo.goRead()
+        self._caribougo.goRead()
         go_data = json.dumps(deployment)
         send_to_go(SEND_GO, "CalculateDeploymentMetrics", go_data)
         ret_data = receive_from_go(REC_GO)
         return ret_data["data"]
 
     def update_data_for_new_hour(self, hour_to_run: str) -> None:
-        CaribouGo.goRead()
+        self._caribougo.goRead()
         send_to_go(SEND_GO, "UpdateDataForNewHour", hour_to_run)
         _ = receive_from_go(REC_GO)
