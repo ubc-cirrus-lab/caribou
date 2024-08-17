@@ -1,7 +1,0 @@
-torch>=1.0.1
-botocore
-boto3
-numpy
-thrift
-redis
-uuid
