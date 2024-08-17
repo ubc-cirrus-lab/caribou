@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 
 from caribou.common.constants import (
     SNS_SIZE_DEFAULT,
