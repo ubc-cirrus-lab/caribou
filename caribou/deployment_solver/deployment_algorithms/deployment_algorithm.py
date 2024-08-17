@@ -14,8 +14,9 @@ from caribou.deployment_solver.deployment_input.input_manager import InputManage
 from caribou.deployment_solver.deployment_metrics_calculator.deployment_metrics_calculator import (
     DeploymentMetricsCalculator,
 )
-from caribou.deployment_solver.deployment_metrics_calculator.go_deployment_metrics_calculator import \
-    GoDeploymentMetricsCalculator
+from caribou.deployment_solver.deployment_metrics_calculator.go_deployment_metrics_calculator import (
+    GoDeploymentMetricsCalculator,
+)
 from caribou.deployment_solver.deployment_metrics_calculator.simple_deployment_metrics_calculator import (
     SimpleDeploymentMetricsCalculator,
 )
@@ -33,7 +34,7 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
         expiry_time_delta_seconds: int = DEFAULT_MONITOR_COOLDOWN,
         n_workers: int = 1,
         record_transmission_execution_carbon: bool = False,
-        deployment_metrics_calculator_type: str = "simple"
+        deployment_metrics_calculator_type: str = "simple",
     ):
         self._workflow_config = workflow_config
 
@@ -48,7 +49,7 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
         self._input_manager.setup(self._region_indexer, self._instance_indexer)
 
         if deployment_metrics_calculator_type == "go":
-            self._deployment_metrics_calculator: DeploymentMetricsCalculator = GoDeploymentMetricsCalculator(
+            deployment_metrics_calculator: DeploymentMetricsCalculator = GoDeploymentMetricsCalculator(
                 workflow_config,
                 self._input_manager,
                 self._region_indexer,
@@ -56,10 +57,16 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
                 record_transmission_execution_carbon=record_transmission_execution_carbon,
             )
         else:
-            self._deployment_metrics_calculator: DeploymentMetricsCalculator = SimpleDeploymentMetricsCalculator(
-                workflow_config, self._input_manager, self._region_indexer, self._instance_indexer,
-                n_processes=n_workers, record_transmission_execution_carbon=record_transmission_execution_carbon
+            deployment_metrics_calculator = SimpleDeploymentMetricsCalculator(
+                workflow_config,
+                self._input_manager,
+                self._region_indexer,
+                self._instance_indexer,
+                n_processes=n_workers,
+                record_transmission_execution_carbon=record_transmission_execution_carbon,
             )
+
+        self._deployment_metrics_calculator: DeploymentMetricsCalculator = deployment_metrics_calculator
 
         self._home_region_index = self._region_indexer.value_to_index(self._workflow_config.home_region)
 
@@ -105,8 +112,9 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
 
     def _update_data_for_new_hour(self, hour_to_run: str) -> None:
         self._input_manager.alter_carbon_setting(hour_to_run)
-        if (isinstance(self._deployment_metrics_calculator, SimpleDeploymentMetricsCalculator)
-                or isinstance(self._deployment_metrics_calculator, GoDeploymentMetricsCalculator)):
+        if isinstance(
+            self._deployment_metrics_calculator, (SimpleDeploymentMetricsCalculator, GoDeploymentMetricsCalculator)
+        ):
             self._deployment_metrics_calculator.update_data_for_new_hour(hour_to_run)
         (
             self._home_deployment,  # pylint: disable=attribute-defined-outside-init

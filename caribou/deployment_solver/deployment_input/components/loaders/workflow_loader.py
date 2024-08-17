@@ -433,7 +433,7 @@ class WorkflowLoader(InputLoader):
 
         return rounded_ms * round_to / 1000
 
-    def toDict(self):
+    def to_dict(self) -> dict[str, Any]:
         return {
             "workflow_data": self._workflow_data,
             "instances_regions_and_providers": self._instances_regions_and_providers,

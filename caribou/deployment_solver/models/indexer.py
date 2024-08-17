@@ -1,4 +1,5 @@
 from abc import ABC
+from typing import Any
 
 
 class Indexer(ABC):
@@ -20,8 +21,5 @@ class Indexer(ABC):
     def index_to_value(self, index: int) -> str:
         return self._indices_to_values[index]
 
-    def toDict(self):
-        return {
-            "value_indices": self._value_indices,
-            "indices_to_values": self._indices_to_values
-        }
+    def to_dict(self) -> dict[str, Any]:
+        return {"value_indices": self._value_indices, "indices_to_values": self._indices_to_values}

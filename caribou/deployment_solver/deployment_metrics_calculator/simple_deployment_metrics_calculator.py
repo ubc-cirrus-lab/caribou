@@ -1,8 +1,7 @@
-import json
 import statistics
 from multiprocessing import Manager, Process
 from queue import Queue
-from typing import Tuple
+from typing import Tuple, Any
 
 import numpy as np
 import scipy.stats as st
@@ -12,7 +11,6 @@ from caribou.deployment_solver.deployment_input.input_manager import InputManage
 from caribou.deployment_solver.deployment_metrics_calculator.deployment_metrics_calculator import (
     DeploymentMetricsCalculator,
 )
-from caribou.deployment_solver.deployment_metrics_calculator.go_deployment_metrics_calculator import GO_PATH
 from caribou.deployment_solver.models.instance_indexer import InstanceIndexer
 from caribou.deployment_solver.models.region_indexer import RegionIndexer
 from caribou.deployment_solver.workflow_config import WorkflowConfig
@@ -249,9 +247,9 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
         assert self._input_queue.empty()
         assert self._output_queue.empty()
 
-    def toDict(self):
+    def to_dict(self) -> dict[str, Any]:
         return {
-            "input_manager": self._input_manager.toDict(),
+            "input_manager": self._input_manager.to_dict(),
             "tail_latency_threshold": self._tail_latency_threshold,
             "successor_dictionary": self._successor_dictionary,
             "prerequisites_dictionary": self._prerequisites_dictionary,

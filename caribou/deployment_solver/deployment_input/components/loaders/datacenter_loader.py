@@ -110,5 +110,5 @@ class DatacenterLoader(InputLoader):
 
         return all_data
 
-    def toDict(self):
+    def to_dict(self) -> dict[str, Any]:
         return self._datacenter_data
