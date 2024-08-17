@@ -60,22 +60,16 @@ class GoDeploymentMetricsCalculator(DeploymentMetricsCalculator):
 
     def setup_go(self):
         go_data = json.dumps(self.toDict())
-        open(f"{GO_PATH}/go_data.json", "w").write(json.dumps(self.toDict(), indent=4))
         CaribouGo.start()
         CaribouGo.goRead()
         send_to_go(SEND_GO, "Setup", go_data)
         receive_from_go(REC_GO)
 
     def calculate_deployment_metrics(self, deployment: list[int]) -> dict[str, float]:
-        start = time.time()
-        # Get average and tail cost/carbon/runtime from Monte Carlo simulation
-        # pdb.set_trace()
         CaribouGo.goRead()
         go_data = json.dumps(deployment)
         send_to_go(SEND_GO, "CalculateDeploymentMetrics", go_data)
         ret_data = receive_from_go(REC_GO)
-        # print(f"Took: {time.time() - start}")
-        # pdb.set_trace()
         return ret_data["data"]
 
     def update_data_for_new_hour(self, hour_to_run: str) -> None:
