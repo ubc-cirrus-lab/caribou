@@ -37,18 +37,32 @@ Run any file with the following command:
 poetry run <executable> <args>
 ```
 
-## Why do we use poetry?
+### Why do we use poetry?
 
 Poetry is a tool for dependency management and packaging in Python.
 It allows you to declare the libraries your project depends on, and it will manage (install/update) them for you.
 
-You can either always use `poetry run` before running a file or activate the virtual environment created by poetry.
-We always have to use `poetry run` because poetry creates a virtual environment for the project.
-You can alternatively find the virtual environment path using `poetry env info` and activate it with `source <path>/bin/activate`, removing the need for `poetry run`.
-This means all the dependencies are installed in a virtual environment, not your global one.
-If you execute a file without `poetry run`, it will not find the dependencies as they are most likely not installed in your global environment.
-
 For more information, see the [poetry documentation](https://python-poetry.org/docs/).
+
+## Install dependencies
+
+To install the dependencies, run the following command:
+
+```bash
+poetry install
+```
+
+This will install all the dependencies required to run the framework. To check the dependencies, you can run:
+
+```bash
+poetry show
+```
+
+To open a shell with the dependencies installed, you can run:
+
+```bash
+poetry shell
+```
 
 ## AWS Account Access
 
@@ -57,7 +71,7 @@ In [IAM Policies](docs/iam_policies.md) we list the required permissions for any
 
 The fastest way to set up the necessary permissions is to [create a new AWS user](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html) under your account with the necessary permissions and use the access key and secret key to [login the AWS CLI](https://docs.aws.amazon.com/signin/latest/userguide/command-line-sign-in.html) of this user to interact with the framework.
 
-## Setup AWS Environment
+### Setup AWS Environment
 
 To set up the required tables in AWS required for the framework to run, you can use the following command:
 
@@ -71,4 +85,4 @@ In this case, adapt the bucket name for the variable `DEPLOYMENT_RESOURCES_BUCKE
 
 ## Other dependencies
 
-Since the AWS lambda environment restricts us from using Docker, we have to deploy the workflows using [crane](https://github.com/google/go-containerregistry/tree/main/cmd/crane). For the following step to work, please install the crane as described in the [crane documentation](https://github.com/google/go-containerregistry/blob/main/cmd/crane/README.md).
+Since the AWS lambda environment restricts us from using Docker, we have to migrate the workflows using [crane](https://github.com/google/go-containerregistry/tree/main/cmd/crane). If you plan on running the framework locally instead of deploying it to the cloud, please install the crane as described in the [crane documentation](https://github.com/google/go-containerregistry/blob/main/cmd/crane/README.md).

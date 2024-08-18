@@ -2,15 +2,21 @@
 
 The following guide will help you get started with the Caribou framework.
 
-Make sure you first have the necessary dependencies installed. See the [Installation](INSTALL.md) guide for more information.
+The Caribou framework consists of a client side CLI to develop and manage workflows as well as a server side orchestration framework to solve for optimal deployments and migrate the workflows to these deployments.
 
-##  Permissions
+The client side CLI can be interacted with using the `caribou` command.
 
-To use the Caribou framework, you need to have the necessary permissions to deploy and run workflows. Additionally, the workflows themselves need permissions to interact with the AWS services.
+The server side orchestration framework consists of the deployment manager, deployment solver, deployment migrator, log syncer, and data collectors.
 
-More information on the required permissions can be found in the [IAM Policies](docs/iam_policies.md) document.
+Each of these components can either be run locally for fast prototyping or deployed to AWS for a full-scale deployment.
 
-## Setup a new workflow
+For local framework component execution see the [Local Execution](#local-execution) section. For deployment to AWS see the [Deployment to AWS](#deployment-to-aws) section.
+
+Make sure you first have the necessary dependencies according to how you intend to use Caribou installed. See the [Installation](INSTALL.md) guide for more information.
+
+## Client side CLI
+
+### Setup a new workflow
 
 To set up a new workflow, in your command line, navigate to the directory where you want to create the new workflow and run:
 
@@ -20,7 +26,9 @@ caribou new_workflow <workflow_name>
 
 Where `<workflow_name>` is the name of the new workflow.
 
-## Deployment Utility
+You can then use the Caribou Python API to define and develop the workflow.
+
+### Deployment Utility
 
 The Deployment Utility has an additional dependency on `docker`.
 To install it, follow the instructions on the [docker website](https://docs.docker.com/engine/install/).
@@ -40,7 +48,7 @@ To change the home region, you need to adjust the manifest in the configuration 
 This will also print the unique workflow ID generated from the workflow name and version.
 The workflow ID is unique per deployed framework and is used to identify the workflow in the system.
 
-## Run a workflow
+### Run a workflow
 
 To run a workflow, you can use the following command:
 
@@ -52,7 +60,7 @@ Where `<workflow_id>` is the id of the workflow you want to run.
 
 The `-a` flag is used to pass arguments to the workflow. The arguments can be passed as any object but need to be handled by your client code at the workflow's entrypoint.
 
-##  List all workflows
+###  List all deployed workflows
 
 To list all workflows, you can use the following command:
 
@@ -62,7 +70,7 @@ caribou list
 
 We currently do not distinguish between different users and show all workflows that are currently managed by the framework.
 
-##  Remove a workflow
+###  Remove a workflow
 
 To remove a workflow, you can use the following command:
 
@@ -72,15 +80,19 @@ poetry run caribou remove <workflow_id>
 
 Where `<workflow_id>` is the id of the workflow you want to remove.
 
-## Synchronize Execution Logs
+## Local Execution
 
-To sync the logs from all the workflows to the global table, you can use the following command:
+The Caribou framework components can be run locally for fast prototyping and development.
+
+### Synchronize Execution Logs
+
+To sync the logs from all the workflows, you can use the following command:
 
 ```bash
 poetry run caribou log_sync
 ```
 
-## Data Collecting
+### Data Collecting
 
 First
 
@@ -117,7 +129,7 @@ export GOOGLE_API_KEY=<your_key>
 
 **Note:** The needed API: Geocoding API
 
-## Find a new (optimal) Deployment
+### Find a new (optimal) Deployment
 
 Use the manager to solve for all workflows that have a check outstanding:
 
@@ -125,7 +137,7 @@ Use the manager to solve for all workflows that have a check outstanding:
 poetry run caribou manage_deployments
 ```
 
-## Run Deployment Migrator
+### Run Deployment Migrator
 
 Make sure that you have the crane dependency installed.
 See the [Installation](INSTALL.md) guide for more information.
@@ -138,9 +150,9 @@ poetry run caribou run_deployment_migrator
 
 This will check if a new deployment is required for any workflow, and, if so, migrate the functions according to this new deployment.
 
-##  Deploying the framework components to AWS
+## Deployment to AWS
 
-**TODO:** We currently have the scripts for packaging the framework components into a container in `scripts/deploy_to_aws.py`.
+**TODO(#284):** We currently have the scripts for packaging the framework components into a container in `scripts/deploy_to_aws.py`.
 This script works for simple deployments, but for example the crane dependency is not taken care of.
 We need to extend the script to deploy all the data collectors, log syncer, deployment manager, and deployment migrator to AWS.
 Potentially we also want to decouple the deployment manager and deployment solver in a future version.
