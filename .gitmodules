@@ -1,4 +1,0 @@
-[submodule "caribou-go"]
-	path = caribou-go
-	url = https://github.com/ubc-cirrus-lab/caribou-go
-	branch = main
