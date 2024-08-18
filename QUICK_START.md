@@ -2,6 +2,8 @@
 
 The following guide will help you get started with the Caribou framework.
 
+Make sure you first have the necessary dependencies installed. See the [Installation](INSTALL.md) guide for more information.
+
 ##  Permissions
 
 To use the Caribou framework, you need to have the necessary permissions to deploy and run workflows. Additionally, the workflows themselves need permissions to interact with the AWS services.
