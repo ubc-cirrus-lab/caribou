@@ -81,7 +81,9 @@ poetry run caribou log_sync
 ```
 
 ## Data Collecting
-First 
+
+First
+
 ```bash
 poetry run caribou data_collect provider
 ```
@@ -112,6 +114,7 @@ The workflow collector is invoked by the manager and collects data for the workf
 export ELECTRICITY_MAPS_AUTH_TOKEN=<your_token>
 export GOOGLE_API_KEY=<your_key>
 ```
+
 **Note:** The needed API: Geocoding API
 
 ## Find a new (optimal) Deployment

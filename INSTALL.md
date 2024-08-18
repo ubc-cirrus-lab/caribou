@@ -53,7 +53,9 @@ For more information, see the [poetry documentation](https://python-poetry.org/d
 ## AWS Account Access
 
 To run the framework, you need an AWS account and the necessary permissions to create and manage the required resources.
-The `docs/iam_policy.json` file lists the required permissions for any user wanting to interact with a deployed framework.
+In [IAM Policies](docs/iam_policies.md) we list the required permissions for any user wanting to interact with a deployed framework.
+
+The fastest way to set up the necessary permissions is to [create a new AWS user](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html) under your account with the necessary permissions and use the access key and secret key to [login the AWS CLI](https://docs.aws.amazon.com/signin/latest/userguide/command-line-sign-in.html) of this user to interact with the framework.
 
 ## Setup AWS Environment
 
@@ -67,6 +69,6 @@ caribou setup_tables
 Since AWS bucket names need to be unique, the currently configured bucket might already exist and be used by another version of the framework deployed somewhere else.
 In this case, adapt the bucket name for the variable `DEPLOYMENT_RESOURCES_BUCKET` in the `caribou/common/constants.py` file.
 
-##  Installing dependencies for the framework components
+## Other dependencies
 
 Since the AWS lambda environment restricts us from using Docker, we have to deploy the workflows using [crane](https://github.com/google/go-containerregistry/tree/main/cmd/crane). For the following step to work, please install the crane as described in the [crane documentation](https://github.com/google/go-containerregistry/blob/main/cmd/crane/README.md).
