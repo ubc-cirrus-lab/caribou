@@ -328,7 +328,7 @@ func (rc *RuntimeCalculator) RetrieveRuntimeDataTransfer(
 	// node invokes the successor
 	currentNodeExecutionTime := runtime * relativeRegionPerformance
 	return map[string]interface{}{
-		"current":    previousCumulativeRuntime + (runtime * relativeRegionPerformance),
+		"current":    previousCumulativeRuntime + currentNodeExecutionTime,
 		"successors": successorsRuntimeData,
 	}, currentNodeExecutionTime, auxiliaryData[auxiliaryIndexTranslation["data_transfer_during_execution_gb"]]
 }
