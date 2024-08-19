@@ -158,12 +158,8 @@ func (cc *CarbonCalculator) CalculateDataTransferCarbon(
 	if !cc.CarbonFreeDtExecutionHomeRegion || !currentRegionIsHomeRegion {
 		transmissionNetworkCarbonIntensity := averageCarbonIntensityOfUsa
 		if len(currentRegionName) != 0 {
-			setting := ""
-			if cc.hourlyCarbonSetting != nil {
-				setting = *cc.hourlyCarbonSetting
-			}
 			transmissionNetworkCarbonIntensity = cc.GetNetworkCarbonIntensityRouteBetweenRegions(
-				currentRegionName, setting,
+				cc.WorkflowLoader.HomeRegion, currentRegionName,
 			)
 		}
 
