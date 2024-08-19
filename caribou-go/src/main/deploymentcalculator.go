@@ -11,7 +11,6 @@ import (
 	deploymentmetricscalculator "caribou-go/src/deployment-metrics-calculator"
 	"caribou-go/src/utils"
 )
-import "fmt"
 
 const (
 	maxCapacity = 512 * 1024
@@ -116,8 +115,6 @@ func start(goPyFile *C.char, pyGoFile *C.char) {
 	mainRunning = false
 	datapipefileSend = C.GoString(goPyFile)
 	datapipefileRec = C.GoString(pyGoFile)
-	fmt.Println(datapipefileRec)
-	fmt.Println(datapipefileSend)
 	signalChan = make(chan struct{})
 	go run()
 }
