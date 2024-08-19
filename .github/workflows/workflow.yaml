@@ -105,6 +105,12 @@ jobs:
       - uses: actions/checkout@v2
       - name: Setup Go
         uses: ./.github/actions/go
+      - name: Initialize Go module
+        run: |
+          cd caribou-go
+          if [ ! -f go.mod ]; then
+            go mod init caribou-go
+          fi
       - name: Make build script executable
         run: chmod +x ./caribou-go/build_caribou.sh
       - name: Run go tests
