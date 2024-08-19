@@ -32,7 +32,6 @@ os.environ['TORCH_HOME'] = model_storage_path
 @workflow.serverless_function(
     name="streaming",
     entry_point=True,
-    allow_placement_decision_override=True,
 )
 def streaming(event: dict[str, Any]) -> dict[str, Any]:
     if isinstance(event, str):

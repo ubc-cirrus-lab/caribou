@@ -22,7 +22,6 @@ workflow = CaribouWorkflow(name="text_2_speech_censoring", version="0.0.1")
 @workflow.serverless_function(
     name="get_input",
     entry_point=True,
-    allow_placement_decision_override=True,
 )
 def get_input(event: dict[str, Any]) -> dict[str, Any]:
     if isinstance(event, str):

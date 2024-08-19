@@ -23,7 +23,6 @@ logger.setLevel(logging.INFO)
 @workflow.serverless_function(
     name="input_processor",
     entry_point=True,
-    allow_placement_decision_override=True,
 )
 def input_processor(event: dict[str, Any]) -> dict[str, Any]:
     if isinstance(event, str):
