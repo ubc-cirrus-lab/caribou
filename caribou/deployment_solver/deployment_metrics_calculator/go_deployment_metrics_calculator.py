@@ -67,7 +67,7 @@ class GoDeploymentMetricsCalculator(DeploymentMetricsCalculator):
         self.py_go_file = str(GO_PATH / f"data_py_go_{random_run_id}")
         os.mkfifo(self.go_py_file)
         os.mkfifo(self.py_go_file)
-        self._caribougo.start(self.go_py_file.encode('utf-8'), self.py_go_file.encode('utf-8'))
+        self._caribougo.start(self.go_py_file.encode("utf-8"), self.py_go_file.encode("utf-8"))
         self._caribougo.goRead()
         send_to_go(self.py_go_file, "Setup", go_data)
         receive_from_go(self.go_py_file)
