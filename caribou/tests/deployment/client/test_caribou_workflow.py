@@ -1376,6 +1376,25 @@ class TestCustomDecoder(unittest.TestCase):
         expected = {"key": [b"test", b"test"]}
         self.assertEqual(result, expected)
 
+    def test_get_remote_client(self):
+        workflow = CaribouWorkflow(name="test-workflow", version="0.0.1")
+
+        # Mock the RemoteClientFactory.get_remote_client method
+        with patch("caribou.deployment.client.caribou_workflow.RemoteClientFactory.get_remote_client") as mock_get_remote_client:
+            # Mock the return value of the get_remote_client method
+            mock_remote_client = "mock_remote_client"
+            mock_get_remote_client.return_value = mock_remote_client
+
+            # Call the _get_remote_client method
+            provider = "mock_provider"
+            region = "mock_region"
+            remote_client = workflow._get_remote_client(provider, region)
+
+            # Assert that the RemoteClientFactory.get_remote_client method was called with the correct arguments
+            mock_get_remote_client.assert_called_once_with(provider, region)
+
+            # Assert that the returned remote_client is the same as the mocked remote_client
+            self.assertEqual(remote_client, mock_remote_client)
 
 if __name__ == "__main__":
     unittest.main()
