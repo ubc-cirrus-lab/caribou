@@ -24,7 +24,7 @@ def send_to_go(channel_path: str, command: str, data: Any) -> None:
 
 def receive_from_go(channel_path: str) -> Any:
     with open(channel_path, "r", encoding="utf-8") as ch:
-        data = json.load(ch, encoding="utf-8")
+        data = json.load(ch)
         return data
 
 
@@ -63,7 +63,7 @@ class GoDeploymentMetricsCalculator(DeploymentMetricsCalculator):
 
     def setup_go(self) -> None:
         go_data = json.dumps(self.to_dict())
-        self._caribougo.start()
+        self._caribougo.start(str(GO_PATH).encode('utf-8'))
         self._caribougo.goRead()
         send_to_go(SEND_GO, "Setup", go_data)
         receive_from_go(REC_GO)
