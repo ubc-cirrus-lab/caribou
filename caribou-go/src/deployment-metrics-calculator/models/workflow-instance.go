@@ -182,14 +182,6 @@ func (wi *WorkflowInstance) AddNode(instanceIndex int) bool {
 			currentEdge, isSyncNode, &syncEdgeUploadData, &edgeReachedTimeToSnsData,
 		)
 		nodeInvoked = nodeInvoked || currentNodeInvoked
-
-		//from_instance_id := -1
-		//if current_edge.fromInstanceNode != nil {
-		//	from_instance_id = current_edge.fromInstanceNode.instanceId
-		//}
-		// print(
-		//     f"WI: Processing Real Edge, from: {from_instance_id} -> {current_edge.to_instance_node.instance_id} -> {current_node_invoked}"
-		// )
 	}
 
 	// Handle sync upload auxiliary data
@@ -209,20 +201,15 @@ func (wi *WorkflowInstance) AddNode(instanceIndex int) bool {
 		// As it determines the actual runtime of the node (and represent SNS call)
 		simulatedPredecessorEdges := getPredecessorEdges(nominalInstanceId, wi.simulatedEdges)
 		for _, simulatedEdge := range simulatedPredecessorEdges {
-			// print(
-			//     f"WI: Processing Simulated Edge, from: {simulated_edge.from_instance_node.instance_id} -> {simulated_edge.to_instance_node.instance_id}"
-			// )
 			wi.handleSimulatedEdge(simulatedEdge, &edgeReachedTimeToSnsData)
 		}
 
 		// Calculate the cumulative runtime of the node and the data transfer during execution
 		cumulativeRuntime := wi.handleSNSInvocation(&edgeReachedTimeToSnsData)
-		// print(f"WI: Runtime before execution: {cumulative_runtime} s")
 		currentRuntime, executionTime, dataTransferDuringExecution := wi.inputManager.GetNodeRuntimeDataTransfer(
 			actualInstanceId, currentNode.regionId, cumulativeRuntime, currentNode.isRedirector,
 		)
 		currentNode.cumulativeRuntime = currentRuntime
-		// print(f"WI: Runtimes after execution: {current_node.cumulative_runtimes} s")
 		currentNode.executionTime = executionTime
 		// Handle the data transfer during execution
 		// We will asume the data comes from the same region as the node

@@ -172,8 +172,8 @@ class WorkflowInstance:  # pylint: disable=too-many-instance-attributes
         # Look through all the real edges linking to this node
         node_invoked: bool = False
         real_predecessor_edges: list[InstanceEdge] = self._get_predecessor_edges(nominal_instance_id, False)
+        
         is_sync_node: bool = len(real_predecessor_edges) > 1
-
         sync_edge_upload_data: list[tuple[float, float]] = []
         edge_reached_time_to_sns_data: list[tuple[float, dict[str, Any]]] = []
         for current_edge in real_predecessor_edges:

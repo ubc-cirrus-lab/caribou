@@ -267,8 +267,6 @@ func (im *InputManager) GetSimulatedTransmissionInfo(
 	syncNodeName := im.InstanceIndexer.IndexToValue(syncNodeIndex)
 	fromRegionName := im.RegionIndexer.IndexToValue(fromRegionIndex)
 	toRegionName := im.RegionIndexer.IndexToValue(toRegionIndex)
-	// Get a transmission size and latency sample
-	// print(f"SIMULATED from_instance_name: {from_instance_name}, uninvoked_instance_name: {uninvoked_instance_name}, simulated_sync_predecessor_name: {simulated_sync_predecessor_name}, sync_node_name: {sync_node_name}, from_region_name: {from_region_name}, to_region_name: {to_region_name}")
 
 	snsTransmissionSize, transmissionLatency := im.RuntimeCalculator.CalculateSimulatedTransmissionSizeLatency(
 		fromInstanceName,

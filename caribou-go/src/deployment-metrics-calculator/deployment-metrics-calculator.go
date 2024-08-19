@@ -144,7 +144,6 @@ func (sd *SimpleDeploymentMetricsCalculator) PerformMonteCarloSimulation(deploym
 	executionCarbonList := []float64{}
 	transmissionCarbonList := []float64{}
 
-	// max_number_of_iterations = 1
 	maxNumberOfIterations := 2000
 	threshold := 0.05
 	numberOfIterations := 0

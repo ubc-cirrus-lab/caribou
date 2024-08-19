@@ -175,7 +175,6 @@ func (rc *RuntimeCalculator) HandleMissingTransmissionLatencyDistribution(
 		averageCloudPingTransmissionLatencyPerformance-averageCloudPingHomeRegionLatencyPerformance,
 		0.0,
 	)
-	// print(f"Average Cloud Ping Latency Difference: {average_cloud_ping_latency_difference}")
 
 	// Get the measure latency from the home region (actual latency)
 	homeRegionLatencyDistributionMeasured := rc.WorkflowLoader.GetLatencyDistribution(
@@ -295,8 +294,6 @@ func (rc *RuntimeCalculator) RetrieveRuntimeDataTransfer(
 ) (map[string]interface{}, float64, float64) {
 	// Retrieve the auxiliary_index_translation
 	auxiliaryIndexTranslation := rc.WorkflowLoader.GetAuxiliaryIndexTranslation(instanceName, isRedirector)
-
-	// print(f"Auxiliary Index Translation: {auxiliary_index_translation}")
 
 	// Get the auxiliary data distribution of the instance in the given region
 	// This can be cached in the future for performance improvements
