@@ -5,7 +5,9 @@ description = "Caribou is a framework for running and deploying complex serverle
 license = "Apache-2.0"
 authors = [
     "Viktor Gsteiger <vgsteiger@student.ethz.ch>",
-    "Daniel Long <pinlong@student.ubc.ca>",
+    "Pin Hong (Daniel) Long <pinlong@student.ubc.ca>",
+    "Parshan Javanrood <pjavan@student.ubc.ca>",
+    "Yiran (Jerry) Sun <jerrys17@student.ubc.ca>",
     "Mohammad Shahrad <mohammad.shahrad@ubc.ca>",
 ]
 readme = "README.md"
