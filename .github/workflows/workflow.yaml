@@ -96,3 +96,15 @@ jobs:
       - name: Run integration tests
         run: |
           poetry run python integration_tests/run_integration_tests.py
+
+  go-project:
+    runs-on: ubuntu-latest
+    if: ${{ !github.event.pull_request.draft }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Go
+        uses: ./.github/actions/go
+      - name: Run go tests
+        run: |
+          ./caribou-go/build_caribou.sh

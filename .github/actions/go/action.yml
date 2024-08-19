@@ -1,0 +1,25 @@
+name: "Go"
+description: "Install Go and setup a Go environment"
+
+inputs:
+  go-version:
+    description: Go Version
+    required: true
+    default: "1.22"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Go ${{ inputs.go-version }}
+      uses: actions/setup-go@v3
+      with:
+        go-version: ${{ inputs.go-version }}
+    
+    - name: Cache Go modules
+      id: cached-go-modules
+      uses: actions/cache@v3
+      with:
+        path: ~/go/pkg/mod
+        key: go-mod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          go-mod-${{ runner.os }}-
