@@ -1,6 +1,8 @@
 import ctypes
 import json
+import os
 from typing import Any
+from uuid import uuid4
 
 from caribou.common.constants import GO_PATH, TAIL_LATENCY_THRESHOLD
 from caribou.deployment_solver.deployment_input.input_manager import InputManager
@@ -10,9 +12,6 @@ from caribou.deployment_solver.deployment_metrics_calculator.deployment_metrics_
 from caribou.deployment_solver.models.instance_indexer import InstanceIndexer
 from caribou.deployment_solver.models.region_indexer import RegionIndexer
 from caribou.deployment_solver.workflow_config import WorkflowConfig
-
-SEND_GO = f"{GO_PATH}/data_py_go"
-REC_GO = f"{GO_PATH}/data_go_py"
 
 
 def send_to_go(channel_path: str, command: str, data: Any) -> None:
@@ -63,19 +62,24 @@ class GoDeploymentMetricsCalculator(DeploymentMetricsCalculator):
 
     def setup_go(self) -> None:
         go_data = json.dumps(self.to_dict())
-        self._caribougo.start(str(GO_PATH).encode('utf-8'))
+        random_run_id = uuid4().hex
+        self.go_py_file = str(GO_PATH / f"data_go_py_{random_run_id}")
+        self.py_go_file = str(GO_PATH / f"data_py_go_{random_run_id}")
+        os.mkfifo(self.go_py_file)
+        os.mkfifo(self.py_go_file)
+        self._caribougo.start(self.go_py_file.encode('utf-8'), self.py_go_file.encode('utf-8'))
         self._caribougo.goRead()
-        send_to_go(SEND_GO, "Setup", go_data)
-        receive_from_go(REC_GO)
+        send_to_go(self.py_go_file, "Setup", go_data)
+        receive_from_go(self.go_py_file)
 
     def calculate_deployment_metrics(self, deployment: list[int]) -> dict[str, float]:
         self._caribougo.goRead()
         go_data = json.dumps(deployment)
-        send_to_go(SEND_GO, "CalculateDeploymentMetrics", go_data)
-        ret_data = receive_from_go(REC_GO)
+        send_to_go(self.py_go_file, "CalculateDeploymentMetrics", go_data)
+        ret_data = receive_from_go(self.go_py_file)
         return ret_data["data"]
 
     def update_data_for_new_hour(self, hour_to_run: str) -> None:
         self._caribougo.goRead()
-        send_to_go(SEND_GO, "UpdateDataForNewHour", hour_to_run)
-        _ = receive_from_go(REC_GO)
+        send_to_go(self.py_go_file, "UpdateDataForNewHour", hour_to_run)
+        _ = receive_from_go(self.go_py_file)
