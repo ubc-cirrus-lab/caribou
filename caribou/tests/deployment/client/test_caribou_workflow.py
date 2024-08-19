@@ -1380,7 +1380,9 @@ class TestCustomDecoder(unittest.TestCase):
         workflow = CaribouWorkflow(name="test-workflow", version="0.0.1")
 
         # Mock the RemoteClientFactory.get_remote_client method
-        with patch("caribou.deployment.client.caribou_workflow.RemoteClientFactory.get_remote_client") as mock_get_remote_client:
+        with patch(
+            "caribou.deployment.client.caribou_workflow.RemoteClientFactory.get_remote_client"
+        ) as mock_get_remote_client:
             # Mock the return value of the get_remote_client method
             mock_remote_client = "mock_remote_client"
             mock_get_remote_client.return_value = mock_remote_client
@@ -1395,6 +1397,7 @@ class TestCustomDecoder(unittest.TestCase):
 
             # Assert that the returned remote_client is the same as the mocked remote_client
             self.assertEqual(remote_client, mock_remote_client)
+
 
 if __name__ == "__main__":
     unittest.main()
