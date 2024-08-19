@@ -11,7 +11,7 @@ called `input`.
 
 
 This benchmark allow for custom recognition stage fan-out which 
-can be configured with an input argument `fanout_num` between 1-6, or -1 for
+can be configured with an input argument `fanout_num` between `1-6`, or `-1` for
 auto fan-out. If this is not set, it defaults to -1 or automatic. 
 
 This benchmark allow for a custom output folder name which can be configured with 
