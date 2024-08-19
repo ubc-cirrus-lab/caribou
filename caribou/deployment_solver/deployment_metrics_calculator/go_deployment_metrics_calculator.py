@@ -84,6 +84,6 @@ class GoDeploymentMetricsCalculator(DeploymentMetricsCalculator):
         send_to_go(self.py_go_file, "UpdateDataForNewHour", hour_to_run)
         _ = receive_from_go(self.go_py_file)
 
-    def __del__(self):
+    def __del__(self) -> None:
         os.remove(self.go_py_file)
         os.remove(self.py_go_file)
