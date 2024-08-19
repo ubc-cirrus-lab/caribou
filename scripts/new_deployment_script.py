@@ -28,25 +28,29 @@ CMD ["caribou/deployment/client/cli/aws_lambda_cli/aws_handler.py", "{handler}"]
 
 def generate_deployment_dockerfile(handler: str, runtime: str) -> str:
     return f"""
-FROM python:3.12-slim
+# Build stage
+FROM python:3.12-slim as build
 
-# Install dependencies
+# Install dependencies and crane
 RUN apt-get update && apt-get install -y curl tar golang-go
-
-# Install crane tool using the installed Go
 RUN go install github.com/google/go-containerregistry/cmd/crane@latest
 
-# Continue with your existing Dockerfile steps
-COPY pyproject.toml ./
-COPY poetry.lock ./
+# Copy your Python dependencies and application code
+COPY pyproject.toml poetry.lock ./
+RUN pip3 install poetry && poetry install --no-dev
 COPY caribou ./caribou
 
-RUN pip3 install poetry && poetry install --no-dev
+# Final image
+FROM public.ecr.aws/lambda/python:3.12
 
+# Copy the necessary files from the build stage
+COPY --from=build /caribou /caribou
+
+# Set the command for Lambda to execute using the Python interpreter
 CMD ["caribou/deployment/client/cli/aws_lambda_cli/aws_handler.py", "lambda_handler"]
-
 """
 
+# CMD ["python3", "caribou/deployment/client/cli/aws_lambda_cli/aws_handler.py", "lambda_handler"]
 def build_docker_image(image_name: str) -> None:
     print(f"Building docker image {image_name}")
     try:
@@ -180,6 +184,7 @@ if __name__ == "__main__":
     timeout = 600
     memory_size = 3008
     iam_policy_name = "caribou_deployment_policy"
+    function_name = "caribou_lambda_handler"
 
     aws_remote_client = AWSRemoteClient(region_name)
 
@@ -201,5 +206,9 @@ if __name__ == "__main__":
     # print(f"Created role {role_arn}")
 
     role_arn = "arn:aws:iam::226414417076:role/caribou_deployment_policy"
+
+    # Delete function if exists.
+    if aws_remote_client.resource_exists(Resource(function_name, "function")): # For lambda function
+        aws_remote_client.remove_function(function_name)    
 
     deploy_to_aws(handler, runtime, role_arn, timeout, memory_size, deployer_env=True)
