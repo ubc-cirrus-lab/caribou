@@ -13,7 +13,7 @@ More information on the required permissions can be found in the [IAM Policies](
 To set up a new workflow, in your command line, navigate to the directory where you want to create the new workflow and run:
 
 ```bash
-caribou new_workflow <workflow_name>
+poetry run caribou new_workflow <workflow_name>
 ```
 
 Where `<workflow_name>` is the name of the new workflow.
@@ -27,7 +27,7 @@ Ensure you have the docker daemon running before running the deployment utility.
 The deployment utility can be found in `caribou/deployment/client` and can be run with:
 
 ```bash
-caribou --project-dir <project_dir> deploy
+poetry run caribou --project-dir <project_dir> deploy
 ```
 
 Alternatively, you can also navigate to the `<project_dir>`; the same command will work without the `--project-dir` flag.
@@ -43,7 +43,7 @@ The workflow ID is unique per deployed framework and is used to identify the wor
 To run a workflow, you can use the following command:
 
 ```bash
-caribou run <workflow_id> -a '{"message": "Hello World!"}'
+poetry run caribou run <workflow_id> -a '{"message": "Hello World!"}'
 ```
 
 Where `<workflow_id>` is the id of the workflow you want to run.
@@ -55,7 +55,7 @@ The `-a` flag is used to pass arguments to the workflow. The arguments can be pa
 To list all workflows, you can use the following command:
 
 ```bash
-caribou list
+poetry run caribou list
 ```
 
 We currently do not distinguish between different users and show all workflows that are currently managed by the framework.
@@ -110,15 +110,18 @@ The workflow collector is invoked by the manager and collects data for the workf
 export ELECTRICITY_MAPS_AUTH_TOKEN=<your_token>
 export GOOGLE_API_KEY=<your_key>
 ```
-**Note:** The needed API: Geocoding API
+**Note 1:** The needed Google API: Geocoding API<br>
+**Note 2:** Get your Electricity Maps token from [here](https://www.electricitymaps.com).
 
 ## Find a new (optimal) Deployment
 
-Use the manager to solve for all workflows that have a check outstanding:
+After syncing execution logs and collecting new data, you can use the manager to solve all workflows that have a check outstanding:
 
 ```bash
 poetry run caribou manage_deployments
 ```
+
+Refer to section 5.2 of the paper to learn about how we make this calculation.
 
 ## Run Deployment Migrator
 

@@ -57,10 +57,11 @@ The `docs/iam_policy.json` file lists the required permissions for any user want
 
 ## Setup AWS Environment
 
+First of all, make sure to have [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) installed.
 To set up the required tables in AWS required for the framework to run, you can use the following command:
 
 ```bash
-caribou setup_tables
+poetry run caribou setup_tables
 ```
 
 **Note:** The bucket that Caribou uses to store the resources (a feature for future provider compatibility) needs to be manually created.
