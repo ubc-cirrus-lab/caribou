@@ -213,9 +213,6 @@ func (cc *CarbonCalculator) GetExecutionConversionRatio(instanceName string, reg
 		return conversion
 	}
 
-	// datacenter loader data
-	// Get the average power consumption of the instance in the given region (kw_compute)
-	// average_cpu_power: float = self._datacenter_loader.get_average_cpu_power(region_name)
 
 	// Get the average power consumption of the instance in the given region (kw_GB)
 	averageMemPower := cc.DatacenterLoader.GetAverageMemoryPower(regionName)
