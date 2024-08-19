@@ -6,22 +6,22 @@ import (
 	"encoding/json"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"reflect"
 
 	deploymentmetricscalculator "caribou-go/src/deployment-metrics-calculator"
 	"caribou-go/src/utils"
 )
 
-// TODO: Make this path dynamic
 const (
-	maxCapacity      = 512 * 1024
-	datapipefileSend = "/Users/pjavanrood/Documents/Code/caribou-go/data_go_py"
-	datapipefileRec  = "/Users/pjavanrood/Documents/Code/caribou-go/data_py_go"
+	maxCapacity = 512 * 1024
 )
 
 var (
-	signalChan  chan struct{}
-	mainRunning bool
+	signalChan       chan struct{}
+	mainRunning      bool
+	datapipefileSend string
+	datapipefileRec  string
 )
 
 func parseInputData(byteValue *[]byte) (command string, data string, err error) {
@@ -112,8 +112,10 @@ func run() {
 }
 
 //export start
-func start() {
+func start(caribouDir *C.char) {
 	mainRunning = false
+	datapipefileSend = filepath.Join(C.GoString(caribouDir), "data_go_py")
+	datapipefileRec = filepath.Join(C.GoString(caribouDir), "data_py_go")
 	signalChan = make(chan struct{})
 	go run()
 }

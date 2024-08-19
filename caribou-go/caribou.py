@@ -1,18 +1,12 @@
 import ctypes
 import json
-
-"""
-
-This file is intended for testing/debugging of caribou-go code.
-
-"""
+from pathlib import Path
 
 CaribouGo = ctypes.CDLL("caribougo.so")
 IM_DATAFILE = "go_data.json"
 COMMAND_PIPE = "command_pipe"
 SEND_GO = "data_py_go"
 REC_GO = "data_go_py"
-
 
 def send_to_go(channel_path, command, data):
     with open(channel_path, "w") as ch:
@@ -39,19 +33,18 @@ while True:
     if command == "setup":
         send_to_go(SEND_GO, "Setup", im_data)
     elif command == "quit":
-        break
+        exit(0)
     else:
+        # data = [int(x) for x in data[1:-1].split(', ')]
         send_to_go(SEND_GO, "CalculateDeploymentMetrics", data)
 
     result = receive_from_go(REC_GO)
     print(result)
 
-
 im_data = json.dumps(json.load(open(IM_DATAFILE, 'r')))
 print("Python: Starting up Go")
-CaribouGo.start()
+CaribouGo.start(str(Path(__file__).parent.resolve()).encode('utf-8'))
 
-# pdb.set_trace()
 print("Python: Setting up InputManager")
 CaribouGo.goRead()
 send_to_go(SEND_GO, "Setup", im_data)
@@ -76,3 +69,6 @@ send_to_go(SEND_GO, "TestFunc2", "")
 ret_data = receive_from_go(REC_GO)
 print("PYREC ", ret_data)
 
+# pdb.set_trace()
+# print("Done")
+time.sleep(10)
