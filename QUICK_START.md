@@ -10,7 +10,8 @@ The server side orchestration framework consists of the deployment manager, depl
 
 Each of these components can either be run locally for fast prototyping or deployed to AWS for a full-scale deployment.
 
-For local framework component execution see the [Local Execution](#local-execution) section. For deployment to AWS see the [Deployment to AWS](#deployment-to-aws) section.
+For local framework component execution see the [Local Framework Component Execution](#local-framework-component-execution) section.
+For deployment to AWS see the [Deployment to AWS](#deployment-to-aws) section.
 
 Make sure you first have the necessary dependencies according to how you intend to use Caribou installed. See the [Installation](INSTALL.md) guide for more information.
 
@@ -80,7 +81,7 @@ poetry run caribou remove <workflow_id>
 
 Where `<workflow_id>` is the id of the workflow you want to remove.
 
-## Local Execution
+## Local Framework Component Execution
 
 The Caribou framework components can be run locally for fast prototyping and development.
 

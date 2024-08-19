@@ -55,7 +55,7 @@ If you use Caribou in your research, please cite the following paper:
 
 Caribou is being developed at the [Cloud Infrastructure Research for Reliability, Usability, and Sustainability Lab](https://cirrus.ece.ubc.ca) at the [University of British Columbia](https://www.ubc.ca). If you have any questions or feedback, please open a GitHub issue.
 
-## Contributing
+##  Contributing
 
 See the [Contributing](CONTRIBUTING.md) guide.
 
