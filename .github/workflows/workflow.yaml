@@ -111,8 +111,11 @@ jobs:
           if [ ! -f go.mod ]; then
             go mod init caribou-go
           fi
-      - name: Make build script executable
-        run: chmod +x ./caribou-go/build_caribou.sh
-      - name: Run go tests
+      - name: Build Caribou Go
         run: |
-          ./caribou-go/build_caribou.sh
+          cd caribou-go
+          go build -buildmode=c-shared -o caribougo.so ./src/main/
+      - name: Run Go tests
+        run: |
+          cd caribou-go
+          go test ./... -gcflags=-l
