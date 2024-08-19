@@ -2,11 +2,16 @@ import ctypes
 import json
 from pathlib import Path
 
+"""
+This file is intended for testing/debugging of caribou-go code.
+"""
+
 CaribouGo = ctypes.CDLL("caribougo.so")
 IM_DATAFILE = "go_data.json"
 COMMAND_PIPE = "command_pipe"
 SEND_GO = "data_py_go"
 REC_GO = "data_go_py"
+
 
 def send_to_go(channel_path, command, data):
     with open(channel_path, "w") as ch:
@@ -23,6 +28,7 @@ def receive_from_go(channel_path):
         data = json.load(ch)
         return data
 
+
 # Step 1: Read data from the json file
 im_data = json.dumps(json.load(open(IM_DATAFILE, 'r')))
 
@@ -33,7 +39,7 @@ while True:
     if command == "setup":
         send_to_go(SEND_GO, "Setup", im_data)
     elif command == "quit":
-        exit(0)
+        break
     else:
         # data = [int(x) for x in data[1:-1].split(', ')]
         send_to_go(SEND_GO, "CalculateDeploymentMetrics", data)
@@ -68,7 +74,3 @@ CaribouGo.goRead()
 send_to_go(SEND_GO, "TestFunc2", "")
 ret_data = receive_from_go(REC_GO)
 print("PYREC ", ret_data)
-
-# pdb.set_trace()
-# print("Done")
-time.sleep(10)
