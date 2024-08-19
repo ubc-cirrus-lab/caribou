@@ -1,0 +1,79 @@
+{
+  "aws": {
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+       "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+       ],
+       "Resource": "arn:aws:logs:*:*:*",
+       "Effect": "Allow"
+      },
+      {
+       "Action": [
+        "sns:Publish"
+       ],
+       "Resource": "arn:aws:sns:*:*:*",
+       "Effect": "Allow"
+      },
+      {
+       "Action": [
+        "dynamodb:GetItem",
+        "dynamodb:UpdateItem"
+       ],
+       "Resource": "arn:aws:dynamodb:*:*:*",
+       "Effect": "Allow"
+      },
+      {
+       "Action": [
+        "s3:GetObject",
+        "s3:PutObject"
+       ],
+       "Resource": "arn:aws:s3:::*",
+       "Effect": "Allow"
+      },
+      {
+       "Sid": "Statement1",
+       "Effect": "Allow",
+       "Action": [
+        "iam:AttachRolePolicy",
+        "iam:CreateRole",
+        "iam:CreatePolicy",
+        "iam:PutRolePolicy",
+        "ecr:CreateRepository",
+        "ecr:GetAuthorizationToken",
+        "ecr:InitiateLayerUpload",
+        "ecr:UploadLayerPart",
+        "ecr:CompleteLayerUpload",
+        "ecr:BatchGetImage",
+        "ecr:BatchCheckLayerAvailability",
+        "ecr:DescribeImages",
+        "ecr:DescribeRepositories",
+        "ecr:GetDownloadUrlForLayer",
+        "ecr:ListImages",
+        "ecr:PutImage",
+        "ecr:SetRepositoryPolicy",
+        "ecr:GetRepositoryPolicy",
+        "ecr:DeleteRepository",
+        "lambda:GetFunction",
+        "lambda:AddPermission",
+        "pricing:ListPriceLists",
+        "pricing:GetPriceListFileUrl",
+        "logs:FilterLogEvents"
+       ],
+       "Resource": "*"
+      },
+      {
+       "Sid": "Statement2",
+       "Effect": "Allow",
+       "Action": [
+        "iam:GetRole",
+        "iam:PassRole"
+       ],
+       "Resource": "arn:aws:iam:::role/*"
+      }
+     ]
+  }
+}
