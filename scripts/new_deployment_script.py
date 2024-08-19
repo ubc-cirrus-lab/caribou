@@ -27,17 +27,25 @@ CMD ["caribou/deployment/client/cli/aws_lambda_cli/aws_handler.py", "{handler}"]
 
 
 def generate_deployment_dockerfile(handler: str, runtime: str) -> str:
-    return f"""FROM public.ecr.aws/lambda/{runtime}
-RUN pip3 install poetry
+    return f"""
+FROM python:3.12-slim
+
+# Install dependencies
+RUN apt-get update && apt-get install -y curl tar golang-go
+
+# Install crane tool using the installed Go
+RUN go install github.com/google/go-containerregistry/cmd/crane@latest
+
+# Continue with your existing Dockerfile steps
 COPY pyproject.toml ./
 COPY poetry.lock ./
 COPY caribou ./caribou
-RUN yum install -y go && go install github.com/google/go-containerregistry/cmd/crane@latest
 
-RUN poetry install --no-dev
-CMD ["caribou/deployment/client/cli/aws_lambda_cli/aws_handler.py", "{handler}"]
+RUN pip3 install poetry && poetry install --no-dev
+
+CMD ["caribou/deployment/client/cli/aws_lambda_cli/aws_handler.py", "lambda_handler"]
+
 """
-
 
 def build_docker_image(image_name: str) -> None:
     print(f"Building docker image {image_name}")
