@@ -13,6 +13,7 @@ from caribou.deployment.common.deploy.models.resource import Resource
 # region_name = GLOBAL_SYSTEM_REGION
 region_name = "us-east-2" 
 
+# Perhaps refering to https://stackoverflow.com/questions/66369212/aws-lambda-is-unable-to-find-app-handler-custom-docker-image will be helpful
 
 def generate_dockerfile(handler: str, runtime: str) -> str:
     return f"""FROM public.ecr.aws/lambda/{runtime}
@@ -22,7 +23,8 @@ COPY poetry.lock ./
 COPY caribou ./caribou
 
 RUN poetry install --no-dev
-CMD ["caribou/deployment/client/cli/aws_lambda_cli/aws_handler.py", "{handler}"]
+# CMD ["caribou/deployment/client/cli/aws_lambda_cli/aws_handler.py", "{handler}"]
+CMD ["caribou/deployment/client/cli/cli.py", "{handler}"]
 """
 
 
@@ -179,7 +181,8 @@ lambda_trust_policy = {
 }
 
 if __name__ == "__main__":
-    handler = "lambda_handler"
+    # handler = "lambda_handler"
+    handler = "data_collect"
     runtime = "python:3.12"
     timeout = 600
     memory_size = 3008
@@ -211,4 +214,5 @@ if __name__ == "__main__":
     if aws_remote_client.resource_exists(Resource(function_name, "function")): # For lambda function
         aws_remote_client.remove_function(function_name)    
 
-    deploy_to_aws(handler, runtime, role_arn, timeout, memory_size, deployer_env=True)
+    # deploy_to_aws(handler, runtime, role_arn, timeout, memory_size, deployer_env=True)
+    deploy_to_aws(handler, runtime, role_arn, timeout, memory_size, deployer_env=False)
