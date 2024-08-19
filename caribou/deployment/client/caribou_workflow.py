@@ -24,6 +24,7 @@ from caribou.common.constants import (
     WORKFLOW_PLACEMENT_DECISION_TABLE,
 )
 from caribou.common.models.endpoints import Endpoints
+from caribou.common.models.remote_client.remote_client import RemoteClient
 from caribou.common.models.remote_client.remote_client_factory import RemoteClientFactory
 from caribou.common.provider import Provider
 from caribou.common.utils import get_function_source
@@ -120,6 +121,9 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
         # To forcefully terminate the workflow if it exceeds a certain number
         ## This will be overritten by input function arguments
         self._number_of_hops_from_client_request: int = 0
+
+        # Cache the remote clients (one per provider-region pair)
+        self._remote_clients: dict[str, RemoteClient] = {}
 
     def get_run_id(self) -> str:
         return self._current_workflow_placement_decision["run_id"]
@@ -245,7 +249,7 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
                 successor_invoked,
                 upload_rtt,
                 total_consumed_write_capacity,
-            ) = RemoteClientFactory.get_remote_client(provider, region).invoke_function(
+            ) = self._get_remote_client(provider, region).invoke_function(
                 message=json_payload,
                 identifier=identifier,
                 workflow_instance_id=workflow_placement_decision["run_id"],
@@ -413,7 +417,7 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
             )
         )
 
-        reached_states, response_size, consumed_write_capacity = RemoteClientFactory.get_remote_client(
+        reached_states, response_size, consumed_write_capacity = self._get_remote_client(
             provider, region
         ).set_predecessor_reached(
             predecessor_name=predecessor_instance_name,
@@ -440,7 +444,7 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
             # payload_wrapper["transmission_taint"] = transmission_taint
             json_payload = json.dumps(payload_wrapper)
 
-            _, _, _, _, _ = RemoteClientFactory.get_remote_client(provider, region).invoke_function(
+            _, _, _, _, _ = self._get_remote_client(provider, region).invoke_function(
                 message=json_payload,
                 identifier=identifier,
                 workflow_instance_id=workflow_placement_decision["run_id"],
@@ -601,7 +605,7 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
         # log the start time of loading the data
         get_predecessor_start_time = datetime.now(GLOBAL_TIME_ZONE)
 
-        client = RemoteClientFactory.get_remote_client(provider, region)
+        client = self._get_remote_client(provider, region)
 
         response, consumed_capacity = client.get_predecessor_data(current_instance_name, workflow_instance_id)
         size_of_results = sum(len(message.encode("utf-8")) for message in response)
@@ -1048,9 +1052,7 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
 
         # Directly invoke and send the request to the desired provider and region
         invocation_start_time = datetime.now(GLOBAL_TIME_ZONE)
-        RemoteClientFactory.get_remote_client(
-            desired_first_function_provider, desired_first_function_region
-        ).invoke_function(
+        self._get_remote_client(desired_first_function_provider, desired_first_function_region).invoke_function(
             message=json.dumps(redirect_payload),
             identifier=first_function_identifier,
         )
@@ -1355,3 +1357,15 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
                     cpu_model = line.split(":")[1].strip()  # Extracting and cleaning the model name
                     break  # No need to continue the loop once the model name is found
         return cpu_model
+
+    def _get_remote_client(self, provider: str, region: str) -> RemoteClient:
+        # Check if it is already in the cache
+        key = f"{provider}-{region}"
+        if key in self._remote_clients:
+            return self._remote_clients[key]
+
+        # Create a new remote client
+        remote_client = RemoteClientFactory.get_remote_client(provider, region)
+        self._remote_clients[key] = remote_client
+
+        return remote_client
