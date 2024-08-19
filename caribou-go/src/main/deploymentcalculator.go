@@ -116,8 +116,6 @@ func start(goPyFile *C.char, pyGoFile *C.char) {
 	mainRunning = false
 	datapipefileSend = C.GoString(goPyFile)
 	datapipefileRec = C.GoString(pyGoFile)
-	fmt.Println(datapipefileRec)
-	fmt.Println(datapipefileSend)
 	signalChan = make(chan struct{})
 	go run()
 }
