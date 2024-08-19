@@ -7,9 +7,12 @@ import os
 from datetime import datetime
 import logging
 import math
-import concurrent.futures
 
 from caribou.deployment.client import CaribouWorkflow
+
+# Change the following bucket name and region to match your setup
+s3_bucket_name = "caribou-map-reduce"
+s3_bucket_region_name = "us-east-1"
 
 workflow = CaribouWorkflow(name="map_reduce", version="0.0.1")
 
@@ -18,8 +21,9 @@ logger.setLevel(logging.INFO)
 
 
 @workflow.serverless_function(
-    name="Input_Processor",
+    name="input_processor",
     entry_point=True,
+    allow_placement_decision_override=True,
 )
 def input_processor(event: dict[str, Any]) -> dict[str, Any]:
     if isinstance(event, str):
@@ -49,45 +53,34 @@ def input_processor(event: dict[str, Any]) -> dict[str, Any]:
         "shards_per_worker": shards_per_worker,
     }
 
-    pool = concurrent.futures.ThreadPoolExecutor(max_workers=6)
+    # Mapper 1
+    payload["worker_index"] = 0
+    workflow.invoke_serverless_function(mapper, payload)
 
-    def worker1():
-        payload["worker_index"] = 0
-        workflow.invoke_serverless_function(mapper, payload)
+    # Mapper 2
+    payload["worker_index"] = 1
+    workflow.invoke_serverless_function(mapper, payload, number_of_workers_needed > 1)
 
-    def worker2():
-        payload["worker_index"] = 1
-        workflow.invoke_serverless_function(mapper, payload, number_of_workers_needed > 1)
+    # Mapper 3
+    payload["worker_index"] = 2
+    workflow.invoke_serverless_function(mapper, payload, number_of_workers_needed > 2)
 
-    def worker3():
-        payload["worker_index"] = 2
-        workflow.invoke_serverless_function(mapper, payload, number_of_workers_needed > 2)
+    # Mapper 4
+    payload["worker_index"] = 3
+    workflow.invoke_serverless_function(mapper, payload, number_of_workers_needed > 3)
 
-    def worker4():
-        payload["worker_index"] = 3
-        workflow.invoke_serverless_function(mapper, payload, number_of_workers_needed > 3)
+    # Mapper 5
+    payload["worker_index"] = 4
+    workflow.invoke_serverless_function(mapper, payload, number_of_workers_needed > 4)
 
-    def worker5():
-        payload["worker_index"] = 4
-        workflow.invoke_serverless_function(mapper, payload, number_of_workers_needed > 4)
-
-    def worker6():
-        payload["worker_index"] = 5
-        workflow.invoke_serverless_function(mapper, payload, number_of_workers_needed > 5)
-
-    pool.submit(worker1)
-    pool.submit(worker2)
-    pool.submit(worker3)
-    pool.submit(worker4)
-    pool.submit(worker5)
-    pool.submit(worker6)
-
-    pool.shutdown(wait=True)
+    # Mapper 6
+    payload["worker_index"] = 5
+    workflow.invoke_serverless_function(mapper, payload, number_of_workers_needed > 5)
 
     return {"status": 200}
 
 
-@workflow.serverless_function(name="Mapper_Function")
+@workflow.serverless_function(name="mapper")
 def mapper(event: dict[str, Any]) -> dict[str, Any]:
 
     input_base_dir = event["input_base_dir"]
@@ -97,7 +90,7 @@ def mapper(event: dict[str, Any]) -> dict[str, Any]:
 
     run_id = workflow.get_run_id()
 
-    s3 = boto3.client("s3")
+    s3 = boto3.client("s3", region_name=s3_bucket_region_name)
     with TemporaryDirectory() as tmp_dir:
 
         start_index = worker_index * shards_per_worker
@@ -109,7 +102,7 @@ def mapper(event: dict[str, Any]) -> dict[str, Any]:
         for chunk_index in range(start_index, end_index):
             chunk_file_path = f"input/{input_base_dir}/chunk_{chunk_index}.txt"
 
-            s3.download_file("caribou-map-reduce", chunk_file_path, local_file_path)
+            s3.download_file(s3_bucket_name, chunk_file_path, local_file_path)
 
             with open(local_file_path, "r") as file:
                 data = file.read()
@@ -133,7 +126,7 @@ def mapper(event: dict[str, Any]) -> dict[str, Any]:
 
         remote_word_count_file_path = f"word_counts/word_count_{chunk_index}_{run_id}.json"
 
-        s3.upload_file(word_count_file_path, "caribou-map-reduce", remote_word_count_file_path)
+        s3.upload_file(word_count_file_path, s3_bucket_name, remote_word_count_file_path)
 
         payload = {
             "word_count_file_path": remote_word_count_file_path,
@@ -146,7 +139,7 @@ def mapper(event: dict[str, Any]) -> dict[str, Any]:
     return {"status": 200}
 
 
-@workflow.serverless_function(name="Shuffler_Function")
+@workflow.serverless_function(name="shuffler")
 def shuffler(event: dict[str, Any]) -> dict[str, Any]:
 
     results = workflow.get_predecessor_data()
@@ -155,39 +148,31 @@ def shuffler(event: dict[str, Any]) -> dict[str, Any]:
 
     logger.info(f"Results: {results}, Number of results: {num_results}")
 
-    pool = concurrent.futures.ThreadPoolExecutor(max_workers=2)
+    # Reducer 1
+    workflow.invoke_serverless_function(
+        reducer,
+        {
+            "mapper_result1": results[0]["word_count_file_path"],
+            "mapper_result2": results[1].get("word_count_file_path", None) if num_results >= 2 else None,
+            "reducer_index": 1,
+        },
+    )
 
-    def worker1():
-        workflow.invoke_serverless_function(
-            reducer,
-            {
-                "mapper_result1": results[0]["word_count_file_path"],
-                "mapper_result2": results[1].get("word_count_file_path", None) if num_results >= 2 else None,
-                "reducer_index": 1,
-            },
-        )
-
-    def worker2():
-        if num_results >= 3:
-            payload2 = {
-                "mapper_result1": results[2]["word_count_file_path"],
-                "mapper_result2": results[3].get("word_count_file_path", None) if num_results == 4 else None,
-                "reducer_index": 2,
-            }
-        else:
-            payload2 = {"mapper_result1": None, "mapper_result2": None, "reducer_index": 2}
-
-        workflow.invoke_serverless_function(reducer, payload2, num_results >= 3)
-
-    pool.submit(worker1)
-    pool.submit(worker2)
-
-    pool.shutdown(wait=True)
+    # Reducer 2
+    if num_results >= 3:
+        payload2 = {
+            "mapper_result1": results[2]["word_count_file_path"],
+            "mapper_result2": results[3].get("word_count_file_path", None) if num_results == 4 else None,
+            "reducer_index": 2,
+        }
+    else:
+        payload2 = {"mapper_result1": None, "mapper_result2": None, "reducer_index": 2}
+    workflow.invoke_serverless_function(reducer, payload2, num_results >= 3)
 
     return {"status": 200}
 
 
-@workflow.serverless_function(name="Reducer_Function")
+@workflow.serverless_function(name="reducer")
 def reducer(event: dict[str, Any]) -> dict[str, Any]:
 
     word_count_file_path_1 = event["mapper_result1"]
@@ -197,12 +182,12 @@ def reducer(event: dict[str, Any]) -> dict[str, Any]:
 
     merged_word_counts = {}
 
-    s3 = boto3.client("s3")
+    s3 = boto3.client("s3", region_name=s3_bucket_region_name)
 
     with TemporaryDirectory() as tmp_dir:
         if word_count_file_path_1 is not None:
             local_file_path1 = f"{tmp_dir}/word_count1.json"
-            s3.download_file("caribou-map-reduce", word_count_file_path_1, local_file_path1)
+            s3.download_file(s3_bucket_name, word_count_file_path_1, local_file_path1)
             with open(local_file_path1, "r") as file:
                 mapper_result1 = json.load(file)
             for word, count in mapper_result1.items():
@@ -213,7 +198,7 @@ def reducer(event: dict[str, Any]) -> dict[str, Any]:
 
         if word_count_file_path_2 is not None:
             local_file_path2 = f"{tmp_dir}/word_count2.json"
-            s3.download_file("caribou-map-reduce", word_count_file_path_2, local_file_path2)
+            s3.download_file(s3_bucket_name, word_count_file_path_2, local_file_path2)
             with open(local_file_path2, "r") as file:
                 mapper_result2 = json.load(file)
             for word, count in mapper_result2.items():
@@ -233,7 +218,7 @@ def reducer(event: dict[str, Any]) -> dict[str, Any]:
             f"sorted_word_counts/sorted_word_count_{reducer_index}_{workflow.get_run_id()}.json"
         )
 
-        s3.upload_file(sorted_word_count_file_path, "caribou-map-reduce", remote_sorted_word_count_file_path)
+        s3.upload_file(sorted_word_count_file_path, s3_bucket_name, remote_sorted_word_count_file_path)
 
         payload = {
             "sorted_word_count_file_path": remote_sorted_word_count_file_path,
@@ -246,19 +231,19 @@ def reducer(event: dict[str, Any]) -> dict[str, Any]:
     return {"status": 200}
 
 
-@workflow.serverless_function(name="Output_Processor")
+@workflow.serverless_function(name="output_processor")
 def output_processor(event: dict[str, Any]) -> dict[str, Any]:
     results = workflow.get_predecessor_data()
 
     final_word_counts = {}
 
-    s3 = boto3.client("s3")
+    s3 = boto3.client("s3", region_name=s3_bucket_region_name)
 
     with TemporaryDirectory() as tmp_dir:
 
         for result in results:
             local_file_path = f"{tmp_dir}/sorted_word_count.json"
-            s3.download_file("caribou-map-reduce", result["sorted_word_count_file_path"], local_file_path)
+            s3.download_file(s3_bucket_name, result["sorted_word_count_file_path"], local_file_path)
             with open(local_file_path, "r") as file:
                 result = json.load(file)
 
@@ -275,6 +260,6 @@ def output_processor(event: dict[str, Any]) -> dict[str, Any]:
             for word, count in final_word_counts.items():
                 file.write(f"{word}: {count}\n")
 
-        s3.upload_file(local_file_path, "caribou-map-reduce", f"output/{file_name}")
+        s3.upload_file(local_file_path, s3_bucket_name, f"output/{file_name}")
 
     return {"status": 200}

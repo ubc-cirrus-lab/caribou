@@ -1,27 +1,33 @@
 # Map Reduce Benchmarks
+This benchmark requires access to the S3 bucket named `caribou-map-reduce`,
+with the AWS Region set to `us-east-1` (N. Virginia).
 
-This benchmark requires access to the s3 bucket with the name `caribou-map-reduce`.
-There needs to be a folder in the bucket with the base dir (`subset_256MB` in our example) containing the input file split in shards.
+Alternatively, the user may change the S3 bucket name and region in `app.py`, 
+by changing the values of `s3_bucket_name` and `s3_bucket_region_name` to the 
+desired bucket. 
+
+There needs to be a folder in the bucket with the base dir (`subset_256MB` in our example) 
+inside the input folder containing the input file split in shards.
 The input file should be split in shards of the same size.
 The number of shards should be specified in the `number_shards` parameter.
 The input file size should be specified in the `input_file_size` parameter and is used by the workflow to determine the number of workers.
 
-You can deploy the benchmark with the following command:
+You can deploy the benchmark with the following command while inside the poetry environment:
 
 ```bash
-poetry run caribou deploy
+caribou deploy
 ```
 
 And then run the benchmark with the following command (example):
 
 ```bash
-poetry run caribou run map_reduce-0.0.1 -a '{"input_base_dir": "subset_256MB", "number_shards": 120, "input_file_size": 268435456}'
+caribou run map_reduce-version_number -a '{"input_base_dir": "subset_256MB", "number_shards": 120, "input_file_size": 268435456}'
 ```
 
 To remove the benchmark, you can use the following command:
 
 ```bash
-poetry run caribou remove map_reduce-version_number
+caribou remove map_reduce-version_number
 ```
 
 ## Data preparation
