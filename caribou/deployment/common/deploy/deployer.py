@@ -64,10 +64,15 @@ class Deployer:
 
         # Build the workflow resources, e.g. deployment packages, iam roles, etc.
         logger.info("Building deployment package")
+
         self._deployment_packager.build(self._config, self._workflow)
 
         # Chain the commands needed to deploy all the built resources to the serverless platform
         logger.info("Building deployment plan")
+
+        # Redeployment does not require a deployment package (Refer to issue #293)
+        allow_no_deployment_package: bool = False
+        self._workflow.allow_no_deployment_package = allow_no_deployment_package
         deployment_plan = DeploymentPlan(self._workflow.get_deployment_instructions())
 
         assert self._executor is not None, "Executor is None, this should not happen"
@@ -79,7 +84,10 @@ class Deployer:
         # Upload the workflow to the deployer server
         logger.info("Uploading workflow to configuration server")
         self._upload_workflow_to_deployer_server()
-        self._upload_deployment_package_resource()
+
+        # Disabled as part of issue #293
+        # self._upload_deployment_package_resource()
+
         self._upload_workflow_placement_decision()
 
         logger.info("Workflow %s with version %s deployed", self._config.workflow_name, self._config.workflow_version)
@@ -116,8 +124,12 @@ class Deployer:
             self._config, filtered_function_to_deployment_regions, workflow_function_descriptions, deployed_regions
         )
 
-        self._deployment_packager.re_build(self._workflow, self._endpoints.get_deployment_resources_client())
+        # Disabled as part of issue #293
+        # self._deployment_packager.re_build(self._workflow, self._endpoints.get_deployment_resources_client())
 
+        # Redeployment does not require a deployment package (Refer to issue #293)
+        allow_no_deployment_package: bool = True
+        self._workflow.allow_no_deployment_package = allow_no_deployment_package
         deployment_plan = DeploymentPlan(self._workflow.get_deployment_instructions())
 
         assert self._executor is not None, "Executor is None, this should not happen"
