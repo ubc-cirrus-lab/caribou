@@ -21,7 +21,6 @@ COPY poetry.lock ./
 COPY caribou ./caribou
 
 RUN poetry install --no-dev
-# CMD ["caribou/deployment/client/cli/aws_lambda_cli/aws_handler.py", "{handler}"]
 CMD ["caribou/deployment/client/cli/cli.py", "{handler}"]
 """
 
