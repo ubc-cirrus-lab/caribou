@@ -41,3 +41,6 @@ class CarbonLoader(InputLoader):
 
     def get_carbon_data(self) -> dict[str, Any]:
         return self._carbon_data
+
+    def to_dict(self) -> dict[str, Any]:
+        return self._carbon_data

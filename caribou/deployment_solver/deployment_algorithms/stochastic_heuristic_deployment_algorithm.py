@@ -13,8 +13,15 @@ class StochasticHeuristicDeploymentAlgorithm(DeploymentAlgorithm):
         expiry_time_delta_seconds: int = 604800,
         n_workers: int = 1,
         record_transmission_execution_carbon: bool = False,
+        deployment_metrics_calculator_type: str = "simple",
     ) -> None:
-        super().__init__(workflow_config, expiry_time_delta_seconds, n_workers, record_transmission_execution_carbon)
+        super().__init__(
+            workflow_config,
+            expiry_time_delta_seconds,
+            n_workers,
+            record_transmission_execution_carbon,
+            deployment_metrics_calculator_type,
+        )
         self._setup()
 
     def _setup(self) -> None:

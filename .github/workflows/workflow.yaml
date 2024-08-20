@@ -96,3 +96,26 @@ jobs:
       - name: Run integration tests
         run: |
           poetry run python integration_tests/run_integration_tests.py
+
+  go-build-test:
+    runs-on: ubuntu-latest
+    if: ${{ !github.event.pull_request.draft }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Go
+        uses: ./.github/actions/go
+      - name: Initialize Go module
+        run: |
+          cd caribou-go
+          if [ ! -f go.mod ]; then
+            go mod init caribou-go
+          fi
+      - name: Build Caribou Go
+        run: |
+          cd caribou-go
+          go build -buildmode=c-shared -o caribougo.so ./src/main/
+      - name: Run Go tests
+        run: |
+          cd caribou-go
+          go test ./... -gcflags=-l
