@@ -231,7 +231,7 @@ class Client:
         identifier = function_instance
         role_name = f"{identifier}-role"
         messaging_topic_name = f"{identifier}_messaging_topic"
-        client = RemoteClientFactory.get_remote_client(provider, region)
+        client = self._get_remote_client(provider, region)
 
         try:
             if isinstance(client, AWSRemoteClient):
