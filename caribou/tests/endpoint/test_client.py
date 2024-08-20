@@ -70,6 +70,29 @@ class TestClient(unittest.TestCase):
                 identifier="function1",
             )
 
+    @patch("caribou.endpoint.client.RemoteClientFactory.get_remote_client")
+    def test_get_remote_client(self, mock_get_remote_client):
+        # Create an instance of the Client class
+        client = Client()
+
+        # Clear mock_get_remote_client call count
+        mock_get_remote_client.reset_mock()
+
+        # Mock the return value of get_remote_client
+        mock_remote_client = "mock_remote_client"
+        mock_get_remote_client.return_value = mock_remote_client
+
+        # Call the _get_remote_client method
+        provider = "aws"
+        region = "us-east-1"
+        remote_client = client._get_remote_client(provider, region)
+
+        # Assert that get_remote_client was called with the correct arguments
+        mock_get_remote_client.assert_called_once_with(provider, region)
+
+        # Assert that the returned remote_client is the same as the mocked remote_client
+        self.assertEqual(remote_client, mock_remote_client)
+
     @patch.object(Endpoints, "get_deployment_algorithm_workflow_placement_decision_client")
     def test_no_workflow_placement_decision_found(
         self, mock_get_deployment_algorithm_workflow_placement_decision_client

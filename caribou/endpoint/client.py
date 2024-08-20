@@ -21,6 +21,7 @@ from caribou.common.constants import (
 )
 from caribou.common.models.endpoints import Endpoints
 from caribou.common.models.remote_client.aws_remote_client import AWSRemoteClient
+from caribou.common.models.remote_client.remote_client import RemoteClient
 from caribou.common.models.remote_client.remote_client_factory import RemoteClientFactory
 
 # Set logging level for Boto3 to WARNING to suppress INFO messages
@@ -38,6 +39,9 @@ class Client:
         self._workflow_id = workflow_id
         self._endpoints = Endpoints()
         self._home_region_threshold = HOME_REGION_THRESHOLD  # fractional % of the time run in home region
+
+        # Cache the remote clients (one per provider-region pair)
+        self._remote_clients: dict[str, RemoteClient] = {}
 
     def run(self, input_data: Optional[str] = None) -> str:
         current_time = datetime.now(GLOBAL_TIME_ZONE).strftime(TIME_FORMAT)
@@ -92,12 +96,24 @@ class Client:
         }
 
         json_payload = json.dumps(wrapped_input_data)
-        RemoteClientFactory.get_remote_client(provider, region).invoke_function(
+        self._get_remote_client(provider, region).invoke_function(
             message=json_payload,
             identifier=identifier,
         )
 
         return run_id
+    
+    def _get_remote_client(self, provider: str, region: str) -> RemoteClient:
+        # Check if it is already in the cache
+        key = f"{provider}-{region}"
+        if key in self._remote_clients:
+            return self._remote_clients[key]
+
+        # Create a new remote client
+        remote_client = RemoteClientFactory.get_remote_client(provider, region)
+        self._remote_clients[key] = remote_client
+
+        return remote_client
 
     def _get_time_key(self, workflow_placement_decision: dict[str, Any]) -> str:
         if "current_deployment" not in workflow_placement_decision["workflow_placement"]:
