@@ -4,12 +4,12 @@ import (
 	"strconv"
 )
 
-type indexer struct {
+type Indexer struct {
 	valueIndices  map[string]int
 	indicesValues map[int]string
 }
 
-func (in *indexer) getValueIndices() map[string]int {
+func (in *Indexer) getValueIndices() map[string]int {
 	return in.valueIndices
 }
 
@@ -21,16 +21,16 @@ func indicesToValues(valueIndices map[string]int) map[int]string {
 	return result
 }
 
-func (in *indexer) ValueToIndex(value string) int {
+func (in *Indexer) ValueToIndex(value string) int {
 	return in.valueIndices[value]
 }
 
-func (in *indexer) IndexToValue(index int) string {
+func (in *Indexer) IndexToValue(index int) string {
 	return in.indicesValues[index]
 }
 
 type RegionIndexer struct {
-	indexer
+	Indexer
 }
 
 func NewRegionIndexer(regions []interface{}) *RegionIndexer {
@@ -38,7 +38,7 @@ func NewRegionIndexer(regions []interface{}) *RegionIndexer {
 	for index, region := range regions {
 		valueIndices[region.(string)] = index
 	}
-	re := RegionIndexer{indexer{
+	re := RegionIndexer{Indexer{
 		valueIndices:  valueIndices,
 		indicesValues: indicesToValues(valueIndices),
 	}}
@@ -46,7 +46,7 @@ func NewRegionIndexer(regions []interface{}) *RegionIndexer {
 }
 
 type InstanceIndexer struct {
-	indexer
+	Indexer
 }
 
 func NewInstanceIndexer(nodes []interface{}) *InstanceIndexer {
@@ -55,14 +55,14 @@ func NewInstanceIndexer(nodes []interface{}) *InstanceIndexer {
 		nodeMap := node.(map[string]interface{})
 		valueIndices[nodeMap["instance_name"].(string)] = index
 	}
-	re := InstanceIndexer{indexer{
+	re := InstanceIndexer{Indexer{
 		valueIndices:  valueIndices,
 		indicesValues: indicesToValues(valueIndices),
 	}}
 	return &re
 }
 
-func parseIndexer(indexerData map[string]interface{}) indexer {
+func parseIndexer(indexerData map[string]interface{}) Indexer {
 	valueIndices := map[string]int{}
 	for k, v := range indexerData["value_indices"].(map[string]interface{}) {
 		valueIndices[k] = int(v.(float64))
@@ -72,7 +72,7 @@ func parseIndexer(indexerData map[string]interface{}) indexer {
 		kInt, _ := strconv.Atoi(k)
 		indicesValues[kInt] = v.(string)
 	}
-	return indexer{
+	return Indexer{
 		valueIndices:  valueIndices,
 		indicesValues: indicesValues,
 	}
