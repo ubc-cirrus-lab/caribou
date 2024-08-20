@@ -109,3 +109,6 @@ class DatacenterLoader(InputLoader):
             all_data[provider] = self._retrieve_data(self._provider_table, provider)
 
         return all_data
+
+    def to_dict(self) -> dict[str, Any]:
+        return self._datacenter_data

@@ -1,7 +1,7 @@
 import statistics
 from multiprocessing import Manager, Process
 from queue import Queue
-from typing import Tuple
+from typing import Any, Tuple
 
 import numpy as np
 import scipy.stats as st
@@ -246,6 +246,17 @@ class SimpleDeploymentMetricsCalculator(DeploymentMetricsCalculator):
             _ = self._output_queue.get()
         assert self._input_queue.empty()
         assert self._output_queue.empty()
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "input_manager": self._input_manager.to_dict(),
+            "tail_latency_threshold": self._tail_latency_threshold,
+            "successor_dictionary": self._successor_dictionary,
+            "prerequisites_dictionary": self._prerequisites_dictionary,
+            "topological_order": self._topological_order,
+            "home_region_index": self._home_region_index,
+            "record_transmission_execution_carbon": self._record_transmission_execution_carbon,
+        }
 
     def __del__(self) -> None:
         if self.n_processes > 1:

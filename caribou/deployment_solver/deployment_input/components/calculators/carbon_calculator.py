@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Optional
 
 from caribou.common.constants import AVERAGE_USA_CARBON_INTENSITY
 from caribou.deployment_solver.deployment_input.components.calculator import InputCalculator
@@ -256,3 +256,11 @@ class CarbonCalculator(InputCalculator):  # pylint: disable=too-many-instance-at
             power_factor_gco2e_kwh,
         )
         return self._execution_conversion_ratio_cache[cache_key]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "consider_cfe": self._consider_cfe,
+            "energy_factor": self._energy_factor_of_transmission,
+            "carbon_free_intra_region_transmission": self._carbon_free_intra_region_transmission,
+            "carbon_free_dt_during_execution_at_home_region": self._carbon_free_dt_during_execution_at_home_region,
+        }

@@ -32,11 +32,9 @@ class SimulatedInstanceEdge:
         if (self.from_instance_node and not self.from_instance_node.invoked) or not self.to_instance_node:
             return None
 
-        # from_instance_id = self.from_instance_node.nominal_instance_id
         from_instance_id = self.from_instance_node.actual_instance_id
         uninvoked_instance_id = self.uninvoked_instance_id
         simulated_sync_predecessor_id = self.simulated_sync_predecessor_instance_id
-        # sync_node_id = self.to_instance_node.nominal_instance_id
         sync_node_id = self.to_instance_node.actual_instance_id
 
         from_region_id = self.from_instance_node.region_id
