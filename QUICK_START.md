@@ -49,6 +49,16 @@ To change the home region, you need to adjust the manifest in the configuration 
 This will also print the unique workflow ID generated from the workflow name and version.
 The workflow ID is unique per deployed framework and is used to identify the workflow in the system.
 
+### Naming Restrictions
+
+- `<workflow_name>`: Must be non-empty, up to 25 characters long, and can include only letters, numbers, or underscores.
+  
+- `<version_number>`: Must be non-empty, up to 10 characters long, and can consist only of numbers and dots.
+  
+- `<function_name>`: Must be non-empty, up to 15 characters long, and can include only letters, numbers, or underscores.
+
+The resulting node name, following the [Node Naming Scheme](docs/node_naming_scheme.md), must be up to 64 characters long to comply with AWS Lambda Function naming restrictions.
+
 ### Run a workflow
 
 To run a workflow, you can use the following command:
