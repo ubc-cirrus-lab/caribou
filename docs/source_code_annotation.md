@@ -105,3 +105,7 @@ The entire function is only executed once all predecessor calls have been comple
 This is important to keep in mind when designing the workflow.
 Any code within the function preceding the annotation is also executed only once all predecessor calls have been completed and the data has been synchronized.
 See also the documentation on the [Synchronization Node](synchronization_node.md).
+
+Additional Notes: 
+- All calls to `workflow.invoke_serverless_function` should not be placed inside an `if` or `for` loop and must always be executed. For cases where conditional non-execution is required, set the `condition` parameter to `False`.
+- The Caribou Wrapper defined in `caribou_workflow.py` also uses and reserves the custom log level `25`. Please avoid using custom logs with log level `25` to prevent conflicts.
