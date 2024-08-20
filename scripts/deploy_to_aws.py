@@ -8,9 +8,7 @@ from caribou.common.constants import GLOBAL_SYSTEM_REGION
 from caribou.common.models.remote_client.aws_remote_client import AWSRemoteClient
 from caribou.deployment.common.deploy.models.resource import Resource
 
-# Deploy to AWS Lambda (Lets go with this region for now as it is 
-# the only one we are not using for anything else)
-# region_name = GLOBAL_SYSTEM_REGION
+
 region_name = "us-east-2" 
 
 # Perhaps refering to https://stackoverflow.com/questions/66369212/aws-lambda-is-unable-to-find-app-handler-custom-docker-image will be helpful
@@ -23,7 +21,6 @@ COPY poetry.lock ./
 COPY caribou ./caribou
 
 RUN poetry install --no-dev
-# CMD ["caribou/deployment/client/cli/aws_lambda_cli/aws_handler.py", "{handler}"]
 CMD ["caribou/deployment/client/cli/cli.py", "{handler}"]
 """
 
@@ -197,22 +194,17 @@ if __name__ == "__main__":
         iam_policies_content = json.dumps(json.loads(iam_policies_content)["aws"])
 
 
-    # # Delete role if exists, then create a new role
-    # # Delete a role
-    # if aws_remote_client.resource_exists(Resource(iam_policy_name, "iam_role")): # For iam role
-    #     print(f"Deleting role {iam_policy_name}")
-    #     aws_remote_client.remove_role(iam_policy_name)
+    # Delete role if exists, then create a new role
+    # Delete a role
+    if aws_remote_client.resource_exists(Resource(iam_policy_name, "iam_role")): # For iam role
+        print(f"Deleting role {iam_policy_name}")
+        aws_remote_client.remove_role(iam_policy_name)
 
-    # # Create a role
-    # role_arn = aws_remote_client.create_role("caribou_deployment_policy", iam_policies_content, lambda_trust_policy)
-
-    # print(f"Created role {role_arn}")
-
-    role_arn = "arn:aws:iam::226414417076:role/caribou_deployment_policy"
+    # Create a role
+    role_arn = aws_remote_client.create_role("caribou_deployment_policy", iam_policies_content, lambda_trust_policy)
 
     # Delete function if exists.
     if aws_remote_client.resource_exists(Resource(function_name, "function")): # For lambda function
         aws_remote_client.remove_function(function_name)    
 
-    # deploy_to_aws(handler, runtime, role_arn, timeout, memory_size, deployer_env=True)
     deploy_to_aws(handler, runtime, role_arn, timeout, memory_size, deployer_env=False)
