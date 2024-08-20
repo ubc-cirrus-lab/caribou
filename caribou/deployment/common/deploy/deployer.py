@@ -70,7 +70,7 @@ class Deployer:
         # Chain the commands needed to deploy all the built resources to the serverless platform
         logger.info("Building deployment plan")
 
-        # Redeployment does not require a deployment package (Refer to issue #293)
+        # Initial deployment ALWAYS requires a deployment package.
         allow_no_deployment_package: bool = False
         self._workflow.allow_no_deployment_package = allow_no_deployment_package
         deployment_plan = DeploymentPlan(self._workflow.get_deployment_instructions())
