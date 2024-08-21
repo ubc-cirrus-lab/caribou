@@ -1,22 +1,20 @@
 # Text to speech censoring benchmark
+
 This benchmark requires access to the S3 bucket named `caribou-text-2-speech-censoring`,
 with the AWS Region set to `us-east-1` (N. Virginia).
 
-Alternatively, the user may change the S3 bucket name and region in `app.py`, 
-by changing the values of `s3_bucket_name` and `s3_bucket_region_name` to the 
-desired bucket. 
+Alternatively, the user may change the S3 bucket name and region in `app.py`, by changing the values of `s3_bucket_name` and `s3_bucket_region_name` to the desired bucket.
 
-There needs to be an text file in the bucket, for example `text_file.txt`, in a folder 
-called `input`.
+There needs to be an text file in the bucket, for example `text_file.txt`, in a folder called `input`.
 
 This benchmark allow for usage of either `AWS Polly` or `Google Text-To-Speech` which
-can be configured with an input argument `t2s_service` of either `polly` or `gtts`. 
+can be configured with an input argument `t2s_service` of either `polly` or `gtts`.
 If this is not set, this benchark defaults to using `AWS Polly`.
 
-This benchmark allow for a custom output folder name which can be configured with 
-an input argument `output_folder_name` which will determine where in the `output` folder 
-it will be stored as. If this is not set, it defaults to the name of the input text file 
-without the file extension. 
+This benchmark allow for a custom output folder name which can be configured with
+an input argument `output_folder_name` which will determine where in the `output` folder
+it will be stored as. If this is not set, it defaults to the name of the input text file
+without the file extension.
 
 You can deploy the benchmark with the following command while inside the poetry environment:
 

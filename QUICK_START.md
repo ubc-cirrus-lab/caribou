@@ -1,10 +1,10 @@
 #  Quickstart
 
+**Please make sure you have the necessary dependencies according to how you intend to use Caribou installed. See the [Installation](INSTALL.md) guide for more information.**
+
 The following guide will help you get started with the Caribou framework.
 
 The Caribou framework consists of a client side CLI to develop and manage workflows as well as a server side orchestration framework to solve for optimal deployments and migrate the workflows to these deployments.
-
-The client side CLI can be interacted with using the `caribou` command.
 
 The server side orchestration framework consists of the deployment manager, deployment solver, deployment migrator, log syncer, and data collectors.
 
@@ -29,21 +29,40 @@ Where `<workflow_name>` is the name of the new workflow.
 
 You can then use the Caribou Python API to define and develop the workflow.
 
+### Example Workflow
+
+In the `examples/small_sync_example` directory, you can find an example workflow that you can use to get started.
+
 ### Deployment Utility
 
 The deployment utility can be found in `caribou/deployment/client` and can be run with:
 
 ```bash
-poetry run caribou --project-dir <workflow_path> deploy
+poetry run caribou --workflow-dir <workflow_path> deploy
 ```
 
-Alternatively, you can also navigate to the `<workflow_path>`; the same command will work without the `--project-dir` flag.
+If this step fails with an error message indicating that the docker daemon is not running, you need to [start the docker daemon](https://docs.docker.com/engine/daemon/start/).
 
-This will deploy the workflow to the defined home region as defined in the deployment manifest.
+Alternatively, you can also navigate to the `<workflow_path>`; the same command will work without the `--workflow-dir` flag.
+
+This will deploy the workflow to the defined home region as defined in the deployment manifest (`./.caribou/config.yml` in the workflow directory).
 To change the home region, you need to adjust the manifest in the configuration file in `.caribou/config.yml` and set the `home_region` to the desired region.
 
 This will also print the unique workflow ID generated from the workflow name and version.
 The workflow ID is unique per deployed framework and is used to identify the workflow in the system.
+
+If the deployment is successful, the workflow is now deployed to the cloud provider and can be run using the workflow ID.
+
+If there are any issues with the deployment, the deployment utility will print the error message and exit.
+In that case it might be necessary to delete the workflow and try to deploy it again.
+
+Delete the workflow with:
+
+```bash
+poetry run caribou remove <workflow_id>
+```
+
+Where `<workflow_id>` is the id of the workflow you want to remove.
 
 ### Naming Restrictions
 
@@ -99,31 +118,39 @@ To sync the logs from all the workflows, you can use the following command:
 poetry run caribou log_sync
 ```
 
+This might take a while, depending on the number of workflows and the amount of logs that need to be synced.
+
 ### Data Collecting
 
-First
+Before we can generate a new deployment, we need to collect data from the providers.
 
-```bash
-poetry run caribou data_collect provider
-```
+1. Collect data from the carbon provider:
 
-The data collecting can be found in `caribou/data_collector` and can be run individually with:
+    ```bash
+    poetry run caribou data_collect provider
+    ```
 
-```bash
-poetry run caribou data_collect <collector>
-```
+2. Collect data from the other collectors:
 
-Where `<collector>` is the name of the collector you want to run. The available collectors are:
+    ```bash
+    poetry run caribou data_collect all --workflow_id <workflow_id>
+    ```
 
-- `carbon`
-- `provider`
-- `performance`
-- `workflow`
-- `all`
+    Or collect data for a specific collector:
 
-The `all` and `workflow` collectors need a workflow id to be passed as an argument with `--workflow_id` or `-w`.
+    ```bash
+    poetry run caribou data_collect <collector>
+    ```
 
-This manual data collecting is only necessary if you want to collect data for a specific workflow for testing purposes. The first three collectors are automatically run periodically.
+    Where `<collector>` is the name of the collector you want to run. The available collectors are:
+
+    - `carbon`
+    - `provider`
+    - `performance`
+    - `workflow`
+    - `all`
+
+    The `all` and `workflow` collectors need a workflow id to be passed as an argument with `--workflow_id` or `-w`.
 
 The workflow collector is invoked by the manager and collects data for the workflows that are currently being solved.
 
@@ -134,12 +161,13 @@ export ELECTRICITY_MAPS_AUTH_TOKEN=<your_token>
 export GOOGLE_API_KEY=<your_key>
 ```
 
-**Note 1:** The needed Google API: Geocoding API<br>
-**Note 2:** Get your Electricity Maps token from [here](https://www.electricitymaps.com).
+- **Note 1:** The needed Google API: Geocoding API, get your key from [here](https://developers.google.com/maps/documentation/geocoding/get-api-key).
+- **Note 2:** Get your Electricity Maps token from [here](https://api-portal.electricitymaps.com).
 
 ### Find a new (optimal) Deployment
 
-After syncing execution logs and collecting new data, you can use the manager to solve all workflows that have a check outstanding:
+After syncing execution logs and collecting new data, you can use the manager to solve all workflows that have a check outstanding.
+As documented in the paper, a check is outstanding if the workflow has had enough invocations to warrant a new deployment calculation or the estimated benefit of a new deployment is higher than the overhead of the system.
 
 ```bash
 poetry run caribou manage_deployments

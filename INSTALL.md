@@ -64,6 +64,12 @@ To open a shell with the dependencies installed, you can run:
 poetry shell
 ```
 
+If you opened a shell, you can run all the caribou commands without the `poetry run` prefix.
+
+```bash
+caribou --help
+```
+
 ## AWS Account Access
 
 To run the framework, you need an AWS account and the necessary permissions to create and manage the required resources.
@@ -95,6 +101,18 @@ To verify that Docker is installed correctly, you can try running:
 ```bash
 docker --version
 ```
+
+## Google Maps API Key
+
+For the server side component, more specifically the data collectors, we use the Google Maps Geocoding API to resolve the location of the data centers.
+To use this API, you need to have a Google Maps API key.
+You can get one by following the instructions on the [Google Maps Platform](https://developers.google.com/maps/documentation/geocoding/get-api-key) website.
+
+## Electricity Map API Key
+
+For the server side component, more specifically the data collectors, we use the Electricity Map API to get the carbon intensity of the electricity in the regions.
+To use this API, you need to have an Electricity Map API key.
+You can get one by following the instructions on the [Electricity Map](https://api-portal.electricitymaps.com) website.
 
 ## Other dependencies
 
