@@ -19,12 +19,14 @@ class Workflow(Resource):
         functions: list[FunctionInstance],
         edges: list[tuple[str, str]],
         config: Config,
+        allow_no_deployment_package: bool = False,
     ) -> None:
         self._resources = resources
         self._functions = functions
         self._edges = edges
         self._config = config
         self._deployed_regions: dict[str, dict[str, str]] = {}
+        self.allow_no_deployment_package = allow_no_deployment_package
         super().__init__(name, "workflow", version)
 
     def __repr__(self) -> str:
@@ -43,6 +45,7 @@ class Workflow(Resource):
 
         for resource in self._resources:
             if resource.deploy:
+                resource.allow_no_deployment_package = self.allow_no_deployment_package
                 result = resource.get_deployment_instructions()
                 if result:
                     for region, instructions in result.items():

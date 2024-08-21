@@ -23,6 +23,7 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
         deploy_region: dict[str, str],
         providers: dict[str, Any],
         deploy: bool = True,
+        allow_no_deployment_package: bool = False,
     ) -> None:
         super().__init__(name, "function")
         self.entry_point = entry_point
@@ -35,6 +36,7 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
         self.deploy_region = deploy_region
         self.providers = providers
         self.deploy = deploy
+        self.allow_no_deployment_package = allow_no_deployment_package
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -62,8 +64,10 @@ class Function(Resource):  # pylint: disable=too-many-instance-attributes
         instructions: dict[str, list[Instruction]] = {}
         provider, region = self.deploy_region["provider"], self.deploy_region["region"]
         deploy_instruction = DeployInstructionFactory.get_deploy_instructions(provider, region)
-        if self.deployment_package.filename is None:
+
+        if not self.allow_no_deployment_package and self.deployment_package.filename is None:
             raise RuntimeError("Deployment package has not been built")
+
         instructions[f"{provider}:{region}"] = deploy_instruction.get_deployment_instructions(
             self.name,
             self.role,

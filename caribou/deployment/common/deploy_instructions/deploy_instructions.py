@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Optional
 
 from caribou.common.provider import Provider
 from caribou.deployment.common.deploy.models.iam_role import IAMRole
@@ -21,7 +21,7 @@ class DeployInstructions(ABC):
         runtime: str,
         handler: str,
         environment_variables: dict[str, str],
-        filename: str,
+        filename: Optional[str],
         remote_state: RemoteState,
         function_exists: bool,
     ) -> list[Instruction]:
@@ -66,8 +66,10 @@ class DeployInstructions(ABC):
                 ]
             )
 
-        with open(filename, "rb") as f:
-            zip_contents = f.read()
+        zip_contents: Optional[bytes] = None
+        if filename:
+            with open(filename, "rb") as f:
+                zip_contents = f.read()
         function_varname = f"{name}_function_identifier"
         if not function_exists:
             instructions.extend(
@@ -134,7 +136,7 @@ class DeployInstructions(ABC):
         self,
         name: str,
         iam_role_varname: str,
-        zip_contents: bytes,
+        zip_contents: Optional[bytes],
         runtime: str,
         handler: str,
         environment_variables: dict[str, str],
@@ -153,7 +155,7 @@ class DeployInstructions(ABC):
         self,
         name: str,
         iam_role_varname: str,
-        zip_contents: bytes,
+        zip_contents: Optional[bytes],
         runtime: str,
         handler: str,
         environment_variables: dict[str, str],

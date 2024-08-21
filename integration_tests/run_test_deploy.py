@@ -13,7 +13,6 @@ def test_deploy(workflow_dir: str):
     deployer: Deployer = deployer_factory.create_deployer(config=config)
 
     deployer.deploy([config.home_region])
-
     remote_client = IntegrationTestRemoteClient()
 
     # Check that the functions are deployed
@@ -33,13 +32,20 @@ def test_deploy(workflow_dir: str):
 
     for function in deployed_functions:
         assert function[0] in expected_function_names
-    
+
+    # As of issue #293, resources are no longer uploaded,
+    # so the following assertion should pass
     added_resources = remote_client.select_all_from_table("resources")
+    assert len(added_resources) == 0
 
+    # But for our current integration test, we need to force the upload of the deployment package
+    # Future integration tests should not need to do this (Improve the deploy function test)
+    deployer._upload_deployment_package_resource() # Force upload of deployment package
+    added_resources = remote_client.select_all_from_table("resources")
     assert len(added_resources) == 1
-
     assert added_resources[0][0] == "deployment_package_ITW-0.0.1"
 
+    # Check that the roles and messaging topics are deployed
     deployed_roles = remote_client.select_all_from_table("roles")
 
     assert len(deployed_roles) == 7

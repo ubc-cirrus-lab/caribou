@@ -59,7 +59,10 @@ WORKFLOW_SUMMARY_TABLE = "workflow_summary_table"
 
 # Solver Input (Loader) Default Values
 ## Carboon Loader
-SOLVER_INPUT_GRID_CARBON_DEFAULT = 500.0
+### Default to Average USA Carbon Intensity of Electric Grid
+### Contiguous United States Carbon intensity of energy grid
+### of Consumption in 2023 according to Electric Maps - gCO2e/kWh
+SOLVER_INPUT_GRID_CARBON_DEFAULT = 410
 
 ## Datacenter Loader
 SOLVER_INPUT_AVERAGE_MEMORY_POWER_DEFAULT = 0.0003725
