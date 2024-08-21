@@ -4,7 +4,7 @@
 
 [![Build Status](https://github.com/ubc-cirrus-lab/caribou/actions/workflows/workflow.yaml/badge.svg)](https://github.com/ubc-cirrus-lab/caribou/actions/workflows/workflow.yaml) [![GitHub license](https://img.shields.io/badge/license-Apache%202-blue.svg)](https://github.com/ubc-cirrus-lab/caribou/blob/main/LICENSE)
 
-Caribou is a framework for running and deploying complex serverless workflows multi-constraint and multi-objective aware on AWS over multiple regions.
+Caribou is a framework for running and deploying complex serverless workflows multi-constraint and multi-objective aware on hyperscalers over multiple regions.
 
 </div>
 
@@ -27,7 +27,7 @@ See the [architecture](ARCHITECTURE.md) outline for more information on the fram
 An example workflow can be found in `examples/small_sync_example` including the source code of the workflow in the `app.py` file as well as the deployment manifest in the `.caribou` directory.
 More information on the example workflow can be found in the respective [README](examples/small_sync_example/README.md).
 
-See the [Installation](#installation) section on how to get set up and the [Quick Start](#quick-start) section on how to run the example workflow.
+See the [Installation](#installation) section on how to get set up and the [Quick Start](QUICK_START.md) guide on how to run the example workflow.
 
 ##  Installation
 
@@ -49,7 +49,7 @@ See the [Troubleshooting](TROUBLESHOOTING.md) guide.
 
 Our paper on Caribou has been recently accepted to the 30th ACM Symposium on Operating Systems Principles (SOSP 2024). It will be presented in November 2024. If you use Caribou in your research, please cite our paper:
 
-*V. Gsteiger, P. H. Long, Y. Sun, P. Javanrood, and M. Shahrad, "Caribou: Fine-Grained Geospatial Shifting of Serverless Applications for Sustainability", in Proceedings of the 30th ACM Symposium on Operating Systems Principles (SOSP 2024), 2024.* 
+*V. Gsteiger, P. H. Long, Y. Sun, P. Javanrood, and M. Shahrad, "Caribou: Fine-Grained Geospatial Shifting of Serverless Applications for Sustainability", in Proceedings of the 30th ACM Symposium on Operating Systems Principles (SOSP 2024), 2024.*
 
 ## About
 
