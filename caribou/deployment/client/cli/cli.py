@@ -227,7 +227,7 @@ def deploy_to_aws(
             zip_ref.extractall(tmpdirname)
 
         # Step 2: Create a Dockerfile in the temporary directory
-        dockerfile_content = generate_dockerfile(handler, runtime)
+        dockerfile_content = generate_framework_dockerfile(handler, runtime)
         with open(os.path.join(tmpdirname, "Dockerfile"), "w", encoding="utf-8") as f_dockerfile:
             f_dockerfile.write(dockerfile_content)
 
@@ -240,12 +240,16 @@ def deploy_to_aws(
     
     create_lambda_function(function_name, image_uri, role_arn, timeout, memory_size)
 
-def generate_dockerfile(handler: str, runtime: str) -> str:
-    return f"""FROM public.ecr.aws/lambda/{runtime}
+def generate_framework_dockerfile(handler: str, runtime: str) -> str:
+    return f"""
+    FROM public.ecr.aws/lambda/{runtime}
+
     RUN pip3 install poetry
-    COPY pyproject.toml ./
-    COPY poetry.lock ./
+
+    COPY app.py ./
     COPY caribou ./caribou
+    COPY caribou-go ./caribou-go
+    COPY pyproject.toml ./
 
     RUN poetry install --no-dev
     CMD ["{handler}"]
