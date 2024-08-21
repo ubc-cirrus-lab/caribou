@@ -20,7 +20,6 @@ A workflow that is developed and deployed using the Caribou Python package can b
 The priority of optimization is determined by the objectives set by the workflow developer in the corresponding workflow deployment manifest.
 Optimization is done, when warranted by the type of application and frequency of its invocation, by the deployment solver that solves for new multi-region deployment configurations.
 The overhead of the system plays a crucial role in the optimization process and sets the frequency as well as the granularity of the optimization process.
-See the [architecture](ARCHITECTURE.md) outline for more information on the framework.
 
 ##  Example
 
@@ -50,6 +49,9 @@ See the [Troubleshooting](TROUBLESHOOTING.md) guide.
 Our paper on Caribou has been recently accepted to the 30th ACM Symposium on Operating Systems Principles (SOSP 2024). It will be presented in November 2024. If you use Caribou in your research, please cite our paper:
 
 *V. Gsteiger, P. H. Long, Y. Sun, P. Javanrood, and M. Shahrad, "Caribou: Fine-Grained Geospatial Shifting of Serverless Applications for Sustainability", in Proceedings of the 30th ACM Symposium on Operating Systems Principles (SOSP 2024), 2024.*
+
+## Architecture
+See the [architecture](ARCHITECTURE.md) outline for more information on the framework.
 
 ## About
 
