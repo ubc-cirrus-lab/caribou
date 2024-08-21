@@ -8,7 +8,7 @@ workflow = CaribouWorkflow(name="{{ workflow_name }}", version="0.0.1")
 
 
 @workflow.serverless_function(
-    name="First-Function",
+    name="First_Function",
     entry_point=True,
     regions_and_providers={
         "allowed_regions": [
@@ -53,7 +53,7 @@ def first_function(event: dict[str, Any]) -> dict[str, Any]:
     return {"status": 200}
 
 
-@workflow.serverless_function(name="Second-Function")
+@workflow.serverless_function(name="Second_Function")
 def second_function(event: dict[str, Any]) -> dict[str, Any]:
     print("Hello from second function")
 
@@ -69,7 +69,7 @@ def second_function(event: dict[str, Any]) -> dict[str, Any]:
     return {"status": 200}
 
 
-@workflow.serverless_function(name="Third-Function")
+@workflow.serverless_function(name="Third_Function")
 def third_function(event: dict[str, Any]) -> dict[str, Any]:
     print("Hello from third function")
 
@@ -85,7 +85,7 @@ def third_function(event: dict[str, Any]) -> dict[str, Any]:
     return {"status": 200}
 
 
-@workflow.serverless_function(name="Fourth-Function")
+@workflow.serverless_function(name="Fourth_Function")
 def fourth_function(event: dict[str, Any]) -> dict[str, Any]:
     print("Hello from fourth function")
     request = event["hello"]
@@ -102,12 +102,12 @@ def fourth_function(event: dict[str, Any]) -> dict[str, Any]:
     return {"status": 200}
 
 
-@workflow.serverless_function(name="Fifth-Function")
+@workflow.serverless_function(name="Fifth_Function")
 def fifth_function(event: dict[str, Any]) -> dict[str, Any]:
     return fifth(workflow, event, seventh_function)
 
 
-@workflow.serverless_function(name="Sixth-Function")
+@workflow.serverless_function(name="Sixth_Function")
 def sixth_function(event: dict[str, Any]) -> dict[str, Any]:
     print("Hello from sixth function")
 
@@ -123,7 +123,7 @@ def sixth_function(event: dict[str, Any]) -> dict[str, Any]:
     return {"status": 200}
 
 
-@workflow.serverless_function(name="Seventh-Function")
+@workflow.serverless_function(name="Seventh_Function")
 def seventh_function(event: dict[str, Any]) -> dict[str, Any]:
     print("Hello from seventh function")
     responses: list[dict[str, Any]] = workflow.get_predecessor_data()

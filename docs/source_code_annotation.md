@@ -22,7 +22,7 @@ workflow = CaribouWorkflow("workflow_name")
 
 ```python
 @workflow.serverless_function(
-    name="First-Function",
+    name="First_Function",
     entry_point=True,
     regions_and_providers={
         "allowed_regions": [
