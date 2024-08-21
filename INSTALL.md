@@ -84,6 +84,18 @@ poetry run caribou setup_tables
 Since AWS bucket names need to be unique, the currently configured bucket might already exist and be used by another version of the framework deployed somewhere else.
 In this case, adapt the bucket name for the variable `DEPLOYMENT_RESOURCES_BUCKET` in the `caribou/common/constants.py` file.
 
+## Docker
+
+The Deployment Utility has an additional dependency on `docker`.
+To install it, follow the instructions on the [docker website](https://docs.docker.com/engine/install/).
+Ensure you have the docker daemon running before running the deployment utility.
+
+To verify that Docker is installed correctly, you can try running:
+
+```bash
+docker --version
+```
+
 ## Other dependencies
 
 Since the AWS lambda environment restricts us from using Docker, we have to migrate the workflows using [crane](https://github.com/google/go-containerregistry/tree/main/cmd/crane). If you plan on running the framework locally instead of deploying it to the cloud, please install the crane as described in the [crane documentation](https://github.com/google/go-containerregistry/blob/main/cmd/crane/README.md).
