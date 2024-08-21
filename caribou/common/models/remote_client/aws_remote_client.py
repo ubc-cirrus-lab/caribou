@@ -203,7 +203,7 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         self,
         function_name: str,
         role_identifier: str,
-        zip_contents: bytes,
+        zip_contents: Optional[bytes],
         runtime: str,
         handler: str,
         environment_variables: dict[str, str],
@@ -215,6 +215,9 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         if len(deployed_image_uri) > 0:
             image_uri = self._copy_image_to_region(deployed_image_uri)
         else:
+            if zip_contents is None:
+                raise RuntimeError("No deployed image AND No deployment package provided for function creation")
+
             with tempfile.TemporaryDirectory() as tmpdirname:
                 # Step 1: Unzip the ZIP file
                 zip_path = os.path.join(tmpdirname, "code.zip")
@@ -429,7 +432,7 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         self,
         function_name: str,
         role_identifier: str,
-        zip_contents: bytes,
+        zip_contents: Optional[bytes],
         runtime: str,
         handler: str,
         environment_variables: dict[str, str],
@@ -442,6 +445,9 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         if len(deployed_image_uri) > 0:
             image_uri = self._copy_image_to_region(deployed_image_uri)
         else:
+            if zip_contents is None:
+                raise RuntimeError("No deployed image AND No deployment package provided for function update")
+
             # Process the ZIP contents to build and upload a Docker image,
             # then update the function code with the image URI
             with tempfile.TemporaryDirectory() as tmpdirname:

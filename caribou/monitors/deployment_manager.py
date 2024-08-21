@@ -218,7 +218,7 @@ class DeploymentManager(Monitor):
             region_carbon_raw, _ = self._endpoints.get_deployment_manager_client().get_value_from_table(
                 CARBON_REGION_TABLE, region
             )
-            if region_carbon_raw is None:
+            if region_carbon_raw is None or region_carbon_raw == "":
                 region_carbon_intensity = SOLVER_INPUT_GRID_CARBON_DEFAULT
             else:
                 region_carbon_intensity = json.loads(region_carbon_raw)["averages"]["overall"]["carbon_intensity"]

@@ -203,7 +203,8 @@ class Client:
                 )
             self._remove_workflow(deployment_manager_config_json)
 
-        self._endpoints.get_deployment_resources_client().remove_resource(f"deployment_package_{self._workflow_id}")
+        # Disabled as part of issue #293
+        # self._endpoints.get_deployment_resources_client().remove_resource(f"deployment_package_{self._workflow_id}")
 
         self._endpoints.get_deployment_resources_client().remove_key(DEPLOYMENT_RESOURCES_TABLE, self._workflow_id)
 

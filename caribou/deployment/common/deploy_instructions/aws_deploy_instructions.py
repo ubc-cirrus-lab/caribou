@@ -1,3 +1,5 @@
+from typing import Optional
+
 from caribou.common.provider import Provider
 from caribou.deployment.common.deploy.models.iam_role import IAMRole
 from caribou.deployment.common.deploy.models.instructions import APICall, Instruction
@@ -46,7 +48,7 @@ class AWSDeployInstructions(DeployInstructions):
         self,
         name: str,
         iam_role_varname: str,
-        zip_contents: bytes,
+        zip_contents: Optional[bytes],
         runtime: str,
         handler: str,
         environment_variables: dict[str, str],
@@ -72,7 +74,7 @@ class AWSDeployInstructions(DeployInstructions):
         self,
         name: str,
         iam_role_varname: str,
-        zip_contents: bytes,
+        zip_contents: Optional[bytes],
         runtime: str,
         handler: str,
         environment_variables: dict[str, str],
