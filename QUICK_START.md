@@ -34,10 +34,10 @@ You can then use the Caribou Python API to define and develop the workflow.
 The deployment utility can be found in `caribou/deployment/client` and can be run with:
 
 ```bash
-poetry run caribou --project-dir <project_dir> deploy
+poetry run caribou --project-dir <workflow_path> deploy
 ```
 
-Alternatively, you can also navigate to the `<project_dir>`; the same command will work without the `--project-dir` flag.
+Alternatively, you can also navigate to the `<workflow_path>`; the same command will work without the `--project-dir` flag.
 
 This will deploy the workflow to the defined home region as defined in the deployment manifest.
 To change the home region, you need to adjust the manifest in the configuration file in `.caribou/config.yml` and set the `home_region` to the desired region.
@@ -79,7 +79,7 @@ We currently do not distinguish between different users and show all workflows t
 
 ###  Remove a workflow
 
-To remove a workflow, you can use the following command:
+To remove a workflow from the cloud provider, you can use the following command:
 
 ```bash
 poetry run caribou remove <workflow_id>

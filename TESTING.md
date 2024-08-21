@@ -1,6 +1,6 @@
 #  Testing
 
-Our testing consists of compliance checks, unit tests, and integration tests.
+Our testing consists of compliance checks, unit tests, and integration tests. Note that all tests should be run in the root git repository.
 
 ##  Compliance
 
