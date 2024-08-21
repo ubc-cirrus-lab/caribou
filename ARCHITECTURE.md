@@ -8,12 +8,14 @@ Specific architectural components are described in the following sections.
 
 The system components are:
 
-- Deployment Manager
-- Deployment Solver
-- Deployment Utility
-- Deployment Migrator
-- Invocation Client
-- [Metrics Manager](docs/metrics_manager.md)
+- Deployment Manager: `caribou/monitors/deployment_manager.py:DeploymentManager`
+- Deployment Solver: `caribou/deployment_solver`
+- Deployment Utility: `caribou/deployment/client/cli`
+- Deployment Migrator: `caribou/monitors/deployment_migrator.py:DeploymentMigrator`
+- Invocation Client: `caribou/endpoint/client.py:Client`
+- [Metrics Manager](docs/metrics_manager.md):
+  - Data Collector: `caribou/data_collector`
+  - Deployment Solver Input: `caribou/deployment_solver/deployment_input`
 
 ##  Component Interaction
 
