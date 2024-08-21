@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import zipfile
 from typing import Optional
 
@@ -68,6 +69,68 @@ class DeploymentPackager:
             self._add_caribou_dependency(z)
             self._add_requirements_file(z, requirements_filename)
         return package_filename
+
+    def create_framework_package(self, project_dir: str) -> str:
+        filename = "caribou_framework_cli.zip"
+        package_filename = os.path.join(project_dir, ".caribou", "deployment-packages", filename)
+        self._create_deployment_package_dir(package_filename)
+        if os.path.exists(package_filename):
+            return package_filename
+        
+        # Remove existing framework package if it exists
+        if os.path.exists(package_filename):
+            os.remove(package_filename)
+
+        # Wait for the file to be removed
+        time.sleep(1)
+
+        with zipfile.ZipFile(package_filename, "w", zipfile.ZIP_DEFLATED) as z:
+            self._add_framework_deployment_files(z, project_dir)
+            self._add_framework_files(z, project_dir)
+            self._add_framework_go_files(z, project_dir)
+        return package_filename
+
+    def _add_framework_deployment_files(self, zip_file: zipfile.ZipFile, project_dir: str) -> None:
+        for root, _, files in os.walk(project_dir):
+            for filename in files:
+                if filename.endswith(".pyc"):
+                    continue
+
+                full_path = os.path.join(root, filename)
+                if full_path == os.path.join(project_dir, "app.py") or full_path.startswith(
+                    os.path.join(project_dir, "src")
+                ):
+                    zip_path = full_path[len(project_dir) + 1 :]
+                    zip_file.write(full_path, zip_path)
+
+    def _add_framework_files(self, zip_file: zipfile.ZipFile, project_dir: str) -> None:
+        framework_dir = os.path.join(project_dir, "caribou")
+
+        for root, _, files in os.walk(project_dir):
+            for filename in files:
+                if not filename.endswith(".py"):  # Only add .py files
+                    continue
+
+                full_path = os.path.join(root, filename)
+                if full_path.startswith(framework_dir):
+                    zip_path = full_path[len(project_dir) + 1 :]
+                    zip_file.write(full_path, zip_path)
+
+
+    def _add_framework_go_files(self, zip_file: zipfile.ZipFile, project_dir: str) -> None:
+        framework_go_dir = os.path.join(project_dir, "caribou-go")
+
+        for root, _, files in os.walk(project_dir):
+            for filename in files:
+                if not filename.endswith(".py"):  # Only add .py files
+                    continue
+
+                full_path = os.path.join(root, filename)
+                if full_path.startswith(
+                    framework_go_dir
+                ):
+                    zip_path = full_path[len(project_dir) + 1 :]
+                    zip_file.write(full_path, zip_path)
 
     def _ensure_requirements_filename_complete(self, requirements_filename: str) -> None:
         with open(requirements_filename, "r", encoding="utf-8") as file:
