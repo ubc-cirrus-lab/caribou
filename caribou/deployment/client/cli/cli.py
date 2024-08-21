@@ -32,16 +32,16 @@ import boto3
 
 
 @click.group()
-@click.option("--project-dir", "-p", help="The project directory.")
+@click.option("--workflow-dir", "-p", help="The project directory.")
 @click.pass_context
-def cli(ctx: click.Context, project_dir: str) -> None:
-    if project_dir is None:
-        project_dir = os.getcwd()
-    elif not os.path.isabs(project_dir):
-        project_dir = os.path.abspath(project_dir)
-    ctx.obj["project_dir"] = project_dir
-    ctx.obj["factory"] = DeployerFactory(project_dir)
-    os.chdir(project_dir)
+def cli(ctx: click.Context, workflow_dir: str) -> None:
+    if workflow_dir is None:
+        workflow_dir = os.getcwd()
+    elif not os.path.isabs(workflow_dir):
+        workflow_dir = os.path.abspath(workflow_dir)
+    ctx.obj["project_dir"] = workflow_dir
+    ctx.obj["factory"] = DeployerFactory(workflow_dir)
+    os.chdir(workflow_dir)
 
 
 @cli.command(

@@ -55,7 +55,16 @@ def main():
         if attr.endswith("_TABLE"):
             table_name = getattr(constants, attr)
             logger.info("Creating table: %s", table_name)
-            create_table(dynamodb, table_name)
+            try:
+                create_table(dynamodb, table_name)
+            except Exception as e:  # pylint: disable=broad-except
+                logger.error("Error creating table %s: %s", table_name, e)
+                logger.error("Trying to create table again")
+                try:
+                    create_table(dynamodb, table_name)
+                except Exception as e:  # pylint: disable=broad-except
+                    logger.error("Error creating table %s: %s", table_name, e)
+                    logger.error("Skipping table creation")
 
         # Disabled as part of issue #293
         # # If the attribute name ends with '_BUCKET', create an S3 bucket

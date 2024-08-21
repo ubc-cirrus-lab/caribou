@@ -136,7 +136,7 @@ KEEP_ALIVE_DATA_COUNT = 10  # Keep sample it is part of any of the 10 samples fo
 
 ## Grace period for the log-syncer
 ## Used as lambda insights can be delayed
-BUFFER_LAMBDA_INSIGHTS_GRACE_PERIOD = 30  # 30 minutes
+BUFFER_LAMBDA_INSIGHTS_GRACE_PERIOD = 5
 
 ## Successor task types
 REDIRECT_ONLY_TASK_TYPE = "REDIRECT_ONLY"

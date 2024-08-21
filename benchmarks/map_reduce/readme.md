@@ -1,12 +1,13 @@
 # Map Reduce Benchmarks
+
 This benchmark requires access to the S3 bucket named `caribou-map-reduce`,
 with the AWS Region set to `us-east-1` (N. Virginia).
 
-Alternatively, the user may change the S3 bucket name and region in `app.py`, 
-by changing the values of `s3_bucket_name` and `s3_bucket_region_name` to the 
-desired bucket. 
+Alternatively, the user may change the S3 bucket name and region in `app.py`,
+by changing the values of `s3_bucket_name` and `s3_bucket_region_name` to the
+desired bucket.
 
-There needs to be a folder in the bucket with the base dir (`subset_256MB` in our example) 
+There needs to be a folder in the bucket with the base dir (`subset_256MB` in our example)
 inside the input folder containing the input file split in shards.
 The input file should be split in shards of the same size.
 The number of shards should be specified in the `number_shards` parameter.

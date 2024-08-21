@@ -130,10 +130,25 @@ Note: Data Transfer Cost and complexities of this warrant further investigation 
     "provider_data_transfer": 0.02,
     "unit": "USD/GB"
   },
-  "pue": 1.15,
-  "cfe": 0.9,
-  "average_memory_power": 3.92e-6,
-  "average_cpu_power": 0.00212,
+  "sns_cost": {
+      "request_cost": 5e-07,
+      "unit": "USD/requests"
+  },
+  "dynamodb_cost": {
+      "read_request_cost": 2.5e-07,
+      "write_request_cost": 1.25e-06,
+      "storage_cost": 0.1,
+      "unit": "USD"
+  },
+  "ecr_cost": {
+      "storage_cost": 0.1,
+      "unit": "USD"
+  },
+  "pue": 1.11,
+  "cfe": 0.0,
+  "average_memory_power": 3.725e-4,
+  "max_cpu_power_kWh": 0.0035,
+  "min_cpu_power_kWh": 0.00074,
   "available_architectures": ["arm64", "x86_64"]
 }
 ```
@@ -206,8 +221,8 @@ Note: Perhaps in the future, we should also consider provider-level performance 
  {
     "relative_performance": 1,
     "transmission_latency": {
-      "aws:region1": {"average_latency": 0.005, "tail_latency": 0.007, "unit": "s"},
-      "aws:region2": {"average_latency": 0.05, "tail_latency": 0.07, "unit": "s"},
+      "aws:region1": {"latency_distribution": [0.005, 0.007], "unit": "s"},
+      "aws:region2": {"latency_distribution": [0.0055, 0.0057], "unit": "s"},
     },
 },
 ```
@@ -228,56 +243,192 @@ The Workflow Collector is responsible for extracting information from the `workf
 
 ##### Workflow Summary Table Example
 
-Below is an example of the `workflow_summary_table` for a workflow with 2 instances. All the runtime and latency are in units of seconds.
+Below is an example of the `workflow_summary_table` for the `image_processing` benchmark. All the runtime and latency are in units of seconds.
 
 ```json
 {
   "daily_invocation_counts": { "2024-03-09+0000": 15 },
+  "daily_user_code_failure_counts": { "2024-03-09+0000": 1 },
   "logs": [
-    {
-      "run_id": "eca39262530c4033a9f29343a39d71ca",
-      "runtime": 8.746771,
-      "start_time": "2024-03-09 18:26:24,469750+0000",
-      "execution_latencies": {
-        "small_sync_example-0_0_1-initial_function:entry_point:0": {
-            "latency": 7.561505556106567,
-            "provider_region": "aws:us-east-1",
-        },
-        "small_sync_example-0_0_1-syncFunction:sync:": {
-            "latency": 1.798128366470337,
-            "provider_region": "aws:us-east-1",
-        },
-        "small_sync_example-0_0_1-secondSyncFunction:sync:": {
-            "latency": 1.1149189472198486,
-            "provider_region": "aws:us-east-1",
-        }
-      },
-      "transmission_data": [
+  {
+    "run_id": "e4d590c1fa594eb2a427a6f76cfbf290",
+    "start_time": "2024-03-09 18:26:24,469750+0000",
+    "runtime_s": 1.767225,
+    "execution_data": [
         {
-          "transmission_size": 4.629604518413544e-6,
-          "transmission_latency": 2.962404,
-          "from_instance": "small_sync_example-0_0_1-initial_function:entry_point:0",
-          "to_instance": "small_sync_example-0_0_1-syncFunction:sync:",
-          "from_region": { "provider": "aws", "region": "us-east-1" },
-          "to_region": { "provider": "aws", "region": "us-east-1" }
+            "instance_name": "image_processing-0_0_1-get_requests:entry_point:0",
+            "duration_s": 1.304223,
+            "cpu_model": "Intel(R) Xeon(R) Processor @ 2.50GHz",
+            "provider_region": "aws:us-east-1",
+            "data_transfer_during_execution_gb": 8.391682058572769e-05,
+            "cpu_utilization": 0.8477269608034823,
+            "successor_data": {
+                "image_processing-0_0_1-image_processor:image_processing-0_0_1-get_requests_0_4:5": {
+                    "task_type": "INVOKE_SUCCESSOR_ONLY",
+                    "invocation_time_from_function_start_s": 0.002343
+                },
+                "image_processing-0_0_1-image_processor:image_processing-0_0_1-get_requests_0_1:2": {
+                    "task_type": "INVOKE_SUCCESSOR_ONLY",
+                    "invocation_time_from_function_start_s": 0.00149
+                },
+                "image_processing-0_0_1-image_processor:image_processing-0_0_1-get_requests_0_0:1": {
+                    "task_type": "INVOKE_SUCCESSOR_ONLY",
+                    "invocation_time_from_function_start_s": 0.001229
+                },
+                "image_processing-0_0_1-image_processor:image_processing-0_0_1-get_requests_0_3:4": {
+                    "task_type": "INVOKE_SUCCESSOR_ONLY",
+                    "invocation_time_from_function_start_s": 0.002034
+                },
+                "image_processing-0_0_1-image_processor:image_processing-0_0_1-get_requests_0_2:3": {
+                    "task_type": "INVOKE_SUCCESSOR_ONLY",
+                    "invocation_time_from_function_start_s": 0.001763
+                }
+            },
+            "additional_analysis_data": {
+                "input_payload_size_gb": 6.7194923758506775e-06,
+                "total_input_data_transfer_gb": 6.7194923758506775e-06,
+                "total_output_data_transfer_gb": 3.308430314064026e-05
+            }
         },
         {
-          "transmission_size": 4.641711711883545e-6,
-          "transmission_latency": 1.536726,
-          "from_instance": "small_sync_example-0_0_1-initial_function:entry_point:0",
-          "to_instance": "small_sync_example-0_0_1-secondSyncFunction:sync:",
-          "from_region": { "provider": "aws", "region": "us-east-1" },
-          "to_region": { "provider": "aws", "region": "us-east-1" }
+            "instance_name": "image_processing-0_0_1-image_processor:image_processing-0_0_1-get_requests_0_4:5",
+            "duration_s": 0.397,
+            "cpu_model": "Intel(R) Xeon(R) Processor @ 2.50GHz",
+            "provider_region": "aws:us-east-1",
+            "data_transfer_during_execution_gb": 0.000269182026386261,
+            "cpu_utilization": 0.30460386492443325,
+            "additional_analysis_data": {
+                "input_payload_size_gb": 6.617046892642975e-06,
+                "total_input_data_transfer_gb": 6.617046892642975e-06,
+                "total_output_data_transfer_gb": 0.0
+            }
+        },
+        {
+            "instance_name": "image_processing-0_0_1-image_processor:image_processing-0_0_1-get_requests_0_1:2",
+            "duration_s": 0.409,
+            "cpu_model": "Intel(R) Xeon(R) Processor @ 3.00GHz",
+            "provider_region": "aws:us-east-1",
+            "data_transfer_during_execution_gb": 0.0010230233892798424,
+            "cpu_utilization": 0.295666832212714,
+            "additional_analysis_data": {
+                "input_payload_size_gb": 6.617046892642975e-06,
+                "total_input_data_transfer_gb": 6.617046892642975e-06,
+                "total_output_data_transfer_gb": 0.0
+            }
+        },
+        {
+            "instance_name": "image_processing-0_0_1-image_processor:image_processing-0_0_1-get_requests_0_0:1",
+            "duration_s": 0.343,
+            "cpu_model": "Intel(R) Xeon(R) Processor @ 2.50GHz",
+            "provider_region": "aws:us-east-1",
+            "data_transfer_during_execution_gb": 0.0010187756270170212,
+            "cpu_utilization": 0.45329013301749266,
+            "additional_analysis_data": {
+                "input_payload_size_gb": 6.615184247493744e-06,
+                "total_input_data_transfer_gb": 6.615184247493744e-06,
+                "total_output_data_transfer_gb": 0.0
+            }
+        },
+        {
+            "instance_name": "image_processing-0_0_1-image_processor:image_processing-0_0_1-get_requests_0_3:4",
+            "duration_s": 0.245,
+            "cpu_model": "Intel(R) Xeon(R) Processor @ 2.50GHz",
+            "provider_region": "aws:us-east-1",
+            "data_transfer_during_execution_gb": 0.0007579168304800987,
+            "cpu_utilization": 0.42307079081632654,
+            "additional_analysis_data": {
+                "input_payload_size_gb": 6.619840860366821e-06,
+                "total_input_data_transfer_gb": 6.619840860366821e-06,
+                "total_output_data_transfer_gb": 0.0
+            }
+        },
+        {
+            "instance_name": "image_processing-0_0_1-image_processor:image_processing-0_0_1-get_requests_0_2:3",
+            "duration_s": 0.383,
+            "cpu_model": "Intel(R) Xeon(R) Processor @ 2.50GHz",
+            "provider_region": "aws:us-east-1",
+            "data_transfer_during_execution_gb": 0.0008043637499213219,
+            "cpu_utilization": 0.6314764197127938,
+            "additional_analysis_data": {
+                "input_payload_size_gb": 6.615184247493744e-06,
+                "total_input_data_transfer_gb": 6.615184247493744e-06,
+                "total_output_data_transfer_gb": 0.0
+            }
         }
-      ],
-      "start_hop_latency": 0.769591,
-      "start_hop_data_transfer_size": 6.146728992462158e-8,
-      "start_hop_destination": { "provider": "aws", "region": "us-east-1" }
+    ],
+    "transmission_data": [
+        {
+            "transmission_size_gb": 6.617046892642975e-06,
+            "transmission_latency_s": 1.205693,
+            "from_instance": "image_processing-0_0_1-get_requests:entry_point:0",
+            "to_instance": "image_processing-0_0_1-image_processor:image_processing-0_0_1-get_requests_0_4:5",
+            "from_region": "aws:us-east-1",
+            "to_region": "aws:us-east-1",
+            "successor_invoked": true,
+            "from_direct_successor": true
+        },
+        {
+            "transmission_size_gb": 6.617046892642975e-06,
+            "transmission_latency_s": 1.2693,
+            "from_instance": "image_processing-0_0_1-get_requests:entry_point:0",
+            "to_instance": "image_processing-0_0_1-image_processor:image_processing-0_0_1-get_requests_0_1:2",
+            "from_region": "aws:us-east-1",
+            "to_region": "aws:us-east-1",
+            "successor_invoked": true,
+            "from_direct_successor": true
+        },
+        {
+            "transmission_size_gb": 6.615184247493744e-06,
+            "transmission_latency_s": 1.367447,
+            "from_instance": "image_processing-0_0_1-get_requests:entry_point:0",
+            "to_instance": "image_processing-0_0_1-image_processor:image_processing-0_0_1-get_requests_0_0:1",
+            "from_region": "aws:us-east-1",
+            "to_region": "aws:us-east-1",
+            "successor_invoked": true,
+            "from_direct_successor": true
+        },
+        {
+            "transmission_size_gb": 6.619840860366821e-06,
+            "transmission_latency_s": 1.380402,
+            "from_instance": "image_processing-0_0_1-get_requests:entry_point:0",
+            "to_instance": "image_processing-0_0_1-image_processor:image_processing-0_0_1-get_requests_0_3:4",
+            "from_region": "aws:us-east-1",
+            "to_region": "aws:us-east-1",
+            "successor_invoked": true,
+            "from_direct_successor": true
+        },
+        {
+            "transmission_size_gb": 6.615184247493744e-06,
+            "transmission_latency_s": 1.384338,
+            "from_instance": "image_processing-0_0_1-get_requests:entry_point:0",
+            "to_instance": "image_processing-0_0_1-image_processor:image_processing-0_0_1-get_requests_0_2:3",
+            "from_region": "aws:us-east-1",
+            "to_region": "aws:us-east-1",
+            "successor_invoked": true,
+            "from_direct_successor": true
+        }
+    ],
+    "start_hop_info": {
+        "destination": "aws:us-east-1",
+        "request_source": "Caribou CLI",
+        "data_transfer_size_gb": 6.7194923758506775e-06,
+        "latency_from_client_s": 0.614444,
+        "time_from_function_start_to_entry_point_s": 0.000319,
+        "workflow_placement_decision": {
+            "data_size_gb": 6.22868537902832e-06,
+            "consumed_read_capacity": 2.0,
+            "retrieved_wpd_at_function": false
+        }
     },
+    "unique_cpu_models": [
+        "Intel(R) Xeon(R) Processor @ 2.50GHz",
+        "Intel(R) Xeon(R) Processor @ 3.00GHz"
+    ]
+  },
     ...
   ],
   "workflow_runtime_samples": [
-    8.746771, ...
+    1.767225, ...
   ],
   "last_sync_time": "2024-03-09 18:52:40,671496+0000"
 }
@@ -285,31 +436,7 @@ Below is an example of the `workflow_summary_table` for a workflow with 2 instan
 
 #### Workflow Collector Output Table
 
-The `workflow_instance_table` is responsible for summarizing and collecting information regarding past instance invocation at various regions:
-
-- Key: `<workflow_unique_id>`
-- Value (S):
-  - Workflow runtime samples `workflow_runtime_samples`.
-  - Total number of invocations of the workflow:
-    - From date `start_time`
-    - To date `end_time`
-    - Total number of invocations.
-  - Start hop destination:
-    - Corresponding start hop data transfer sizes:
-      - Corresponding Start hop latency measurements.
-  - Instance data:
-    - At Instance `<instance_unique_id>`
-      - Number of invocations of this instance.
-      - At Region `<provider_unique_id>:<region_name>`:
-        - Execution Latency samples.
-      - To Instance `<instance_unique_id>`
-        - Probability of At Instance invoking To Instance
-        - At Region `<provider_unique_id>:<region_name>`
-          - To Region `<provider_unique_id>:<region_name>`
-            - Data Transfer samples.
-              - Corresponding Transmission Latency samples.
-
-##### Workflow Instance Table Example
+The `workflow_instance_table` is responsible for summarizing and collecting information regarding past instance invocation at various regions.
 
 Below is an example of the `workflow_instance_table` output for a workflow with 2 instances. All the runtime and latency are in units of seconds.
 
@@ -317,26 +444,73 @@ Below is an example of the `workflow_instance_table` output for a workflow with 
 {
   "workflow_runtime_samples": [5.857085, 5.740116, 7.248474],
   "daily_invocation_counts": { "2024-03-12+0000": 3 },
+  "daily_user_code_failure_counts": {},
   "start_hop_summary": {
-    "aws:us-east-1": { "3.3527612686157227e-08": [0.52388, 0.514119, 0.519146] }
+    "invoked": 3,
+    "retrieved_wpd_at_function": 0,
+    "wpd_at_function_probability": 0.0,
+    "workflow_placement_decision_size_gb": 6.22868537902832e-06,
+    "at_redirector": {},
+    "from_client": {
+      "transfer_sizes_gb": [3.3527612686157227e-08, 3.3527612686157227e-08, 3.3527612686157227e-08],
+      "received_region": {
+        "aws:us-east-1": {
+          "transfer_size_gb_to_transfer_latencies_s": {
+              "3.3527612686157227e-08": [0.52388, 0.514119, 0.519146] 
+          },
+          "best_fit_line": {
+            "slope_s": 0.0,
+            "intercept_s": 0.51905,
+            "min_latency_s": 0.363335,
+            "max_latency_s": 0.674765,
+          }
+        }
+      }
+    }
   },
   "instance_summary": {
     "image_processing_light-0_0_1-GetInput:entry_point:0": {
       "invocations": 3,
+      "cpu_utilization": 0.5906111443111876,
       "executions": {
-        "aws:us-east-1": [
-          1.140042781829834, 1.129507303237915, 1.0891644954681396
-        ]
+        "at_region": {
+          "aws:us-east-1": {
+            "cpu_utilization": 0.6026562820042822,
+            "durations_s": [
+              1.140042781829834, 1.122507303237915, 1.1211644954681396
+            ],
+            "auxiliary_data": {
+              "1.14": [
+                  [5.103927105665207e-05, 0.002]
+              ],
+              "1.12": [
+                  [7.103927105665207e-05, 0.004],
+                  [3.103927105665207e-05, 0.003]
+              ],
+          }
+        },
+        "auxiliary_index_translation": {
+          "data_transfer_during_execution_gb": 0,
+          "image_processing_light-0_0_1-Flip:image_processing_light-0_0_1-GetInput_0_0:1": 1,
+        }
       },
       "to_instance": {
         "image_processing_light-0_0_1-Flip:image_processing_light-0_0_1-GetInput_0_0:1": {
           "invoked": 3,
+          "non_executions": 0,
+          "invocation_probability": 1.0,
+          "transfer_sizes": [2.9960647225379944e-06, 2.9960647225379944e-06],
           "regions_to_regions": {
             "aws:us-east-1": {
               "aws:us-east-1": {
-                "transfer_sizes": [2.9960647225379944e-06, 2.9960647225379944e-06],
-                "transfer_size_to_transfer_latencies": {
+                "transfer_size_gb_to_transfer_latencies_s": {
                   "2.9960647225379944e-06": [1.217899, 1.18531]
+                },
+                "best_fit_line": {
+                  "slope_s": 0.0,
+                  "intercept_s": 1.2016,
+                  "min_latency_s": 0.84112,
+                  "max_latency_s": 1.56208,
                 }
               }
             }
@@ -348,12 +522,27 @@ Below is an example of the `workflow_instance_table` output for a workflow with 
     },
     "image_processing_light-0_0_1-Flip:image_processing_light-0_0_1-GetInput_0_0:1": {
       "invocations": 3,
+      "cpu_utilization": 0.3496971243531307,
       "executions": {
-        "aws:us-east-1": [
-          4.638583183288574, 4.554178953170776, 6.073627948760986
-        ]
-      },
-      "to_instance": {}
+        "at_region": {
+          "aws:us-east-1": {
+            "cpu_utilization": 0.6026562820042822,
+            "durations_s": [
+              4.631583183288574, 4.634178953170776, 6.073627948760986
+            ],
+            "auxiliary_data": {
+              "4.63": [
+                  [5.103927105665207e-05], [5.103927105665207e-05]
+              ],
+              "6.07": [
+                  [7.103927105665207e-05]
+              ],
+          }
+        },
+        "auxiliary_index_translation": {
+          "data_transfer_during_execution_gb": 0,
+        },
+      }
     }
   }
 }

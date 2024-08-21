@@ -1,24 +1,20 @@
 # Caribou
 
-Caribou is a framework for running and deploying complex serverless workflows multi-constraint and multi-objective aware on AWS over multiple regions.
+<div align="center">
 
-##  Table of Contents
+[![Build Status](https://github.com/ubc-cirrus-lab/caribou/actions/workflows/workflow.yaml/badge.svg)](https://github.com/ubc-cirrus-lab/caribou/actions/workflows/workflow.yaml) [![GitHub license](https://img.shields.io/badge/license-Apache%202-blue.svg)](https://github.com/ubc-cirrus-lab/caribou/blob/main/LICENSE)
 
-- [Introduction](#introduction)
-- [Example](#example)
-- [Project Structure](#project-structure)
-- [Installation](#installation)
-- [Quick Start](#quick-start)
-- [Testing](#testing)
-- [Benchmarks](#benchmarks)
-- [Troubleshooting](#troubleshooting)
-- [Paper](#paper)
-- [License](#license)
+Caribou is a framework for running and deploying complex serverless workflows multi-constraint and multi-objective aware on hyper-scalers over multiple regions.
+
+</div>
+
+## ⚡️ Quickstart
+
+See the [Quick Start](QUICK_START.md) guide.
 
 ##  Introduction
 
-Caribou is a framework for running and deploying complex serverless workflows multi-constraint and multi-objective aware on AWS over multiple regions.
-The workflows can be developed in Python and deployed to AWS Lambda.
+Caribou is a framework for running and deploying complex serverless workflows multi-constraint and multi-objective aware on hyper-scalers over multiple regions.
 The framework is designed to be self-adapting and self-optimizing with regards to the carbon footprint, cost, and performance of the workflows.
 A workflow that is developed and deployed using the Caribou Python package can be run and solved by the framework, which will then automatically, depending on constraints and objectives, adapt the workflow deployment to optimize the workflow's performance, cost, and carbon footprint.
 The priority of optimization is determined by the objectives set by the workflow developer in the corresponding workflow deployment manifest.
@@ -31,41 +27,11 @@ See the [architecture](ARCHITECTURE.md) outline for more information on the fram
 An example workflow can be found in `examples/small_sync_example` including the source code of the workflow in the `app.py` file as well as the deployment manifest in the `.caribou` directory.
 More information on the example workflow can be found in the respective [README](examples/small_sync_example/README.md).
 
-See the [Installation](#installation) section on how to get set up and the [Quick Start](#quick-start) section on how to run the example workflow.
-
-##  Project Structure
-
-```
-> tree .
-├── common                              # Common code shared between the different components
-│   ├── models                          # Data models used by the different components
-│   ├── setup                           # Setup code for the AWS environment
-│   ├── constants.py                    # Constants used by the different components
-│   └── utils.py                        # Utility functions used by the different components
-├── data_collector                      # Data collector of the Metrics Manager
-├── deployment                          # Deployment components
-│   ├── client                          # Deployment Utility
-│   ├── common                          # Common code shared between the two deployment components
-│   └── server                          # Deployment Migrator functions
-├── deployment_solver                   # Deployment Solver
-│   ├── deployment_algorithms           # Deployment algorithms (such as the HBSS algorithm)
-│   ├── deployment_input                # Input retriever and calculators of the Metrics Manager
-│   └── deployment_metrics_calculator   # Metrics simulator of the Metrics Manager (Monte Carlo)
-├── monitors                            # Monitoring components
-│   ├── deployment_manager.py           # Deployment Manager
-│   └── deployment_migrator.py          # Deployment Migrator
-├── syncers                             # Data syncer components (sub-component of Metrics Manager)
-│   ├── log_syncer.py                   # Log syncer (for all workflows)
-│   └── log_sync_workflow.py            # Log syncer (for specific workflow)
-```
+See the [Installation](#installation) section on how to get set up and the [Quick Start](QUICK_START.md) guide on how to run the example workflow.
 
 ##  Installation
 
 See the [Installation](INSTALL.md) guide.
-
-## Quick Start
-
-See the [Quick Start](QUICK_START.md) guide.
 
 ## Testing
 
@@ -81,9 +47,17 @@ See the [Troubleshooting](TROUBLESHOOTING.md) guide.
 
 ## Paper
 
-If you use Caribou in your research, please cite the following paper:
+Our paper on Caribou has been recently accepted to the 30th ACM Symposium on Operating Systems Principles (SOSP 2024). It will be presented in November 2024. If you use Caribou in your research, please cite our paper:
 
-**TODO:** Add paper citation
+*V. Gsteiger, P. H. Long, Y. Sun, P. Javanrood, and M. Shahrad, "Caribou: Fine-Grained Geospatial Shifting of Serverless Applications for Sustainability", in Proceedings of the 30th ACM Symposium on Operating Systems Principles (SOSP 2024), 2024.*
+
+## About
+
+Caribou is being developed at the [Cloud Infrastructure Research for Reliability, Usability, and Sustainability Lab](https://cirrus.ece.ubc.ca) at the [University of British Columbia](https://www.ubc.ca). If you have any questions or feedback, please open a GitHub issue.
+
+##  Contributing
+
+See the [Contributing](CONTRIBUTING.md) guide.
 
 ## License
 
