@@ -179,27 +179,27 @@ def deploy_framework(ctx: click.Context) -> None:
     deployment_packager_config.workflow_version = "1.0.0"
     deployment_packager: DeploymentPackager = DeploymentPackager(deployment_packager_config)
 
-    # # Read the iam_policies_content from the file
-    # with open("caribou/deployment/client/cli/aws_lambda_cli/iam_policy.json", "r") as file:
-    #     iam_policies_content = file.read()
-    #     iam_policies_content = json.dumps(json.loads(iam_policies_content)["aws"])
+    # Read the iam_policies_content from the file
+    with open("caribou/deployment/client/cli/aws_lambda_cli/iam_policy.json", "r") as file:
+        iam_policies_content = file.read()
+        iam_policies_content = json.dumps(json.loads(iam_policies_content)["aws"])
 
-    # # Delete role if exists, then create a new role
-    # # Delete a role
-    # if aws_remote_client.resource_exists(Resource(iam_policy_name, "iam_role")): # For iam role
-    #     print(f"Deleting role {iam_policy_name}")
-    #     aws_remote_client.remove_role(iam_policy_name)
+    # Delete role if exists, then create a new role
+    # Delete a role
+    if aws_remote_client.resource_exists(Resource(iam_policy_name, "iam_role")): # For iam role
+        print(f"Deleting role {iam_policy_name}")
+        aws_remote_client.remove_role(iam_policy_name)
 
-    # # Create a role
-    # role_arn = aws_remote_client.create_role("caribou_deployment_policy", iam_policies_content, lambda_trust_policy)
+    # Create a role
+    role_arn = aws_remote_client.create_role("caribou_deployment_policy", iam_policies_content, lambda_trust_policy)
     
-    # print(f"Role ARN: {role_arn}")
+    print(f"Role ARN: {role_arn}")
 
-    role_arn = "arn:aws:iam::226414417076:role/caribou_deployment_policy"
+    # role_arn = "arn:aws:iam::226414417076:role/caribou_deployment_policy"
 
-    # # Delete function if exists.
-    # if aws_remote_client.resource_exists(Resource(function_name, "function")): # For lambda function
-    #     aws_remote_client.remove_function(function_name)    
+    # Delete function if exists.
+    if aws_remote_client.resource_exists(Resource(function_name, "function")): # For lambda function
+        aws_remote_client.remove_function(function_name)    
 
     # Create lambda function
     ## First zip the code content
@@ -254,6 +254,29 @@ def generate_framework_dockerfile(handler: str, runtime: str) -> str:
     RUN poetry install --no-dev
     CMD ["{handler}"]
     """
+
+# Potential alternatives
+# def generate_deployment_dockerfile(handler: str, runtime: str) -> str:
+#     return f"""
+# # Build stage
+# FROM python:3.12-slim as build
+
+# # Install dependencies and crane
+# RUN apt-get update && apt-get install -y curl tar golang-go
+# RUN go install github.com/google/go-containerregistry/cmd/crane@latest
+
+# # Copy your Python dependencies and application code
+# COPY pyproject.toml poetry.lock ./
+# RUN pip3 install poetry && poetry install --no-dev
+# COPY caribou ./caribou
+
+# # Final image
+# FROM public.ecr.aws/lambda/python:3.12
+
+# # Copy the necessary files from the build stage
+# COPY --from=build /caribou /caribou
+
+# """
 
 def create_lambda_function(function_name: str, image_uri: str, role: str, timeout: int, memory_size: int) -> None:
     lambda_client = boto3.client("lambda", region_name=region_name)
