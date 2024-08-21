@@ -1,13 +1,14 @@
 # DNA Visualization benchmark
+
 This benchmark requires access to the S3 bucket named `caribou-dna-visualization`,
 with the AWS Region set to `us-east-1` (N. Virginia).
 
-Alternatively, the user may change the S3 bucket name and region in `app.py`, 
-by changing the values of `s3_bucket_name` and `s3_bucket_region_name` to the 
-desired bucket. 
+Alternatively, the user may change the S3 bucket name and region in `app.py`,
+by changing the values of `s3_bucket_name` and `s3_bucket_region_name` to the
+desired bucket.
 
-There needs to be a file in the bucket, for example `sequence.gb`, in a folder called `genbank`, 
-or a valid DNA sequence input from https://www.ncbi.nlm.nih.gov/genbank/.
+There needs to be a file in the bucket, for example `sequence.gb`, in a folder called `genbank`,
+or a valid DNA sequence input from <https://www.ncbi.nlm.nih.gov/genbank/>.
 
 You can deploy the benchmark with the following command while inside the poetry environment:
 
