@@ -1,7 +1,12 @@
 import json
 import os
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
 from typing import Optional
 from unittest.mock import MagicMock
+import zipfile
 
 import click
 
@@ -22,6 +27,8 @@ from caribou.endpoint.client import Client
 from caribou.monitors.deployment_manager import DeploymentManager
 from caribou.monitors.deployment_migrator import DeploymentMigrator
 from caribou.syncers.log_syncer import LogSyncer
+import boto3
+
 
 
 @click.group()
@@ -133,6 +140,7 @@ def remove(workflow_id: str) -> None:
     client = Client(workflow_id)
     client.remove()
 
+region_name = "us-east-2" # Test region
 
 @cli.command("deploy_framework", help="Deploy the framework to Lambda.")
 @click.pass_context
@@ -155,7 +163,7 @@ def deploy_framework(ctx: click.Context) -> None:
             ],
     }
 
-    region_name = "us-east-2" # Test region
+    
 
     aws_remote_client = AWSRemoteClient(region_name)
     
@@ -200,10 +208,64 @@ def deploy_framework(ctx: click.Context) -> None:
     print(f"Creating deployment package for {function_name}")
     zip_path = deployment_packager.create_framework_package(project_dir)
 
-    print(zip_path)
-
     with open(zip_path, 'rb') as f:
         zip_contents = f.read()
+
+    deploy_to_aws(function_name, handler, runtime, role_arn, timeout, memory_size, zip_contents)
+
+def deploy_to_aws(
+    function_name: str, handler: str, runtime: str, role_arn: str, timeout: int, memory_size: int, zip_contents: bytes
+):
+    aws_remote_client = AWSRemoteClient(region_name)
+
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        # Step 1: Unzip the ZIP file
+        zip_path = os.path.join(tmpdirname, "code.zip")
+        with open(zip_path, "wb") as f_zip:
+            f_zip.write(zip_contents)
+        with zipfile.ZipFile(zip_path, "r") as zip_ref:
+            zip_ref.extractall(tmpdirname)
+
+        # Step 2: Create a Dockerfile in the temporary directory
+        dockerfile_content = generate_dockerfile(handler, runtime)
+        with open(os.path.join(tmpdirname, "Dockerfile"), "w", encoding="utf-8") as f_dockerfile:
+            f_dockerfile.write(dockerfile_content)
+
+        # Step 3: Build the Docker Image
+        image_name = f"{function_name.lower()}:latest"
+        aws_remote_client._build_docker_image(tmpdirname, image_name)
+
+        # Step 4: Upload the Image to ECR
+        image_uri = aws_remote_client._upload_image_to_ecr(image_name)
+    
+    create_lambda_function(function_name, image_uri, role_arn, timeout, memory_size)
+
+def generate_dockerfile(handler: str, runtime: str) -> str:
+    return f"""FROM public.ecr.aws/lambda/{runtime}
+    RUN pip3 install poetry
+    COPY pyproject.toml ./
+    COPY poetry.lock ./
+    COPY caribou ./caribou
+
+    RUN poetry install --no-dev
+    CMD ["{handler}"]
+    """
+
+def create_lambda_function(function_name: str, image_uri: str, role: str, timeout: int, memory_size: int) -> None:
+    lambda_client = boto3.client("lambda", region_name=region_name)
+
+    try:
+        lambda_client.create_function(
+            FunctionName=function_name,
+            Role=role,
+            Code={"ImageUri": image_uri},
+            PackageType="Image",
+            Timeout=timeout,
+            MemorySize=memory_size,
+        )
+    except lambda_client.exceptions.ResourceConflictException:
+        print(f"Lambda function {function_name} already exists")
+        pass
 
 
 __version__ = MULTI_X_SERVERLESS_VERSION
