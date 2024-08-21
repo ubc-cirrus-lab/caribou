@@ -97,9 +97,10 @@ class DeploymentPackager:
                     continue
 
                 full_path = os.path.join(root, filename)
-                if full_path == os.path.join(project_dir, "app.py") or full_path.startswith(
-                    os.path.join(project_dir, "src")
-                ):
+                if (full_path == os.path.join(project_dir, "app.py") or
+                    full_path.startswith(os.path.join(project_dir, "src")) or
+                    filename == "pyproject.toml" or
+                    filename == "poetry.lock"):
                     zip_path = full_path[len(project_dir) + 1 :]
                     zip_file.write(full_path, zip_path)
 
@@ -116,13 +117,13 @@ class DeploymentPackager:
                     zip_path = full_path[len(project_dir) + 1 :]
                     zip_file.write(full_path, zip_path)
 
-
     def _add_framework_go_files(self, zip_file: zipfile.ZipFile, project_dir: str) -> None:
         framework_go_dir = os.path.join(project_dir, "caribou-go")
+        allowed_extensions = ['.go', '.py', '.sum', '.mod', '.sh', '.so']
 
         for root, _, files in os.walk(project_dir):
             for filename in files:
-                if not filename.endswith(".py"):  # Only add .py files
+                if not any(filename.endswith(ext) for ext in allowed_extensions):  # Check if file has an allowed extension
                     continue
 
                 full_path = os.path.join(root, filename)
