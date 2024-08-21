@@ -218,7 +218,7 @@ def deploy_to_aws(
     aws_remote_client = AWSRemoteClient(region_name)
 
     with tempfile.TemporaryDirectory() as tmpdirname:
-        # tmpdirname = "/home/daniel/caribou/.caribou"
+        tmpdirname = "/home/daniel/caribou/.caribou"
         
         # Step 1: Unzip the ZIP file
         zip_path = os.path.join(tmpdirname, "code.zip")
@@ -231,6 +231,8 @@ def deploy_to_aws(
 
         # Get the environment variables
         desired_env_vars = [
+            "AWS_ACCESS_KEY_ID",
+            "AWS_SECRET_ACCESS_KEY",
             "GOOGLE_API_KEY",
             "ELECTRICITY_MAPS_AUTH_TOKEN",
         ]
@@ -299,7 +301,7 @@ def generate_framework_dockerfile(handler: str, runtime: str, env_vars: dict) ->
     FROM python:3.12-slim AS builder
 
     # Install dependencies to download and install Go
-    RUN apt-get update && apt-get install -y curl tar
+    RUN apt-get update && apt-get install -y curl tar gcc
 
     # Download and install Go 1.22
     RUN curl -LO https://go.dev/dl/go1.22.6.linux-amd64.tar.gz \
@@ -313,8 +315,18 @@ def generate_framework_dockerfile(handler: str, runtime: str, env_vars: dict) ->
     RUN curl -sL "https://github.com/google/go-containerregistry/releases/download/v0.20.2/go-containerregistry_Linux_x86_64.tar.gz" > go-containerregistry.tar.gz
     RUN tar -zxvf go-containerregistry.tar.gz -C /usr/local/bin/ crane
 
+    COPY caribou-go ./caribou-go
+
+    # Compile the Go code
+    RUN cd caribou-go && \
+        chmod +x build_caribou.sh && \
+        ./build_caribou.sh
+
     # Stage 2: Build the final image using the Lambda runtime
     FROM public.ecr.aws/lambda/{runtime}
+
+    # Copy Caribou Go folder from the builder stage
+    COPY --from=builder caribou-go caribou-go
 
     # Copy Go and Crane from the builder stage
     COPY --from=builder /usr/local/go /usr/local/go
@@ -339,7 +351,6 @@ def generate_framework_dockerfile(handler: str, runtime: str, env_vars: dict) ->
 
     # Copy application (framework) code
     COPY caribou ./caribou
-    COPY caribou-go ./caribou-go
     COPY app.py ./
 
     # Set the command to run the application
