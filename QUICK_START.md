@@ -35,6 +35,11 @@ The Deployment Utility has an additional dependency on `docker`.
 To install it, follow the instructions on the [docker website](https://docs.docker.com/engine/install/).
 Ensure you have the docker daemon running before running the deployment utility.
 
+To verify that Docker is installed correctly, you can try running:
+
+```bash
+docker --version
+
 The deployment utility can be found in `caribou/deployment/client` and can be run with:
 
 ```bash
