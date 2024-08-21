@@ -119,6 +119,7 @@ poetry run caribou log_sync
 ```
 
 This might take a while, depending on the number of workflows and the amount of logs that need to be synced.
+Also, there is an inherent buffer of five minutes, meaning that logs are only synced if they are at least five minutes old.
 
 ### Data Collecting
 
@@ -174,6 +175,7 @@ poetry run caribou manage_deployments
 ```
 
 Refer to section 5.2 of the paper to learn about how we make this calculation.
+If you execute this command and nothing happens it might be that the minimal threshold for the number of invocations has not been reached yet, which is set to 10 invocations.
 
 ### Run Deployment Migrator
 
@@ -192,5 +194,5 @@ This will check if a new deployment is required for any workflow, and, if so, mi
 
 **TODO(#284):** We currently have the scripts for packaging the framework components into a container in `scripts/deploy_to_aws.py`.
 This script works for simple deployments, but for example the crane dependency is not taken care of.
-We need to extend the script to deploy all the data collectors, log syncer, deployment manager, and deployment migrator to AWS.
+We need to extend the script to deploy all the data collectors, log synchronizer, deployment manager, and deployment migrator to AWS.
 Potentially we also want to decouple the deployment manager and deployment solver in a future version.

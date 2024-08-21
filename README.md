@@ -4,7 +4,7 @@
 
 [![Build Status](https://github.com/ubc-cirrus-lab/caribou/actions/workflows/workflow.yaml/badge.svg)](https://github.com/ubc-cirrus-lab/caribou/actions/workflows/workflow.yaml) [![GitHub license](https://img.shields.io/badge/license-Apache%202-blue.svg)](https://github.com/ubc-cirrus-lab/caribou/blob/main/LICENSE)
 
-Caribou is a framework for running and deploying complex serverless workflows multi-constraint and multi-objective aware on hyperscalers over multiple regions.
+Caribou is a framework for running and deploying complex serverless workflows multi-constraint and multi-objective aware on hyper-scalers over multiple regions.
 
 </div>
 
@@ -14,7 +14,7 @@ See the [Quick Start](QUICK_START.md) guide.
 
 ##  Introduction
 
-Caribou is a framework for running and deploying complex serverless workflows multi-constraint and multi-objective aware on hyperscalers over multiple regions.
+Caribou is a framework for running and deploying complex serverless workflows multi-constraint and multi-objective aware on hyper-scalers over multiple regions.
 The framework is designed to be self-adapting and self-optimizing with regards to the carbon footprint, cost, and performance of the workflows.
 A workflow that is developed and deployed using the Caribou Python package can be run and solved by the framework, which will then automatically, depending on constraints and objectives, adapt the workflow deployment to optimize the workflow's performance, cost, and carbon footprint.
 The priority of optimization is determined by the objectives set by the workflow developer in the corresponding workflow deployment manifest.

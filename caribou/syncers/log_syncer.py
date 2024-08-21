@@ -56,7 +56,7 @@ class LogSyncer:
             log_sync_workflow.sync_workflow()
 
     def _get_time_intervals_to_sync(
-        self, last_sync_time: Optional[str], buffer_minutes: float = 30
+        self, last_sync_time: Optional[str], buffer_minutes: float = 5
     ) -> list[tuple[datetime, datetime]]:
         current_time = datetime.now(GLOBAL_TIME_ZONE)
 

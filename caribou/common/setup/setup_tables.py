@@ -57,12 +57,12 @@ def main():
             logger.info("Creating table: %s", table_name)
             try:
                 create_table(dynamodb, table_name)
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-except
                 logger.error("Error creating table %s: %s", table_name, e)
                 logger.error("Trying to create table again")
                 try:
                     create_table(dynamodb, table_name)
-                except Exception as e:
+                except Exception as e:  # pylint: disable=broad-except
                     logger.error("Error creating table %s: %s", table_name, e)
                     logger.error("Skipping table creation")
 
