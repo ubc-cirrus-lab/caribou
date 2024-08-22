@@ -166,17 +166,21 @@ class Client:
 
         return key
 
-    def list_workflows(self) -> None:
+    def list_workflows(self) -> list[str]:
         deployed_workflows = self._endpoints.get_deployment_manager_client().get_keys(DEPLOYMENT_MANAGER_RESOURCE_TABLE)
 
         if deployed_workflows is None:
             print("No workflows deployed")
-            return
+            return []
+
         print("Deployed workflows:")
 
         # Sort the workflows by name
-        for workflow in sorted(deployed_workflows):
+        deployed_workflows = sorted(deployed_workflows)
+        for workflow in deployed_workflows:
             print(workflow)
+
+        return deployed_workflows
 
     def remove(self) -> None:
         if self._workflow_id is None:

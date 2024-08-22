@@ -980,6 +980,126 @@ class TestAWSRemoteClient(unittest.TestCase):
         # Check that the subprocess.run method was called
         mock_run.assert_called()
 
+    @patch.object(AWSRemoteClient, "_create_framework_lambda_function")
+    @patch.object(AWSRemoteClient, "_upload_image_to_ecr")
+    @patch.object(AWSRemoteClient, "_build_docker_image")
+    @patch.object(AWSRemoteClient, "_generate_framework_dockerfile")
+    @patch("builtins.open", new_callable=unittest.mock.mock_open)
+    @patch("zipfile.ZipFile")
+    @patch("os.path.join", side_effect=lambda *args: "/".join(args))
+    def test_deploy_remote_cli(
+        self,
+        mock_path_join,
+        mock_zipfile,
+        mock_open,
+        mock_generate_dockerfile,
+        mock_build_docker_image,
+        mock_upload_image_to_ecr,
+        mock_create_lambda_function,
+    ):
+        client = AWSRemoteClient("region1")
+
+        function_name = "test_function"
+        handler = "app.handler"
+        role_arn = "arn:aws:iam::123456789012:role/test_role"
+        timeout = 60
+        memory_size = 128
+        ephemeral_storage = 512
+        zip_contents = b"dummy_zip_content"
+        tmpdirname = "/tmp/testdir"
+        env_vars = {"ENV_VAR_1": "value1", "ENV_VAR_2": "value2"}
+
+        mock_generate_dockerfile.return_value = "Dockerfile content"
+        mock_upload_image_to_ecr.return_value = "image_uri"
+
+        mock_zipfile.return_value.__enter__.return_value.extractall = MagicMock()
+
+        client.deploy_remote_cli(
+            function_name,
+            handler,
+            role_arn,
+            timeout,
+            memory_size,
+            ephemeral_storage,
+            zip_contents,
+            tmpdirname,
+            env_vars,
+        )
+
+        # Validate the steps
+        mock_open.assert_any_call(os.path.join(tmpdirname, "code.zip"), "wb")
+        mock_zipfile.assert_called_once_with(os.path.join(tmpdirname, "code.zip"), "r")
+        mock_zipfile.return_value.__enter__.return_value.extractall.assert_called_once_with(tmpdirname)
+        mock_generate_dockerfile.assert_called_once_with(handler, env_vars)
+        mock_build_docker_image.assert_called_once_with(tmpdirname, f"{function_name.lower()}:latest")
+        mock_upload_image_to_ecr.assert_called_once_with(f"{function_name.lower()}:latest")
+        mock_create_lambda_function.assert_called_once_with(
+            function_name, "image_uri", role_arn, timeout, memory_size, ephemeral_storage
+        )
+
+    def test_generate_framework_dockerfile(self):
+        client = AWSRemoteClient("region1")
+
+        handler = "app.handler"
+        env_vars = {"ENV_VAR_1": "value1", "ENV_VAR_2": "value2"}
+
+        expected_env_statements = 'ENV ENV_VAR_1="value1"\nENV ENV_VAR_2="value2"'
+
+        dockerfile_content = client._generate_framework_dockerfile(handler, env_vars)
+
+        self.assertIn(expected_env_statements, dockerfile_content)
+        self.assertIn("FROM python:3.12-slim AS builder", dockerfile_content)
+        self.assertIn(f'CMD ["{handler}"]', dockerfile_content)
+
+    @patch.object(AWSRemoteClient, "_create_lambda_function")
+    @patch.object(AWSRemoteClient, "_wait_for_function_to_become_active")
+    def test_create_framework_lambda_function(
+        self, mock_wait_for_function_to_become_active, mock_create_lambda_function
+    ):
+        client = AWSRemoteClient("region1")
+
+        function_name = "test_function"
+        image_uri = "image_uri"
+        role_arn = "arn:aws:iam::123456789012:role/test_role"
+        timeout = 60
+        memory_size = 128
+        ephemeral_storage_size = 512
+
+        mock_create_lambda_function.return_value = (
+            "arn:aws:lambda:region:123456789012:function:test_function",
+            "Active",
+        )
+
+        result = client._create_framework_lambda_function(
+            function_name, image_uri, role_arn, timeout, memory_size, ephemeral_storage_size
+        )
+
+        expected_kwargs = {
+            "FunctionName": function_name,
+            "Role": role_arn,
+            "Code": {"ImageUri": image_uri},
+            "PackageType": "Image",
+            "Timeout": timeout,
+            "MemorySize": memory_size,
+            "EphemeralStorage": {"Size": ephemeral_storage_size},
+        }
+
+        mock_create_lambda_function.assert_called_once_with(expected_kwargs)
+        mock_wait_for_function_to_become_active.assert_not_called()  # Since the state is "Active"
+        self.assertEqual(result, "arn:aws:lambda:region:123456789012:function:test_function")
+
+        # Test when the state is not active
+        mock_create_lambda_function.return_value = (
+            "arn:aws:lambda:region:123456789012:function:test_function",
+            "Pending",
+        )
+
+        result = client._create_framework_lambda_function(
+            function_name, image_uri, role_arn, timeout, memory_size, ephemeral_storage_size
+        )
+
+        mock_wait_for_function_to_become_active.assert_called_once_with(function_name)
+
 
 if __name__ == "__main__":
     unittest.main()

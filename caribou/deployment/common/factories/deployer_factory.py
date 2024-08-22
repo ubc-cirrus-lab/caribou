@@ -7,7 +7,6 @@ import yaml
 from pydantic import ValidationError
 
 from caribou.common.provider import Provider
-from caribou.deployment.client import __version__ as MULTI_X_SERVERLESS_VERSION
 from caribou.deployment.client.caribou_workflow import CaribouWorkflow
 from caribou.deployment.common.config.config import Config
 from caribou.deployment.common.config.config_schema import ConfigSchema

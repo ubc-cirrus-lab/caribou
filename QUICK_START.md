@@ -190,9 +190,106 @@ poetry run caribou run_deployment_migrator
 
 This will check if a new deployment is required for any workflow, and, if so, migrate the functions according to this new deployment.
 
-## Deployment to AWS
+## Deployment to AWS (AWS Remote CLI)
+To deploy the framework to AWS after completing the local setup process, use the following command while inside the main `caribou` directory. 
+Ensure that you can see both the `caribou` and `caribou-go` folders in this directory.
 
-**TODO(#284):** We currently have the scripts for packaging the framework components into a container in `scripts/deploy_to_aws.py`.
-This script works for simple deployments, but for example the crane dependency is not taken care of.
-We need to extend the script to deploy all the data collectors, log synchronizer, deployment manager, and deployment migrator to AWS.
-Potentially we also want to decouple the deployment manager and deployment solver in a future version.
+
+```bash
+poetry run caribou deploy_remote_cli
+```
+
+You may also specify the `memory` (in MB), `timeout` (in seconds), and `ephemeral_storage` (in MB) using the following flags:
+ - `memory`: Use `--memory` or `-m`. Default: 5,120 MB
+ - `timeout`: Use `--timeout` or `-t`. Default: 900 seconds
+ - `ephemeral_storage`: Use `--ephemeral_storage` or `-s`. Default: 10,240 MB
+
+To remove the remote framework, use the following command:
+
+```bash
+poetry run caribou remove_remote_cli
+```
+
+**Note:** Caribou must be properly installed locally first (See the [Installation](INSTALL.md)). 
+Additionally, the following environment variables must be set before remote deployment:
+
+```bash
+export ELECTRICITY_MAPS_AUTH_TOKEN=<your_token>
+export GOOGLE_API_KEY=<your_key>
+```
+
+### How to Invoke the AWS Remote CLI
+After deploying the `AWS Remote CLI`, you can run Caribou components by invoking the deployed lambda function using the returned Lambda ARN with the following event parameters.
+
+- List workflows:
+```json
+{
+  "action": "list"
+}
+```
+
+- Invoke workflow:
+
+Where `argument` is the payload of the application.
+
+```json
+{
+  "action": "run",
+  "workflow_id": "workflow_name-version_number",
+  "argument": {}
+}
+```
+
+- Remove Workflow:
+```json
+{
+  "action": "remove",
+  "workflow_id": "workflow_name-version_number"
+}
+```
+
+- Perform Log Sync:
+```json
+{
+  "action": "log_sync"
+}
+```
+
+- Perform Data collect:
+
+`collector` can be one of the following options: `provider`, `carbon`, `performance`, `workflow`, or `all`.
+
+`workflow_id` is only required for the `workflow` or `all` collector options.
+
+```json
+{
+    "action": "data_collect",
+    "collector": "all",
+    "workflow_id": "workflow_name-version_number"
+}
+```
+
+- Manage Deployments:
+
+`deployment_metrics_calculator_type` can be either `simple` (for the Python solver) or `go` (to use the Go solver) for deployment metrics determination.
+
+```json
+{
+  "action": "manage_deployments",
+  "deployment_metrics_calculator_type": "simple"
+}
+```
+
+- Deployment Migration:
+```json
+{
+  "action": "run_deployment_migrator"
+}
+```
+
+- Inquire Caribou Version:
+```json
+{
+  "action": "version"
+}
+```

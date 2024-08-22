@@ -139,16 +139,20 @@ class ProviderRetriever(DataRetriever):
             grouped_by_provider[provider].append(region_key)
 
         for provider, regions in grouped_by_provider.items():
-            if provider == Provider.AWS.value:
-                provider_data.update(self._retrieve_provider_data_aws(regions))
-            elif provider == Provider.GCP.value:
-                raise NotImplementedError("GCP not implemented")
-            elif provider in (Provider.TEST_PROVIDER1.value, Provider.TEST_PROVIDER2.value):
-                pass
-            elif provider == Provider.INTEGRATION_TEST_PROVIDER.value:
-                provider_data.update(self._retrieve_provider_data_integrationtest(regions))
-            else:
-                raise NotImplementedError(f"Provider {provider} not implemented")
+            try:
+                if provider == Provider.AWS.value:
+                    provider_data.update(self._retrieve_provider_data_aws(regions))
+                elif provider == Provider.GCP.value:
+                    raise NotImplementedError("GCP not implemented")
+                elif provider in (Provider.TEST_PROVIDER1.value, Provider.TEST_PROVIDER2.value):
+                    pass
+                elif provider == Provider.INTEGRATION_TEST_PROVIDER.value:
+                    provider_data.update(self._retrieve_provider_data_integrationtest(regions))
+                else:
+                    raise NotImplementedError(f"Provider {provider} not implemented")
+            except Exception as e:  # pylint: disable=broad-except
+                print(f"Error while retrieving provider data for {provider}: {e}")
+
         return provider_data
 
     def _retrieve_provider_data_aws(self, aws_regions: list[str]) -> dict[str, Any]:

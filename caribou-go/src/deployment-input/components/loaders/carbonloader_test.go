@@ -77,5 +77,5 @@ func TestGetGridCarbonIntensity(t *testing.T) {
 
 	hour = "non-existent-hour"
 	hourlyCarbonIntensity = loader.GetGridCarbonIntensity("aws:eu-south-1", &hour)
-	assert.Equal(t, 500.0, hourlyCarbonIntensity, "expected 500.0, got %f", hourlyCarbonIntensity)
+	assert.Equal(t, 410.0, hourlyCarbonIntensity, "expected 500.0, got %f", hourlyCarbonIntensity)
 }

@@ -254,6 +254,75 @@ class DeploymentPackager:
         finally:
             shutil.rmtree(temp_install_dir)
 
+    def create_framework_package(self, project_dir: str, tmpdirname: str) -> str:
+        filename = "caribou_framework_cli.zip"
+        package_filename = os.path.join(tmpdirname, ".caribou", "deployment-packages", filename)
+        self._create_deployment_package_dir(package_filename)
+        if os.path.exists(package_filename):
+            return package_filename
+
+        with zipfile.ZipFile(package_filename, "w", zipfile.ZIP_DEFLATED) as z:
+            self._add_framework_deployment_files(z, project_dir)
+            self._add_framework_files(z, project_dir)
+            self._add_framework_go_files(z, project_dir)
+
+        return package_filename
+
+    def _add_framework_deployment_files(self, zip_file: zipfile.ZipFile, project_dir: str) -> None:
+        for root, _, files in os.walk(project_dir):
+            for filename in files:
+                if filename.endswith(".pyc"):
+                    continue
+
+                full_path = os.path.join(root, filename)
+                if (
+                    full_path == os.path.join(project_dir, "app.py")
+                    or full_path.startswith(os.path.join(project_dir, "src"))
+                    or filename == "pyproject.toml"
+                    or filename == "poetry.lock"
+                ):
+                    zip_path = full_path[len(project_dir) + 1 :]
+                    zip_file.write(full_path, zip_path)
+
+        # Copy and rename remote_caribou handler
+        remote_cli_handler_path = os.path.join(
+            project_dir, "caribou", "deployment", "client", "remote_cli", "remote_cli_handler.py"
+        )
+        zip_file.write(remote_cli_handler_path, "app.py")
+
+    def _add_framework_files(self, zip_file: zipfile.ZipFile, project_dir: str) -> None:
+        framework_dir = os.path.join(project_dir, "caribou")
+
+        for root, _, files in os.walk(project_dir):
+            for filename in files:
+                if not filename.endswith(".py") or filename.startswith("test_"):  # Only add .py files, also skip tests
+                    continue
+
+                full_path = os.path.join(root, filename)
+                if full_path.startswith(framework_dir):
+                    zip_path = full_path[len(project_dir) + 1 :]
+                    zip_file.write(full_path, zip_path)
+
+    def _add_framework_go_files(self, zip_file: zipfile.ZipFile, project_dir: str) -> None:
+        framework_go_dir = os.path.join(project_dir, "caribou-go")
+        allowed_extensions = [".go", ".py", ".sum", ".mod", ".sh", ".so"]
+
+        for root, _, files in os.walk(project_dir):
+            for filename in files:
+                if not any(
+                    filename.endswith(ext) for ext in allowed_extensions
+                ):  # Check if file has an allowed extension
+                    continue
+
+                # Skip the tests directory
+                if filename.endswith("_test.go"):
+                    continue
+
+                full_path = os.path.join(root, filename)
+                if full_path.startswith(framework_go_dir):
+                    zip_path = full_path[len(project_dir) + 1 :]
+                    zip_file.write(full_path, zip_path)
+
 
 def pip_execute(command: str, args: list[str]) -> tuple[bytes, bytes]:
     import_string = pip_import_string()

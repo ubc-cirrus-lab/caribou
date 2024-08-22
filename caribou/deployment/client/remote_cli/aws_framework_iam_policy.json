@@ -1,0 +1,102 @@
+{
+  "aws": {
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+       "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents",
+        "logs:FilterLogEvents"
+       ],
+       "Resource": "arn:aws:logs:*:*:*",
+       "Effect": "Allow"
+      },
+      {
+        "Action": [
+          "sns:Publish", 
+          "sns:ListTopics",
+          "sns:AddPermission",
+          "sns:RemovePermission",
+          "sns:DeleteTopic",
+          "sns:Subscribe",
+          "sns:SetTopicAttributes",
+          "sns:ListSubscriptionsByTopic",
+          "sns:GetTopicAttributes",
+          "sns:CreateTopic",
+          "sns:Unsubscribe"
+        ],
+        "Resource": "arn:aws:sns:*:*:*",
+        "Effect": "Allow"
+      },
+      {
+        "Action": [
+          "lambda:InvokeFunction",
+          "lambda:CreateFunction",
+          "lambda:DeleteFunction",
+          "lambda:GetFunction",
+          "lambda:ListFunctions",
+          "lamda:UpdateFunctionCode",
+          "lambda:AddPermission"
+        ],
+        "Resource": "*",
+        "Effect": "Allow"
+      },
+      {
+       "Action": [
+        "dynamodb:GetItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:Scan",
+        "dynamodb:PutItem",
+        "dynamodb:CreateTable",
+        "dynamodb:DescribeTable",
+        "dynamodb:DeleteItem"
+       ],
+       "Resource": "arn:aws:dynamodb:*:*:*",
+       "Effect": "Allow"
+      },
+      {
+       "Action": [
+        "s3:GetObject",
+        "s3:PutObject"
+       ],
+       "Resource": "arn:aws:s3:::*",
+       "Effect": "Allow"
+      },
+      {
+        "Action": [
+            "ecr:CreateRepository",
+            "ecr:GetAuthorizationToken",
+            "ecr:InitiateLayerUpload",
+            "ecr:UploadLayerPart",
+            "ecr:CompleteLayerUpload",
+            "ecr:BatchGetImage",
+            "ecr:BatchCheckLayerAvailability",
+            "ecr:DescribeImages",
+            "ecr:DescribeRepositories",
+            "ecr:GetDownloadUrlForLayer",
+            "ecr:ListImages",
+            "ecr:PutImage",
+            "ecr:SetRepositoryPolicy",
+            "ecr:GetRepositoryPolicy",
+            "ecr:DeleteRepository"
+        ],
+        "Resource": "*",
+        "Effect": "Allow"
+      },
+      {
+          "Action": [
+              "iam:CreateRole",
+              "iam:PutRolePolicy",
+              "iam:GetRole",
+              "iam:ListRoles",
+              "iam:AttachRolePolicy",
+              "iam:CreatePolicy",
+              "iam:PassRole"
+          ],
+          "Resource": "*",
+          "Effect": "Allow"
+      }
+     ]
+  }
+}

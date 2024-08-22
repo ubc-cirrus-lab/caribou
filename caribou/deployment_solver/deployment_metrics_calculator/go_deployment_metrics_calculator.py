@@ -13,6 +13,13 @@ from caribou.deployment_solver.models.instance_indexer import InstanceIndexer
 from caribou.deployment_solver.models.region_indexer import RegionIndexer
 from caribou.deployment_solver.workflow_config import WorkflowConfig
 
+# Create a temporary directory (if it doesn't exist) to store the FIFO files
+TMP_DIR = "/tmp/go_deployment_metrics_calculator_bridge"
+
+# Make directory if it doesn't exist
+if not os.path.exists(TMP_DIR):
+    os.makedirs(TMP_DIR)
+
 
 def send_to_go(channel_path: str, command: str, data: Any) -> None:
     with open(channel_path, "w", encoding="utf-8") as ch:
@@ -62,11 +69,14 @@ class GoDeploymentMetricsCalculator(DeploymentMetricsCalculator):
 
     def setup_go(self) -> None:
         go_data = json.dumps(self.to_dict())
+
         random_run_id = uuid4().hex
-        self.go_py_file = str(GO_PATH / f"data_go_py_{random_run_id}")
-        self.py_go_file = str(GO_PATH / f"data_py_go_{random_run_id}")
+        self.go_py_file = os.path.join(TMP_DIR, f"data_go_py_{random_run_id}")
+        self.py_go_file = os.path.join(TMP_DIR, f"data_py_go_{random_run_id}")
+
         os.mkfifo(self.go_py_file)
         os.mkfifo(self.py_go_file)
+
         self._caribougo.start(self.go_py_file.encode("utf-8"), self.py_go_file.encode("utf-8"))
         self._caribougo.goRead()
         send_to_go(self.py_go_file, "Setup", go_data)
