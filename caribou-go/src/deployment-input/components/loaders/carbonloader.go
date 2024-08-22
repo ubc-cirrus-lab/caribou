@@ -2,7 +2,7 @@ package loaders
 
 import "caribou-go/src/utils"
 
-const SolverInputGridCarbonDefault = 500.0
+const SolverInputGridCarbonDefault = 410.0
 
 type CarbonLoader struct {
 	CarbonData map[string]interface{}

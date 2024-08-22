@@ -62,7 +62,8 @@ WORKFLOW_SUMMARY_TABLE = "workflow_summary_table"
 ### Default to Average USA Carbon Intensity of Electric Grid
 ### Contiguous United States Carbon intensity of energy grid
 ### of Consumption in 2023 according to Electric Maps - gCO2e/kWh
-SOLVER_INPUT_GRID_CARBON_DEFAULT = 410
+# SOLVER_INPUT_GRID_CARBON_DEFAULT = 410
+SOLVER_INPUT_GRID_CARBON_DEFAULT = 0 # Set for testing purposes
 
 ## Datacenter Loader
 SOLVER_INPUT_AVERAGE_MEMORY_POWER_DEFAULT = 0.0003725

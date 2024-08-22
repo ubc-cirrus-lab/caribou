@@ -954,8 +954,8 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
 
         # Compile Go application
         RUN cd caribou-go && \
-            chmod +x build_caribou.sh && \
-            ./build_caribou.sh
+            chmod +x build_caribou_no_tests.sh && \
+            ./build_caribou_no_tests.sh
 
         # Stage 2: Build the final image based on Lambda Python 3.12 runtime
         FROM public.ecr.aws/lambda/python:3.12

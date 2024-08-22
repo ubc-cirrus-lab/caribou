@@ -295,7 +295,7 @@ class DeploymentPackager:
 
         for root, _, files in os.walk(project_dir):
             for filename in files:
-                if not filename.endswith(".py"):  # Only add .py files
+                if not filename.endswith(".py") or filename.startswith("test_"):  # Only add .py files, also skip tests
                     continue
 
                 full_path = os.path.join(root, filename)
@@ -312,6 +312,10 @@ class DeploymentPackager:
                 if not any(
                     filename.endswith(ext) for ext in allowed_extensions
                 ):  # Check if file has an allowed extension
+                    continue
+
+                # Skip the tests directory
+                if filename.endswith("_test.go"):
                     continue
 
                 full_path = os.path.join(root, filename)

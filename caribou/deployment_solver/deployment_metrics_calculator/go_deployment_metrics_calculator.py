@@ -1,8 +1,10 @@
 import ctypes
 import json
 import os
+import tempfile
 from typing import Any
-from uuid import uuid4
+# from uuid import uuid4
+
 
 from caribou.common.constants import GO_PATH, TAIL_LATENCY_THRESHOLD
 from caribou.deployment_solver.deployment_input.input_manager import InputManager
@@ -14,15 +16,27 @@ from caribou.deployment_solver.models.region_indexer import RegionIndexer
 from caribou.deployment_solver.workflow_config import WorkflowConfig
 
 
-def send_to_go(channel_path: str, command: str, data: Any) -> None:
-    with open(channel_path, "w", encoding="utf-8") as ch:
+# def send_to_go(channel_path: str, command: str, data: Any) -> None:
+#     with open(channel_path, "w", encoding="utf-8") as ch:
+#         pkt = json.dumps({"command": command, "data": data})
+#         ch.write(pkt + "\n")
+#         ch.flush()
+
+
+# def receive_from_go(channel_path: str) -> Any:
+#     with open(channel_path, "r", encoding="utf-8") as ch:
+#         data = json.load(ch)
+#         return data
+
+def send_to_go(temp_file: str, command: str, data: Any) -> None:
+    with open(temp_file, "w", encoding="utf-8") as ch:
         pkt = json.dumps({"command": command, "data": data})
         ch.write(pkt + "\n")
         ch.flush()
 
 
-def receive_from_go(channel_path: str) -> Any:
-    with open(channel_path, "r", encoding="utf-8") as ch:
+def receive_from_go(temp_file: str) -> Any:
+    with open(temp_file, "r", encoding="utf-8") as ch:
         data = json.load(ch)
         return data
 
@@ -62,11 +76,19 @@ class GoDeploymentMetricsCalculator(DeploymentMetricsCalculator):
 
     def setup_go(self) -> None:
         go_data = json.dumps(self.to_dict())
-        random_run_id = uuid4().hex
-        self.go_py_file = str(GO_PATH / f"data_go_py_{random_run_id}")
-        self.py_go_file = str(GO_PATH / f"data_py_go_{random_run_id}")
-        os.mkfifo(self.go_py_file)
-        os.mkfifo(self.py_go_file)
+
+        # random_run_id = uuid4().hex
+        # self.go_py_file = str(GO_PATH / f"data_go_py_{random_run_id}")
+        # self.py_go_file = str(GO_PATH / f"data_py_go_{random_run_id}")
+        # os.mkfifo(self.go_py_file)
+        # os.mkfifo(self.py_go_file)
+
+        # Using tempfile for communication
+        with tempfile.NamedTemporaryFile(delete=False) as tf:
+            self.go_py_file = tf.name
+        with tempfile.NamedTemporaryFile(delete=False) as tf:
+            self.py_go_file = tf.name
+
         self._caribougo.start(self.go_py_file.encode("utf-8"), self.py_go_file.encode("utf-8"))
         self._caribougo.goRead()
         send_to_go(self.py_go_file, "Setup", go_data)

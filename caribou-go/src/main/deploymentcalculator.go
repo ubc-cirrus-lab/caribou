@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	maxCapacity = 512 * 1024
+	maxCapacity = 6 * 512 * 1024
 )
 
 var (
