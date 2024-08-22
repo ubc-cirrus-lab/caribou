@@ -17,6 +17,7 @@ from caribou.endpoint.client import Client
 from caribou.monitors.deployment_manager import DeploymentManager
 from caribou.monitors.deployment_migrator import DeploymentMigrator
 from caribou.syncers.log_syncer import LogSyncer
+from caribou.deployment.client.remote_cli.remote_cli import deploy_aws_framework
 
 
 @click.group()
@@ -128,5 +129,10 @@ def remove(workflow_id: str) -> None:
     client = Client(workflow_id)
     client.remove()
 
+@cli.command("deploy_framework", help="Deploy the framework to Lambda.")
+@click.pass_context
+def deploy_framework(ctx: click.Context) -> None:
+    project_dir = ctx.obj["project_dir"]
+    deploy_aws_framework(project_dir)
 
 __version__ = MULTI_X_SERVERLESS_VERSION

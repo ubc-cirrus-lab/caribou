@@ -5,9 +5,7 @@ description = "Caribou is a framework for running and deploying complex serverle
 license = "Apache-2.0"
 authors = [
     "Viktor Gsteiger <vgsteiger@student.ethz.ch>",
-    "Pin Hong (Daniel) Long <pinlong@student.ubc.ca>",
-    "Parshan Javanrood <pjavan@student.ubc.ca>",
-    "Yiran (Jerry) Sun <jerrys17@student.ubc.ca>",
+    "Daniel Long <pinlong@student.ubc.ca>",
     "Mohammad Shahrad <mohammad.shahrad@ubc.ca>",
 ]
 readme = "README.md"
@@ -29,6 +27,8 @@ click = "^8.1.7"
 pydantic = "^2.6.4"
 bs4 = "^0.0.2"
 pytz = "^2024.1"
+statsmodels = "^0.14.2"
+awscli = "^1.34.3"
 
 [tool.poetry.extras]
 # This can be used for a more fine-grained dependency management in the future
