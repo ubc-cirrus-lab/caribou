@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import patch, MagicMock, Mock, mock_open
+from unittest.mock import call, patch, MagicMock, Mock, mock_open
 import tempfile
 from caribou.deployment.common.deploy.deployment_packager import (
     DeploymentPackager,
@@ -159,6 +159,118 @@ class TestDeploymentPackager(unittest.TestCase):
 
         with self.assertRaises(RuntimeError, msg="Could not download deployment package"):
             packager._download_deployment_package(remote_client)
+
+    @patch("os.path.exists")
+    @patch("zipfile.ZipFile")
+    @patch.object(DeploymentPackager, "_create_deployment_package_dir")
+    @patch.object(DeploymentPackager, "_add_framework_deployment_files")
+    @patch.object(DeploymentPackager, "_add_framework_files")
+    @patch.object(DeploymentPackager, "_add_framework_go_files")
+    def test_create_framework_package(
+        self,
+        mock_add_framework_go_files,
+        mock_add_framework_files,
+        mock_add_framework_deployment_files,
+        mock_create_deployment_package_dir,
+        mock_zipfile,
+        mock_exists,
+    ):
+        mock_exists.return_value = False
+        mock_zipfile.return_value.__enter__.return_value = MagicMock()
+
+        packager = DeploymentPackager(MagicMock())
+
+        tmpdirname = self.test_dir
+        project_dir = "/path/to/project"
+
+        result = packager.create_framework_package(project_dir, tmpdirname)
+
+        package_filename = os.path.join(tmpdirname, ".caribou", "deployment-packages", "caribou_framework_cli.zip")
+
+        mock_create_deployment_package_dir.assert_called_once_with(package_filename)
+        mock_zipfile.assert_called_once_with(package_filename, "w", zipfile.ZIP_DEFLATED)
+        mock_add_framework_deployment_files.assert_called_once_with(
+            mock_zipfile.return_value.__enter__.return_value, project_dir
+        )
+        mock_add_framework_files.assert_called_once_with(mock_zipfile.return_value.__enter__.return_value, project_dir)
+        mock_add_framework_go_files.assert_called_once_with(
+            mock_zipfile.return_value.__enter__.return_value, project_dir
+        )
+        self.assertEqual(result, package_filename)
+
+    @patch("os.walk")
+    @patch("os.path.join", side_effect=lambda *args: "/".join(args))
+    def test_add_framework_deployment_files(self, mock_path_join, mock_os_walk):
+        mock_os_walk.return_value = [
+            ("/path/to/project", [], ["app.py", "file.py", "file.pyo", "poetry.lock", "src/file1.py"]),
+            ("/path/to/project/src", [], ["file2.py"]),
+            ("/path/to/project/caribou/deployment/client/remote_cli", [], ["remote_cli_handler.py"]),
+        ]
+
+        zip_file = MagicMock()
+        zip_file.write = MagicMock()
+
+        packager = DeploymentPackager(MagicMock())
+
+        project_dir = "/path/to/project"
+        packager._add_framework_deployment_files(zip_file, project_dir)
+
+        expected_calls = [
+            call("/path/to/project/app.py", "app.py"),
+            call("/path/to/project/poetry.lock", "poetry.lock"),
+            call("/path/to/project/src/file1.py", "src/file1.py"),
+            call("/path/to/project/src/file2.py", "src/file2.py"),
+            call("/path/to/project/caribou/deployment/client/remote_cli/remote_cli_handler.py", "app.py"),
+        ]
+        zip_file.write.assert_has_calls(expected_calls, any_order=True)
+
+    @patch("os.walk")
+    @patch("os.path.join", side_effect=lambda *args: "/".join(args))
+    def test_add_framework_files(self, mock_path_join, mock_os_walk):
+        mock_os_walk.return_value = [
+            ("/path/to/project/caribou", [], ["file.py", "test_file.py", "another.py"]),
+            ("/path/to/project/another", [], ["some_other.py", "test_other.py"]),
+        ]
+
+        zip_file = MagicMock()
+        zip_file.write = MagicMock()
+
+        packager = DeploymentPackager(MagicMock())
+
+        project_dir = "/path/to/project"
+        packager._add_framework_files(zip_file, project_dir)
+
+        expected_calls = [
+            call("/path/to/project/caribou/file.py", "caribou/file.py"),
+            call("/path/to/project/caribou/another.py", "caribou/another.py"),
+        ]
+        zip_file.write.assert_has_calls(expected_calls, any_order=True)
+
+    @patch("os.walk")
+    @patch("os.path.join", side_effect=lambda *args: "/".join(args))
+    def test_add_framework_go_files(self, mock_path_join, mock_os_walk):
+        mock_os_walk.return_value = [
+            ("/path/to/project/caribou-go", [], ["file.go", "file.py", "file.sh", "file_test.go"]),
+            ("/path/to/project/caribou-go/subdir", [], ["file.mod", "file.so", "file.sum", "not_allowed.txt"]),
+        ]
+
+        zip_file = MagicMock()
+        zip_file.write = MagicMock()
+
+        packager = DeploymentPackager(MagicMock())
+
+        project_dir = "/path/to/project"
+        packager._add_framework_go_files(zip_file, project_dir)
+
+        expected_calls = [
+            call("/path/to/project/caribou-go/file.go", "caribou-go/file.go"),
+            call("/path/to/project/caribou-go/file.py", "caribou-go/file.py"),
+            call("/path/to/project/caribou-go/file.sh", "caribou-go/file.sh"),
+            call("/path/to/project/caribou-go/subdir/file.mod", "caribou-go/subdir/file.mod"),
+            call("/path/to/project/caribou-go/subdir/file.so", "caribou-go/subdir/file.so"),
+            call("/path/to/project/caribou-go/subdir/file.sum", "caribou-go/subdir/file.sum"),
+        ]
+        zip_file.write.assert_has_calls(expected_calls, any_order=True)
 
 
 if __name__ == "__main__":
