@@ -46,9 +46,10 @@ deployment_algorithm_mapping = {
 
 
 class DeploymentManager(Monitor):
-    def __init__(self) -> None:
+    def __init__(self, deployment_metrics_calculator_type: str = "simple") -> None:
         super().__init__()
         self.workflow_collector = WorkflowCollector()
+        self._deployment_metrics_calculator_type: str = deployment_metrics_calculator_type
 
     def check(self) -> None:
         deployment_manager_client = self._endpoints.get_deployment_manager_client()
@@ -160,10 +161,9 @@ class DeploymentManager(Monitor):
         solve_hours: Optional[list[str]] = None,
         expiry_delta_seconds: int = DEFAULT_MONITOR_COOLDOWN,
     ) -> None:
-        # TODO (#178): Instead of directly calling add message to solver queue (low-priority right now)
         deployment_algorithm_class = deployment_algorithm_mapping.get(workflow_config.deployment_algorithm)
         if deployment_algorithm_class:
-            deployment_algorithm: DeploymentAlgorithm = deployment_algorithm_class(workflow_config, expiry_delta_seconds)  # type: ignore
+            deployment_algorithm: DeploymentAlgorithm = deployment_algorithm_class(workflow_config, expiry_delta_seconds, deployment_metrics_calculator_type = self._deployment_metrics_calculator_type)  # type: ignore
             deployment_algorithm.run(solve_hours)
         else:
             raise ValueError("Invalid deployment algorithm")

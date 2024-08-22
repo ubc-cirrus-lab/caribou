@@ -22,7 +22,8 @@
           "sns:SetTopicAttributes",
           "sns:ListSubscriptionsByTopic",
           "sns:GetTopicAttributes",
-          "sns:CreateTopic"
+          "sns:CreateTopic",
+          "sns:Unsubscribe"
         ],
         "Resource": "arn:aws:sns:*:*:*",
         "Effect": "Allow"
@@ -94,46 +95,6 @@
           ],
           "Resource": "*",
           "Effect": "Allow"
-      },
-      {
-       "Sid": "Statement1",
-       "Effect": "Allow",
-       "Action": [
-        "iam:AttachRolePolicy",
-        "iam:CreateRole",
-        "iam:CreatePolicy",
-        "iam:PutRolePolicy",
-        "ecr:CreateRepository",
-        "ecr:GetAuthorizationToken",
-        "ecr:InitiateLayerUpload",
-        "ecr:UploadLayerPart",
-        "ecr:CompleteLayerUpload",
-        "ecr:BatchGetImage",
-        "ecr:BatchCheckLayerAvailability",
-        "ecr:DescribeImages",
-        "ecr:DescribeRepositories",
-        "ecr:GetDownloadUrlForLayer",
-        "ecr:ListImages",
-        "ecr:PutImage",
-        "ecr:SetRepositoryPolicy",
-        "ecr:GetRepositoryPolicy",
-        "ecr:DeleteRepository",
-        "lambda:GetFunction",
-        "lambda:AddPermission",
-        "pricing:ListPriceLists",
-        "pricing:GetPriceListFileUrl",
-        "logs:FilterLogEvents"
-       ],
-       "Resource": "*"
-      },
-      {
-       "Sid": "Statement2",
-       "Effect": "Allow",
-       "Action": [
-        "iam:GetRole",
-        "iam:PassRole"
-       ],
-       "Resource": "arn:aws:iam:::role/*"
       }
      ]
   }

@@ -6,12 +6,10 @@ from caribou.data_collector.components.performance.performance_collector import 
 from caribou.data_collector.components.provider.provider_collector import ProviderCollector
 from caribou.data_collector.components.workflow.workflow_collector import WorkflowCollector
 from caribou.endpoint.client import Client
-from caribou.deployment.client import __version__ as MULTI_X_SERVERLESS_VERSION
+from caribou.deployment.client import __version__ as CARIBOU_VERSION
 from caribou.monitors.deployment_manager import DeploymentManager
 from caribou.monitors.deployment_migrator import DeploymentMigrator
 from caribou.syncers.log_syncer import LogSyncer
-# from caribou.common.setup.setup_tables import main as setup_tables_func
-
 
 # Configure logging
 logger = logging.getLogger()
@@ -32,7 +30,6 @@ def caribou_cli(event: dict[str, Any], context: dict[str, Any]) -> dict[str, Any
         "log_sync": handle_log_sync,
         "manage_deployments": handle_manage_deployments,
         "remove": handle_remove_workflow,
-        # "setup_tables": handle_setup_framework_tables, # No reason to include this in the remote CLI
         "run_deployment_migrator": handle_run_deployment_migrator
     }
     
@@ -44,10 +41,6 @@ def handle_run_deployment_migrator(event: dict[str, Any]) -> dict[str, Any]:
     function_deployment_monitor.check()
 
     return {"status": 200, "message": "Deployment migrator completed"}
-
-# def handle_setup_framework_tables(event: dict[str, Any]) -> dict[str, Any]:
-#     setup_tables_func()
-#     return {"status": 200, "message": "Tables setup completed"}
 
 def handle_remove_workflow(event: dict[str, Any]) -> dict[str, Any]:
     workflow_id = event.get("workflow_id", None)
@@ -61,9 +54,18 @@ def handle_remove_workflow(event: dict[str, Any]) -> dict[str, Any]:
     return {"status": 200, "message": f"Workflow {workflow_id} removed"}
 
 def handle_manage_deployments(event: dict[str, Any]) -> dict[str, Any]:
-    deployment_manager = DeploymentManager()
+    deployment_metrics_calculator_type: str = event.get("deployment_metrics_calculator_type", "simple")
+
+    if deployment_metrics_calculator_type not in ("simple", "go"):
+        logger.error("Invalid deployment_metrics_calculator_type specified. Allowed values are 'simple', 'go'")
+        return {
+            "status": 400, 
+            "message": "Invalid deployment_metrics_calculator_type specified. Allowed values are 'simple', 'go'"
+        }
+
+    deployment_manager = DeploymentManager(deployment_metrics_calculator_type)
     deployment_manager.check()
-    return {"status": 200, "message": "Deployment check completed"}
+    return {"status": 200, "message": f"Deployment check completed, using {deployment_metrics_calculator_type} calculator"}
 
 def handle_log_sync(event: dict[str, Any]) -> dict[str, Any]:
     log_syncer = LogSyncer()
@@ -103,7 +105,7 @@ def handle_data_collect(event: dict[str, Any]) -> dict[str, Any]:
     return {"status": 200, "ran_collector": collector, "workflow_id": workflow_id}
 
 def handle_list_caribou_version(event: dict[str, Any]) -> dict[str, Any]:
-    return {"status": 200, "version": MULTI_X_SERVERLESS_VERSION}
+    return {"status": 200, "version": CARIBOU_VERSION}
 
 def handle_list_workflows(event: dict[str, Any]) -> dict[str, Any]:
     client = Client()

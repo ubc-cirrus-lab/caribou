@@ -8,7 +8,7 @@ from caribou.data_collector.components.carbon.carbon_collector import CarbonColl
 from caribou.data_collector.components.performance.performance_collector import PerformanceCollector
 from caribou.data_collector.components.provider.provider_collector import ProviderCollector
 from caribou.data_collector.components.workflow.workflow_collector import WorkflowCollector
-from caribou.deployment.client import __version__ as MULTI_X_SERVERLESS_VERSION
+from caribou.deployment.client import __version__ as CARIBOU_VERSION
 from caribou.deployment.client.cli.new_workflow import create_new_workflow_directory
 from caribou.deployment.common.config.config import Config
 from caribou.deployment.common.deploy.deployer import Deployer
@@ -17,7 +17,7 @@ from caribou.endpoint.client import Client
 from caribou.monitors.deployment_manager import DeploymentManager
 from caribou.monitors.deployment_migrator import DeploymentMigrator
 from caribou.syncers.log_syncer import LogSyncer
-from caribou.deployment.client.remote_cli.remote_cli import deploy_aws_framework
+from caribou.deployment.client.remote_cli.remote_cli import deploy_aws_framework, valid_framework_dir, remove_aws_framework
 
 
 @click.group()
@@ -114,7 +114,7 @@ def setup_tables() -> None:
 
 @cli.command("version", help="Print the version of caribou.")
 def version() -> None:
-    click.echo(MULTI_X_SERVERLESS_VERSION)
+    click.echo(CARIBOU_VERSION)
 
 
 @cli.command("list", help="List the workflows.")
@@ -129,10 +129,74 @@ def remove(workflow_id: str) -> None:
     client = Client(workflow_id)
     client.remove()
 
-@cli.command("deploy_framework", help="Deploy the framework to Lambda.")
-@click.pass_context
-def deploy_framework(ctx: click.Context) -> None:
-    project_dir = ctx.obj["project_dir"]
-    deploy_aws_framework(project_dir)
 
-__version__ = MULTI_X_SERVERLESS_VERSION
+
+@cli.command("deploy_remote_cli", help="Deploy the remote framework cli to AWS Lambda.")
+@click.option("--memory", "-m", help="The desired framework memory in MB.")
+@click.option("--timeout", "-t", help="The desired remote CLI timeout time in seconds.")
+@click.option("--ephemeral_storage", "-s", help="The desired ephemeral storage size of framework in MB.")
+@click.pass_context
+def deploy_remote_cli(ctx: click.Context, memory: Optional[str], timeout: Optional[str], ephemeral_storage: Optional[str]) -> None:
+    project_dir = ctx.obj["project_dir"]
+
+    # Detect and validate input parameters, then if 
+    # they are not provided, use the default values.
+
+    # Verify that the user is in the valid framework directory
+    if not valid_framework_dir(project_dir):
+        print("You must be in the main caribou directory",
+              " to deploy to deploy the remote framework."
+              " Please navigate to the main caribou directory and try again.",
+              "This directory should have a 'caribou', 'caribou-go', "
+              "and 'pyproject.toml' file/folder in it.")
+        return
+
+    ## Memory
+    memory_mb: int = 5120 # 5 GB (Not the maximum)
+    if memory is not None:
+        # Convert to int
+        memory_mb = int(memory)
+
+        # Now check if the memory is within the valid range
+        # 128 MB to 10240 MB
+        if memory_mb < 128 or memory_mb > 10240:
+            print("Memory must be between 128 MB and 10240 MB.")
+            return
+
+    ## Timeout
+    timeout_s = 900 # Maximum timeout (15 minutes)
+    if timeout is not None:
+        # Convert to int
+        timeout_s = int(timeout)
+
+        # Now check if the timeout is within the valid range
+        # 1 second to 900 seconds
+        if timeout_s < 1 or timeout_s > 900:
+            print("Timeout must be between 1 second and 900 seconds.")
+            return
+
+    ## Ephemeral Storage
+    ephemeral_storage_mb = 10240 # Maximum ephemeral storage (10 GB)
+    if ephemeral_storage is not None:
+        # Convert to int
+        ephemeral_storage_mb = int(ephemeral_storage)
+
+        # Now check if the ephemeral storage is within the valid range
+        # 512 MB to 10240 MB
+        if ephemeral_storage_mb < 512 or ephemeral_storage_mb > 10240:
+            print("Ephemeral storage must be between 128 MB and 10240 MB.")
+            return
+
+    # Print all the parameters
+    print(f"Deploying remote framework with the following parameters:")
+    print(f"Memory: {memory_mb} MB")
+    print(f"Timeout: {timeout_s} seconds")
+    print(f"Ephemeral Storage: {ephemeral_storage_mb} MB")
+
+    # deploy_aws_framework(project_dir, memory_mb, timeout_s, ephemeral_storage_mb)
+
+@cli.command("remove_remote_cli", help="Deploy the deployed remote framework from AWS Lambda.")
+def remove_remote_cli() -> None:
+    remove_aws_framework()
+
+__version__ = CARIBOU_VERSION

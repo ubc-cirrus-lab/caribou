@@ -254,21 +254,18 @@ class DeploymentPackager:
         finally:
             shutil.rmtree(temp_install_dir)
 
-    def create_framework_package(self, project_dir: str) -> str:
+    def create_framework_package(self, project_dir: str, tmpdirname: str) -> str:
         filename = "caribou_framework_cli.zip"
-        package_filename = os.path.join(project_dir, ".caribou", "deployment-packages", filename)
+        package_filename = os.path.join(tmpdirname, ".caribou", "deployment-packages", filename)
         self._create_deployment_package_dir(package_filename)
         if os.path.exists(package_filename):
             return package_filename
-
-        # Remove existing framework package if it exists
-        if os.path.exists(package_filename):
-            os.remove(package_filename)
 
         with zipfile.ZipFile(package_filename, "w", zipfile.ZIP_DEFLATED) as z:
             self._add_framework_deployment_files(z, project_dir)
             self._add_framework_files(z, project_dir)
             self._add_framework_go_files(z, project_dir)
+
         return package_filename
 
     def _add_framework_deployment_files(self, zip_file: zipfile.ZipFile, project_dir: str) -> None:
@@ -285,6 +282,10 @@ class DeploymentPackager:
                     ):
                     zip_path = full_path[len(project_dir) + 1 :]
                     zip_file.write(full_path, zip_path)
+
+        # Copy and rename remote_caribou handler
+        remote_cli_handler_path = os.path.join(project_dir, "caribou", "deployment", "client", "remote_cli", "remote_cli_handler.py")
+        zip_file.write(remote_cli_handler_path, "app.py")
 
     def _add_framework_files(self, zip_file: zipfile.ZipFile, project_dir: str) -> None:
         framework_dir = os.path.join(project_dir, "caribou")
