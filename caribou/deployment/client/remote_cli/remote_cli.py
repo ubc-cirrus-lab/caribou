@@ -64,7 +64,7 @@ def deploy_aws_framework(project_dir: str) -> None:
     deployment_packager: DeploymentPackager = DeploymentPackager(deployment_packager_config)
 
     # Read the iam_policies_content from the file
-    with open("caribou/caribou/deployment/client/remote_cli/aws_framework_iam_policy.json", "r") as file:
+    with open("caribou/deployment/client/remote_cli/aws_framework_iam_policy.json", "r") as file:
         iam_policies_content = file.read()
         iam_policies_content = json.dumps(json.loads(iam_policies_content)["aws"])
 
@@ -101,7 +101,7 @@ def deploy_to_aws(
     aws_remote_client = AWSRemoteClient(region_name)
 
     with tempfile.TemporaryDirectory() as tmpdirname:
-        tmpdirname = "/home/daniel/caribou/.caribou"
+        # tmpdirname = "/home/daniel/caribou/.caribou"
         
         # Step 1: Unzip the ZIP file
         zip_path = os.path.join(tmpdirname, "code.zip")
@@ -224,6 +224,7 @@ def create_lambda_function(function_name: str, image_uri: str, role: str, timeou
             PackageType="Image",
             Timeout=timeout,
             MemorySize=memory_size,
+            EphemeralStorage={"Size": 10240},
         )
 
         arn = response["FunctionArn"]

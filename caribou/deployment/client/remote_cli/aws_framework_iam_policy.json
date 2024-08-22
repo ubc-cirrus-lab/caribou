@@ -47,7 +47,8 @@
         "dynamodb:Scan",
         "dynamodb:PutItem",
         "dynamodb:CreateTable",
-        "dynamodb:DescribeTable"
+        "dynamodb:DescribeTable",
+        "dynamodb:DeleteItem"
        ],
        "Resource": "arn:aws:dynamodb:*:*:*",
        "Effect": "Allow"

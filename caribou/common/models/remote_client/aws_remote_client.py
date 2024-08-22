@@ -289,19 +289,40 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
             .strip()
             .decode("utf-8")
         )
-        # Use crane to copy the image
-        try:
-            subprocess.run(
-                ["crane", "auth", "login", original_ecr_registry, "-u", "AWS", "-p", login_password_original],
-                check=True,
-            )
-            subprocess.run(["crane", "auth", "login", ecr_registry, "-u", "AWS", "-p", login_password_new], check=True)
-            subprocess.run(["crane", "cp", deployed_image_uri, new_image_uri], check=True)
-            logger.info("Docker image %s copied successfully.", new_image_uri)
-        except subprocess.CalledProcessError as e:
-            logger.error("Failed to copy Docker image %s. Error: %s", new_image_uri, e)
 
-        return new_image_uri
+        # Use /tmp directory which is writable in AWS Lambda
+        with tempfile.TemporaryDirectory(dir="/tmp") as temp_dir:
+            # Force environment variables to use the temporary directory
+            env = os.environ.copy()
+            env["HOME"] = temp_dir
+            env["XDG_CACHE_HOME"] = os.path.join(temp_dir, ".cache")
+            env["XDG_CONFIG_HOME"] = os.path.join(temp_dir, ".config")
+            env["XDG_DATA_HOME"] = os.path.join(temp_dir, ".local", "share")
+
+            print(f"Using crane to copy image from {original_ecr_registry} to {ecr_registry}")
+            try:
+                subprocess.run(
+                    ["crane", "auth", "login", original_ecr_registry, "-u", "AWS", "-p", login_password_original],
+                    cwd=temp_dir,
+                    env=env,  # Use the modified environment variables
+                    check=True,
+                )
+                subprocess.run(
+                    ["crane", "auth", "login", ecr_registry, "-u", "AWS", "-p", login_password_new],
+                    cwd=temp_dir,
+                    env=env,  # Use the modified environment variables
+                    check=True
+                )
+                subprocess.run(
+                    ["crane", "cp", deployed_image_uri, new_image_uri],
+                    cwd=temp_dir,
+                    env=env,  # Use the modified environment variables
+                    check=True
+                )
+                logger.info("Docker image %s copied successfully.", new_image_uri)
+            except subprocess.CalledProcessError as e:
+                logger.error("Failed to copy Docker image %s. Error: %s", new_image_uri, e)
+            return new_image_uri
 
     def _store_deployed_image_uri(self, function_name: str, image_name: str) -> None:
         workflow_instance_id = "-".join(function_name.split("-")[0:2])
