@@ -24,6 +24,7 @@ from caribou.deployment.common.deploy.models.resource import Resource
 logger = logging.getLogger(__name__)
 
 
+# pylint: disable=too-many-lines
 class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
     LAMBDA_CREATE_ATTEMPTS = 30
     DELAY_TIME = 5
@@ -311,13 +312,13 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
                     ["crane", "auth", "login", ecr_registry, "-u", "AWS", "-p", login_password_new],
                     cwd=temp_dir,
                     env=env,  # Use the modified environment variables
-                    check=True
+                    check=True,
                 )
                 subprocess.run(
                     ["crane", "cp", deployed_image_uri, new_image_uri],
                     cwd=temp_dir,
                     env=env,  # Use the modified environment variables
-                    check=True
+                    check=True,
                 )
                 logger.info("Docker image %s copied successfully.", new_image_uri)
             except subprocess.CalledProcessError as e:
@@ -891,3 +892,125 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         repository_name = repository_name.lower()
         client = self._client("ecr")
         client.delete_repository(repositoryName=repository_name, force=True)
+
+    def deploy_remote_cli(
+        self,
+        function_name: str,
+        handler: str,
+        role_arn: str,
+        timeout: int,
+        memory_size: int,
+        ephemeral_storage: int,
+        zip_contents: bytes,
+        tmpdirname: str,
+        env_vars: dict,
+    ) -> None:
+        # Step 1: Unzip the ZIP file
+        zip_path = os.path.join(tmpdirname, "code.zip")
+        with open(zip_path, "wb") as f_zip:
+            f_zip.write(zip_contents)
+        with zipfile.ZipFile(zip_path, "r") as zip_ref:
+            zip_ref.extractall(tmpdirname)
+
+        # Step 2: Create a Dockerfile in the temporary directory
+        dockerfile_content = self._generate_framework_dockerfile(handler, env_vars)
+        with open(os.path.join(tmpdirname, "Dockerfile"), "w", encoding="utf-8") as f_dockerfile:
+            f_dockerfile.write(dockerfile_content)
+
+        # Step 3: Build the Docker Image
+        image_name = f"{function_name.lower()}:latest"
+        self._build_docker_image(tmpdirname, image_name)
+
+        # Step 4: Upload the Image to ECR
+        image_uri = self._upload_image_to_ecr(image_name)
+        self._create_framework_lambda_function(
+            function_name, image_uri, role_arn, timeout, memory_size, ephemeral_storage
+        )
+
+    def _generate_framework_dockerfile(self, handler: str, env_vars: dict) -> str:
+        # Create ENV statements for each environment variable
+        env_statements = "\n".join([f'ENV {key}="{value}"' for key, value in env_vars.items()])
+
+        return f"""
+        # Stage 1: Base image with Python 3.12 slim for installing Go
+        FROM python:3.12-slim AS builder
+
+        # Install essential packages for downloading and compiling Go
+        RUN apt-get update && apt-get install -y curl tar gcc
+
+        # Download and extract Go 1.22.6
+        RUN curl -LO https://go.dev/dl/go1.22.6.linux-amd64.tar.gz \
+            && tar -C /usr/local -xzf go1.22.6.linux-amd64.tar.gz \
+            && rm go1.22.6.linux-amd64.tar.gz
+
+        # Set environment variables for Go
+        ENV PATH="/usr/local/go/bin:$PATH"
+
+        # Download and install the crane tool
+        RUN curl -sL "https://github.com/google/go-containerregistry/releases/download/v0.20.2/go-containerregistry_Linux_x86_64.tar.gz" > go-containerregistry.tar.gz
+        RUN tar -zxvf go-containerregistry.tar.gz -C /usr/local/bin/ crane
+
+        COPY caribou-go ./caribou-go
+
+        # Compile Go application
+        RUN cd caribou-go && \
+            chmod +x build_caribou.sh && \
+            ./build_caribou.sh
+
+        # Stage 2: Build the final image based on Lambda Python 3.12 runtime
+        FROM public.ecr.aws/lambda/python:3.12
+
+        # Copy the compiled Go application from the builder stage
+        COPY --from=builder caribou-go caribou-go
+
+        # Copy Go and Crane binaries from the builder stage
+        COPY --from=builder /usr/local/go /usr/local/go
+        COPY --from=builder /usr/local/bin/crane /usr/local/bin/crane
+
+        # Set up PATH and GOROOT environment variables
+        ENV PATH="/usr/local/go/bin:/usr/local/bin:$PATH"
+        ENV GOROOT=/usr/local/go
+
+        # Install Poetry via pip
+        RUN pip3 install poetry
+
+        # Copy Python dependency management files
+        COPY pyproject.toml poetry.lock ./
+
+        # Configure Poetry settings and install dependencies
+        RUN poetry config virtualenvs.create false
+        RUN poetry install --only main
+
+        # Declare environment variables
+        {env_statements}
+
+        # Copy application code
+        COPY caribou ./caribou
+        COPY app.py ./
+
+        # Command to run the application
+        CMD ["{handler}"]
+        """
+
+    def _create_framework_lambda_function(
+        self, function_name: str, image_uri: str, role: str, timeout: int, memory_size: int, ephemeral_storage_size: int
+    ) -> str:
+        kwargs: dict[str, Any] = {
+            "FunctionName": function_name,
+            "Role": role,
+            "Code": {"ImageUri": image_uri},
+            "PackageType": "Image",
+            "Timeout": timeout,
+            "MemorySize": memory_size,
+            "EphemeralStorage": {"Size": ephemeral_storage_size},
+        }
+        if timeout >= 1:
+            kwargs["Timeout"] = timeout
+        arn, state = self._create_lambda_function(kwargs)
+
+        if state != "Active":
+            self._wait_for_function_to_become_active(function_name)
+
+        print(f"Caribou Lambda Framework remote cli function {function_name}" f" created successfully, with ARN: {arn}")
+
+        return arn

@@ -275,16 +275,19 @@ class DeploymentPackager:
                     continue
 
                 full_path = os.path.join(root, filename)
-                if (full_path == os.path.join(project_dir, "app.py") or
-                    full_path.startswith(os.path.join(project_dir, "src")) or
-                    filename == "pyproject.toml"
+                if (
+                    full_path == os.path.join(project_dir, "app.py")
+                    or full_path.startswith(os.path.join(project_dir, "src"))
+                    or filename == "pyproject.toml"
                     or filename == "poetry.lock"
-                    ):
+                ):
                     zip_path = full_path[len(project_dir) + 1 :]
                     zip_file.write(full_path, zip_path)
 
         # Copy and rename remote_caribou handler
-        remote_cli_handler_path = os.path.join(project_dir, "caribou", "deployment", "client", "remote_cli", "remote_cli_handler.py")
+        remote_cli_handler_path = os.path.join(
+            project_dir, "caribou", "deployment", "client", "remote_cli", "remote_cli_handler.py"
+        )
         zip_file.write(remote_cli_handler_path, "app.py")
 
     def _add_framework_files(self, zip_file: zipfile.ZipFile, project_dir: str) -> None:
@@ -302,19 +305,20 @@ class DeploymentPackager:
 
     def _add_framework_go_files(self, zip_file: zipfile.ZipFile, project_dir: str) -> None:
         framework_go_dir = os.path.join(project_dir, "caribou-go")
-        allowed_extensions = ['.go', '.py', '.sum', '.mod', '.sh', '.so']
+        allowed_extensions = [".go", ".py", ".sum", ".mod", ".sh", ".so"]
 
         for root, _, files in os.walk(project_dir):
             for filename in files:
-                if not any(filename.endswith(ext) for ext in allowed_extensions):  # Check if file has an allowed extension
+                if not any(
+                    filename.endswith(ext) for ext in allowed_extensions
+                ):  # Check if file has an allowed extension
                     continue
 
                 full_path = os.path.join(root, filename)
-                if full_path.startswith(
-                    framework_go_dir
-                ):
+                if full_path.startswith(framework_go_dir):
                     zip_path = full_path[len(project_dir) + 1 :]
                     zip_file.write(full_path, zip_path)
+
 
 def pip_execute(command: str, args: list[str]) -> tuple[bytes, bytes]:
     import_string = pip_import_string()
@@ -350,4 +354,3 @@ def pip_import_string() -> str:
     if pip_major_minor >= (20, 0):
         return "from pip._internal.cli.main import main"
     raise RuntimeError(f"Unknown import string for pip version: {str(pip_major_minor)}")
-

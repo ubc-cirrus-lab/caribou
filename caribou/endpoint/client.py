@@ -171,14 +171,15 @@ class Client:
 
         if deployed_workflows is None:
             print("No workflows deployed")
-            return
+            return []
+
         print("Deployed workflows:")
 
         # Sort the workflows by name
         deployed_workflows = sorted(deployed_workflows)
         for workflow in deployed_workflows:
             print(workflow)
-        
+
         return deployed_workflows
 
     def remove(self) -> None:
