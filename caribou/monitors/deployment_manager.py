@@ -57,8 +57,6 @@ class DeploymentManager(Monitor):
         data_collector_client = self._endpoints.get_data_collector_client()
 
         for workflow_id in workflow_ids:
-            if workflow_id != "simple_call-0.0.1": # Added for testing
-                continue
             workflow_info_raw, _ = deployment_manager_client.get_value_from_table(
                 DEPLOYMENT_MANAGER_WORKFLOW_INFO_TABLE, workflow_id
             )
@@ -70,8 +68,7 @@ class DeploymentManager(Monitor):
                 current_time = datetime.now(GLOBAL_TIME_ZONE)
                 next_check = datetime.strptime(workflow_info["next_check"], TIME_FORMAT)
                 if current_time < next_check:
-                    # continue # Disabled for testing
-                    pass
+                    continue
 
             self.workflow_collector.run_on_workflow(workflow_id)
 
@@ -101,8 +98,7 @@ class DeploymentManager(Monitor):
             # The solver has never been run before for this workflow, and the workflow has not been invoked enough
             # collect more data and wait
             if total_invocation_counts_since_last_solved < MINIMAL_SOLVE_THRESHOLD and workflow_info is None:
-                # continue # Disabled for testing
-                pass
+                continue
 
             # Income token
             positive_carbon_savings_token = self._calculate_positive_carbon_savings_token(
@@ -122,8 +118,7 @@ class DeploymentManager(Monitor):
                 self._update_workflow_info(
                     carbon_cost - positive_carbon_savings_token - carbon_budget_overflow_last_solved, workflow_id
                 )
-                # continue # Disabled for testing
-                pass
+                continue
 
             expiry_delta_seconds = self._upload_new_workflow_info(
                 affordable_deployment_algorithm_run["leftover_tokens"], workflow_id

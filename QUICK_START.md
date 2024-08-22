@@ -191,36 +191,35 @@ poetry run caribou run_deployment_migrator
 This will check if a new deployment is required for any workflow, and, if so, migrate the functions according to this new deployment.
 
 ## Deployment to AWS (AWS Remote CLI)
+To deploy the framework to AWS after completing the local setup process, use the following command while inside the main `caribou` directory. 
+Ensure that you can see both the `caribou` and `caribou-go` folders in this directory.
 
-To deploy the framework in AWS after the completion of the local setup process, you can use the following command while `cd` inside  
-the main `caribou` directory (You should see both the `caribou` and `caribou-go` folders while inside this directory).
 
 ```bash
 poetry run caribou deploy_remote_cli
 ```
 
-You may also specify the configured `memory` in mb, `timeout` in seconds, and `ephemeral_storage` in mb by using the following flags:
- - `memory`: `--memory` or `-m`. Default: 5120 MB
- - `timeout`:`--timeout` or `-t`. Default: 900 s
- - `ephemeral_storage`:`--ephemeral_storage` or `-s`. Default: 10240 MB
+You may also specify the `memory` (in MB), `timeout` (in seconds), and `ephemeral_storage` (in MB) using the following flags:
+ - `memory`: Use `--memory` or `-m`. Default: 5,120 MB
+ - `timeout`: Use `--timeout` or `-t`. Default: 900 seconds
+ - `ephemeral_storage`: Use `--ephemeral_storage` or `-s`. Default: 10,240 MB
 
-And you can remove the remove framework by the following command:
+To remove the remote framework, use the following command:
 
 ```bash
 poetry run caribou remove_remote_cli
 ```
 
-**Note:** Caribou must first be properly installed locally (See the [Installation](INSTALL.md)) 
-And the following parameters must also be set before remote deployment.
+**Note:** Caribou must be properly installed locally first (See the [Installation](INSTALL.md)). 
+Additionally, the following environment variables must be set before remote deployment:
 
 ```bash
 export ELECTRICITY_MAPS_AUTH_TOKEN=<your_token>
 export GOOGLE_API_KEY=<your_key>
 ```
 
-### How to Invoke the Remote CLI:
-After the deployment of the `AWS Remote CLI`, you can run the Caribou components by invoking the returned Lambda ARN with 
-the following event dictionary. 
+### How to Invoke the AWS Remote CLI
+After deploying the `AWS Remote CLI`, you can run Caribou components by invoking the deployed lambda function using the returned Lambda ARN with the following event parameters.
 
 - List workflows:
 ```json
@@ -231,14 +230,13 @@ the following event dictionary.
 
 - Invoke workflow:
 
-Where `argument` is the payload of the application. 
+Where `argument` is the payload of the application.
 
 ```json
 {
   "action": "run",
   "workflow_id": "workflow_name-version_number",
-  "argument": {
-  }
+  "argument": {}
 }
 ```
 
@@ -247,13 +245,6 @@ Where `argument` is the payload of the application.
 {
   "action": "remove",
   "workflow_id": "workflow_name-version_number"
-}
-```
-
-- List Caribou Version:
-```json
-{
-  "action": "version"
 }
 ```
 
@@ -266,9 +257,9 @@ Where `argument` is the payload of the application.
 
 - Perform Data collect:
 
-`collector` can be one of the following options: `provider`, `carbon`, `performance`, `workflow`, and `all`
+`collector` can be one of the following options: `provider`, `carbon`, `performance`, `workflow`, or `all`.
 
-`workflow_id` is only required to be set for the `workflow` or `all` collector option.
+`workflow_id` is only required for the `workflow` or `all` collector options.
 
 ```json
 {
@@ -280,8 +271,8 @@ Where `argument` is the payload of the application.
 
 - Manage Deployments:
 
-`deployment_metrics_calculator_type` can be either `simple` for python solver or `go` to use the go solver 
-for deployment metrics determination.  
+`deployment_metrics_calculator_type` can be either `simple` (for the Python solver) or `go` (to use the Go solver) for deployment metrics determination.
+
 ```json
 {
   "action": "manage_deployments",
@@ -293,5 +284,12 @@ for deployment metrics determination.
 ```json
 {
   "action": "run_deployment_migrator"
+}
+```
+
+- Inquire Caribou Version:
+```json
+{
+  "action": "version"
 }
 ```

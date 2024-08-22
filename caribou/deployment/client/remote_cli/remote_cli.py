@@ -3,17 +3,16 @@ import os
 import tempfile
 from typing import Dict, List, Optional
 
+from caribou.common.constants import GLOBAL_SYSTEM_REGION
 from caribou.common.models.remote_client.aws_remote_client import AWSRemoteClient
 from caribou.deployment.common.config.config import Config
 from caribou.deployment.common.deploy.deployment_packager import DeploymentPackager
 from caribou.deployment.common.deploy.models.resource import Resource
 
-REGION_NAME = "us-east-2"  # Test region for now
-
 
 def remove_aws_framework() -> None:
     print("Removing AWS framework")
-    aws_remote_client = AWSRemoteClient(REGION_NAME)
+    aws_remote_client = AWSRemoteClient(GLOBAL_SYSTEM_REGION)
     function_name = "caribou_cli"
     iam_policy_name = "caribou_deployment_policy"
 
@@ -28,7 +27,7 @@ def remove_aws_framework() -> None:
 
 def deploy_aws_framework(project_dir: str, timeout: int, memory_size: int, ephemeral_storage: int) -> None:
     print(f"Deploying framework to AWS in {project_dir}")
-    aws_remote_client = AWSRemoteClient(REGION_NAME)
+    aws_remote_client = AWSRemoteClient(GLOBAL_SYSTEM_REGION)
 
     handler = "app.caribou_cli"
     function_name = "caribou_cli"
@@ -55,8 +54,6 @@ def deploy_aws_framework(project_dir: str, timeout: int, memory_size: int, ephem
         aws_remote_client.remove_function(function_name)
 
     with tempfile.TemporaryDirectory() as tmpdirname:
-        # tmpdirname = "/home/daniel/caribou/.caribou"
-
         # Create lambda function
         ## First zip the code content
         print(f"Creating deployment package for {function_name}")
@@ -70,8 +67,6 @@ def deploy_aws_framework(project_dir: str, timeout: int, memory_size: int, ephem
 
         # Retrieve the required environment variables
         desired_env_vars = [
-            # "AWS_ACCESS_KEY_ID",
-            # "AWS_SECRET_ACCESS_KEY",
             "GOOGLE_API_KEY",
             "ELECTRICITY_MAPS_AUTH_TOKEN",
         ]

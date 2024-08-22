@@ -4,8 +4,7 @@ import os
 from typing import Any
 from uuid import uuid4
 
-
-from caribou.common.constants import TAIL_LATENCY_THRESHOLD, GO_PATH
+from caribou.common.constants import GO_PATH, TAIL_LATENCY_THRESHOLD
 from caribou.deployment_solver.deployment_input.input_manager import InputManager
 from caribou.deployment_solver.deployment_metrics_calculator.deployment_metrics_calculator import (
     DeploymentMetricsCalculator,
@@ -15,8 +14,12 @@ from caribou.deployment_solver.models.region_indexer import RegionIndexer
 from caribou.deployment_solver.workflow_config import WorkflowConfig
 
 # Create a temporary directory (if it doesn't exist) to store the FIFO files
-tmp_dir = "/tmp/go_deployment_metrics_calculator_bridge"
-os.path.exists(tmp_dir) or os.makedirs(tmp_dir)
+TMP_DIR = "/tmp/go_deployment_metrics_calculator_bridge"
+
+# Make directory if it doesn't exist
+if not os.path.exists(TMP_DIR):
+    os.makedirs(TMP_DIR)
+
 
 def send_to_go(channel_path: str, command: str, data: Any) -> None:
     with open(channel_path, "w", encoding="utf-8") as ch:
@@ -24,10 +27,12 @@ def send_to_go(channel_path: str, command: str, data: Any) -> None:
         ch.write(pkt + "\n")
         ch.flush()
 
+
 def receive_from_go(channel_path: str) -> Any:
     with open(channel_path, "r", encoding="utf-8") as ch:
         data = json.load(ch)
         return data
+
 
 class GoDeploymentMetricsCalculator(DeploymentMetricsCalculator):
     def __init__(
@@ -66,9 +71,9 @@ class GoDeploymentMetricsCalculator(DeploymentMetricsCalculator):
         go_data = json.dumps(self.to_dict())
 
         random_run_id = uuid4().hex
-        self.go_py_file = os.path.join(tmp_dir, f"data_go_py_{random_run_id}")
-        self.py_go_file = os.path.join(tmp_dir, f"data_py_go_{random_run_id}")
-    
+        self.go_py_file = os.path.join(TMP_DIR, f"data_go_py_{random_run_id}")
+        self.py_go_file = os.path.join(TMP_DIR, f"data_py_go_{random_run_id}")
+
         os.mkfifo(self.go_py_file)
         os.mkfifo(self.py_go_file)
 
