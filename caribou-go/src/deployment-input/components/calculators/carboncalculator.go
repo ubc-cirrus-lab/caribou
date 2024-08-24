@@ -31,6 +31,7 @@ func NewCarbonCalculator(
 	CarbonFreeIntraRegionTransmission bool,
 	CarbonFreeDtExecutionHomeRegion bool,
 ) (*CarbonCalculator, error) {
+	hour := "0"
 	cc := CarbonCalculator{
 		CarbonLoader:                      CarbonLoader,
 		DatacenterLoader:                  DatacenterLoader,
@@ -38,7 +39,7 @@ func NewCarbonCalculator(
 		ConsiderCfe:                       ConsiderCfe,
 		executionConversionRatioCache:     make(map[string][]float64),
 		transmissionConversionRatioCache:  make(map[string]float64),
-		hourlyCarbonSetting:               nil,
+		hourlyCarbonSetting:               &hour,
 		EnergyFactor:                      EnergyFactorTrans,
 		CarbonFreeIntraRegionTransmission: CarbonFreeIntraRegionTransmission,
 		CarbonFreeDtExecutionHomeRegion:   CarbonFreeDtExecutionHomeRegion,
