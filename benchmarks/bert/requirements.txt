@@ -1,0 +1,5 @@
+transformers
+boto3
+tokenization
+torch
+mlperf_loadgen
