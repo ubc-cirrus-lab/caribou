@@ -62,6 +62,8 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
             return self.iam_role_exists(resource)
         if resource.resource_type == "function":
             return self.lambda_function_exists(resource)
+        if resource.resource_type == "ecr_repository":
+            return self.ecr_repository_exists(resource)
         if resource.resource_type == "messaging_topic":
             return False
         raise RuntimeError(f"Unknown resource type {resource.resource_type}")
@@ -892,6 +894,17 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         repository_name = repository_name.lower()
         client = self._client("ecr")
         client.delete_repository(repositoryName=repository_name, force=True)
+
+    def ecr_repository_exists(self, resource: Resource) -> bool:
+        repository_name = resource.name.lower()
+        client = self._client("ecr")
+
+        try:
+            response = client.describe_repositories(repositoryNames=[repository_name])
+        except ClientError:
+            return False
+
+        return response["repositories"] is not None and len(response["repositories"]) > 0
 
     def deploy_remote_cli(
         self,

@@ -24,7 +24,9 @@ def remove_aws_framework() -> None:
         aws_remote_client.remove_function(REMOTE_CARIBOU_CLI_FUNCTION_NAME)
 
     # Remove the deployed ECR repository if it exists
-    aws_remote_client.remove_ecr_repository(REMOTE_CARIBOU_CLI_FUNCTION_NAME)
+    if aws_remote_client.resource_exists(Resource(REMOTE_CARIBOU_CLI_FUNCTION_NAME, "ecr_repository")):
+        print(f"Removing ECR repository {REMOTE_CARIBOU_CLI_FUNCTION_NAME}")
+        aws_remote_client.remove_ecr_repository(REMOTE_CARIBOU_CLI_FUNCTION_NAME)
 
 
 def deploy_aws_framework(project_dir: str, timeout: int, memory_size: int, ephemeral_storage: int) -> None:

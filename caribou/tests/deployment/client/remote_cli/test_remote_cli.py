@@ -21,12 +21,13 @@ class TestRemoteCLI(unittest.TestCase):
     @patch("caribou.deployment.client.remote_cli.remote_cli.AWSRemoteClient")
     def test_remove_aws_framework(self, MockAWSRemoteClient):
         mock_client = MockAWSRemoteClient.return_value
-        mock_client.resource_exists.side_effect = [True, True]
+        mock_client.resource_exists.side_effect = [True, True, True]
 
         remove_aws_framework()
 
         mock_client.remove_role.assert_called_once_with("caribou_deployment_policy")
         mock_client.remove_function.assert_called_once_with("caribou_cli")
+        mock_client.remove_ecr_repository.assert_called_once_with("caribou_cli")
 
     @patch("caribou.deployment.client.remote_cli.remote_cli.AWSRemoteClient")
     @patch("caribou.deployment.client.remote_cli.remote_cli.DeploymentPackager")

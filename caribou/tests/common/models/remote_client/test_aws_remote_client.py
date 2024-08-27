@@ -1100,6 +1100,34 @@ class TestAWSRemoteClient(unittest.TestCase):
 
         mock_wait_for_function_to_become_active.assert_called_once_with(function_name)
 
+    @patch.object(AWSRemoteClient, "_client")
+    def test_ecr_repository_exists(self, mock_client):
+        # Create a mock response for describe_repositories
+        mock_client.return_value.describe_repositories.return_value = {
+            "repositories": [
+                {
+                    "repositoryName": "test_repository",
+                    "repositoryArn": "arn:aws:ecr:us-west-2:123456789012:repository/test_repository",
+                    "registryId": "123456789012",
+                    "createdAt": "2022-01-01T00:00:00Z",
+                }
+            ]
+        }
+
+        # Create an instance of AWSRemoteClient
+        aws_client = AWSRemoteClient("us-west-2")
+
+        # Call the ecr_repository_exists method
+        mock_resource = MagicMock()
+        mock_resource.name = "test_repository"
+        result = aws_client.ecr_repository_exists(mock_resource)
+
+        # Assert that the method returns True
+        self.assertTrue(result)
+
+        # Assert that the describe_repositories method was called with the correct parameters
+        mock_client.return_value.describe_repositories.assert_called_once_with(repositoryNames=["test_repository"])
+
 
 if __name__ == "__main__":
     unittest.main()
