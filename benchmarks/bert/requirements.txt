@@ -2,4 +2,7 @@ transformers
 boto3
 tokenization
 torch
-mlperf_loadgen
+mlcommons_loadgen
+pyyaml==6.0.2
+
+pytz==2024.1

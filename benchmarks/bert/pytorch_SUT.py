@@ -10,7 +10,7 @@ from transformers import BertConfig, BertForQuestionAnswering
 from squad_QSL import get_squad_QSL
 
 class BERT_PyTorch_SUT():
-    def __init__(self, args):
+    def __init__(self, args, model_file, query):
         print("Loading BERT configs...")
         with open("bert_config.json") as f:
             config_json = json.load(f)
@@ -36,11 +36,10 @@ class BERT_PyTorch_SUT():
         self.model = BertForQuestionAnswering(config)
         self.model.to(self.dev)
         self.model.eval()
-        model_file = os.environ.get("ML_MODEL_FILE_WITH_PATH", "build/data/bert_tf_v1_1_large_fp32_384_v2/model.pytorch")
         self.model.load_state_dict(torch.load(model_file), strict=False)
 
         print("Constructing SUT...")
-        self.sut = lg.ConstructSUT(self.issue_queries, self.flush_queries)
+        self.sut = lg.ConstructSUT(self.issue_queries, query)
         print("Finished constructing SUT.")
 
         self.qsl = get_squad_QSL(args.max_examples)
@@ -65,11 +64,8 @@ class BERT_PyTorch_SUT():
                 response = lg.QuerySampleResponse(query_samples[i].id, bi[0], bi[1])
                 lg.QuerySamplesComplete([response])
 
-    def flush_queries(self):
-        pass
-
     def __del__(self):
         print("Finished destroying SUT.")
 
-def get_pytorch_sut(args):
-    return BERT_PyTorch_SUT(args)
+def get_pytorch_sut(args, model_file, query):
+    return BERT_PyTorch_SUT(args, model_file, query)
