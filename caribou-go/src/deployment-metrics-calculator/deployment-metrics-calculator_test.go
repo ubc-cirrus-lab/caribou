@@ -33,5 +33,5 @@ func TestSimpleDeploymentMetricsCalculator_PerformMonteCarloSimulation(t *testin
 	assert.Equal(t, result["tail_cost"], 1.0)
 	assert.Equal(t, result["tail_runtime"], 1.0)
 	assert.Equal(t, result["tail_carbon"], 1.0)
-	assert.Equal(t, callCounter, 2000)
+	assert.Equal(t, callCounter, 20000)
 }
