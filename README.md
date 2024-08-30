@@ -24,7 +24,7 @@ The overhead of the system plays a crucial role in the optimization process and 
 ##  Example
 
 An example workflow can be found in `examples/small_sync_example` including the source code of the workflow in the `app.py` file as well as the deployment manifest in the `.caribou` directory.
-More information on the example workflow can be found in the respective [README](examples/small_sync_example/README.md).
+More information on the example workflow can be found in the respective [README](examples/small_sync_example/readme.md).
 
 See the [Installation](#installation) section on how to get set up and the [Quick Start](QUICK_START.md) guide on how to run the example workflow.
 
