@@ -1,4 +1,4 @@
-# Regression Tuning Benchmarks
+# Small Sync Example
 
 You can deploy the benchmark with the following command:
 
