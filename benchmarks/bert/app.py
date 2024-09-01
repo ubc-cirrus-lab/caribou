@@ -7,16 +7,22 @@ from transformers import BertTokenizer
 from pytorch_SUT import get_pytorch_sut
 import logging
 from create_squad_data import read_squad_examples, convert_examples_to_features
-from accuracy_squad import load_loadgen_log, write_predictions
+from src.accuracy_squad import load_loadgen_log, write_predictions
 import mlperf_loadgen as lg
 import argparse
 import re
 import numpy as np
+import os
 
 from caribou.deployment.client import CaribouWorkflow
 
 s3_bucket_name = "dn-caribou-bert"
 s3_bucket_region_name = "us-east-1"
+
+model_storage_path = '/tmp/model_storage'
+if not os.path.exists(model_storage_path):
+    os.makedirs(model_storage_path)
+os.environ['TORCH_HOME'] = model_storage_path
 
 workflow = CaribouWorkflow(name="bert", version="0.0.1")
 
