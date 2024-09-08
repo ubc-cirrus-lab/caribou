@@ -10,7 +10,7 @@ from datetime import datetime
 import logging
 from tempfile import TemporaryDirectory
 
-workflow = CaribouWorkflow(name="FEM_simulation", version="0.0.1")
+workflow = CaribouWorkflow(name="FEM_simulation", version="0.0.2")
 
 s3_bucket_name = "caribou-fem-simulation"
 s3_bucket_region_name = "us-east-1"
@@ -43,7 +43,7 @@ def generate_stiffness(event: dict[str, Any]) -> dict[str, Any]:
         
     if "mesh_size" in event and "num_parallel_tasks" in event:
         mesh_size = event["mesh_size"]
-        num_parallel_tasks = event["num_parallel_tasks"]
+        num_parallel_tasks = min(event["num_parallel_tasks"], 4)
     else:
         raise ValueError("Invalid input")
 
@@ -55,30 +55,23 @@ def generate_stiffness(event: dict[str, Any]) -> dict[str, Any]:
     
     stiffness_matrix = stiffness_matrix + stiffness_matrix.T
 
-    payload_1 = {
-        "stiffness_matrix": csr_matrix_to_dict(stiffness_matrix[elements_per_task * 0:elements_per_task * 1, elements_per_task * 0:elements_per_task * 1]),
-        "force_vector": global_force_vector[elements_per_task * 0:elements_per_task * 1].tolist(),
-    }
+    payloads=[]
 
-    payload_2 = {
-        "stiffness_matrix": csr_matrix_to_dict(stiffness_matrix[elements_per_task * 1:elements_per_task * 2, elements_per_task * 1:elements_per_task * 2]),
-        "force_vector": global_force_vector[elements_per_task * 1:elements_per_task * 2].tolist(),
-    }
+    for task_index in range(num_parallel_tasks):
+        start_idx = elements_per_task * task_index
+        end_idx = elements_per_task * (task_index + 1)
 
-    payload_3 = {
-        "stiffness_matrix": csr_matrix_to_dict(stiffness_matrix[elements_per_task * 2:elements_per_task * 3, elements_per_task * 2:elements_per_task * 3]),
-        "force_vector": global_force_vector[elements_per_task * 2:elements_per_task * 3].tolist(),
-    }
+        payload = {
+            "stiffness_matrix": csr_matrix_to_dict(stiffness_matrix[start_idx:end_idx, start_idx:end_idx]),
+            "force_vector": global_force_vector[start_idx:end_idx].tolist(),
+        }
 
-    payload_4 = {
-        "stiffness_matrix": csr_matrix_to_dict(stiffness_matrix[elements_per_task * 3:elements_per_task * 4, elements_per_task * 3:elements_per_task * 4]),
-        "force_vector": global_force_vector[elements_per_task * 3:elements_per_task * 4].tolist(),
-    }
+        payloads.append(payload)
 
-    workflow.invoke_serverless_function(solve_fem, payload_1)
-    workflow.invoke_serverless_function(solve_fem, payload_2)
-    workflow.invoke_serverless_function(solve_fem, payload_3)
-    workflow.invoke_serverless_function(solve_fem, payload_4)
+    workflow.invoke_serverless_function(solve_fem, payloads[0])
+    workflow.invoke_serverless_function(solve_fem, payloads[1], 1 < num_parallel_tasks)
+    workflow.invoke_serverless_function(solve_fem, payloads[2], 2 < num_parallel_tasks)
+    workflow.invoke_serverless_function(solve_fem, payloads[3], 3 < num_parallel_tasks)
 
     return {"status": 200}
 
