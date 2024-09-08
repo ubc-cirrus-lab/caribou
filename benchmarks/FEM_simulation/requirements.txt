@@ -1,0 +1,6 @@
+datetime
+boto3==1.35.3
+scipy
+pyyaml==6.0.2
+numpy
+pytz==2024.1
