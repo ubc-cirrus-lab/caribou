@@ -158,3 +158,6 @@ MAX_TRANSFER_SIZE = 256000  # In bytes
 
 # Caribou Go Path
 GO_PATH = pathlib.Path(__file__).parents[2].resolve() / "caribou-go"
+
+# AWS Lambda Timeout
+AWS_TIMEOUT_SECONDS = 850  # Lambda functions must terminate in 900 seconds, we leave 50 seconds as buffer time

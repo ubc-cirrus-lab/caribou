@@ -1,3 +1,4 @@
+import time
 import unittest
 from unittest.mock import MagicMock, patch, PropertyMock
 from caribou.deployment_solver.deployment_algorithms.stochastic_heuristic_deployment_algorithm import (
@@ -76,6 +77,45 @@ class TestStochasticHeuristicDeploymentAlgorithm(unittest.TestCase):
 
         # Act
         self._algorithm._generate_stochastic_heuristic_deployments(result)
+
+        # Assert
+        expected_result = [([2, 2, 2], {"metric1": 2.0, "metric2": 3.0})]
+        self.assertEqual(result, expected_result)
+
+    def test_generate_stochastic_heuristic_deployments_timeout(self):
+        # Arrange
+        self._algorithm._home_deployment_metrics = {"metric1": 1.0, "metric2": 2.0}
+        self._algorithm._home_deployment = [1, 1, 1]
+        self._algorithm._num_iterations = 2
+        self._algorithm._generate_new_deployment = MagicMock()
+        self._algorithm._generate_new_deployment.side_effect = [[2, 2, 2], [1, 1, 1]]
+        self._algorithm._deployment_metrics_calculator = MagicMock()
+
+        results = [{
+            "metric1": 2.0,
+            "metric2": 3.0,
+        }]
+        def func(*args, **kwargs):
+            time.sleep(2)
+            if results:
+                return results.pop(0)
+            else:
+                raise Exception("Timeout was ignored!")
+
+        self._algorithm._deployment_metrics_calculator.calculate_deployment_metrics.side_effect = func
+        self._algorithm._is_hard_constraint_failed = MagicMock()
+        self._algorithm._is_hard_constraint_failed.return_value = False
+        self._algorithm._is_improvement = MagicMock()
+        self._algorithm._is_improvement.return_value = True
+        self._algorithm._number_of_instances = 3
+        self._algorithm._temperature = 0.99
+        self._algorithm._max_number_combinations = 10
+        self._algorithm._per_instance_permitted_regions = [[0, 1, 2], [0, 1, 2], [0, 1, 2]]
+
+        result = []
+
+        # Act
+        self._algorithm._generate_stochastic_heuristic_deployments(result, timeout=1)
 
         # Assert
         expected_result = [([2, 2, 2], {"metric1": 2.0, "metric2": 3.0})]
