@@ -91,10 +91,13 @@ class TestStochasticHeuristicDeploymentAlgorithm(unittest.TestCase):
         self._algorithm._generate_new_deployment.side_effect = [[2, 2, 2], [1, 1, 1]]
         self._algorithm._deployment_metrics_calculator = MagicMock()
 
-        results = [{
-            "metric1": 2.0,
-            "metric2": 3.0,
-        }]
+        results = [
+            {
+                "metric1": 2.0,
+                "metric2": 3.0,
+            }
+        ]
+
         def func(*args, **kwargs):
             time.sleep(2)
             if results:

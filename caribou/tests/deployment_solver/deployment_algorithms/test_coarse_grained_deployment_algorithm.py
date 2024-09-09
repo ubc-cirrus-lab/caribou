@@ -41,10 +41,7 @@ class TestCoarseGrainedDeploymentAlgorithm(unittest.TestCase):
         # Create a mock for the _generate_and_check_deployment method
         mock_generate_and_check_deployment = MagicMock()
 
-        results = [
-            ([1, 1, 1], {"metric1": 1.0, "metric2": 2.0}),
-            ([0, 0, 0], {"metric1": 2.0, "metric2": 1.0})
-        ]
+        results = [([1, 1, 1], {"metric1": 1.0, "metric2": 2.0}), ([0, 0, 0], {"metric1": 2.0, "metric2": 1.0})]
 
         def func(*args, **kwargs):
             time.sleep(2)
