@@ -17,7 +17,7 @@
         "Effect": "Allow"
       },
       {
-        "Action": ["dynamodb:GetItem", "dynamodb:UpdateItem"],
+        "Action": ["dynamodb:GetItem", "dynamodb:UpdateItem", "dynamodb:PutItem"],
         "Resource": "arn:aws:dynamodb:*:*:*",
         "Effect": "Allow"
       },
@@ -28,6 +28,11 @@
       },
       {
         "Action": ["secretsmanager:GetSecretValue", "secretsmanager:ListSecrets"],
+        "Effect": "Allow",
+        "Resource": "*"
+      },
+      {
+        "Action": ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"],
         "Effect": "Allow",
         "Resource": "*"
       }
