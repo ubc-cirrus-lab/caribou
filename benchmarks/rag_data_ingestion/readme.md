@@ -15,6 +15,11 @@ Alternatively, the user should set the aforementioned databases and dependencies
 There needs to be a file in the S3 bucket, for example, `example.pdf`, in a folder called `input`,
 or any valid PDF file.
 
+This benchmark allows for usage of custom AWS Bedrock Embedding, which
+can be configured with an input argument `embedding_model_id` 
+(https://docs.aws.amazon.com/bedrock/latest/userguide/titan-embedding-models.html).
+If this is not set, this benchmark defaults to using `amazon.titan-embed-text-v2:0`.
+
 You can deploy the benchmark with the following command while inside the poetry environment:
 
 ```bash
