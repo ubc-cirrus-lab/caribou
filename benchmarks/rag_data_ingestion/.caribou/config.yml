@@ -34,6 +34,3 @@ regions_and_providers:
       config:
         timeout: 300
         memory: 1024
-        # additional_docker_commands:
-        #   - "yum update -y"
-        #   - "yum install -y postgresql-devel"

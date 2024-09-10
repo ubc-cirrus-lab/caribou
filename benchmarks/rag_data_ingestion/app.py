@@ -120,7 +120,7 @@ def generate_embeddings(event):
     s3 = boto3.client("s3", region_name=s3_bucket_region_name)
     s3.download_file(s3_bucket_name, f"input/{file_name}", f"/tmp/{file_name}")
 
-    loader = PyPDFLoader(f"/tmp/{file_name}")
+    loader = PyPDFLoader(f"/tmp/{file_name}", extract_images=True)
     data = loader.load()
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=10000, chunk_overlap=1000)
     split_document = text_splitter.split_documents(data)
