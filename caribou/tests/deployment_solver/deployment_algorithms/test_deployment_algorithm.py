@@ -7,9 +7,10 @@ from caribou.deployment_solver.workflow_config import WorkflowConfig
 class ConcreteDeploymentAlgorithm(DeploymentAlgorithm):
     def __init__(self, workflow_config):
         self._input_manager = MagicMock()
+        self._timeout = float("inf")
         pass
 
-    def _run_algorithm(self):
+    def _run_algorithm(self, timeout: float):
         # Example implementation for testing
         return [(["r1"], {"cost": 100})]
 
