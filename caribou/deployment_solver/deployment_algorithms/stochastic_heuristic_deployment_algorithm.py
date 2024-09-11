@@ -15,7 +15,7 @@ class StochasticHeuristicDeploymentAlgorithm(DeploymentAlgorithm):
         n_workers: int = 1,
         record_transmission_execution_carbon: bool = False,
         deployment_metrics_calculator_type: str = "simple",
-        lambda_timeout: bool = False
+        lambda_timeout: bool = False,
     ) -> None:
         super().__init__(
             workflow_config,
@@ -23,7 +23,7 @@ class StochasticHeuristicDeploymentAlgorithm(DeploymentAlgorithm):
             n_workers,
             record_transmission_execution_carbon,
             deployment_metrics_calculator_type,
-            lambda_timeout=lambda_timeout
+            lambda_timeout=lambda_timeout,
         )
         self._setup()
 
