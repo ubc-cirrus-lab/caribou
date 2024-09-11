@@ -10,6 +10,7 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_postgres.vectorstores import PGVector
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from sqlalchemy import create_engine
+import rapidocr_onnxruntime # To force the import of the onnxruntime package
 
 from caribou.deployment.client.caribou_workflow import CaribouWorkflow
 import logging
@@ -41,7 +42,7 @@ postgresql_host = "database-1.ct8icwysoodv.us-east-1.rds.amazonaws.com"
 postgresql_dbname = "postgres"
 postgresql_port = "5432"
 
-workflow = CaribouWorkflow(name="rag_data_ingestion", version="0.0.1")
+workflow = CaribouWorkflow(name="rag_data_ingestion_i", version="0.0.1")
 
 @workflow.serverless_function(
     name="upload_trigger", 
@@ -120,7 +121,7 @@ def generate_embeddings(event):
     s3 = boto3.client("s3", region_name=s3_bucket_region_name)
     s3.download_file(s3_bucket_name, f"input/{file_name}", f"/tmp/{file_name}")
 
-    loader = PyPDFLoader(f"/tmp/{file_name}")
+    loader = PyPDFLoader(f"/tmp/{file_name}", extract_images=True)
     data = loader.load()
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=10000, chunk_overlap=1000)
     split_document = text_splitter.split_documents(data)
