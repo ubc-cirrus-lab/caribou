@@ -10,6 +10,7 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_postgres.vectorstores import PGVector
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from sqlalchemy import create_engine
+import rapidocr_onnxruntime # To force the import of the onnxruntime package
 
 from caribou.deployment.client.caribou_workflow import CaribouWorkflow
 import logging
@@ -24,6 +25,9 @@ ALL_DOCUMENTS = "ALL_DOCUMENTS"
 PROCESSING = "PROCESSING"
 READY = "READY"
 
+# Configuration if you wish to extract images from PDFs
+EXTRACT_IMAGES = True
+
 # Change the following bucket and dynamodb name and region to match your setup
 desired_region = "us-east-1"
 secrets_manager_region = desired_region
@@ -36,10 +40,10 @@ dynamodb_region_name = s3_bucket_region_name
 
 # Change the following RDS and Postgres details to match your setup
 bedrock_runtime_region_name = desired_region
-postgresql_secret_name ="rds!db-165efb75-126f-4ae9-9540-a152c560d13f"
-postgresql_host = "database-1.ct8icwysoodv.us-east-1.rds.amazonaws.com"
-postgresql_dbname = "postgres"
-postgresql_port = "5432"
+postgresql_secret_name ="full_aws_secret_name_for_postgress" # Replace with your secret name (If set postgresql to be managed by AWS Secrets Manager)
+postgresql_host = "some_db.somecharacters.us-east-1.rds.amazonaws.com" # Replace with your RDS endpoint
+postgresql_dbname = "postgres" # Replace with your RDS database name
+postgresql_port = "5432" # Replace with your RDS port
 
 workflow = CaribouWorkflow(name="rag_data_ingestion", version="0.0.1")
 
@@ -120,7 +124,7 @@ def generate_embeddings(event):
     s3 = boto3.client("s3", region_name=s3_bucket_region_name)
     s3.download_file(s3_bucket_name, f"input/{file_name}", f"/tmp/{file_name}")
 
-    loader = PyPDFLoader(f"/tmp/{file_name}")
+    loader = PyPDFLoader(f"/tmp/{file_name}", extract_images=EXTRACT_IMAGES)
     data = loader.load()
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=10000, chunk_overlap=1000)
     split_document = text_splitter.split_documents(data)

@@ -13,3 +13,4 @@ pypdf==3.17.0
 urllib3
 psycopg[binary,pool]
 psycopg2-binary
+rapidocr-onnxruntime
