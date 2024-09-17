@@ -84,7 +84,7 @@ class TestSimpleDeploymentMetricsCalculator(unittest.TestCase):
         self.assertEqual(results["tail_carbon"], 1.0)
 
         # Verify that the mock method was called the correct number of times with the correct arguments
-        self.assertEqual(mock_calculate_workflow.call_count, 2000)
+        self.assertEqual(mock_calculate_workflow.call_count, 20000)
         mock_calculate_workflow.assert_called_with(deployment)
 
     @patch.object(

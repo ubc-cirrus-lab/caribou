@@ -3,7 +3,7 @@ import os
 import tempfile
 from typing import Dict, List, Optional
 
-from caribou.common.constants import GLOBAL_SYSTEM_REGION
+from caribou.common.constants import GLOBAL_SYSTEM_REGION, REMOTE_CARIBOU_CLI_FUNCTION_NAME
 from caribou.common.models.remote_client.aws_remote_client import AWSRemoteClient
 from caribou.deployment.common.config.config import Config
 from caribou.deployment.common.deploy.deployment_packager import DeploymentPackager
@@ -13,16 +13,20 @@ from caribou.deployment.common.deploy.models.resource import Resource
 def remove_aws_framework() -> None:
     print("Removing AWS framework")
     aws_remote_client = AWSRemoteClient(GLOBAL_SYSTEM_REGION)
-    function_name = "caribou_cli"
     iam_policy_name = "caribou_deployment_policy"
 
     if aws_remote_client.resource_exists(Resource(iam_policy_name, "iam_role")):  # For iam role
         print(f"Deleting role {iam_policy_name}")
         aws_remote_client.remove_role(iam_policy_name)
 
-    if aws_remote_client.resource_exists(Resource(function_name, "function")):  # For lambda function
-        print(f"Deleting (Remote CLI) function {function_name}")
-        aws_remote_client.remove_function(function_name)
+    if aws_remote_client.resource_exists(Resource(REMOTE_CARIBOU_CLI_FUNCTION_NAME, "function")):  # For lambda function
+        print(f"Deleting (Remote CLI) function {REMOTE_CARIBOU_CLI_FUNCTION_NAME}")
+        aws_remote_client.remove_function(REMOTE_CARIBOU_CLI_FUNCTION_NAME)
+
+    # Remove the deployed ECR repository if it exists
+    if aws_remote_client.resource_exists(Resource(REMOTE_CARIBOU_CLI_FUNCTION_NAME, "ecr_repository")):
+        print(f"Removing ECR repository {REMOTE_CARIBOU_CLI_FUNCTION_NAME}")
+        aws_remote_client.remove_ecr_repository(REMOTE_CARIBOU_CLI_FUNCTION_NAME)
 
 
 def deploy_aws_framework(project_dir: str, timeout: int, memory_size: int, ephemeral_storage: int) -> None:
@@ -30,7 +34,6 @@ def deploy_aws_framework(project_dir: str, timeout: int, memory_size: int, ephem
     aws_remote_client = AWSRemoteClient(GLOBAL_SYSTEM_REGION)
 
     handler = "app.caribou_cli"
-    function_name = "caribou_cli"
     iam_policy_name = "caribou_deployment_policy"
 
     # Read the iam_policies_content from the file
@@ -49,14 +52,14 @@ def deploy_aws_framework(project_dir: str, timeout: int, memory_size: int, ephem
     )
 
     # Delete remote cli if exists.
-    if aws_remote_client.resource_exists(Resource(function_name, "function")):  # For lambda function
-        print(f"Deleting (Remote CLI) function {function_name}")
-        aws_remote_client.remove_function(function_name)
+    if aws_remote_client.resource_exists(Resource(REMOTE_CARIBOU_CLI_FUNCTION_NAME, "function")):  # For lambda function
+        print(f"Deleting (Remote CLI) function {REMOTE_CARIBOU_CLI_FUNCTION_NAME}")
+        aws_remote_client.remove_function(REMOTE_CARIBOU_CLI_FUNCTION_NAME)
 
     with tempfile.TemporaryDirectory() as tmpdirname:
         # Create lambda function
         ## First zip the code content
-        print(f"Creating deployment package for {function_name}")
+        print(f"Creating deployment package for {REMOTE_CARIBOU_CLI_FUNCTION_NAME}")
         deployment_packager_config: Config = Config({}, None)
         deployment_packager: DeploymentPackager = DeploymentPackager(deployment_packager_config)
         zip_path = deployment_packager.create_framework_package(project_dir, tmpdirname)
@@ -74,7 +77,7 @@ def deploy_aws_framework(project_dir: str, timeout: int, memory_size: int, ephem
 
         # Deploy to AWS
         aws_remote_client.deploy_remote_cli(
-            function_name,
+            REMOTE_CARIBOU_CLI_FUNCTION_NAME,
             handler,
             role_arn,
             timeout,

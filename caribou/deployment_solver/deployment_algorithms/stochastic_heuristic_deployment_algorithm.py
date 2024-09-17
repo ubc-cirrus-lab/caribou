@@ -1,4 +1,5 @@
 import random
+import time
 from copy import deepcopy
 from typing import Optional
 
@@ -14,6 +15,7 @@ class StochasticHeuristicDeploymentAlgorithm(DeploymentAlgorithm):
         n_workers: int = 1,
         record_transmission_execution_carbon: bool = False,
         deployment_metrics_calculator_type: str = "simple",
+        lambda_timeout: bool = False,
     ) -> None:
         super().__init__(
             workflow_config,
@@ -21,6 +23,7 @@ class StochasticHeuristicDeploymentAlgorithm(DeploymentAlgorithm):
             n_workers,
             record_transmission_execution_carbon,
             deployment_metrics_calculator_type,
+            lambda_timeout=lambda_timeout,
         )
         self._setup()
 
@@ -40,22 +43,31 @@ class StochasticHeuristicDeploymentAlgorithm(DeploymentAlgorithm):
         for instance in range(self._number_of_instances):
             self._max_number_combinations *= len(self._per_instance_permitted_regions[instance])
 
-    def _run_algorithm(self) -> list[tuple[list[int], dict[str, float]]]:
+    def _run_algorithm(self, timeout: float = float("inf")) -> list[tuple[list[int], dict[str, float]]]:
+        start_time = time.time()
+        remaining_time = timeout
         self._best_deployment_metrics = deepcopy(  # pylint: disable=attribute-defined-outside-init
             self._home_deployment_metrics
         )
-        deployments = self._generate_all_possible_coarse_deployments()
+        deployments = self._generate_all_possible_coarse_deployments(timeout=remaining_time)
         if len(deployments) == 0:
             deployments.append((self._home_deployment, self._home_deployment_metrics))
-        self._generate_stochastic_heuristic_deployments(deployments)
+        remaining_time -= time.time() - start_time
+        if remaining_time <= 0:
+            return deployments
+        self._generate_stochastic_heuristic_deployments(deployments, timeout=remaining_time)
         return deployments
 
-    def _generate_stochastic_heuristic_deployments(self, deployments: list[tuple[list[int], dict[str, float]]]) -> None:
+    def _generate_stochastic_heuristic_deployments(
+        self, deployments: list[tuple[list[int], dict[str, float]]], timeout: float = float("inf")
+    ) -> None:
+        start_time = time.time()
+
         current_deployment = deepcopy(self._home_deployment)
 
         generated_deployments: set[tuple[int, ...]] = {tuple(deployment) for deployment, _ in deployments}
         for _ in range(self._num_iterations):
-            if len(generated_deployments) >= self._max_number_combinations:
+            if len(generated_deployments) >= self._max_number_combinations or (time.time() - start_time) >= timeout:
                 break
 
             new_deployment = self._generate_new_deployment(current_deployment)
@@ -76,9 +88,14 @@ class StochasticHeuristicDeploymentAlgorithm(DeploymentAlgorithm):
 
             self._temperature *= 0.99
 
-    def _generate_all_possible_coarse_deployments(self) -> list[tuple[list[int], dict[str, float]]]:
+    def _generate_all_possible_coarse_deployments(
+        self, timeout: float = float("inf")
+    ) -> list[tuple[list[int], dict[str, float]]]:
         deployments = []
+        start_time = time.time()
         for index_value in self._region_indexer.get_value_indices().values():
+            if (time.time() - start_time) > timeout:
+                break
             deployment = self._generate_and_check_deployment(index_value)
             if deployment is not None:
                 deployments.append(deployment)

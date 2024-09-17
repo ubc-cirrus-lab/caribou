@@ -1,0 +1,5 @@
+boto3==1.35.3
+scipy
+pyyaml==6.0.2
+numpy==1.26.0
+pytz==2024.1

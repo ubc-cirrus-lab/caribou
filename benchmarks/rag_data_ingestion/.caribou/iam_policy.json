@@ -1,0 +1,41 @@
+{
+  "aws": {
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Action": [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ],
+        "Resource": "arn:aws:logs:*:*:*",
+        "Effect": "Allow"
+      },
+      {
+        "Action": ["sns:Publish"],
+        "Resource": "arn:aws:sns:*:*:*",
+        "Effect": "Allow"
+      },
+      {
+        "Action": ["dynamodb:GetItem", "dynamodb:UpdateItem", "dynamodb:PutItem"],
+        "Resource": "arn:aws:dynamodb:*:*:*",
+        "Effect": "Allow"
+      },
+      {
+        "Action": ["s3:GetObject", "s3:PutObject"],
+        "Resource": "arn:aws:s3:::*",
+        "Effect": "Allow"
+      },
+      {
+        "Action": ["secretsmanager:GetSecretValue", "secretsmanager:ListSecrets"],
+        "Effect": "Allow",
+        "Resource": "*"
+      },
+      {
+        "Action": ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"],
+        "Effect": "Allow",
+        "Resource": "*"
+      }
+    ]
+  }
+}
