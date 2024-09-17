@@ -97,6 +97,3 @@ benchmarks/solver_benchmarks/images/
 benchmarks/solver_benchmarks/results/
 
 Dockerfile
-
-# Framework deployment packages
-.caribou/

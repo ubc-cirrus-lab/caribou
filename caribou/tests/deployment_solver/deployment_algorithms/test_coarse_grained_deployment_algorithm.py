@@ -1,3 +1,4 @@
+import time
 import unittest
 from unittest.mock import MagicMock, patch
 from caribou.deployment_solver.deployment_algorithms.coarse_grained_deployment_algorithm import (
@@ -30,6 +31,34 @@ class TestCoarseGrainedDeploymentAlgorithm(unittest.TestCase):
 
         # Call the _run_algorithm method
         result = self._algorithm._run_algorithm()
+
+        # Check the result
+        expected_result = [([1, 1, 1], {"metric1": 1.0, "metric2": 2.0})]
+        self.assertEqual(result, expected_result)
+
+    @patch("multiprocessing.Pool")
+    def test_run_algorithm_timeout(self, mock_pool):
+        # Create a mock for the _generate_and_check_deployment method
+        mock_generate_and_check_deployment = MagicMock()
+
+        results = [([1, 1, 1], {"metric1": 1.0, "metric2": 2.0}), ([0, 0, 0], {"metric1": 2.0, "metric2": 1.0})]
+
+        def func(*args, **kwargs):
+            time.sleep(2)
+            return results.pop(0)
+
+        mock_generate_and_check_deployment.side_effect = func
+
+        # Create a mock for the _region_indexer attribute
+        mock_region_indexer = MagicMock()
+        mock_region_indexer.get_value_indices.return_value = {1: 1, 0: 0}
+
+        # Set the mocks on the instance
+        self._algorithm._generate_and_check_deployment = mock_generate_and_check_deployment
+        self._algorithm._region_indexer = mock_region_indexer
+
+        # Call the _run_algorithm method
+        result = self._algorithm._run_algorithm(timeout=1)
 
         # Check the result
         expected_result = [([1, 1, 1], {"metric1": 1.0, "metric2": 2.0})]
