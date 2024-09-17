@@ -1,3 +1,4 @@
+import time
 import unittest
 from unittest.mock import MagicMock, patch
 from caribou.deployment_solver.deployment_algorithms.fine_grained_deployment_algorithm import (
@@ -47,6 +48,34 @@ class TestFineGrainedDeploymentAlgorithm(unittest.TestCase):
         # Assert
         expected_result = [([1, 1], {"metric1": 1.0, "metric2": 2.0}), ([2, 1], {"metric1": 1.0, "metric2": 2.0})]
         self.assertEqual(result, expected_result)
+
+    def test_generate_all_possible_fine_deployments_timeout(self):
+        # Arrange
+        self._algorithm._region_indexer = MagicMock()
+        self._algorithm._region_indexer.get_value_indices.return_value = {1: 1, 2: 2}
+        self._algorithm._number_of_instances = 2
+        self._algorithm._generate_and_check_deployment = MagicMock()
+
+        results = [
+            ([1, 1], {"metric1": 1.0, "metric2": 2.0}),
+            None,
+            ([2, 1], {"metric1": 1.0, "metric2": 2.0}),
+            None,
+        ]
+
+        def func(*args, **kwargs):
+            time.sleep(2)
+            return results.pop(0)
+
+        self._algorithm._generate_and_check_deployment.side_effect = func
+
+        # Act
+        result = self._algorithm._generate_all_possible_fine_deployments(timeout=1)
+
+        # Assert
+        expected_result = [([1, 1], {"metric1": 1.0, "metric2": 2.0})]
+        self.assertEqual(result, expected_result)
+        self._algorithm._generate_and_check_deployment.assert_called_once()
 
     def test_generate_and_check_deployment_positive(self):
         # Arrange
