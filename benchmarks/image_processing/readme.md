@@ -1,5 +1,7 @@
 # Image Processing Benchmark
 
+Original source: https://github.com/ddps-lab/serverless-faas-workbench (the original repository's license file is included in this directory).
+
 This benchmark requires access to the S3 bucket named `caribou-image-processing-benchmark`,
 with the AWS Region set to `us-east-1` (N. Virginia).
 
