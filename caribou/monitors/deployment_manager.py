@@ -53,11 +53,13 @@ class DeploymentManager(Monitor):
         self._lambda_timeout: bool = lambda_timeout
 
     def check(self) -> None:
+        print(f"Running Deployment Manager: Manage Deployments")
         deployment_manager_client = self._endpoints.get_deployment_manager_client()
         workflow_ids = deployment_manager_client.get_keys(DEPLOYMENT_MANAGER_RESOURCE_TABLE)
         data_collector_client = self._endpoints.get_data_collector_client()
 
         for workflow_id in workflow_ids:
+            print(f"\nChecking workflow: {workflow_id}")
             workflow_info_raw, _ = deployment_manager_client.get_value_from_table(
                 DEPLOYMENT_MANAGER_WORKFLOW_INFO_TABLE, workflow_id
             )
@@ -69,6 +71,7 @@ class DeploymentManager(Monitor):
                 current_time = datetime.now(GLOBAL_TIME_ZONE)
                 next_check = datetime.strptime(workflow_info["next_check"], TIME_FORMAT)
                 if current_time < next_check:
+                    print("Not enough time has passed since the last check")
                     continue
 
             self.workflow_collector.run_on_workflow(workflow_id)
@@ -99,6 +102,7 @@ class DeploymentManager(Monitor):
             # The solver has never been run before for this workflow, and the workflow has not been invoked enough
             # collect more data and wait
             if total_invocation_counts_since_last_solved < MINIMAL_SOLVE_THRESHOLD and workflow_info is None:
+                print("Not enough invocations to run the solver")
                 continue
 
             # Income token
@@ -115,6 +119,7 @@ class DeploymentManager(Monitor):
             )
 
             if not affordable_deployment_algorithm_run:
+                print("Not enough tokens to run the solver")
                 carbon_cost = self._get_cost(len(workflow_config.instances))
                 self._update_workflow_info(
                     carbon_cost - positive_carbon_savings_token - carbon_budget_overflow_last_solved, workflow_id
@@ -126,6 +131,7 @@ class DeploymentManager(Monitor):
             )
 
             solve_hours = self._get_solve_hours(affordable_deployment_algorithm_run["number_of_solves"])
+            print(f"Running deployment algorithm with solve hours: {solve_hours}")
             self._run_deployment_algorithm(workflow_config, solve_hours, expiry_delta_seconds)
 
     def _update_workflow_info(self, token_missing: int, workflow_id: str) -> None:
@@ -164,6 +170,7 @@ class DeploymentManager(Monitor):
     ) -> None:
         deployment_algorithm_class = deployment_algorithm_mapping.get(workflow_config.deployment_algorithm)
         if deployment_algorithm_class:
+            print(f"Running deployment algorithm: {workflow_config.deployment_algorithm}")
             deployment_algorithm: DeploymentAlgorithm = deployment_algorithm_class(workflow_config, expiry_delta_seconds, deployment_metrics_calculator_type=self._deployment_metrics_calculator_type, lambda_timeout=self._lambda_timeout)  # type: ignore
             deployment_algorithm.run(solve_hours)
         else:
