@@ -1,5 +1,8 @@
 # DNA Visualization benchmark
 
+Original source: [https://github.com/ddps-lab/serverless-faas-workbench](https://github.com/spcl/serverless-benchmarks/) (the original repository's license file is included in this directory).
+Source for the adapted version used by us: [https://github.com/ubc-cirrus-lab/unfaasener](https://github.com/ubc-cirrus-lab/unfaasener)
+
 This benchmark requires access to the S3 bucket named `caribou-dna-visualization`,
 with the AWS Region set to `us-east-1` (N. Virginia).
 
