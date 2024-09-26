@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from typing import Any, Optional
 
 from caribou.common.constants import (
+    AWS_TIMEOUT_SECONDS,
     DEFAULT_MONITOR_COOLDOWN,
     GLOBAL_TIME_ZONE,
     TIME_FORMAT,
@@ -35,6 +36,7 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
         n_workers: int = 1,
         record_transmission_execution_carbon: bool = False,
         deployment_metrics_calculator_type: str = "simple",
+        lambda_timeout: bool = False,
     ):
         self._workflow_config = workflow_config
 
@@ -85,13 +87,17 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
             for instance in range(self._number_of_instances)
         ]
 
+        self._timeout = AWS_TIMEOUT_SECONDS if lambda_timeout else float("inf")
+
     def run(self, hours_to_run: Optional[list[str]] = None) -> None:
         hour_to_run_to_result: dict[str, Any] = {"time_keys_to_staging_area_data": {}, "deployment_metrics": {}}
         if hours_to_run is None:
             hours_to_run = [None]  # type: ignore
+        # The solver for every hour must terminate in `timeout_per_hour` seconds
+        timeout_per_hour = self._timeout / len(hours_to_run)
         for hour_to_run in hours_to_run:
             self._update_data_for_new_hour(hour_to_run)
-            deployments = self._run_algorithm()
+            deployments = self._run_algorithm(timeout=timeout_per_hour)
             ranked_deployments = self._ranker.rank(deployments)
             selected_deployment = self._select_deployment(ranked_deployments)
             formatted_deployment = self._formatter.format(
@@ -128,7 +134,7 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
         hour_to_run_to_result["expiry_time"] = expiry_date_str
 
     @abstractmethod
-    def _run_algorithm(self) -> list[tuple[list[int], dict[str, float]]]:
+    def _run_algorithm(self, timeout: float = float("inf")) -> list[tuple[list[int], dict[str, float]]]:
         raise NotImplementedError
 
     def _select_deployment(

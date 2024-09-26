@@ -46,7 +46,7 @@ See the [Troubleshooting](TROUBLESHOOTING.md) guide.
 
 ## Paper
 
-Our paper on Caribou has been recently accepted to the 30th ACM Symposium on Operating Systems Principles (SOSP 2024). It will be presented in November 2024. If you use Caribou in your research, please cite our paper:
+Our [paper](https://cirrus.ece.ubc.ca/papers/sosp24_caribou.pdf) on Caribou has been recently accepted to the 30th ACM Symposium on Operating Systems Principles (SOSP 2024). It will be presented in November 2024. If you use Caribou in your research, please cite our paper:
 
 *V. Gsteiger, P. H. Long, Y. Sun, P. Javanrood, and M. Shahrad, "Caribou: Fine-Grained Geospatial Shifting of Serverless Applications for Sustainability", in Proceedings of the 30th ACM Symposium on Operating Systems Principles (SOSP 2024), 2024.*
 

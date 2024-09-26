@@ -1,5 +1,7 @@
 # Text to speech censoring benchmark
 
+Original source: [https://github.com/SimonEismann/FunctionsAndWorkflows](https://github.com/SimonEismann/FunctionsAndWorkflows) (the original repository's license file is included in this directory)
+
 This benchmark requires access to the S3 bucket named `caribou-text-2-speech-censoring`,
 with the AWS Region set to `us-east-1` (N. Virginia).
 
