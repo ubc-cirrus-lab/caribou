@@ -46,10 +46,11 @@ deployment_algorithm_mapping = {
 
 
 class DeploymentManager(Monitor):
-    def __init__(self, deployment_metrics_calculator_type: str = "simple") -> None:
+    def __init__(self, deployment_metrics_calculator_type: str = "simple", lambda_timeout: bool = False) -> None:
         super().__init__()
         self.workflow_collector = WorkflowCollector()
         self._deployment_metrics_calculator_type: str = deployment_metrics_calculator_type
+        self._lambda_timeout: bool = lambda_timeout
 
     def check(self) -> None:
         deployment_manager_client = self._endpoints.get_deployment_manager_client()
@@ -163,7 +164,7 @@ class DeploymentManager(Monitor):
     ) -> None:
         deployment_algorithm_class = deployment_algorithm_mapping.get(workflow_config.deployment_algorithm)
         if deployment_algorithm_class:
-            deployment_algorithm: DeploymentAlgorithm = deployment_algorithm_class(workflow_config, expiry_delta_seconds, deployment_metrics_calculator_type=self._deployment_metrics_calculator_type)  # type: ignore
+            deployment_algorithm: DeploymentAlgorithm = deployment_algorithm_class(workflow_config, expiry_delta_seconds, deployment_metrics_calculator_type=self._deployment_metrics_calculator_type, lambda_timeout=self._lambda_timeout)  # type: ignore
             deployment_algorithm.run(solve_hours)
         else:
             raise ValueError("Invalid deployment algorithm")
