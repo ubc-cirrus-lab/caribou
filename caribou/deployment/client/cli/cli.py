@@ -156,7 +156,7 @@ def deploy_remote_cli(
         )
 
     ## Memory
-    memory_mb: int = 5120  # 5 GB (Not the maximum)
+    memory_mb: int = 1769  # 1 full vCPU (https://docs.aws.amazon.com/lambda/latest/dg/configuration-memory.html)
     if memory is not None:
         # Convert to int
         memory_mb = int(memory)
@@ -178,7 +178,7 @@ def deploy_remote_cli(
             raise click.ClickException("Timeout must be between 1 second and 900 seconds (15 minutes).")
 
     ## Ephemeral Storage
-    ephemeral_storage_mb = 10240  # Maximum ephemeral storage (10 GB)
+    ephemeral_storage_mb = 5120  # 5 GB (Should be enough for most use cases)
     if ephemeral_storage is not None:
         # Convert to int
         ephemeral_storage_mb = int(ephemeral_storage)

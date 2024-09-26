@@ -102,7 +102,7 @@ type SimpleDeploymentMetricsCalculator struct {
 func SetupSimpleDeploymentMetricsCalculator(dataString string) *SimpleDeploymentMetricsCalculator {
 	return &SimpleDeploymentMetricsCalculator{
 		*SetupDeploymentMetricsCalculator(dataString),
-		1000,
+		200,
 	}
 }
 
@@ -144,7 +144,7 @@ func (sd *SimpleDeploymentMetricsCalculator) PerformMonteCarloSimulation(deploym
 	executionCarbonList := []float64{}
 	transmissionCarbonList := []float64{}
 
-	maxNumberOfIterations := 20000
+	maxNumberOfIterations := 2000
 	threshold := 0.05
 	numberOfIterations := 0
 

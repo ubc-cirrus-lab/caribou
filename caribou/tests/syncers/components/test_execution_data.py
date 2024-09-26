@@ -37,12 +37,13 @@ class TestExecutionData(unittest.TestCase):
         self.assertEqual(self.execution_data._get_total_output_data_size(), 10.0)
 
     def test_get_total_input_data_size(self):
+        # Not part of total input data size unless explicitly specified
         self.execution_data.input_payload_size = 1.0
         self.execution_data.download_size = 2.0
         successor_data = Mock(spec=ExecutionToSuccessorData)
         successor_data.get_total_input_data_size.return_value = 3.0
         self.execution_data.successor_data["successor1"] = successor_data
-        self.assertEqual(self.execution_data._get_total_input_data_size(), 6.0)
+        self.assertEqual(self.execution_data._get_total_input_data_size(), 5.0)
 
     def test_data_transfer_during_execution(self):
         self.execution_data.lambda_insights = {"total_network": 10 * 1024**3}  # 10 GB
@@ -52,7 +53,7 @@ class TestExecutionData(unittest.TestCase):
         successor_data.get_total_input_data_size.return_value = 3.0
         successor_data.get_total_output_data_size.return_value = 4.0
         self.execution_data.successor_data["successor1"] = successor_data
-        self.assertEqual(self.execution_data.data_transfer_during_execution, 10 - 6 - 4)
+        self.assertEqual(self.execution_data.data_transfer_during_execution, 10 - 5 - 4)
 
     def test_longest_duration(self):
         self.execution_data.user_execution_duration = 1.0
@@ -101,13 +102,13 @@ class TestExecutionData(unittest.TestCase):
             "duration_s": 3.0,
             "cpu_model": "test_cpu",
             "provider_region": "us-west-2",
-            "data_transfer_during_execution_gb": 10 - 6 - 4,
+            "data_transfer_during_execution_gb": 10 - 5 - 4,
             "cpu_utilization": 1.0,
             "successor_data": {"successor1": {"key": "value"}},
             "additional_analysis_data": {
                 "input_payload_size_gb": 1.0,
                 "download_size_gb": 2.0,
-                "total_input_data_transfer_gb": 6.0,
+                "total_input_data_transfer_gb": 5.0,
                 "total_output_data_transfer_gb": 4.0,
             },
         }
