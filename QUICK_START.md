@@ -200,9 +200,9 @@ poetry run caribou deploy_remote_cli
 ```
 
 You may also specify the `memory` (in MB), `timeout` (in seconds), and `ephemeral_storage` (in MB) using the following flags:
- - `memory`: Use `--memory` or `-m`. Default: 5,120 MB
+ - `memory`: Use `--memory` or `-m`. Default: 1,769 MB (1 Full vCPU)
  - `timeout`: Use `--timeout` or `-t`. Default: 900 seconds
- - `ephemeral_storage`: Use `--ephemeral_storage` or `-s`. Default: 10,240 MB
+ - `ephemeral_storage`: Use `--ephemeral_storage` or `-s`. Default: 5,120 MB
 
 To remove the remote framework, use the following command:
 
