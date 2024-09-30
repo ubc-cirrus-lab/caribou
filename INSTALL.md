@@ -70,6 +70,18 @@ If you opened a shell, you can run all the caribou commands without the `poetry 
 caribou --help
 ```
 
+### Ensure the poetry environment is running Python 3.12+
+
+Poetry will ensure that you are using Python 3.12 or higher based on the configuration in the `pyproject.toml` file. If you do not have the correct Python version, Poetry will notify you and you will need to install Python 3.12 or higher.
+
+To verify your Python version manually, you can use:
+
+```bash
+python --version
+```
+
+If your version is lower than 3.12, follow the instructions for your operating system to install Python 3.12 or higher.
+
 ## AWS Account Access
 
 To run the framework, you need an AWS account and the necessary permissions to create and manage the required resources.
