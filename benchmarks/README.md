@@ -1,11 +1,5 @@
 # Benchmarks
 
-Currently we have the following workflows for benchmarking:
+Instructions for running each workflow can be found in the README file within its respective directory.
 
-- `benchmarks/dna_visualization`
-- `benchmarks/image_processing`
-- `benchmarks/map_reduce`
-- `benchmarks/text_2_speech_censoring`
-- `benchmarks/video_analytics`
-
-Information on how to run each of these are in the respective workflow's README located inside the respective directory.
+You can find instructions on how to obtain the benchmark inputs used in the Caribou paper in the `caribou_paper_benchmark_inputs.md` file.

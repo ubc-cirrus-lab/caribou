@@ -63,11 +63,16 @@ class ExecutionData:  # pylint: disable=too-many-instance-attributes
 
         return total_output_data_size
 
-    def _get_total_input_data_size(self) -> float:
+    def _get_total_input_data_size(self, consider_input_payload: bool = False) -> float:
         total_input_data_size = 0.0
 
-        if self.input_payload_size:
-            total_input_data_size += self.input_payload_size
+        # It appears that the input payload size is not captured
+        # in the lambda insights, so we will not include it in the
+        # total input data size calculation, if it is not explicitly
+        # requested.
+        if consider_input_payload:
+            if self.input_payload_size:
+                total_input_data_size += self.input_payload_size
 
         if self.download_size:
             total_input_data_size += self.download_size

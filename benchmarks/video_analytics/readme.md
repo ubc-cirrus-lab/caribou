@@ -1,5 +1,7 @@
 # Video analytics benchmark
 
+Original source: [https://github.com/vhive-serverless/vSwarm](https://github.com/vhive-serverless/vSwarm) (the original repository's license file is included in this directory)
+
 This benchmark requires access to the S3 bucket named `caribou-video-analytics`,
 with the AWS Region set to `us-east-1` (N. Virginia).
 

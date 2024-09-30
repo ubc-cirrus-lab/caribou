@@ -1,7 +1,7 @@
 # RAG Data Ingestion Benchmark
 
 This benchmark is the `Data Ingestion` part of the bigger document chat application 
-benchmark: https://github.com/UBC-CIC/document-chat/
+benchmark: [https://github.com/UBC-CIC/document-chat](https://github.com/UBC-CIC/document-chat) (the original repository's license file is included in this directory)
 
 This benchmark requires access to the S3 bucket named `caribou-document-embedding-benchmark`,
 a valid `PostgreSQL` database with its credential saved to `AWS Secret Manager`, two dynamoDB 
