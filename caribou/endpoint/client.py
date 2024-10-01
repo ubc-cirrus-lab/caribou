@@ -29,10 +29,6 @@ from caribou.common.models.remote_client.remote_client_factory import RemoteClie
 # May in the future want to make it just targetting the specific logger
 logging.getLogger("botocore").setLevel(logging.WARNING)
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-logger.addHandler(logging.StreamHandler())
-
 
 class Client:
     def __init__(self, workflow_id: Optional[str] = None) -> None:

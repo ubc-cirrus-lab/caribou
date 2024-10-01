@@ -1,4 +1,6 @@
 import json
+import logging
+import os
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -14,6 +16,14 @@ from caribou.common.models.endpoints import Endpoints
 from caribou.common.models.remote_client.remote_client import RemoteClient
 from caribou.syncers.log_sync_workflow import LogSyncWorkflow
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+# Only add a StreamHandler if not running in AWS Lambda
+if "AWS_LAMBDA_FUNCTION_NAME" not in os.environ:
+    if not logger.handlers:
+        logger.addHandler(logging.StreamHandler())
+
 
 class LogSyncer:
     def __init__(self) -> None:
@@ -23,11 +33,13 @@ class LogSyncer:
         self._region_clients: dict[tuple[str, str], RemoteClient] = {}
 
     def sync(self) -> None:
+        logger.info("Syncing logs for all workflows")
         currently_deployed_workflows = self._deployment_manager_client.get_all_values_from_table(
             DEPLOYMENT_RESOURCES_TABLE
         )
 
         for workflow_id, deployment_manager_config_str in currently_deployed_workflows.items():
+            logger.info("Syncing logs for workflow %s", workflow_id)
             previous_data_str, _ = self._workflow_summary_client.get_value_from_table(
                 WORKFLOW_SUMMARY_TABLE, workflow_id
             )

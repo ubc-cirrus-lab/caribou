@@ -144,5 +144,5 @@ def handle_run(event: dict[str, Any]) -> dict[str, Any]:
 
 
 def handle_default(event: dict[str, Any]) -> dict[str, Any]:  # pylint: disable=unused-argument
-    print("Unknown action")
+    logger.error("Unknown action")
     return {"status": 400, "message": "Unknown action"}
