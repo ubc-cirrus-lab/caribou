@@ -1027,3 +1027,102 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         print(f"Caribou Lambda Framework remote cli function {function_name}" f" created successfully, with ARN: {arn}")
 
         return arn
+
+    def get_timer_rule_schedule_expression(self, rule_name: str) -> Optional[str]:
+        """Retrieve the schedule expression of a timer rule if it exist."""
+        try:
+            events_client = self._client("events")
+
+            # Describe the rule using the EventBridge client
+            rule_details = events_client.describe_rule(Name=rule_name)
+
+            # Return the rule schedule expression
+            return rule_details.get("ScheduleExpression")
+        except ClientError as e:
+            return None
+
+    def remove_timer_rule(self, lambda_function_name: str, rule_name: str) -> None:
+        """Remove the EventBridge rule and its associated targets."""
+        try:
+            events_client = self._client("events")
+
+            # Remove the targets from the rule
+            events_client.remove_targets(
+                Rule=rule_name,
+                Ids=[f'{lambda_function_name}-target']  # The ID of the target you added
+            )
+
+            # Delete the rule itself
+            events_client.delete_rule(
+                Name=rule_name,
+                Force=True  # Ensures the rule is deleted even if it's still in use
+            )
+        except ClientError as e:
+            # Check if its ResourceNotFoundException, which means the rule doesn't exist
+            # We don't need to do anything in this case
+            if not e.response['Error']['Code'] == 'ResourceNotFoundException':
+                print(f"Error removing the EventBridge rule {rule_name}: {e}")
+
+    def event_bridge_permission_exists(self, lambda_function_name: str, statement_id: str) -> bool:
+        """Check if a specific permission exists in the Lambda function's policy based on the StatementId."""
+        try:
+            lambda_client = self._client("lambda")
+
+            # Get the current policy for the Lambda function
+            policy_response = lambda_client.get_policy(FunctionName=lambda_function_name)
+            
+            # Parse the policy JSON
+            policy_statements = json.loads(policy_response['Policy'])['Statement']
+            
+            # Check if a permission with the given StatementId exists
+            for statement in policy_statements:
+                if statement['Sid'] == statement_id:
+                    return True
+            
+            return False  # If no matching StatementId is found, return False
+        
+        except ClientError as e:
+            if e.response['Error']['Code'] == 'ResourceNotFoundException':
+                print(f"No policy found for Lambda function: {lambda_function_name}")
+            else:
+                print(f"Error fetching policy for Lambda function: {e}")
+            return False
+
+    def create_timer_rule(self, lambda_function_name: str, schedule_expression: str, rule_name: str, event_payload: str) -> None:
+        # Initialize the EventBridge and Lambda clients
+        events_client = self._client("events")
+        lambda_client = self._client("lambda")
+
+        # Create a rule with the specified schedule expression
+        response = events_client.put_rule(
+            Name=rule_name,
+            ScheduleExpression=schedule_expression,
+            State='ENABLED'
+        )
+        rule_arn = response['RuleArn']
+
+        # Add permission for EventBridge to invoke the Lambda function
+        statement_id = f'{rule_name}-invoke-lambda'
+        if not self.event_bridge_permission_exists(lambda_function_name, statement_id):
+            lambda_client.add_permission(
+                FunctionName=lambda_function_name,
+                StatementId=statement_id,
+                Action='lambda:InvokeFunction',
+                Principal='events.amazonaws.com',
+                SourceArn=rule_arn
+            )
+
+        # Get the ARN of the Lambda function
+        lambda_arn = self.get_lambda_function(lambda_function_name)['FunctionArn']
+
+        # Attach the Lambda function to the rule
+        events_client.put_targets(
+            Rule=rule_name,
+            Targets=[
+                {
+                    'Id': f'{lambda_function_name}-target',
+                    'Arn': lambda_arn,
+                    'Input': event_payload
+                }
+            ]
+        )
