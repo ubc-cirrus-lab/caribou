@@ -2,7 +2,7 @@ import os
 from typing import Optional
 
 import click
-from cron_descriptor import get_description, Options
+from cron_descriptor import Options, get_description
 
 from caribou.common.setup.setup_tables import main as setup_tables_func
 from caribou.data_collector.components.carbon.carbon_collector import CarbonCollector
@@ -13,13 +13,13 @@ from caribou.deployment.client import __version__ as CARIBOU_VERSION
 from caribou.deployment.client.cli.new_workflow import create_new_workflow_directory
 from caribou.deployment.client.remote_cli.remote_cli import (
     deploy_aws_framework,
-    remove_aws_framework,
-    valid_framework_dir,
     get_all_available_timed_cli_functions,
     get_all_default_timed_cli_functions,
-    setup_aws_timers,
+    remove_aws_framework,
     remove_aws_timers,
-    report_timer_schedule_expression
+    report_timer_schedule_expression,
+    setup_aws_timers,
+    valid_framework_dir,
 )
 from caribou.deployment.common.config.config import Config
 from caribou.deployment.common.deploy.deployer import Deployer
@@ -196,6 +196,7 @@ def deploy_remote_cli(
 
     deploy_aws_framework(project_dir, timeout_s, memory_mb, ephemeral_storage_mb)
 
+
 @cli.command("list_timers", help="See all available timers.")
 def list_timers() -> None:
     # Configure cron descriptor options
@@ -208,54 +209,86 @@ def list_timers() -> None:
     for function_name in all_available_timed_cli_functions:
         schedule_expression = report_timer_schedule_expression(function_name)
         if schedule_expression is not None:
-            schedule_expression = schedule_expression.replace('cron(', '').replace(')', '')
-        schedule_expression = get_description(schedule_expression, cron_descriptor_options) if schedule_expression is not None else "Not Configured"
+            schedule_expression = schedule_expression.replace("cron(", "").replace(")", "")
+        schedule_expression = (
+            get_description(schedule_expression, cron_descriptor_options)
+            if schedule_expression is not None
+            else "Not Configured"
+        )
         print(f"  {function_name}: {schedule_expression}")
 
 
 @cli.command("setup_timer", help="Setup or modify existing timer. Use list_timers to see available timers.")
 @click.argument("timer", required=True)
-@click.option("--schedule_expressions", "-se", help="Specify a specific cron(...) or rate(...) rule. If not specified revert to default settings as specified in documentation. Ex: cron(30 0 * * ? *).")
+@click.option(
+    "--schedule_expressions",
+    "-se",
+    help="Specify a cron(...) or rate(...) rule. Or use default. Ex: cron(30 0 * * ? *).",
+)
 @click.pass_context
 def setup_timer(
-    ctx: click.Context, 
-    timer: str, 
-    schedule_expression: Optional[str], 
+    _: click.Context,
+    timer: str,
+    schedule_expression: Optional[str],
 ) -> None:
     # Check if the timer is valid
     all_available_timed_cli_functions = get_all_available_timed_cli_functions()
     if timer not in all_available_timed_cli_functions:
         print("Invalid timer. Use list_timers to see available timers.")
         return
-    
+
     # Now check if the schedule_expressions is defined
     # If not, revert to default settings
     if schedule_expression is None:
         schedule_expression = get_all_default_timed_cli_functions()[timer]
-    
+
     # Setup the timer
     setup_aws_timers([(timer, schedule_expression)])
 
+
 @cli.command("setup_all_timers", help="Setup ALL automatic timer for AWS remote CLI.")
-@click.option("--provider_collector", "-prc", help="Provider collector function. Refer to doc for default. Example Default: 'cron(5 0 1 * ? *)'.")
-@click.option("--carbon_collector", "-cac", help="Carbon collector function. Refer to doc for default. Example Default: 'cron(30 0 * * ? *)'.")
-@click.option("--performance_collector", "-pec", help="Performance collector function. Refer to doc for default. Example Default: 'cron(30 0 * * ? *)'.")
-@click.option("--log_syncer", "-los", help="Log syncer function. Refer to doc for default. Example Default: 'cron(5 0 * * ? *)'.")
-@click.option("--deployment_manager", "-dma", help="Deployment manager function. Refer to doc for default. Example Default: 'cron(0 1 * * ? *)'.")
-@click.option("--deployment_migrator", "-dmi", help="Deployment migrator function. Refer to doc for default. Example Default: 'cron(0 2 * * ? *)'.")
+@click.option(
+    "--provider_collector",
+    "-prc",
+    help="Provider collector function. Refer to doc for default. Example Default: 'cron(5 0 1 * ? *)'.",
+)
+@click.option(
+    "--carbon_collector",
+    "-cac",
+    help="Carbon collector function. Refer to doc for default. Example Default: 'cron(30 0 * * ? *)'.",
+)
+@click.option(
+    "--performance_collector",
+    "-pec",
+    help="Performance collector function. Refer to doc for default. Example Default: 'cron(30 0 * * ? *)'.",
+)
+@click.option(
+    "--log_syncer", "-los", help="Log syncer function. Refer to doc for default. Example Default: 'cron(5 0 * * ? *)'."
+)
+@click.option(
+    "--deployment_manager",
+    "-dma",
+    help="Deployment manager function. Refer to doc for default. Example Default: 'cron(0 1 * * ? *)'.",
+)
+@click.option(
+    "--deployment_migrator",
+    "-dmi",
+    help="Deployment migrator function. Refer to doc for default. Example Default: 'cron(0 2 * * ? *)'.",
+)
 @click.pass_context
 def setup_all_timers(
-    ctx: click.Context, 
-    provider_collector: Optional[str], 
-    carbon_collector: Optional[str], 
-    performance_collector: Optional[str], 
+    _: click.Context,
+    provider_collector: Optional[str],
+    carbon_collector: Optional[str],
+    performance_collector: Optional[str],
     log_syncer: Optional[str],
     deployment_manager: Optional[str],
     deployment_migrator: Optional[str],
 ) -> None:
     """
     Setup automatic timers for AWS Lambda functions. (Use cron(...) or rate(...) expressions)
-    Format Info: https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-scheduled-rule-pattern.html#eb-cron-expressions
+    Format Info:
+    https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-scheduled-rule-pattern.html
     """
     function_names = {
         "provider_collector": provider_collector,
@@ -263,7 +296,7 @@ def setup_all_timers(
         "performance_collector": performance_collector,
         "log_syncer": log_syncer,
         "deployment_manager": deployment_manager,
-        "deployment_migrator": deployment_migrator
+        "deployment_migrator": deployment_migrator,
     }
 
     default_schedule_expressions = get_all_default_timed_cli_functions()
@@ -279,6 +312,7 @@ def setup_all_timers(
 
     setup_aws_timers(new_rules)
 
+
 @cli.command("remove_timer", help="Remove an existing remote timer. Use list_timers to see available timers.")
 @click.argument("timer", required=True)
 def remove_timer(timer: str) -> None:
@@ -291,6 +325,7 @@ def remove_timer(timer: str) -> None:
     # Remove the timer
     remove_aws_timers([timer])
 
+
 @cli.command("remove_all_timers", help="Remove ALL automatic timers for AWS remote CLI.")
 def remove_all_timers() -> None:
     """
@@ -298,6 +333,7 @@ def remove_all_timers() -> None:
     """
     all_available_timed_cli_functions = get_all_available_timed_cli_functions()
     remove_aws_timers(all_available_timed_cli_functions)
+
 
 @cli.command("remove_remote_cli", help="Deploy the remote framework from AWS Lambda.")
 def remove_remote_cli() -> None:

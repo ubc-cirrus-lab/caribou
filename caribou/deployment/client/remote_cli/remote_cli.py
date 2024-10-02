@@ -1,15 +1,21 @@
 import json
 import os
 import tempfile
+import traceback
 from typing import Dict, List, Optional
-from cron_descriptor import get_description, Options
 
-from caribou.common.constants import GLOBAL_SYSTEM_REGION, REMOTE_CARIBOU_CLI_FUNCTION_NAME, REMOTE_CARIBOU_CLI_IAM_POLICY_NAME
+from cron_descriptor import Options, get_description
+
+from caribou.common.constants import (
+    GLOBAL_SYSTEM_REGION,
+    REMOTE_CARIBOU_CLI_FUNCTION_NAME,
+    REMOTE_CARIBOU_CLI_IAM_POLICY_NAME,
+)
 from caribou.common.models.remote_client.aws_remote_client import AWSRemoteClient
 from caribou.deployment.common.config.config import Config
 from caribou.deployment.common.deploy.deployment_packager import DeploymentPackager
 from caribou.deployment.common.deploy.models.resource import Resource
-import traceback
+
 
 def remove_aws_framework() -> None:
     print("Removing AWS framework")
@@ -18,7 +24,7 @@ def remove_aws_framework() -> None:
     # Remove all timer rules
     verbose_remove_timers: bool = True
     if not _is_aws_framework_deployed(aws_remote_client, verbose=False):
-        print("AWS Remote CLI framework is not deployed (or not deployed properly). But checking for components to remove.")
+        print("AWS Remote CLI framework is not (properly) deployed. But checking for components to remove.")
         verbose_remove_timers = False
     remove_aws_timers(get_all_available_timed_cli_functions(), verbose=verbose_remove_timers)
 
@@ -141,18 +147,27 @@ def _get_env_vars(variables: List[str]) -> Dict[str, Optional[str]]:
 
     return env_vars
 
+
 def get_all_available_timed_cli_functions() -> List[str]:
     # This is the available CLI functions that can or should be scheduled
-    available_timed_cli_functions = ["provider_collector", "carbon_collector", "performance_collector", "log_syncer", "deployment_manager", "deployment_migrator"]
+    available_timed_cli_functions = [
+        "provider_collector",
+        "carbon_collector",
+        "performance_collector",
+        "log_syncer",
+        "deployment_manager",
+        "deployment_migrator",
+    ]
 
     return available_timed_cli_functions
+
 
 def get_all_default_timed_cli_functions() -> dict[str, str]:
     """
     The following are the default timed CLI functions that are scheduled to run automatically.
 
     Setup automatic timers for AWS Lambda functions. (Use cron(...) or rate(...) expressions)
-    Format Info: https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-scheduled-rule-pattern.html#eb-cron-expressions
+    Format Info: https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-scheduled-rule-pattern.html
 
     - provider_collector: Invokes Lambda function at 12:05 AM, on day 1 of the month. Default: cron(5 0 1 * ? *).
     - carbon_collector: Invokes Lambda function daily at 12:30 AM. Default: cron(30 0 * * ? *).
@@ -165,36 +180,45 @@ def get_all_default_timed_cli_functions() -> dict[str, str]:
     # Default schedule expressions
     # Verified using: https://crontab.cronhub.io/
     default_schedule_expressions = {
-        "provider_collector": "cron(5 0 1 * ? *)", # At 12:05 AM, on day 1 of the month
-        "carbon_collector": "cron(30 0 * * ? *)", # Every day at 12:30 AM
-        "performance_collector": "cron(30 0 * * ? *)", # Every day at 12:30 AM
+        "provider_collector": "cron(5 0 1 * ? *)",  # At 12:05 AM, on day 1 of the month
+        "carbon_collector": "cron(30 0 * * ? *)",  # Every day at 12:30 AM
+        "performance_collector": "cron(30 0 * * ? *)",  # Every day at 12:30 AM
         "log_syncer": "cron(5 0 * * ? *)",  # Every day at 12:05 AM
-        "deployment_manager": "cron(0 1 * * ? *)", # Every day at 01:00 AM
-        "deployment_migrator": "cron(0 2 * * ? *)" # Every day at 02:00 AM
+        "deployment_manager": "cron(0 1 * * ? *)",  # Every day at 01:00 AM
+        "deployment_migrator": "cron(0 2 * * ? *)",  # Every day at 02:00 AM
     }
 
     return default_schedule_expressions
 
-def _is_aws_framework_deployed(aws_remote_client: AWSRemoteClient = AWSRemoteClient(GLOBAL_SYSTEM_REGION), verbose: bool = True) -> bool:
+
+def _is_aws_framework_deployed(
+    aws_remote_client: AWSRemoteClient = AWSRemoteClient(GLOBAL_SYSTEM_REGION), verbose: bool = True
+) -> bool:
     if not aws_remote_client.resource_exists(Resource(REMOTE_CARIBOU_CLI_IAM_POLICY_NAME, "iam_role")):  # For iam role
         if verbose:
-            print("Missing Remote Framework IAM role") 
+            print("Missing Remote Framework IAM role")
         return False
 
-    if not aws_remote_client.resource_exists(Resource(REMOTE_CARIBOU_CLI_FUNCTION_NAME, "function")):  # For lambda function
+    if not aws_remote_client.resource_exists(
+        Resource(REMOTE_CARIBOU_CLI_FUNCTION_NAME, "function")
+    ):  # For lambda function
         if verbose:
             print("Missing Remote Framework function")
         return False
 
-    if not aws_remote_client.resource_exists(Resource(REMOTE_CARIBOU_CLI_FUNCTION_NAME, "ecr_repository")): # For ECR repository
+    if not aws_remote_client.resource_exists(
+        Resource(REMOTE_CARIBOU_CLI_FUNCTION_NAME, "ecr_repository")
+    ):  # For ECR repository
         if verbose:
             print("Missing Remote Framework ECR repository")
         return False
-    
+
     return True
+
 
 def _get_timer_rule_name(function_name: str) -> str:
     return f"{function_name}-timer-rule"
+
 
 def _get_aws_timer_payload(function_name: str) -> str:
     # available_timed_cli_functions = ["deployment_manager", "deployment_migrator"]
@@ -216,7 +240,7 @@ def _get_aws_timer_payload(function_name: str) -> str:
         },
         "deployment_manager": {
             "action": "manage_deployments",
-            "deployment_metrics_calculator_type": "go" # Set to "simple" for python calculator
+            "deployment_metrics_calculator_type": "go",  # Set to "simple" for python calculator
         },
         "deployment_migrator": {
             "action": "run_deployment_migrator",
@@ -226,7 +250,7 @@ def _get_aws_timer_payload(function_name: str) -> str:
     return json.dumps(function_name_to_payload[function_name])
 
 
-def setup_aws_timers(new_rules: list[tuple[str, str]]):
+def setup_aws_timers(new_rules: list[tuple[str, str]]) -> None:
     """Create or update CloudWatch Event rules for Lambda functions."""
     aws_remote_client = AWSRemoteClient(GLOBAL_SYSTEM_REGION)
 
@@ -244,21 +268,30 @@ def setup_aws_timers(new_rules: list[tuple[str, str]]):
         rule_name = _get_timer_rule_name(function_name)
         event_payload = _get_aws_timer_payload(function_name)
 
-        try: 
-            aws_remote_client.create_timer_rule(REMOTE_CARIBOU_CLI_FUNCTION_NAME, schedule_expression, rule_name, event_payload)
-            print(f"Successfully created timer rule for {function_name}, schedule expression: {schedule_expression} - {get_description(schedule_expression.replace('cron(', '').replace(')', ''), cron_descriptor_options)}")
-        except Exception as e:
-            print(f"Error creating timer rule for {function_name}, schedule expression: {schedule_expression}: {str(e)}")
+        try:
+            aws_remote_client.create_timer_rule(
+                REMOTE_CARIBOU_CLI_FUNCTION_NAME, schedule_expression, rule_name, event_payload
+            )
+            print(
+                f"Successfully created timer rule for {function_name}, "
+                f"schedule expression: {schedule_expression} - "
+                f"{get_description(schedule_expression.replace('cron(', '').replace(')', ''), cron_descriptor_options)}"
+            )
+        except Exception as e:  # pylint: disable=broad-except
+            print(
+                f"Error creating timer rule for {function_name}, schedule expression: {schedule_expression}: {str(e)}"
+            )
             traceback.print_exc()
 
-def remove_aws_timers(desired_remove_rules: list[str], verbose: bool = True):
+
+def remove_aws_timers(desired_remove_rules: list[str], verbose: bool = True) -> None:
     """Remove CloudWatch Event rules for Lambda functions."""
     aws_remote_client = AWSRemoteClient(GLOBAL_SYSTEM_REGION)
 
     # First check if the AWS framework is deployed
     if not _is_aws_framework_deployed(aws_remote_client, verbose=verbose):
         if verbose:
-            print("AWS framework is not deployed (or not deployed properly). No timer rules to remove.")
+            print("AWS framework is not (properly) deployed. No timer rules to remove.")
         return
 
     # We can remove the timer rules
@@ -273,9 +306,10 @@ def remove_aws_timers(desired_remove_rules: list[str], verbose: bool = True):
 
             # Note the specific permission is not removed.
             # As other timers may still be using the function.
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             print(f"Error removing timer rule for {function_name}: {str(e)}")
             traceback.print_exc()
+
 
 def report_timer_schedule_expression(function_name: str) -> Optional[str]:
     """
