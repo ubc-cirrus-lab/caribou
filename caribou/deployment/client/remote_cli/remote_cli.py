@@ -17,8 +17,8 @@ from caribou.deployment.common.deploy.deployment_packager import DeploymentPacka
 from caribou.deployment.common.deploy.models.resource import Resource
 
 
-def remove_aws_framework() -> None:
-    print("Removing AWS framework")
+def remove_remote_framework() -> None:
+    print("Removing Remote framework")
     aws_remote_client = AWSRemoteClient(GLOBAL_SYSTEM_REGION)
 
     # Remove all timer rules
@@ -42,7 +42,7 @@ def remove_aws_framework() -> None:
         aws_remote_client.remove_ecr_repository(REMOTE_CARIBOU_CLI_FUNCTION_NAME)
 
 
-def deploy_aws_framework(project_dir: str, timeout: int, memory_size: int, ephemeral_storage: int) -> None:
+def deploy_remote_framework(project_dir: str, timeout: int, memory_size: int, ephemeral_storage: int) -> None:
     print(f"Deploying framework to AWS in {project_dir}")
     aws_remote_client = AWSRemoteClient(GLOBAL_SYSTEM_REGION)
 

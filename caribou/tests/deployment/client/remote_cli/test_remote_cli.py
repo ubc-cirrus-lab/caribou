@@ -4,8 +4,8 @@ import os
 import tempfile
 import json
 from caribou.deployment.client.remote_cli.remote_cli import (
-    remove_aws_framework,
-    deploy_aws_framework,
+    remove_remote_framework,
+    deploy_remote_framework,
     valid_framework_dir,
     _retrieve_iam_trust_policy,
     _get_env_vars,
@@ -23,7 +23,7 @@ class TestRemoteCLI(unittest.TestCase):
         mock_client = MockAWSRemoteClient.return_value
         mock_client.resource_exists.side_effect = [True, True, True]
 
-        remove_aws_framework()
+        remove_remote_framework()
 
         mock_client.remove_role.assert_called_once_with("caribou_deployment_policy")
         mock_client.remove_function.assert_called_once_with("caribou_cli")
@@ -40,7 +40,7 @@ class TestRemoteCLI(unittest.TestCase):
         mock_packager.create_framework_package.return_value = "/fake/path/to/zip"
 
         with patch.dict(os.environ, {"GOOGLE_API_KEY": "fake_key", "ELECTRICITY_MAPS_AUTH_TOKEN": "fake_token"}):
-            deploy_aws_framework("/fake/project/dir", 300, 128, 512)
+            deploy_remote_framework("/fake/project/dir", 300, 128, 512)
 
         mock_client.remove_role.assert_called_once_with("caribou_deployment_policy")
         mock_client.remove_function.assert_called_once_with("caribou_cli")

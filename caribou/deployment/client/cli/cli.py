@@ -5,6 +5,7 @@ import click
 from cron_descriptor import Options, get_description
 
 from caribou.common.setup.setup_tables import main as setup_tables_func
+from caribou.common.teardown.teardown_tables import main as teardown_tables_func
 from caribou.data_collector.components.carbon.carbon_collector import CarbonCollector
 from caribou.data_collector.components.performance.performance_collector import PerformanceCollector
 from caribou.data_collector.components.provider.provider_collector import ProviderCollector
@@ -12,11 +13,11 @@ from caribou.data_collector.components.workflow.workflow_collector import Workfl
 from caribou.deployment.client import __version__ as CARIBOU_VERSION
 from caribou.deployment.client.cli.new_workflow import create_new_workflow_directory
 from caribou.deployment.client.remote_cli.remote_cli import (
-    deploy_aws_framework,
+    deploy_remote_framework,
     get_all_available_timed_cli_functions,
     get_all_default_timed_cli_functions,
-    remove_aws_framework,
     remove_aws_timers,
+    remove_remote_framework,
     report_timer_schedule_expression,
     setup_aws_timers,
     valid_framework_dir,
@@ -122,6 +123,33 @@ def setup_tables() -> None:
     setup_tables_func()
 
 
+@cli.command("teardown_framework", help="Teardown the framework.")
+def teardown_framework() -> None:
+    confirm = (
+        input("Are you sure you want to teardown the framework? This action cannot be undone. [y/N]: ").strip().lower()
+    )
+    print(f"confirm: {confirm}")
+    if confirm in ["y", "yes"]:
+        ## First remove remote framework cli
+        ## This also removes all timers
+        remove_remote_framework()
+
+        ## Then remove all deployed workflows
+        print("\nRemoving all deployed workflows")
+        deployed_workflows: list[str] = Client().list_workflows()
+        for workflow_id in deployed_workflows:
+            client = Client(workflow_id)
+            client.remove()
+
+        # Finally teardown ALL the tables
+        print("\nTearing down all framework tables and buckets (if any)")
+        teardown_tables_func()
+
+        print("\nFramework teardown attempt has been completed.")
+    else:
+        print("Teardown aborted.")
+
+
 @cli.command("version", help="Print the version of caribou.")
 def version() -> None:
     click.echo(CARIBOU_VERSION)
@@ -194,7 +222,7 @@ def deploy_remote_cli(
         if ephemeral_storage_mb < 512 or ephemeral_storage_mb > 10240:
             raise click.ClickException("Ephemeral storage must be between 512 MB and 10240 MB (10 GB).")
 
-    deploy_aws_framework(project_dir, timeout_s, memory_mb, ephemeral_storage_mb)
+    deploy_remote_framework(project_dir, timeout_s, memory_mb, ephemeral_storage_mb)
 
 
 @cli.command("list_timers", help="See all available timers.")
@@ -337,7 +365,7 @@ def remove_all_timers() -> None:
 
 @cli.command("remove_remote_cli", help="Deploy the remote framework from AWS Lambda.")
 def remove_remote_cli() -> None:
-    remove_aws_framework()
+    remove_remote_framework()
 
 
 __version__ = CARIBOU_VERSION
