@@ -67,7 +67,9 @@ def handle_manage_deployments(event: dict[str, Any]) -> dict[str, Any]:
             "message": "Invalid deployment_metrics_calculator_type specified. Allowed values are 'simple', 'go'",
         }
 
-    deployment_manager = DeploymentManager(deployment_metrics_calculator_type)
+    # Declare the deployment manager with parameter of lambda_timeout=True (This
+    # sets an early termination for the deployment manager to avoid lambda timeout)
+    deployment_manager = DeploymentManager(deployment_metrics_calculator_type, lambda_timeout=True)
     deployment_manager.check()
     return {
         "status": 200,
@@ -142,5 +144,5 @@ def handle_run(event: dict[str, Any]) -> dict[str, Any]:
 
 
 def handle_default(event: dict[str, Any]) -> dict[str, Any]:  # pylint: disable=unused-argument
-    print("Unknown action")
+    logger.error("Unknown action")
     return {"status": 400, "message": "Unknown action"}

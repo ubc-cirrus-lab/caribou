@@ -1,5 +1,7 @@
 import json
+import logging
 import math
+import os
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -38,6 +40,15 @@ from caribou.deployment_solver.deployment_algorithms.stochastic_heuristic_deploy
 from caribou.deployment_solver.workflow_config import WorkflowConfig
 from caribou.monitors.monitor import Monitor
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+# Only add a StreamHandler if not running in AWS Lambda
+if "AWS_LAMBDA_FUNCTION_NAME" not in os.environ:
+    if not logger.handlers:
+        logger.addHandler(logging.StreamHandler())
+
+
 deployment_algorithm_mapping = {
     "coarse_grained_deployment_algorithm": CoarseGrainedDeploymentAlgorithm,
     "fine_grained_deployment_algorithm": FineGrainedDeploymentAlgorithm,
@@ -46,17 +57,20 @@ deployment_algorithm_mapping = {
 
 
 class DeploymentManager(Monitor):
-    def __init__(self, deployment_metrics_calculator_type: str = "simple") -> None:
+    def __init__(self, deployment_metrics_calculator_type: str = "simple", lambda_timeout: bool = False) -> None:
         super().__init__()
         self.workflow_collector = WorkflowCollector()
         self._deployment_metrics_calculator_type: str = deployment_metrics_calculator_type
+        self._lambda_timeout: bool = lambda_timeout
 
     def check(self) -> None:
+        logger.info("Running Deployment Manager: Manage Deployments")
         deployment_manager_client = self._endpoints.get_deployment_manager_client()
         workflow_ids = deployment_manager_client.get_keys(DEPLOYMENT_MANAGER_RESOURCE_TABLE)
         data_collector_client = self._endpoints.get_data_collector_client()
 
         for workflow_id in workflow_ids:
+            logger.info(f"Checking workflow: {workflow_id}")
             workflow_info_raw, _ = deployment_manager_client.get_value_from_table(
                 DEPLOYMENT_MANAGER_WORKFLOW_INFO_TABLE, workflow_id
             )
@@ -68,6 +82,7 @@ class DeploymentManager(Monitor):
                 current_time = datetime.now(GLOBAL_TIME_ZONE)
                 next_check = datetime.strptime(workflow_info["next_check"], TIME_FORMAT)
                 if current_time < next_check:
+                    logger.info("Not enough time has passed since the last check")
                     continue
 
             self.workflow_collector.run_on_workflow(workflow_id)
@@ -98,6 +113,7 @@ class DeploymentManager(Monitor):
             # The solver has never been run before for this workflow, and the workflow has not been invoked enough
             # collect more data and wait
             if total_invocation_counts_since_last_solved < MINIMAL_SOLVE_THRESHOLD and workflow_info is None:
+                logger.info("Not enough invocations to run the solver")
                 continue
 
             # Income token
@@ -114,6 +130,7 @@ class DeploymentManager(Monitor):
             )
 
             if not affordable_deployment_algorithm_run:
+                logger.info("Not enough tokens to run the solver")
                 carbon_cost = self._get_cost(len(workflow_config.instances))
                 self._update_workflow_info(
                     carbon_cost - positive_carbon_savings_token - carbon_budget_overflow_last_solved, workflow_id
@@ -125,6 +142,7 @@ class DeploymentManager(Monitor):
             )
 
             solve_hours = self._get_solve_hours(affordable_deployment_algorithm_run["number_of_solves"])
+            logger.info(f"Running deployment algorithm with solve hours: {solve_hours}")
             self._run_deployment_algorithm(workflow_config, solve_hours, expiry_delta_seconds)
 
     def _update_workflow_info(self, token_missing: int, workflow_id: str) -> None:
@@ -163,7 +181,8 @@ class DeploymentManager(Monitor):
     ) -> None:
         deployment_algorithm_class = deployment_algorithm_mapping.get(workflow_config.deployment_algorithm)
         if deployment_algorithm_class:
-            deployment_algorithm: DeploymentAlgorithm = deployment_algorithm_class(workflow_config, expiry_delta_seconds, deployment_metrics_calculator_type=self._deployment_metrics_calculator_type)  # type: ignore
+            logger.info(f"Running deployment algorithm: {workflow_config.deployment_algorithm}")
+            deployment_algorithm: DeploymentAlgorithm = deployment_algorithm_class(workflow_config, expiry_delta_seconds, deployment_metrics_calculator_type=self._deployment_metrics_calculator_type, lambda_timeout=self._lambda_timeout)  # type: ignore
             deployment_algorithm.run(solve_hours)
         else:
             raise ValueError("Invalid deployment algorithm")

@@ -1,0 +1,4 @@
+markdown
+boto3==1.35.3
+pyyaml==6.0.2
+pytz==2024.1
