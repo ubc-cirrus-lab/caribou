@@ -1052,9 +1052,7 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
             events_client = self._client("events")
 
             # Remove the targets from the rule
-            events_client.remove_targets(
-                Rule=rule_name, Ids=[f"{lambda_function_name}-target"]  # The ID of the target you added
-            )
+            events_client.remove_targets(Rule=rule_name, Ids=[f"{lambda_function_name}-target"])
 
             # Delete the rule itself
             events_client.delete_rule(
@@ -1083,7 +1081,6 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
                     return True
 
             return False  # If no matching StatementId is found, return False
-
         except ClientError as e:
             if not e.response["Error"]["Code"] == "ResourceNotFoundException":
                 print(f"Error in asserting if permission exists {lambda_function_name} - {statement_id}: {e}")

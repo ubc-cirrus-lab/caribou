@@ -168,16 +168,17 @@ class TestClient(unittest.TestCase):
         client = Client()
         client._workflow_id = "workflow_id"
 
-        # Mock the return value of get_all_values_from_table
-        mock_deployment_manager_client.get_all_values_from_table.return_value = {
-            "workflow_id": json.dumps(
+        # Mock the return value of get_value_from_table
+        mock_deployment_manager_client.get_value_from_table.return_value = (
+            json.dumps(
                 {
                     "deployed_regions": json.dumps(
                         {"function_instance": {"deploy_region": {"provider": "provider", "region": "region"}}}
                     )
                 }
-            )
-        }
+            ),
+            0.0,
+        )
 
         # Capture the output of the print statements
         with patch("builtins.print") as mocked_print:

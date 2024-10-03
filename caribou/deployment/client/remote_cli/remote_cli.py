@@ -221,7 +221,6 @@ def _get_timer_rule_name(function_name: str) -> str:
 
 
 def _get_aws_timer_payload(function_name: str) -> str:
-    # available_timed_cli_functions = ["deployment_manager", "deployment_migrator"]
     function_name_to_payload = {
         "provider_collector": {
             "action": "data_collect",
