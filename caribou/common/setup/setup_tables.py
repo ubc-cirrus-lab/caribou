@@ -2,6 +2,7 @@ import logging
 import os
 
 import boto3
+from botocore.exceptions import ClientError
 
 from caribou.common import constants
 
@@ -20,8 +21,9 @@ def create_table(dynamodb, table_name):
         dynamodb.describe_table(TableName=table_name)
         logger.info("Table %s already exists", table_name)
         return
-    except dynamodb.exceptions.ResourceNotFoundException:
-        pass
+    except ClientError as e:
+        if e.response["Error"]["Code"] != "ResourceNotFoundException":
+            raise
 
     if table_name not in [constants.SYNC_MESSAGES_TABLE, constants.SYNC_PREDECESSOR_COUNTER_TABLE]:
         # Create all non sync tables with on-demand billing mode
@@ -41,7 +43,7 @@ def create_bucket(s3, bucket_name):
         s3.head_bucket(Bucket=bucket_name)
         logger.info("Bucket %s already exists", bucket_name)
         return
-    except s3.exceptions.ClientError as e:
+    except ClientError as e:
         if e.response["Error"]["Code"] != "404" and e.response["Error"]["Code"] != "403":
             raise
     s3.create_bucket(

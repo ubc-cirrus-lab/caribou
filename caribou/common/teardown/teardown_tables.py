@@ -2,7 +2,7 @@ import os
 from typing import Any
 
 import boto3
-import botocore
+from botocore.exceptions import ClientError
 
 from caribou.common import constants
 from caribou.common.models.endpoints import Endpoints
@@ -15,7 +15,10 @@ def remove_table(dynamodb: Any, table_name: str, verbose: bool = True) -> None:
 
         # If the table exists, delete it
         dynamodb.delete_table(TableName=table_name)
-    except dynamodb.exceptions.ResourceNotFoundException:
+    except ClientError as e:
+        if e.response["Error"]["Code"] != "ResourceNotFoundException":
+            # If the error is not ResourceNotFoundException, raise the exception and notify the user
+            raise
         if verbose:
             print(f"Table '{table_name}' does not exists (Or already removed)")
 
@@ -34,7 +37,7 @@ def remove_bucket(s3: Any, s3_resource: Any, bucket_name: str) -> None:
         s3.delete_bucket(Bucket=bucket_name)
 
         print(f"Removed legacy bucket: {bucket_name}")
-    except botocore.exceptions.ClientError as e:
+    except ClientError as e:
         if e.response["Error"]["Code"] != "404" and e.response["Error"]["Code"] != "403":
             # If the error is not 403 forbidden or 404 not found,
             # raise the exception and notify the user
@@ -106,7 +109,7 @@ def remove_sync_tables_all_regions() -> None:
         for table_name in sync_tables:
             try:
                 remove_table(dynamodb, table_name, verbose=False)
-            except botocore.exceptions.ClientError as e:
+            except ClientError as e:
                 # If not UnrecognizedClientException, log the error
                 # As exception also appears if the user does not have a region enabled
                 # Which means that there are no tables to remove anyways
