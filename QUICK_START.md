@@ -293,3 +293,68 @@ Where `argument` is the payload of the application.
   "action": "version"
 }
 ```
+
+## Setup Automatic Components (For AWS Remote CLI)
+After deploying the AWS remote CLI `deploy_remote_cli`, the user can set up automatic timers for all relevant Caribou components.
+This includes automating data collection (provider, performance, carbon, etc.), log synchronization, deployment management (solving for new deployments when needed), and deployment migration.
+This is implemented through the use of `EventBridge` which execute the Caribou remote framework Lambda function with customized JSON inputs.
+
+The user may simply set up all the component timers automatically through the following command:
+
+
+```bash
+poetry run caribou setup_all_timers
+```
+You may also specify the time configurations of any of the following components:
+ - `provider_collector`: Use `--provider_collector` or `-prc`. By default, invokes the Lambda function at 12:05 AM on the first day of the month. Schedule expression: 'cron(5 0 1 * ? *)'
+ - `carbon_collector`: Use `--carbon_collector` or `-cac`. By default, invokes the Lambda function daily at 12:30 AM. Schedule expression: 'cron(30 0 * * ? *)'
+ - `performance_collector`: Use `--performance_collector` or `-pec`. By default, invokes the Lambda function daily at 12:30 AM. Schedule expression: 'cron(30 0 * * ? *)'
+ - `log_syncer`: Use `--log_syncer` or `-los`. By default, invokes the Lambda function daily at 12:05 AM. Schedule expression: 'cron(5 0 * * ? *)'
+ - `deployment_manager`: Use `--deployment_manager` or `-dma`. By default, invokes the Lambda function daily at 01:00 AM. Schedule expression: 'cron(0 1 * * ? *)'
+ - `deployment_migrator`: Use `--deployment_migrator` or `-dmi`. By default, invokes the Lambda function daily at 02:00 AM. Schedule expression: 'cron(0 2 * * ? *)'
+
+**Note:** Running this command will reset all previously customized time configurations.
+
+At any time, the user can see all available timers and their configurations (and if setup) by running the following command:
+```bash
+poetry run caribou list_timers
+```
+
+Optionally, if the user wishes to have only some components run automatically or to modify the timer of any specific components, they can use the following command:
+```bash
+poetry run caribou setup_timer <timer>
+```
+Where `<timer>` is the name of the timer you want to configure or modify. It can be one of the following options:
+  - `provider_collector`
+  - `carbon_collector`
+  - `performance_collector`
+  - `log_syncer`
+  - `deployment_manager`
+  - `deployment_migrator`
+
+Optionally, you may also specify the time configurations using the following parameter:
+ - `schedule_expressions`: Use `--schedule_expressions` or `-se`. Default: The same default times set for `setup_all_timers` for each individual timer.
+
+To remove a specific timer, use the following command:
+```bash
+poetry run caribou remove_timer <timer>
+```
+Where `<timer>` is the name of the timer you want to remove, using the same names as in `setup_timer`.
+
+
+To remove all the configured timers, use the following command:
+
+```bash
+poetry run caribou remove_all_timers
+```
+
+## Teardown Framework
+Teardown of the Caribou framework is a very simple and automated process. All workflows, system components, and necessary tables for Caribou can be removed simply with the following command:
+
+```bash
+poetry run caribou teardown_framework
+```
+
+**Note:** This command cannot be undone, and all data will be removed (with the exception of CloudWatch data). The user will have to perform the `Setup AWS Environment` process from [Installation](INSTALL.md) again to use the capabilities of Caribou.
+
+**Note:** This does not delete any custom data buckets that the user manually created for benchmarking or other purposes; this only concerns components and data that are automatically created by Caribou.

@@ -355,7 +355,20 @@ def setup_all_timers(
 
 
 @cli.command("remove_timer", help="Remove an existing remote timer. Use list_timers to see available timers.")
-@click.argument("timer", required=True)
+@click.argument(
+    "timer",
+    required=True,
+    type=click.Choice(
+        [
+            "provider_collector",
+            "carbon_collector",
+            "performance_collector",
+            "log_syncer",
+            "deployment_manager",
+            "deployment_migrator",
+        ]
+    ),
+)
 def remove_timer(timer: str) -> None:
     # Check if the timer is valid
     all_available_timed_cli_functions = get_all_available_timed_cli_functions()
