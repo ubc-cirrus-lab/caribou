@@ -1,11 +1,17 @@
 import logging
+import os
 
 import boto3
 
 from caribou.common import constants
-from caribou.common.models.remote_client.aws_remote_client import AWSRemoteClient
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+# Only add a StreamHandler if not running in AWS Lambda
+if "AWS_LAMBDA_FUNCTION_NAME" not in os.environ:
+    if not logger.handlers:
+        logger.addHandler(logging.StreamHandler())
 
 
 def create_table(dynamodb, table_name):
@@ -16,17 +22,17 @@ def create_table(dynamodb, table_name):
         return
     except dynamodb.exceptions.ResourceNotFoundException:
         pass
-    if table_name in [constants.SYNC_MESSAGES_TABLE, constants.SYNC_PREDECESSOR_COUNTER_TABLE]:
-        client = AWSRemoteClient(constants.GLOBAL_SYSTEM_REGION)
-        client.create_sync_tables()
-    dynamodb.create_table(
-        TableName=table_name,
-        AttributeDefinitions=[
-            {"AttributeName": "key", "AttributeType": "S"},
-        ],
-        KeySchema=[{"AttributeName": "key", "KeyType": "HASH"}],
-        BillingMode="PAY_PER_REQUEST",
-    )
+
+    if table_name not in [constants.SYNC_MESSAGES_TABLE, constants.SYNC_PREDECESSOR_COUNTER_TABLE]:
+        # Create all non sync tables with on-demand billing mode
+        dynamodb.create_table(
+            TableName=table_name,
+            AttributeDefinitions=[
+                {"AttributeName": "key", "AttributeType": "S"},
+            ],
+            KeySchema=[{"AttributeName": "key", "KeyType": "HASH"}],
+            BillingMode="PAY_PER_REQUEST",
+        )
 
 
 def create_bucket(s3, bucket_name):

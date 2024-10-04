@@ -81,7 +81,7 @@ def teardown_framework_buckets() -> None:
 
 def remove_sync_tables_all_regions() -> None:
     # First get all the regions
-    all_available_regions: list[str] = []
+    all_available_regions: set[str] = set()
     try:
         available_regions_data = (
             Endpoints().get_data_collector_client().get_all_values_from_table(constants.AVAILABLE_REGIONS_TABLE)
@@ -90,9 +90,12 @@ def remove_sync_tables_all_regions() -> None:
             # Keys are in forms of 'aws:eu-south-1' (For AWS regions)
             if region_key_raw.startswith("aws:"):
                 region_key_aws = region_key_raw.split(":")[1]
-                all_available_regions.append(region_key_aws)
+                all_available_regions.add(region_key_aws)
     except Exception as e:  # pylint: disable=broad-except
         print(f"Error getting available regions: {e}")
+
+    # Add the global region to the set
+    all_available_regions.add(constants.GLOBAL_SYSTEM_REGION)
 
     sync_tables = [constants.SYNC_MESSAGES_TABLE, constants.SYNC_PREDECESSOR_COUNTER_TABLE]
     print(f"Removing sync tables in the following regions: {all_available_regions}")
