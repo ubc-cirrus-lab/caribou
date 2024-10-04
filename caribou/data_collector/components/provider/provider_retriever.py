@@ -22,6 +22,8 @@ class ProviderRetriever(DataRetriever):
         self._google_api_key = os.environ.get("GOOGLE_API_KEY")
         if self._google_api_key is None and not self._integration_test_on:
             raise ValueError("GOOGLE_API_KEY environment variable not set")
+
+        self._aws_ec2_client = boto3.client("ec2")  # Should be available in most if not all regions
         self._aws_pricing_client = boto3.client("pricing", region_name="us-east-1")  # Must be in us-east-1
         self._aws_region_name_to_code: dict[str, str] = {}
 
@@ -60,7 +62,20 @@ class ProviderRetriever(DataRetriever):
         self._available_regions = available_regions
         return available_regions
 
+    def _retrieve_enabled_aws_regions(self) -> list[str]:
+        response = self._aws_ec2_client.describe_regions(AllRegions=False)
+
+        # Extract region names from the response
+        enabled_regions = [region["RegionName"] for region in response["Regions"]]
+
+        return enabled_regions
+
     def retrieve_aws_regions(self) -> dict[str, dict[str, Any]]:
+        # First we get a list of enabled regions for the current account
+        all_enabled_regions = self._retrieve_enabled_aws_regions()
+
+        # Then we get the list of all regions from the AWS regions page
+        # To get the location of the regions (Based on location name)
         amazon_region_page = requests.get(AMAZON_REGION_URL, timeout=5)
 
         amazon_region_page_soup = BeautifulSoup(amazon_region_page.content, "html.parser")
@@ -84,6 +99,11 @@ class ProviderRetriever(DataRetriever):
                     continue
                 region_code = table_cells[0].text.strip()
                 region_name = table_cells[1].text.strip()
+
+                if region_code not in all_enabled_regions:
+                    # Skip regions that are not enabled for the current account
+                    continue
+
                 coordinates = self.retrieve_location(region_name)
                 regions[f"{Provider.AWS.value}:{region_code}"] = {
                     "name": region_name,

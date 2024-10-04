@@ -247,7 +247,20 @@ def list_timers() -> None:
 
 
 @cli.command("setup_timer", help="Setup or modify existing timer. Use list_timers to see available timers.")
-@click.argument("timer", required=True)
+@click.argument(
+    "timer",
+    required=True,
+    type=click.Choice(
+        [
+            "provider_collector",
+            "carbon_collector",
+            "performance_collector",
+            "log_syncer",
+            "deployment_manager",
+            "deployment_migrator",
+        ]
+    ),
+)
 @click.option(
     "--schedule_expressions",
     "-se",
