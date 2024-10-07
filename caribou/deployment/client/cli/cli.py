@@ -242,13 +242,24 @@ def list_timers() -> None:
     print("Available Timers:")
     for function_name in all_available_timed_cli_functions:
         schedule_expression = report_timer_schedule_expression(function_name)
-        if schedule_expression is not None:
-            schedule_expression = schedule_expression.replace("cron(", "").replace(")", "")
-        schedule_expression = (
-            get_description(schedule_expression, cron_descriptor_options)
-            if schedule_expression is not None
-            else "Not Configured"
-        )
+
+        description_text: str = ""
+        if schedule_expression:
+            if schedule_expression.startswith("rate("):
+                description_text = (
+                    f"Every {schedule_expression.replace('rate(', '').replace(')', '')}"
+                    f"(Rate Expression: {schedule_expression})"
+                )
+            elif schedule_expression.startswith("cron("):
+                description_text = get_description(
+                    schedule_expression.replace("cron(", "").replace(")", ""), cron_descriptor_options
+                )
+                description_text = f"{description_text} (Cron Expression: {schedule_expression})"
+            else:
+                # Unknown type, but would be valid so just use the expression
+                description_text = schedule_expression
+
+        schedule_expression = description_text if schedule_expression is not None else "Not Configured"
         print(f"  {function_name}: {schedule_expression}")
 
 
@@ -268,7 +279,7 @@ def list_timers() -> None:
     ),
 )
 @click.option(
-    "--schedule_expressions",
+    "--schedule_expression",
     "-se",
     help="Specify a cron(...) or rate(...) rule. Or use default. Ex: cron(30 0 * * ? *).",
 )

@@ -96,7 +96,22 @@
           ],
           "Resource": "*",
           "Effect": "Allow"
+      },
+      {
+        "Action": [
+            "ec2:DescribeRegions"
+        ],
+        "Resource": "*",
+        "Effect": "Allow"
+      },
+      {
+        "Action": [
+            "pricing:ListPriceLists",
+            "pricing:GetPriceListFileUrl"
+        ],
+        "Resource": "*",
+        "Effect": "Allow"
       }
-     ]
+    ]
   }
 }

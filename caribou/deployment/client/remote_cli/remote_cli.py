@@ -271,10 +271,21 @@ def setup_aws_timers(new_rules: list[tuple[str, str]]) -> None:
             aws_remote_client.create_timer_rule(
                 REMOTE_CARIBOU_CLI_FUNCTION_NAME, schedule_expression, rule_name, event_payload
             )
+            if schedule_expression.startswith("rate("):
+                description_text = f"Every {schedule_expression.replace('rate(', '').replace(')', '')}"
+            elif schedule_expression.startswith("cron("):
+                description_text = get_description(
+                    schedule_expression.replace("cron(", "").replace(")", ""), cron_descriptor_options
+                )
+            else:
+                # Here the schedule expression is not standard cron or rate, but
+                # since its here, it means that its valid and can be used as is.
+                description_text = schedule_expression
+
             print(
                 f"Successfully created timer rule for {function_name}, "
                 f"schedule expression: {schedule_expression} - "
-                f"{get_description(schedule_expression.replace('cron(', '').replace(')', ''), cron_descriptor_options)}"
+                f"{description_text}"
             )
         except Exception as e:  # pylint: disable=broad-except
             print(
