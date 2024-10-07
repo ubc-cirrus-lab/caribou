@@ -799,6 +799,7 @@ class TestProviderRetriever(unittest.TestCase):
     @patch("caribou.data_collector.components.provider.provider_retriever.boto3.client")
     def test_retrieve_enabled_aws_regions_success(self, mock_boto3_client):
         mock_ec2_client = MagicMock()
+
         mock_boto3_client.return_value = mock_ec2_client
 
         mock_ec2_client.describe_regions.return_value = {
@@ -809,7 +810,13 @@ class TestProviderRetriever(unittest.TestCase):
             ]
         }
 
-        provider_retriever = ProviderRetriever(client=mock_boto3_client)
+        with patch("os.environ.get") as mock_os_environ_get, patch(
+            "caribou.common.utils.str_to_bool"
+        ) as mock_str_to_bool:
+            mock_os_environ_get.return_value = "test_key"
+            mock_str_to_bool.return_value = False
+            provider_retriever = ProviderRetriever(client=mock_boto3_client)
+
         expected_regions = ["us-east-1", "us-west-2", "eu-west-1"]
 
         actual_regions = provider_retriever._retrieve_enabled_aws_regions()
@@ -822,7 +829,13 @@ class TestProviderRetriever(unittest.TestCase):
 
         mock_ec2_client.describe_regions.return_value = {"Regions": []}
 
-        provider_retriever = ProviderRetriever(client=mock_boto3_client)
+        with patch("os.environ.get") as mock_os_environ_get, patch(
+            "caribou.common.utils.str_to_bool"
+        ) as mock_str_to_bool:
+            mock_os_environ_get.return_value = "test_key"
+            mock_str_to_bool.return_value = False
+            provider_retriever = ProviderRetriever(client=mock_boto3_client)
+
         expected_regions = []
 
         actual_regions = provider_retriever._retrieve_enabled_aws_regions()
@@ -835,7 +848,12 @@ class TestProviderRetriever(unittest.TestCase):
 
         mock_ec2_client.describe_regions.side_effect = Exception("AWS API error")
 
-        provider_retriever = ProviderRetriever(client=mock_boto3_client)
+        with patch("os.environ.get") as mock_os_environ_get, patch(
+            "caribou.common.utils.str_to_bool"
+        ) as mock_str_to_bool:
+            mock_os_environ_get.return_value = "test_key"
+            mock_str_to_bool.return_value = False
+            provider_retriever = ProviderRetriever(client=mock_boto3_client)
 
         with self.assertRaises(Exception) as context:
             provider_retriever._retrieve_enabled_aws_regions()
