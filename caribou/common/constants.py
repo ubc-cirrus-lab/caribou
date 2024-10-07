@@ -34,8 +34,9 @@ CARIBOU_WORKFLOW_IMAGES_TABLE = "caribou_workflow_images_table"
 # Global System Region
 GLOBAL_SYSTEM_REGION = "us-west-2"
 
-# Remote CLI Function and repository name
+# Remote CLI Information (Eg. Function, repo name, policy name, etc.)
 REMOTE_CARIBOU_CLI_FUNCTION_NAME = "caribou_cli"
+REMOTE_CARIBOU_CLI_IAM_POLICY_NAME = "caribou_deployment_policy"
 
 # Integration Test System Region
 INTEGRATION_TEST_SYSTEM_REGION = "rivendell"

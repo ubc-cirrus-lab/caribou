@@ -2,8 +2,10 @@ import os
 from typing import Optional
 
 import click
+from cron_descriptor import Options, get_description
 
 from caribou.common.setup.setup_tables import main as setup_tables_func
+from caribou.common.teardown.teardown_tables import main as teardown_tables_func
 from caribou.data_collector.components.carbon.carbon_collector import CarbonCollector
 from caribou.data_collector.components.performance.performance_collector import PerformanceCollector
 from caribou.data_collector.components.provider.provider_collector import ProviderCollector
@@ -11,8 +13,13 @@ from caribou.data_collector.components.workflow.workflow_collector import Workfl
 from caribou.deployment.client import __version__ as CARIBOU_VERSION
 from caribou.deployment.client.cli.new_workflow import create_new_workflow_directory
 from caribou.deployment.client.remote_cli.remote_cli import (
-    deploy_aws_framework,
-    remove_aws_framework,
+    deploy_remote_framework,
+    get_all_available_timed_cli_functions,
+    get_all_default_timed_cli_functions,
+    remove_aws_timers,
+    remove_remote_framework,
+    report_timer_schedule_expression,
+    setup_aws_timers,
     valid_framework_dir,
 )
 from caribou.deployment.common.config.config import Config
@@ -105,7 +112,7 @@ def manage_deployments() -> None:
     deployment_manager.check()
 
 
-@cli.command("run_deployment_migrator", help="Check if the deployment of a function should be updated.")
+@cli.command("run_deployment_migrator", help="Check if the DP of a function should be updated.")
 def run_deployment_migrator() -> None:
     function_deployment_monitor = DeploymentMigrator()
     function_deployment_monitor.check()
@@ -114,6 +121,39 @@ def run_deployment_migrator() -> None:
 @cli.command("setup_tables", help="Setup the tables.")
 def setup_tables() -> None:
     setup_tables_func()
+
+
+@cli.command("teardown_framework", help="Teardown the framework.")
+@click.option("-y", "--yes", is_flag=True, help="Skip confirmation prompt.")
+def teardown_framework(yes: bool) -> None:
+    if yes:
+        confirm = "y"
+    else:
+        confirm = (
+            input("Are you sure you want to teardown the framework? This action cannot be undone. [y/N]: ")
+            .strip()
+            .lower()
+        )
+    print(f"confirm: {confirm}")
+    if confirm in ["y", "yes"]:
+        ## First remove remote framework cli
+        ## This also removes all timers
+        remove_remote_framework()
+
+        ## Then remove all deployed workflows
+        print("\nRemoving all deployed workflows")
+        deployed_workflows: list[str] = Client().list_workflows()
+        for workflow_id in deployed_workflows:
+            client = Client(workflow_id)
+            client.remove()
+
+        # Finally teardown ALL the tables
+        print("\nTearing down all framework tables and buckets (if any)")
+        teardown_tables_func()
+
+        print("\nFramework teardown attempt has been completed.")
+    else:
+        print("Teardown aborted.")
 
 
 @cli.command("version", help="Print the version of caribou.")
@@ -188,12 +228,187 @@ def deploy_remote_cli(
         if ephemeral_storage_mb < 512 or ephemeral_storage_mb > 10240:
             raise click.ClickException("Ephemeral storage must be between 512 MB and 10240 MB (10 GB).")
 
-    deploy_aws_framework(project_dir, timeout_s, memory_mb, ephemeral_storage_mb)
+    deploy_remote_framework(project_dir, timeout_s, memory_mb, ephemeral_storage_mb)
 
 
-@cli.command("remove_remote_cli", help="Deploy the deployed remote framework from AWS Lambda.")
+@cli.command("list_timers", help="See all available timers.")
+def list_timers() -> None:
+    # Configure cron descriptor options
+    cron_descriptor_options = Options()
+    cron_descriptor_options.verbose = True
+
+    # Get all available timers
+    all_available_timed_cli_functions = get_all_available_timed_cli_functions()
+    print("Available Timers:")
+    for function_name in all_available_timed_cli_functions:
+        schedule_expression = report_timer_schedule_expression(function_name)
+
+        description_text: str = ""
+        if schedule_expression:
+            if schedule_expression.startswith("rate("):
+                description_text = (
+                    f"Every {schedule_expression.replace('rate(', '').replace(')', '')}"
+                    f"(Rate Expression: {schedule_expression})"
+                )
+            elif schedule_expression.startswith("cron("):
+                description_text = get_description(
+                    schedule_expression.replace("cron(", "").replace(")", ""), cron_descriptor_options
+                )
+                description_text = f"{description_text} (Cron Expression: {schedule_expression})"
+            else:
+                # Unknown type, but would be valid so just use the expression
+                description_text = schedule_expression
+
+        schedule_expression = description_text if schedule_expression is not None else "Not Configured"
+        print(f"  {function_name}: {schedule_expression}")
+
+
+@cli.command("setup_timer", help="Setup or modify existing timer. Use list_timers to see available timers.")
+@click.argument(
+    "timer",
+    required=True,
+    type=click.Choice(
+        [
+            "provider_collector",
+            "carbon_collector",
+            "performance_collector",
+            "log_syncer",
+            "deployment_manager",
+            "deployment_migrator",
+        ]
+    ),
+)
+@click.option(
+    "--schedule_expression",
+    "-se",
+    help="Specify a cron(...) or rate(...) rule. Or use default. Ex: cron(30 0 * * ? *).",
+)
+@click.pass_context
+def setup_timer(
+    _: click.Context,
+    timer: str,
+    schedule_expression: Optional[str],
+) -> None:
+    # Check if the timer is valid
+    all_available_timed_cli_functions = get_all_available_timed_cli_functions()
+    if timer not in all_available_timed_cli_functions:
+        print("Invalid timer. Use list_timers to see available timers.")
+        return
+
+    # Now check if the schedule_expressions is defined
+    # If not, revert to default settings
+    if schedule_expression is None:
+        schedule_expression = get_all_default_timed_cli_functions()[timer]
+
+    # Setup the timer
+    setup_aws_timers([(timer, schedule_expression)])
+
+
+@cli.command("setup_all_timers", help="Setup ALL automatic timer for AWS remote CLI.")
+@click.option(
+    "--provider_collector",
+    "-prc",
+    help="Provider collector function. Refer to doc for default. Example Default: 'cron(5 0 1 * ? *)'.",
+)
+@click.option(
+    "--carbon_collector",
+    "-cac",
+    help="Carbon collector function. Refer to doc for default. Example Default: 'cron(30 0 * * ? *)'.",
+)
+@click.option(
+    "--performance_collector",
+    "-pec",
+    help="Performance collector function. Refer to doc for default. Example Default: 'cron(30 0 * * ? *)'.",
+)
+@click.option(
+    "--log_syncer", "-los", help="Log syncer function. Refer to doc for default. Example Default: 'cron(5 0 * * ? *)'."
+)
+@click.option(
+    "--deployment_manager",
+    "-dma",
+    help="Deployment manager function. Refer to doc for default. Example Default: 'cron(0 1 * * ? *)'.",
+)
+@click.option(
+    "--deployment_migrator",
+    "-dmi",
+    help="Deployment migrator function. Refer to doc for default. Example Default: 'cron(0 2 * * ? *)'.",
+)
+@click.pass_context
+def setup_all_timers(
+    _: click.Context,
+    provider_collector: Optional[str],
+    carbon_collector: Optional[str],
+    performance_collector: Optional[str],
+    log_syncer: Optional[str],
+    deployment_manager: Optional[str],
+    deployment_migrator: Optional[str],
+) -> None:
+    """
+    Setup automatic timers for AWS Lambda functions. (Use cron(...) or rate(...) expressions)
+    Format Info:
+    https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-scheduled-rule-pattern.html
+    """
+    function_names = {
+        "provider_collector": provider_collector,
+        "carbon_collector": carbon_collector,
+        "performance_collector": performance_collector,
+        "log_syncer": log_syncer,
+        "deployment_manager": deployment_manager,
+        "deployment_migrator": deployment_migrator,
+    }
+
+    default_schedule_expressions = get_all_default_timed_cli_functions()
+    new_rules: list[tuple[str, str]] = []
+    for function_name in get_all_available_timed_cli_functions():
+        user_input: Optional[str] = function_names.get(function_name)
+        if user_input is not None:
+            schedule_expr = user_input
+        else:
+            schedule_expr = default_schedule_expressions[function_name]
+
+        new_rules.append((function_name, schedule_expr))
+
+    setup_aws_timers(new_rules)
+
+
+@cli.command("remove_timer", help="Remove an existing remote timer. Use list_timers to see available timers.")
+@click.argument(
+    "timer",
+    required=True,
+    type=click.Choice(
+        [
+            "provider_collector",
+            "carbon_collector",
+            "performance_collector",
+            "log_syncer",
+            "deployment_manager",
+            "deployment_migrator",
+        ]
+    ),
+)
+def remove_timer(timer: str) -> None:
+    # Check if the timer is valid
+    all_available_timed_cli_functions = get_all_available_timed_cli_functions()
+    if timer not in all_available_timed_cli_functions:
+        print("Invalid timer. Use list_timers to see available timers.")
+        return
+
+    # Remove the timer
+    remove_aws_timers([timer])
+
+
+@cli.command("remove_all_timers", help="Remove ALL automatic timers for AWS remote CLI.")
+def remove_all_timers() -> None:
+    """
+    Remove all automatic timers for AWS Lambda functions.
+    """
+    all_available_timed_cli_functions = get_all_available_timed_cli_functions()
+    remove_aws_timers(all_available_timed_cli_functions)
+
+
+@cli.command("remove_remote_cli", help="Deploy the remote framework from AWS Lambda.")
 def remove_remote_cli() -> None:
-    remove_aws_framework()
+    remove_remote_framework()
 
 
 __version__ = CARIBOU_VERSION

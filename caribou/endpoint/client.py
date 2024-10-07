@@ -179,41 +179,64 @@ class Client:
         return deployed_workflows
 
     def remove(self) -> None:
+        """
+        This method removes the workflow from the system. It removes the workflow from the following tables:
+        - WORKFLOW_PLACEMENT_DECISION_TABLE
+        - WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE
+        - DEPLOYMENT_MANAGER_RESOURCE_TABLE
+        - DEPLOYMENT_RESOURCES_TABLE
+        - WORKFLOW_INSTANCE_TABLE
+        - CARIBOU_WORKFLOW_IMAGES_TABLE
+        - WORKFLOW_SUMMARY_TABLE
+        All IAM roles, functions, and ECR repositories are also removed.
+        """
         if self._workflow_id is None:
             raise RuntimeError("No workflow id provided")
 
+        # Removes entry from the workflow active DP table
         self._endpoints.get_deployment_algorithm_workflow_placement_decision_client().remove_key(
             WORKFLOW_PLACEMENT_DECISION_TABLE, self._workflow_id
         )
+
+        # Remove entry from the workflow staging area table (Pending re-deployment queue)
         self._endpoints.get_deployment_manager_client().remove_key(
             WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE, self._workflow_id
         )
+
+        # Remove entry from the deployment manager resource table
+        # (Managing configured resources for each function the workflow)
         self._endpoints.get_deployment_manager_client().remove_key(DEPLOYMENT_MANAGER_RESOURCE_TABLE, self._workflow_id)
 
-        currently_deployed_workflows = self._endpoints.get_deployment_resources_client().get_all_values_from_table(
-            DEPLOYMENT_RESOURCES_TABLE
-        )
-
-        for workflow_id, deployment_manager_config_json in currently_deployed_workflows.items():
-            if workflow_id != self._workflow_id:
-                continue
-            if not isinstance(deployment_manager_config_json, str):
-                raise RuntimeError(
-                    f"The deployment manager resource value for workflow_id: {workflow_id} is not a string"
-                )
-            self._remove_workflow(deployment_manager_config_json)
-
-        # Disabled as part of issue #293
-        # self._endpoints.get_deployment_resources_client().remove_resource(f"deployment_package_{self._workflow_id}")
+        # Remove all applicable entries from the deployment resources table
+        # (Managing caribou workflow config + IAM roles, functions, ECR repositories)
+        # And all associated SNS topics, ECR repositories, deployed lambda functions, and IAM roles
+        deployment_manager_config: str = self._endpoints.get_deployment_resources_client().get_value_from_table(
+            DEPLOYMENT_RESOURCES_TABLE, self._workflow_id
+        )[0]
+        if deployment_manager_config != "":
+            # If we found the deployment manager config, remove the workflow
+            self._remove_workflow(deployment_manager_config)
 
         self._endpoints.get_deployment_resources_client().remove_key(DEPLOYMENT_RESOURCES_TABLE, self._workflow_id)
 
+        # Remove entry from the deployment resources table (Packaged code, IAM roles, etc.)
+        # Disabled as part of issue #293
+        # self._endpoints.get_deployment_resources_client().remove_resource(f"deployment_package_{self._workflow_id}")
+
+        # Remove entry from the workflow instance table
+        # (This table is used to track workflow summary information used by the MM solver)
         self._endpoints.get_data_collector_client().remove_key(WORKFLOW_INSTANCE_TABLE, self._workflow_id)
 
+        # Remove entry from the workflow images table
+        # (This table is used to track the ECR images of all
+        # functions in the workflow)
         self._endpoints.get_deployment_resources_client().remove_key(
             CARIBOU_WORKFLOW_IMAGES_TABLE, self._workflow_id.replace(".", "_")
         )
 
+        # Remove entry from the workflow summary table
+        # (This table is produced by the log syncer for the FORGETTING_NUMBER
+        # most recent and or relevant workflow runs)
         self._endpoints.get_datastore_client().remove_key(WORKFLOW_SUMMARY_TABLE, self._workflow_id)
 
         print(f"Removed workflow {self._workflow_id}")
@@ -234,6 +257,7 @@ class Client:
         messaging_topic_name = f"{identifier}_messaging_topic"
         client = self._get_remote_client(provider, region)
 
+        # Remove the ECR repository
         try:
             if isinstance(client, AWSRemoteClient):
                 client.remove_ecr_repository(identifier)
@@ -242,16 +266,26 @@ class Client:
         except botocore.exceptions.ClientError as e:
             print(f"Could not remove ecr repository {identifier}: {str(e)}")
 
+        # Remove the SNS messaging topic and all associated subscriptions
         try:
             topic_identifier = client.get_topic_identifier(messaging_topic_name)
             client.remove_messaging_topic(topic_identifier)
         except RuntimeError as e:
             print(f"Could not remove messaging topic {messaging_topic_name}: {str(e)}")
 
+        # Remove the aws lambda function
         try:
             client.remove_function(identifier)
         except RuntimeError as e:
             print(f"Could not remove function {identifier}: {str(e)}")
+        except botocore.exceptions.ClientError as e:
+            print(f"Could not remove function {identifier}: {str(e)}")
+
+        # Remove the IAM role
+        try:
+            client.remove_role(role_name)
+        except RuntimeError as e:
+            print(f"Could not remove role {role_name}: {str(e)}")
         except botocore.exceptions.ClientError as e:
             print(f"Could not remove role {role_name}: {str(e)}")
 

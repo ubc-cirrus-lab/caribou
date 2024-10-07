@@ -1,4 +1,6 @@
+from io import StringIO
 import os
+import sys
 import unittest
 from unittest.mock import patch
 from unittest.mock import MagicMock
@@ -1127,6 +1129,335 @@ class TestAWSRemoteClient(unittest.TestCase):
 
         # Assert that the describe_repositories method was called with the correct parameters
         mock_client.return_value.describe_repositories.assert_called_once_with(repositoryNames=["test_repository"])
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_get_timer_rule_schedule_expression_exists(self, mock_client):
+        # Mocking the scenario where the timer rule exists
+        mock_events_client = MagicMock()
+        mock_client.return_value = mock_events_client
+
+        client = AWSRemoteClient("region1")
+
+        # Mock the return value of describe_rule
+        mock_events_client.describe_rule.return_value = {"ScheduleExpression": "rate(5 minutes)"}
+
+        result = client.get_timer_rule_schedule_expression("test_rule")
+
+        # Check that the return value is correct
+        self.assertEqual(result, "rate(5 minutes)")
+
+        # Check that describe_rule was called with the correct arguments
+        mock_events_client.describe_rule.assert_called_once_with(Name="test_rule")
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_get_timer_rule_schedule_expression_not_exists(self, mock_client):
+        # Mocking the scenario where the timer rule does not exist
+        mock_events_client = MagicMock()
+        mock_client.return_value = mock_events_client
+
+        client = AWSRemoteClient("region1")
+
+        # Mock the side effect of describe_rule to raise a ResourceNotFoundException
+        mock_events_client.describe_rule.side_effect = ClientError(
+            {"Error": {"Code": "ResourceNotFoundException"}}, "describe_rule"
+        )
+
+        result = client.get_timer_rule_schedule_expression("test_rule")
+
+        # Check that the return value is None
+        self.assertIsNone(result)
+
+        # Check that describe_rule was called with the correct arguments
+        mock_events_client.describe_rule.assert_called_once_with(Name="test_rule")
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_get_timer_rule_schedule_expression_other_error(self, mock_client):
+        # Mocking the scenario where another error occurs
+        mock_events_client = MagicMock()
+        mock_client.return_value = mock_events_client
+
+        client = AWSRemoteClient("region1")
+
+        # Mock the side effect of describe_rule to raise a different ClientError
+        mock_events_client.describe_rule.side_effect = ClientError(
+            {"Error": {"Code": "InternalError"}}, "describe_rule"
+        )
+
+        # Capture stdout
+        captured_output = StringIO()
+        sys.stdout = captured_output
+
+        result = client.get_timer_rule_schedule_expression("test_rule")
+
+        # Reset redirect.
+        sys.stdout = sys.__stdout__
+
+        # Check that the return value is None
+        self.assertIsNone(result)
+
+        # Check that describe_rule was called with the correct arguments
+        mock_events_client.describe_rule.assert_called_once_with(Name="test_rule")
+
+        # Check that the error message was logged
+        self.assertIn(
+            "Error removing the EventBridge rule test_rule: An error occurred (InternalError)",
+            captured_output.getvalue(),
+        )
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_remove_timer_rule_success(self, mock_client):
+        # Mocking the scenario where the timer rule is removed successfully
+        mock_events_client = MagicMock()
+        mock_client.return_value = mock_events_client
+
+        client = AWSRemoteClient("region1")
+
+        # Call the method with test values
+        client.remove_timer_rule("lambda_function_name", "rule_name")
+
+        # Check that the remove_targets and delete_rule methods were called
+        mock_events_client.remove_targets.assert_called_once_with(Rule="rule_name", Ids=["lambda_function_name-target"])
+        mock_events_client.delete_rule.assert_called_once_with(Name="rule_name", Force=True)
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_remove_timer_rule_not_found(self, mock_client):
+        # Mocking the scenario where the timer rule does not exist
+        mock_events_client = MagicMock()
+        mock_client.return_value = mock_events_client
+
+        client = AWSRemoteClient("region1")
+
+        # Mock the side effect of remove_targets to raise a ResourceNotFoundException
+        mock_events_client.remove_targets.side_effect = ClientError(
+            {"Error": {"Code": "ResourceNotFoundException"}}, "remove_targets"
+        )
+
+        # Call the method with test values
+        client.remove_timer_rule("lambda_function_name", "rule_name")
+
+        # Check that the remove_targets method was called
+        mock_events_client.remove_targets.assert_called_once_with(Rule="rule_name", Ids=["lambda_function_name-target"])
+
+        # Check that the delete_rule method was not called
+        mock_events_client.delete_rule.assert_not_called()
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_remove_timer_rule_other_error(self, mock_client):
+        # Mocking the scenario where another error occurs
+        mock_events_client = MagicMock()
+        mock_client.return_value = mock_events_client
+
+        client = AWSRemoteClient("region1")
+
+        # Mock the side effect of remove_targets to raise a different ClientError
+        mock_events_client.remove_targets.side_effect = ClientError(
+            {"Error": {"Code": "InternalError"}}, "remove_targets"
+        )
+
+        # Capture stdout
+        captured_output = StringIO()
+        sys.stdout = captured_output
+
+        # Call the method with test values
+        client.remove_timer_rule("lambda_function_name", "rule_name")
+
+        # Reset redirect.
+        sys.stdout = sys.__stdout__
+
+        # Check that the remove_targets method was called
+        mock_events_client.remove_targets.assert_called_once_with(Rule="rule_name", Ids=["lambda_function_name-target"])
+
+        # Check that the delete_rule method was not called
+        mock_events_client.delete_rule.assert_not_called()
+
+        # Check that the error message was logged
+        self.assertIn(
+            "Error removing the EventBridge rule rule_name: An error occurred (InternalError)",
+            captured_output.getvalue(),
+        )
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_event_bridge_permission_exists_true(self, mock_client):
+        # Mocking the scenario where the permission exists
+        mock_lambda_client = MagicMock()
+        mock_client.return_value = mock_lambda_client
+
+        client = AWSRemoteClient("region1")
+
+        # Mock the return value of get_policy
+        mock_lambda_client.get_policy.return_value = {
+            "Policy": json.dumps({"Statement": [{"Sid": "existing_statement_id"}]})
+        }
+
+        result = client.event_bridge_permission_exists("lambda_function_name", "existing_statement_id")
+
+        # Check that the return value is True
+        self.assertTrue(result)
+
+        # Check that get_policy was called with the correct arguments
+        mock_lambda_client.get_policy.assert_called_once_with(FunctionName="lambda_function_name")
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_event_bridge_permission_exists_false(self, mock_client):
+        # Mocking the scenario where the permission does not exist
+        mock_lambda_client = MagicMock()
+        mock_client.return_value = mock_lambda_client
+
+        client = AWSRemoteClient("region1")
+
+        # Mock the return value of get_policy
+        mock_lambda_client.get_policy.return_value = {
+            "Policy": json.dumps({"Statement": [{"Sid": "different_statement_id"}]})
+        }
+
+        result = client.event_bridge_permission_exists("lambda_function_name", "non_existing_statement_id")
+
+        # Check that the return value is False
+        self.assertFalse(result)
+
+        # Check that get_policy was called with the correct arguments
+        mock_lambda_client.get_policy.assert_called_once_with(FunctionName="lambda_function_name")
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_event_bridge_permission_exists_client_error(self, mock_client):
+        # Mocking the scenario where a ClientError occurs
+        mock_lambda_client = MagicMock()
+        mock_client.return_value = mock_lambda_client
+
+        client = AWSRemoteClient("region1")
+
+        # Mock the side effect of get_policy to raise a ClientError
+        mock_lambda_client.get_policy.side_effect = ClientError({"Error": {"Code": "InternalError"}}, "get_policy")
+
+        # Capture stdout
+        captured_output = StringIO()
+        sys.stdout = captured_output
+
+        result = client.event_bridge_permission_exists("lambda_function_name", "statement_id")
+
+        # Reset redirect.
+        sys.stdout = sys.__stdout__
+
+        # Check that the return value is False
+        self.assertFalse(result)
+
+        # Check that get_policy was called with the correct arguments
+        mock_lambda_client.get_policy.assert_called_once_with(FunctionName="lambda_function_name")
+
+        # Check that the error message was logged
+        self.assertIn(
+            "Error in asserting if permission exists lambda_function_name - statement_id", captured_output.getvalue()
+        )
+
+    @patch.object(AWSRemoteClient, "_client")
+    @patch.object(AWSRemoteClient, "event_bridge_permission_exists")
+    @patch.object(AWSRemoteClient, "get_lambda_function")
+    def test_create_timer_rule(self, mock_get_lambda_function, mock_event_bridge_permission_exists, mock_client):
+        # Mocking the scenario where the timer rule is created successfully
+        mock_events_client = MagicMock()
+        mock_lambda_client = MagicMock()
+        mock_client.side_effect = [mock_events_client, mock_lambda_client]
+
+        client = AWSRemoteClient("region1")
+
+        # Define the input
+        lambda_function_name = "test_lambda_function"
+        schedule_expression = "rate(5 minutes)"
+        rule_name = "test_rule"
+        event_payload = '{"key": "value"}'
+
+        # Mock the return value of put_rule
+        mock_events_client.put_rule.return_value = {"RuleArn": "arn:aws:events:region:123456789012:rule/test_rule"}
+
+        # Mock the return value of event_bridge_permission_exists
+        mock_event_bridge_permission_exists.return_value = False
+
+        # Mock the return value of get_lambda_function
+        mock_get_lambda_function.return_value = {
+            "FunctionArn": "arn:aws:lambda:region:123456789012:function:test_lambda_function"
+        }
+
+        # Call the method with test values
+        client.create_timer_rule(lambda_function_name, schedule_expression, rule_name, event_payload)
+
+        # Check that put_rule was called with the correct arguments
+        mock_events_client.put_rule.assert_called_once_with(
+            Name=rule_name, ScheduleExpression=schedule_expression, State="ENABLED"
+        )
+
+        # Check that add_permission was called with the correct arguments
+        mock_lambda_client.add_permission.assert_called_once_with(
+            FunctionName=lambda_function_name,
+            StatementId=f"{rule_name}-invoke-lambda",
+            Action="lambda:InvokeFunction",
+            Principal="events.amazonaws.com",
+            SourceArn="arn:aws:events:region:123456789012:rule/test_rule",
+        )
+
+        # Check that put_targets was called with the correct arguments
+        mock_events_client.put_targets.assert_called_once_with(
+            Rule=rule_name,
+            Targets=[
+                {
+                    "Id": f"{lambda_function_name}-target",
+                    "Arn": "arn:aws:lambda:region:123456789012:function:test_lambda_function",
+                    "Input": event_payload,
+                }
+            ],
+        )
+
+    @patch.object(AWSRemoteClient, "_client")
+    @patch.object(AWSRemoteClient, "event_bridge_permission_exists")
+    @patch.object(AWSRemoteClient, "get_lambda_function")
+    def test_create_timer_rule_permission_exists(
+        self, mock_get_lambda_function, mock_event_bridge_permission_exists, mock_client
+    ):
+        # Mocking the scenario where the permission already exists
+        mock_events_client = MagicMock()
+        mock_lambda_client = MagicMock()
+        mock_client.side_effect = [mock_events_client, mock_lambda_client]
+
+        client = AWSRemoteClient("region1")
+
+        # Define the input
+        lambda_function_name = "test_lambda_function"
+        schedule_expression = "rate(5 minutes)"
+        rule_name = "test_rule"
+        event_payload = '{"key": "value"}'
+
+        # Mock the return value of put_rule
+        mock_events_client.put_rule.return_value = {"RuleArn": "arn:aws:events:region:123456789012:rule/test_rule"}
+
+        # Mock the return value of event_bridge_permission_exists
+        mock_event_bridge_permission_exists.return_value = True
+
+        # Mock the return value of get_lambda_function
+        mock_get_lambda_function.return_value = {
+            "FunctionArn": "arn:aws:lambda:region:123456789012:function:test_lambda_function"
+        }
+
+        # Call the method with test values
+        client.create_timer_rule(lambda_function_name, schedule_expression, rule_name, event_payload)
+
+        # Check that put_rule was called with the correct arguments
+        mock_events_client.put_rule.assert_called_once_with(
+            Name=rule_name, ScheduleExpression=schedule_expression, State="ENABLED"
+        )
+
+        # Check that add_permission was not called since the permission already exists
+        mock_lambda_client.add_permission.assert_not_called()
+
+        # Check that put_targets was called with the correct arguments
+        mock_events_client.put_targets.assert_called_once_with(
+            Rule=rule_name,
+            Targets=[
+                {
+                    "Id": f"{lambda_function_name}-target",
+                    "Arn": "arn:aws:lambda:region:123456789012:function:test_lambda_function",
+                    "Input": event_payload,
+                }
+            ],
+        )
 
 
 if __name__ == "__main__":

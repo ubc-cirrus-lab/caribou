@@ -4,8 +4,8 @@ import os
 import tempfile
 import json
 from caribou.deployment.client.remote_cli.remote_cli import (
-    remove_aws_framework,
-    deploy_aws_framework,
+    remove_remote_framework,
+    deploy_remote_framework,
     valid_framework_dir,
     _retrieve_iam_trust_policy,
     _get_env_vars,
@@ -19,15 +19,61 @@ from caribou.deployment.common.deploy.models.resource import Resource
 
 class TestRemoteCLI(unittest.TestCase):
     @patch("caribou.deployment.client.remote_cli.remote_cli.AWSRemoteClient")
-    def test_remove_aws_framework(self, MockAWSRemoteClient):
+    @patch("caribou.deployment.client.remote_cli.remote_cli.get_all_available_timed_cli_functions")
+    @patch("caribou.deployment.client.remote_cli.remote_cli.remove_aws_timers")
+    @patch("caribou.deployment.client.remote_cli.remote_cli._is_aws_framework_deployed")
+    def test_remove_remote_framework(
+        self, mock_is_deployed, mock_remove_timers, mock_get_functions, MockAWSRemoteClient
+    ):
         mock_client = MockAWSRemoteClient.return_value
         mock_client.resource_exists.side_effect = [True, True, True]
+        mock_is_deployed.return_value = True
+        mock_get_functions.return_value = ["provider_collector", "carbon_collector"]
 
-        remove_aws_framework()
+        remove_remote_framework()
 
+        mock_remove_timers.assert_called_once_with(["provider_collector", "carbon_collector"], verbose=True)
         mock_client.remove_role.assert_called_once_with("caribou_deployment_policy")
         mock_client.remove_function.assert_called_once_with("caribou_cli")
         mock_client.remove_ecr_repository.assert_called_once_with("caribou_cli")
+
+    @patch("caribou.deployment.client.remote_cli.remote_cli.AWSRemoteClient")
+    @patch("caribou.deployment.client.remote_cli.remote_cli.get_all_available_timed_cli_functions")
+    @patch("caribou.deployment.client.remote_cli.remote_cli.remove_aws_timers")
+    @patch("caribou.deployment.client.remote_cli.remote_cli._is_aws_framework_deployed")
+    def test_remove_remote_framework_not_deployed(
+        self, mock_is_deployed, mock_remove_timers, mock_get_functions, MockAWSRemoteClient
+    ):
+        mock_client = MockAWSRemoteClient.return_value
+        mock_client.resource_exists.side_effect = [True, True, True]
+        mock_is_deployed.return_value = False
+        mock_get_functions.return_value = ["provider_collector", "carbon_collector"]
+
+        remove_remote_framework()
+
+        mock_remove_timers.assert_called_once_with(["provider_collector", "carbon_collector"], verbose=False)
+        mock_client.remove_role.assert_called_once_with("caribou_deployment_policy")
+        mock_client.remove_function.assert_called_once_with("caribou_cli")
+        mock_client.remove_ecr_repository.assert_called_once_with("caribou_cli")
+
+    @patch("caribou.deployment.client.remote_cli.remote_cli.AWSRemoteClient")
+    @patch("caribou.deployment.client.remote_cli.remote_cli.get_all_available_timed_cli_functions")
+    @patch("caribou.deployment.client.remote_cli.remote_cli.remove_aws_timers")
+    @patch("caribou.deployment.client.remote_cli.remote_cli._is_aws_framework_deployed")
+    def test_remove_remote_framework_no_resources(
+        self, mock_is_deployed, mock_remove_timers, mock_get_functions, MockAWSRemoteClient
+    ):
+        mock_client = MockAWSRemoteClient.return_value
+        mock_client.resource_exists.side_effect = [False, False, False]
+        mock_is_deployed.return_value = True
+        mock_get_functions.return_value = ["provider_collector", "carbon_collector"]
+
+        remove_remote_framework()
+
+        mock_remove_timers.assert_called_once_with(["provider_collector", "carbon_collector"], verbose=True)
+        mock_client.remove_role.assert_not_called()
+        mock_client.remove_function.assert_not_called()
+        mock_client.remove_ecr_repository.assert_not_called()
 
     @patch("caribou.deployment.client.remote_cli.remote_cli.AWSRemoteClient")
     @patch("caribou.deployment.client.remote_cli.remote_cli.DeploymentPackager")
@@ -40,7 +86,7 @@ class TestRemoteCLI(unittest.TestCase):
         mock_packager.create_framework_package.return_value = "/fake/path/to/zip"
 
         with patch.dict(os.environ, {"GOOGLE_API_KEY": "fake_key", "ELECTRICITY_MAPS_AUTH_TOKEN": "fake_token"}):
-            deploy_aws_framework("/fake/project/dir", 300, 128, 512)
+            deploy_remote_framework("/fake/project/dir", 300, 128, 512)
 
         mock_client.remove_role.assert_called_once_with("caribou_deployment_policy")
         mock_client.remove_function.assert_called_once_with("caribou_cli")
