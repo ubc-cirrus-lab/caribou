@@ -333,7 +333,7 @@ Where `<timer>` is the name of the timer you want to configure or modify. It can
   - `deployment_migrator`
 
 Optionally, you may also specify the time configurations using the following parameter:
- - `schedule_expressions`: Use `--schedule_expressions` or `-se`. Default: The same default times set for `setup_all_timers` for each individual timer.
+ - `schedule_expression`: Use `--schedule_expression` or `-se`. Default: The same default times set for `setup_all_timers` for each individual timer.
 
 To remove a specific timer, use the following command:
 ```bash
