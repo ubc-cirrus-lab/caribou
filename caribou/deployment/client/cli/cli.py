@@ -124,10 +124,16 @@ def setup_tables() -> None:
 
 
 @cli.command("teardown_framework", help="Teardown the framework.")
-def teardown_framework() -> None:
-    confirm = (
-        input("Are you sure you want to teardown the framework? This action cannot be undone. [y/N]: ").strip().lower()
-    )
+@click.option("-y", "--yes", is_flag=True, help="Skip confirmation prompt.")
+def teardown_framework(yes: bool) -> None:
+    if yes:
+        confirm = "y"
+    else:
+        confirm = (
+            input("Are you sure you want to teardown the framework? This action cannot be undone. [y/N]: ")
+            .strip()
+            .lower()
+        )
     print(f"confirm: {confirm}")
     if confirm in ["y", "yes"]:
         ## First remove remote framework cli

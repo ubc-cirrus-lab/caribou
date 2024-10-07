@@ -67,6 +67,8 @@ def handle_manage_deployments(event: dict[str, Any]) -> dict[str, Any]:
             "message": "Invalid deployment_metrics_calculator_type specified. Allowed values are 'simple', 'go'",
         }
 
+    logger.info("Deployment check started, using %s calculator", deployment_metrics_calculator_type)
+
     deployment_manager = DeploymentManager(deployment_metrics_calculator_type)
     deployment_manager.check()
     return {
@@ -94,6 +96,8 @@ def handle_data_collect(event: dict[str, Any]) -> dict[str, Any]:
             "status": 400,
             "message": "Invalid collector specified, Allowed values are provider, carbon, performance, workflow, all",
         }
+
+    logger.info("Performing data collection for collector: %s", collector)
 
     if collector in ("provider", "all"):
         provider_collector = ProviderCollector()
@@ -142,5 +146,5 @@ def handle_run(event: dict[str, Any]) -> dict[str, Any]:
 
 
 def handle_default(event: dict[str, Any]) -> dict[str, Any]:  # pylint: disable=unused-argument
-    print("Unknown action")
+    logger.error("Unknown action")
     return {"status": 400, "message": "Unknown action"}
