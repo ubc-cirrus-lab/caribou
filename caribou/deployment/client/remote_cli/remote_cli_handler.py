@@ -67,9 +67,12 @@ def handle_manage_deployments(event: dict[str, Any]) -> dict[str, Any]:
             "message": "Invalid deployment_metrics_calculator_type specified. Allowed values are 'simple', 'go'",
         }
 
-    logger.info("Deployment check started, using %s calculator", deployment_metrics_calculator_type)
 
-    deployment_manager = DeploymentManager(deployment_metrics_calculator_type)
+    logger.info("Deployment check started, using %s calculator", deployment_metrics_calculator_type)
+    # Declare the deployment manager with parameter of lambda_timeout=True (This
+    # sets an early termination for the deployment manager to avoid lambda timeout)
+    deployment_manager = DeploymentManager(deployment_metrics_calculator_type, lambda_timeout=True)
+    
     deployment_manager.check()
     return {
         "status": 200,
