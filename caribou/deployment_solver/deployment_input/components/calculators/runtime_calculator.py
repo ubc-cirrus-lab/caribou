@@ -18,6 +18,54 @@ class RuntimeCalculator(InputCalculator):
         self._transmission_latency_distribution_cache: dict[str, list[float]] = {}
         self._transmission_size_distribution_cache: dict[str, list[float]] = {}
 
+        # For testing purposes
+        self._enable_testing: bool = False # Enable testing features
+
+        ## We also may want to indicate that certain nodes need to access data from the home region
+        self._need_access_to_home_region_nodes = set([ # This should be start and end nodes
+            # For DNA Visualization
+            ## Small Input Size
+            "dna_visualization-0_0_1-Visualize:entry_point:0",
+
+            ## Large Input Size
+            "dna_visualization-0_0_2-Visualize:entry_point:0",
+
+            # For RAG Data Ingestion I
+            ## All nodes are either input or output nodes
+
+            # For Image Processing
+            ## All nodes are either input or output nodes
+
+            # For Text 2 Speech Censoring
+            ## Small Input Size
+            "text_2_speech_censoring-0_0_1-get_input:entry_point:0",
+            "text_2_speech_censoring-0_0_1-censor:sync:",
+
+            ## Large Input Size
+            "text_2_speech_censoring-0_0_2-get_input:entry_point:0",
+            "text_2_speech_censoring-0_0_2-censor:sync:",
+
+            # For Video Analytics
+            ## Small Input Size
+            "video_analytics-0_0_1-streaming:entry_point:0",
+            "video_analytics-0_0_1-consolidate:sync:",
+
+            ## Large Input Size
+            "video_analytics-0_0_2-streaming:entry_point:0",
+            "video_analytics-0_0_2-consolidate:sync:",
+        ])
+
+        self._need_access_to_home_region_workflows = set([ # Denotes starts with
+            # For Image Processing
+            "image_processing",
+            "rag_data_ingestion_i",
+        ])
+
+        self._need_access_to_home_region_nodes: set[str] = set()
+        self._need_access_to_home_region_workflows: set[str] = set()
+
+        self._all_region_same_runtime_as_home: bool = True
+
     def reset_cache(self) -> None:
         self._transmission_latency_distribution_cache = {}
         self._transmission_size_distribution_cache = {}
@@ -280,6 +328,23 @@ class RuntimeCalculator(InputCalculator):
         instance_indexer: Indexer,
         is_redirector: bool,
     ) -> tuple[dict[str, Any], float, float]:
+        if self._enable_testing:
+            # We must now address the special cases of _need_access_to_home_region_nodes and _need_access_to_home_region_workflows
+            use_original_region = False
+            if instance_name in self._need_access_to_home_region_nodes:
+                use_original_region = True
+            for workflow in self._need_access_to_home_region_workflows:
+                if instance_name.startswith(workflow):
+                    use_original_region = True
+                    break
+
+            if self._all_region_same_runtime_as_home:
+                # Basically for some regions we might still have data transfer to the home region
+                # So the runtime will not be the same as simply invoking it in the home region
+                if not use_original_region:
+                    # For testing a scenerio where all the runtime is equivalent to the home region 
+                    region_name = self._workflow_loader.get_home_region() 
+
         # Calculate the current runtime of this instance when executed in the given region
         # Get the runtime distribution of the instance in the given region
         runtime_distribution: list[float] = self._workflow_loader.get_runtime_distribution(
