@@ -55,95 +55,147 @@ deployment_algorithm_mapping = {
     "stochastic_heuristic_deployment_algorithm": StochasticHeuristicDeploymentAlgorithm,
 }
 
-
 class DeploymentManager(Monitor):
-    def __init__(self, deployment_metrics_calculator_type: str = "simple", lambda_timeout: bool = False) -> None:
+    def __init__(self, deployment_metrics_calculator_type: str = "simple", deployed_remotely: bool = False) -> None:
         super().__init__()
         self.workflow_collector = WorkflowCollector()
         self._deployment_metrics_calculator_type: str = deployment_metrics_calculator_type
-        self._lambda_timeout: bool = lambda_timeout
+        self._deployed_remotely: bool = deployed_remotely # Indicates if the deployment algorithm is deployed remotely
 
     def check(self) -> None:
         logger.info("Running Deployment Manager: Manage Deployments")
         deployment_manager_client = self._endpoints.get_deployment_manager_client()
         workflow_ids = deployment_manager_client.get_keys(DEPLOYMENT_MANAGER_RESOURCE_TABLE)
+        
+        for workflow_id in workflow_ids:
+            if self._deployed_remotely:
+                # Initiate the deployment manager on a remote lambda function (AWS Lambda)
+                self.remote_check_workflow(workflow_id)
+            else:
+                # Invoke locally/same lambda function
+                self.check_workflow(workflow_id)
+
+    def remote_check_workflow(self, workflow_id: str) -> None:
+        framework_cli_remote_client = self._endpoints.get_framework_cli_remote_client()
+
+        framework_cli_remote_client.invoke_remote_framework_with_action(
+            "special_action",
+            {"workflow_id": workflow_id, "deployment_metrics_calculator_type": self._deployment_metrics_calculator_type},
+            "check_workflow",
+        )
+
+    def remote_run_deployment_algorithm(self, workflow_id: str, solve_hours: list[str], leftover_tokens: int) -> None:
+        framework_cli_remote_client = self._endpoints.get_framework_cli_remote_client()
+
+        framework_cli_remote_client.invoke_remote_framework_with_action(
+            "special_action",
+            {
+                "workflow_id": workflow_id,
+                "solve_hours": solve_hours,
+                "leftover_tokens": leftover_tokens,
+                "deployment_metrics_calculator_type": self._deployment_metrics_calculator_type,
+            },
+            "run_deployment_algorithm",
+        )
+
+    def check_workflow(self, workflow_id: str) -> None:
+        # Perform the whole deployment manager check on a single workflow
+        deployment_manager_client = self._endpoints.get_deployment_manager_client()
         data_collector_client = self._endpoints.get_data_collector_client()
 
-        for workflow_id in workflow_ids:
-            logger.info(f"Checking workflow: {workflow_id}")
-            workflow_info_raw, _ = deployment_manager_client.get_value_from_table(
-                DEPLOYMENT_MANAGER_WORKFLOW_INFO_TABLE, workflow_id
+        logger.info(f"Checking workflow: {workflow_id}")
+        workflow_info_raw, _ = deployment_manager_client.get_value_from_table(
+            DEPLOYMENT_MANAGER_WORKFLOW_INFO_TABLE, workflow_id
+        )
+
+        if workflow_info_raw is None or workflow_info_raw == "":
+            workflow_info = None
+        else:
+            workflow_info = json.loads(workflow_info_raw)
+            current_time = datetime.now(GLOBAL_TIME_ZONE)
+            next_check = datetime.strptime(workflow_info["next_check"], TIME_FORMAT)
+            if current_time < next_check:
+                logger.info("Not enough time has passed since the last check")
+                return
+
+        self.workflow_collector.run_on_workflow(workflow_id)
+
+        workflow_config = self._get_workflow_config(workflow_id)
+
+        workflow_summary_raw, _ = data_collector_client.get_value_from_table(
+            WORKFLOW_INSTANCE_TABLE, workflow_id, convert_from_bytes=True
+        )
+
+        workflow_summary = json.loads(workflow_summary_raw)
+
+        last_solved = self._get_last_solved(workflow_info)
+
+        total_invocation_counts_since_last_solved = self._get_total_invocation_counts_since_last_solved(
+            workflow_summary, last_solved
+        )
+
+        # The solver has never been run before for this workflow, and the workflow has not been invoked enough
+        # collect more data and wait
+        if total_invocation_counts_since_last_solved < MINIMAL_SOLVE_THRESHOLD and workflow_info is None:
+            logger.info("Not enough invocations to run the solver")
+            return
+
+        # Income token
+        positive_carbon_savings_token = self._calculate_positive_carbon_savings_token(
+            workflow_config.home_region, workflow_summary, total_invocation_counts_since_last_solved
+        )
+
+        carbon_budget_overflow_last_solved = (
+            workflow_info["tokens_left"] if (workflow_info and "tokens_left" in workflow_info) else 0
+        )
+
+        affordable_deployment_algorithm_run = self._calculate_affordable_deployment_algorithm_run(
+            len(workflow_config.instances), positive_carbon_savings_token + carbon_budget_overflow_last_solved
+        )
+
+        if not affordable_deployment_algorithm_run:
+            logger.info("Not enough tokens to run the solver")
+            carbon_cost = self._get_cost(len(workflow_config.instances))
+            self._update_workflow_info(
+                carbon_cost - positive_carbon_savings_token - carbon_budget_overflow_last_solved, workflow_id
             )
+            return
 
-            if workflow_info_raw is None or workflow_info_raw == "":
-                workflow_info = None
-            else:
-                workflow_info = json.loads(workflow_info_raw)
-                current_time = datetime.now(GLOBAL_TIME_ZONE)
-                next_check = datetime.strptime(workflow_info["next_check"], TIME_FORMAT)
-                if current_time < next_check:
-                    logger.info("Not enough time has passed since the last check")
-                    continue
+        solve_hours = self._get_solve_hours(affordable_deployment_algorithm_run["number_of_solves"])
+        logger.info(f"Running deployment algorithm with solve hours: {solve_hours}")
 
-            self.workflow_collector.run_on_workflow(workflow_id)
+        leftover_tokens: int = affordable_deployment_algorithm_run["leftover_tokens"]
+        if self._deployed_remotely:
+            # Initiate the deployment manager solve on a remote lambda function (AWS Lambda)
+            self.remote_run_deployment_algorithm(workflow_id, solve_hours, leftover_tokens)
+        else:
+            # Invoke / run the deployment manager solve locally
+            self.run_deployment_algorithm(workflow_id, solve_hours, leftover_tokens)
 
-            workflow_config_from_table, _ = data_collector_client.get_value_from_table(
-                DEPLOYMENT_MANAGER_RESOURCE_TABLE, workflow_id
-            )
+    def run_deployment_algorithm(self, workflow_id: str, solve_hours: list[str], leftover_tokens: int) -> None:
+        expiry_delta_seconds = self._calculate_expiry_delta_seconds(leftover_tokens)
+        workflow_config = self._get_workflow_config(workflow_id)
+        self._run_deployment_algorithm(workflow_config, solve_hours, expiry_delta_seconds)
 
-            workflow_json = json.loads(workflow_config_from_table)
+        # Uploading the new workflow info should be done after the deployment algorithm has run
+        # And is successful, if not the workflow will be checked again in the next iteration
+        self._upload_new_workflow_info(leftover_tokens, workflow_id)
 
-            if "workflow_config" not in workflow_json:
-                raise ValueError("Invalid workflow config")
+    def _get_workflow_config(self, workflow_id: str) -> WorkflowConfig:
+        data_collector_client = self._endpoints.get_data_collector_client()
 
-            workflow_config_dict = json.loads(workflow_json["workflow_config"])
+        workflow_config_from_table, _ = data_collector_client.get_value_from_table(
+            DEPLOYMENT_MANAGER_RESOURCE_TABLE, workflow_id
+        )
 
-            workflow_config = WorkflowConfig(workflow_config_dict)
+        workflow_json = json.loads(workflow_config_from_table)
 
-            workflow_summary_raw, _ = data_collector_client.get_value_from_table(WORKFLOW_INSTANCE_TABLE, workflow_id)
+        if "workflow_config" not in workflow_json:
+            raise ValueError("Invalid workflow config")
 
-            workflow_summary = json.loads(workflow_summary_raw)
+        workflow_config_dict = json.loads(workflow_json["workflow_config"])
 
-            last_solved = self._get_last_solved(workflow_info)
-
-            total_invocation_counts_since_last_solved = self._get_total_invocation_counts_since_last_solved(
-                workflow_summary, last_solved
-            )
-
-            # The solver has never been run before for this workflow, and the workflow has not been invoked enough
-            # collect more data and wait
-            if total_invocation_counts_since_last_solved < MINIMAL_SOLVE_THRESHOLD and workflow_info is None:
-                logger.info("Not enough invocations to run the solver")
-                continue
-
-            # Income token
-            positive_carbon_savings_token = self._calculate_positive_carbon_savings_token(
-                workflow_config.home_region, workflow_summary, total_invocation_counts_since_last_solved
-            )
-
-            carbon_budget_overflow_last_solved = (
-                workflow_info["tokens_left"] if (workflow_info and "tokens_left" in workflow_info) else 0
-            )
-
-            affordable_deployment_algorithm_run = self._calculate_affordable_deployment_algorithm_run(
-                len(workflow_config.instances), positive_carbon_savings_token + carbon_budget_overflow_last_solved
-            )
-
-            if not affordable_deployment_algorithm_run:
-                logger.info("Not enough tokens to run the solver")
-                carbon_cost = self._get_cost(len(workflow_config.instances))
-                self._update_workflow_info(
-                    carbon_cost - positive_carbon_savings_token - carbon_budget_overflow_last_solved, workflow_id
-                )
-                continue
-
-            expiry_delta_seconds = self._upload_new_workflow_info(
-                affordable_deployment_algorithm_run["leftover_tokens"], workflow_id
-            )
-
-            solve_hours = self._get_solve_hours(affordable_deployment_algorithm_run["number_of_solves"])
-            logger.info(f"Running deployment algorithm with solve hours: {solve_hours}")
-            self._run_deployment_algorithm(workflow_config, solve_hours, expiry_delta_seconds)
+        return WorkflowConfig(workflow_config_dict)
 
     def _update_workflow_info(self, token_missing: int, workflow_id: str) -> None:
         next_solve_delta_scale = self._get_sigmoid_scale(token_missing)
@@ -158,9 +210,12 @@ class DeploymentManager(Monitor):
             DEPLOYMENT_MANAGER_WORKFLOW_INFO_TABLE, workflow_id, json.dumps(new_workflow_info)
         )
 
-    def _upload_new_workflow_info(self, tokens_left: int, workflow_id: str) -> int:
+    def _calculate_expiry_delta_seconds(self, tokens_left: int) -> int:
         next_solve_delta_scale = self._get_sigmoid_scale(tokens_left)
-        next_solve_delta = int(DEFAULT_MONITOR_COOLDOWN * next_solve_delta_scale)
+        return int(DEFAULT_MONITOR_COOLDOWN * next_solve_delta_scale)
+
+    def _upload_new_workflow_info(self, tokens_left: int, workflow_id: str) -> None:
+        next_solve_delta = self._calculate_expiry_delta_seconds(tokens_left)
         new_workflow_info = {
             "last_solved": datetime.now(GLOBAL_TIME_ZONE).strftime(TIME_FORMAT),
             "tokens_left": tokens_left,
@@ -171,8 +226,6 @@ class DeploymentManager(Monitor):
             DEPLOYMENT_MANAGER_WORKFLOW_INFO_TABLE, workflow_id, json.dumps(new_workflow_info)
         )
 
-        return next_solve_delta
-
     def _run_deployment_algorithm(
         self,
         workflow_config: WorkflowConfig,
@@ -182,7 +235,7 @@ class DeploymentManager(Monitor):
         deployment_algorithm_class = deployment_algorithm_mapping.get(workflow_config.deployment_algorithm)
         if deployment_algorithm_class:
             logger.info(f"Running deployment algorithm: {workflow_config.deployment_algorithm}")
-            deployment_algorithm: DeploymentAlgorithm = deployment_algorithm_class(workflow_config, expiry_delta_seconds, deployment_metrics_calculator_type=self._deployment_metrics_calculator_type, lambda_timeout=self._lambda_timeout)  # type: ignore
+            deployment_algorithm: DeploymentAlgorithm = deployment_algorithm_class(workflow_config, expiry_delta_seconds, deployment_metrics_calculator_type=self._deployment_metrics_calculator_type, lambda_timeout=self._deployed_remotely)  # type: ignore
             deployment_algorithm.run(solve_hours)
         else:
             raise ValueError("Invalid deployment algorithm")

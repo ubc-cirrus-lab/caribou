@@ -4,7 +4,6 @@ from caribou.common.models.remote_client.mock_remote_client import MockRemoteCli
 from caribou.common.models.remote_client.remote_client import RemoteClient
 from caribou.common.provider import Provider
 
-
 class RemoteClientFactory:
     @staticmethod
     def get_remote_client(provider: str, region: str) -> RemoteClient:
@@ -21,3 +20,7 @@ class RemoteClientFactory:
         if provider_enum == Provider.INTEGRATION_TEST_PROVIDER:
             return IntegrationTestRemoteClient()
         raise RuntimeError(f"Unknown provider {provider}")
+
+    @staticmethod
+    def get_framework_cli_remote_client(region: str) -> AWSRemoteClient:
+        return AWSRemoteClient(region)

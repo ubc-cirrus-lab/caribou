@@ -87,6 +87,7 @@ class LogSyncWorkflow:  # pylint: disable=too-many-instance-attributes
             WORKFLOW_SUMMARY_TABLE,
             self.workflow_id,
             data_for_upload,
+            convert_to_bytes=True,  # Convert to bytes due to large size
         )
 
     def _sync_logs(self) -> None:

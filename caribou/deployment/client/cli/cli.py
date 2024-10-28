@@ -1,6 +1,7 @@
 import os
 from typing import Optional
 
+from caribou.common.models.endpoints import Endpoints
 import click
 from cron_descriptor import Options, get_description
 
@@ -21,6 +22,8 @@ from caribou.deployment.client.remote_cli.remote_cli import (
     report_timer_schedule_expression,
     setup_aws_timers,
     valid_framework_dir,
+    is_aws_framework_deployed,
+    get_cli_invoke_payload,
 )
 from caribou.deployment.common.config.config import Config
 from caribou.deployment.common.deploy.deployer import Deployer
@@ -111,15 +114,39 @@ def log_sync() -> None:
 
 
 @cli.command("manage_deployments", help="Check if the deployment algorithm should be run.")
-def manage_deployments() -> None:
-    deployment_manager = DeploymentManager()
-    deployment_manager.check()
+@click.option("-r", "--remote", is_flag=True, help="Run the deployment manager on the remote framework.")
+def manage_deployments(remote: bool) -> None:
+    if remote:
+        print("Running deployment manager on the remote framework.")
+        framework_cli_remote_client = Endpoints().get_framework_cli_remote_client()
+        framework_deployed: bool = is_aws_framework_deployed(framework_cli_remote_client, verbose=False)
+
+        if not framework_deployed:
+            raise click.ClickException("The remote framework is not deployed.")
+        
+        # Now we know the framework is deployed, we can run the deployment manager
+        action: str = "manage_deployments"
+        function_type: str = "deployment_manager"
+        event_payload = get_cli_invoke_payload(function_type)
+        framework_cli_remote_client.invoke_remote_framework_with_action(action, event_payload)
+
+    else:
+        print("Running deployment manager locally.")
+        # deployment_manager = DeploymentManager()
+        # deployment_manager.check()
 
 
 @cli.command("run_deployment_migrator", help="Check if the DP of a function should be updated.")
-def run_deployment_migrator() -> None:
-    function_deployment_monitor = DeploymentMigrator()
-    function_deployment_monitor.check()
+@click.option("-r", "--remote", is_flag=True, help="Run the deployment migrator on the remote framework.")
+def run_deployment_migrator(remote: bool) -> None:
+    if remote:
+        print("Running deployment migrator on the remote framework.")
+
+
+    else:
+        print("Running deployment migrator locally.")
+        function_deployment_monitor = DeploymentMigrator()
+        function_deployment_monitor.check()
 
 
 @cli.command("setup_tables", help="Setup the tables.")

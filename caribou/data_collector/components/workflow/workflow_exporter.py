@@ -13,4 +13,4 @@ class WorkflowExporter(DataExporter):
         self._export_workflow_summary(workflow_summary_data)
 
     def _export_workflow_summary(self, workflow_summary_data: dict[str, Any]) -> None:
-        self._export_data(self._workflow_summary_table, workflow_summary_data, False)
+        self._export_data(self._workflow_summary_table, workflow_summary_data, False, convert_to_bytes=True)

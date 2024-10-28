@@ -134,7 +134,7 @@ TIME_FORMAT_DAYS = "%Y-%m-%d%z"
 
 # Log-Syncer parameters
 ## Forgetting factors
-FORGETTING_TIME_DAYS = 30  # 30 days
+FORGETTING_TIME_DAYS = 130  # 30 days
 FORGETTING_NUMBER = 5000  # 5000 invocations
 KEEP_ALIVE_DATA_COUNT = 10  # Keep sample it is part of any of the 10 samples for any execution or transmission
 
@@ -161,4 +161,4 @@ MAX_TRANSFER_SIZE = 256000  # In bytes
 GO_PATH = pathlib.Path(__file__).parents[2].resolve() / "caribou-go"
 
 # AWS Lambda Timeout
-AWS_TIMEOUT_SECONDS = 850  # Lambda functions must terminate in 900 seconds, we leave 50 seconds as buffer time
+AWS_TIMEOUT_SECONDS = 800  # Lambda functions must terminate in 900 seconds, we leave 100 seconds as buffer time
