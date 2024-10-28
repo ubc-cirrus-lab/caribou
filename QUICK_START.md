@@ -134,7 +134,7 @@ Before we can generate a new deployment, we need to collect data from the provid
 2. Collect data from the other collectors:
 
     ```bash
-    poetry run caribou data_collect all --workflow_id <workflow_id>
+    poetry run caribou data_collect all
     ```
 
     Or collect data for a specific collector:
@@ -151,11 +151,12 @@ Before we can generate a new deployment, we need to collect data from the provid
     - `workflow`
     - `all`
 
-    The `all` and `workflow` collectors need a workflow id to be passed as an argument with `--workflow_id` or `-w`.
+    The `workflow` collectors need a workflow id to be passed as an argument with `--workflow_id` or `-w`.
 
 The workflow collector is invoked by the manager and collects data for the workflows that are currently being solved.
 
 **Note:** For the data collectors to work locally, you must set some environment variables.
+**Note:** The `all` collector does not collect `workflow` information, as `manage_deployments` would perform this automatically, the `all` collector performs `provider`, `carbon`, and `performance` collector in that order. 
 
 ```bash
 export ELECTRICITY_MAPS_AUTH_TOKEN=<your_token>
@@ -259,15 +260,24 @@ Where `argument` is the payload of the application.
 
 `collector` can be one of the following options: `provider`, `carbon`, `performance`, `workflow`, or `all`.
 
-`workflow_id` is only required for the `workflow` or `all` collector options.
+`workflow_id` is only required for the `workflow` collector option.
 
 ```json
 {
     "action": "data_collect",
-    "collector": "all",
+    "collector": "all"
+}
+```
+
+```json
+{
+    "action": "data_collect",
+    "collector": "workflow",
     "workflow_id": "workflow_name-version_number"
 }
 ```
+
+**Note:** The `all` collector does not collect `workflow` information, as `manage_deployments` would perform this automatically, the `all` collector performs `provider`, `carbon`, and `performance` collector in that order. 
 
 - Manage Deployments:
 

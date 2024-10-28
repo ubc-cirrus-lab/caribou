@@ -85,17 +85,21 @@ def run(_: click.Context, argument: Optional[str], workflow_id: str) -> None:
 @click.pass_context
 def data_collect(_: click.Context, collector: str, workflow_id: Optional[str]) -> None:
     if collector in ("provider", "all"):
+        print("Running provider collector")
         provider_collector = ProviderCollector()
         provider_collector.run()
     if collector in ("carbon", "all"):
+        print("Running carbon collector")
         carbon_collector = CarbonCollector()
         carbon_collector.run()
     if collector in ("performance", "all"):
+        print("Running performance collector")
         performance_collector = PerformanceCollector()
         performance_collector.run()
-    if collector in ("workflow", "all"):
+    if collector in ("workflow"):
         if workflow_id is None:
-            raise click.ClickException("Workflow id must be provided for the workflow and all collectors.")
+            raise click.ClickException("Workflow id must be provided for the workflow collector.")
+        print("Running workflow collector")
         workflow_collector = WorkflowCollector()
         workflow_collector.run_on_workflow(workflow_id)
 

@@ -3,6 +3,7 @@ import importlib
 import inspect
 import textwrap
 from typing import Any, Callable
+import zstandard as zstd
 
 
 def str_to_bool(s: str) -> bool:
@@ -64,3 +65,66 @@ def get_function_source(function_callable: Callable[..., Any]) -> str:
         process_node(node, context)
 
     return source_code
+
+def compress_json_str(json_str: str, compression_level: int = 21) -> bytes:
+    # Compress the JSON string using zstandard
+    json_bytes = json_str.encode("utf-8")
+    cctx = zstd.ZstdCompressor(level=compression_level)
+    compressed_bytes = cctx.compress(json_bytes)
+
+    return compressed_bytes
+
+def decompress_json_str_zstandard(compressed_bytes: bytes) -> str:
+    # Decompress the bytes using zstandard
+    dctx = zstd.ZstdDecompressor()
+    json_bytes = dctx.decompress(compressed_bytes)
+    json_str = json_bytes.decode("utf-8")
+
+    return json_str
+
+
+
+# import gzip
+
+# def compress_json_str_gzip(json_str: str, compression_level: int = 9) -> bytes:
+#     # print size before compression
+#     print(f"Size before compression bytes: {len(json_str.encode('utf-8'))}, KB: {len(json_str.encode('utf-8'))/1024}, MB: {len(json_str.encode('utf-8'))/1024/1024}, GB: {len(json_str.encode('utf-8'))/1024/1024/1024}")
+
+#     # Compress the JSON string using gzip
+#     json_bytes = json_str.encode("utf-8")
+
+#     compressed_bytes = gzip.compress(json_bytes, compresslevel=compression_level)
+
+#     # Print the size after compression
+#     print(f"Size after compression bytes: {len(compressed_bytes)}, KB: {len(compressed_bytes)/1024}, MB: {len(compressed_bytes)/1024/1024}, GB: {len(compressed_bytes)/1024/1024/1024}")
+
+#     return compressed_bytes
+
+# def decompress_json_str_gzip(compressed_bytes: bytes) -> str:
+#     # Decompress the bytes using gzip
+#     json_bytes = gzip.decompress(compressed_bytes)
+#     json_str = json_bytes.decode("utf-8")
+
+#     return json_str
+
+# def compress_json_str_zstandard(json_str: str, compression_level: int = 22) -> bytes:
+#     # print size before compression
+#     print(f"Size before compression bytes: {len(json_str.encode('utf-8'))}, KB: {len(json_str.encode('utf-8'))/1024}, MB: {len(json_str.encode('utf-8'))/1024/1024}, GB: {len(json_str.encode('utf-8'))/1024/1024/1024}")
+
+#     # Compress the JSON string using zstandard
+#     json_bytes = json_str.encode("utf-8")
+#     cctx = zstd.ZstdCompressor(level=compression_level)
+#     compressed_bytes = cctx.compress(json_bytes)
+
+#     # Print the size after compression
+#     print(f"Size after compression bytes: {len(compressed_bytes)}, KB: {len(compressed_bytes)/1024}, MB: {len(compressed_bytes)/1024/1024}, GB: {len(compressed_bytes)/1024/1024/1024}")
+
+#     return compressed_bytes
+
+# def decompress_json_str_zstandard(compressed_bytes: bytes) -> str:
+#     # Decompress the bytes using zstandard
+#     dctx = zstd.ZstdDecompressor()
+#     json_bytes = dctx.decompress(compressed_bytes)
+#     json_str = json_bytes.decode("utf-8")
+
+#     return json_str

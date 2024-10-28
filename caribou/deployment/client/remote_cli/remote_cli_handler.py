@@ -110,10 +110,10 @@ def handle_data_collect(event: dict[str, Any]) -> dict[str, Any]:
     if collector in ("performance", "all"):
         performance_collector = PerformanceCollector()
         performance_collector.run()
-    if collector in ("workflow", "all"):
+    if collector in ("workflow"):
         if workflow_id is None:
-            logger.error("Workflow_id must be provided for the workflow and all collectors.")
-            return {"status": 400, "message": "Workflow_id must be provided for the workflow and all collectors."}
+            logger.error("Workflow_id must be provided for the workflow collector.")
+            return {"status": 400, "message": "Workflow_id must be provided for the workflow collector."}
         workflow_collector = WorkflowCollector()
         workflow_collector.run_on_workflow(workflow_id)
 
