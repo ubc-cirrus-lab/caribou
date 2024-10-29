@@ -190,8 +190,6 @@ def _handle_check_workflow(event: dict[str, Any]) -> dict[str, Any]:
 
     deployment_manager = DeploymentManager(deployment_metrics_calculator_type, deployed_remotely=True)
     deployment_manager.check_workflow(workflow_id)
-    
-    deployment_manager.check()
     return {
         "status": 200,
         "message": f"Workflow {workflow_id} checked"
