@@ -10,6 +10,7 @@ import botocore.exceptions
 from caribou.common.constants import (
     CARIBOU_WORKFLOW_IMAGES_TABLE,
     DEPLOYMENT_MANAGER_RESOURCE_TABLE,
+    DEPLOYMENT_MANAGER_WORKFLOW_INFO_TABLE,
     DEPLOYMENT_RESOURCES_TABLE,
     GLOBAL_TIME_ZONE,
     HOME_REGION_THRESHOLD,
@@ -198,14 +199,13 @@ class Client:
             WORKFLOW_PLACEMENT_DECISION_TABLE, self._workflow_id
         )
 
+        # Remove entry from the deployment manager workflow info table
+        self._endpoints.get_deployment_manager_client().remove_key(DEPLOYMENT_MANAGER_WORKFLOW_INFO_TABLE, self._workflow_id)
+
         # Remove entry from the workflow staging area table (Pending re-deployment queue)
         self._endpoints.get_deployment_manager_client().remove_key(
             WORKFLOW_PLACEMENT_SOLVER_STAGING_AREA_TABLE, self._workflow_id
         )
-
-        # Remove entry from the deployment manager resource table
-        # (Managing configured resources for each function the workflow)
-        self._endpoints.get_deployment_manager_client().remove_key(DEPLOYMENT_MANAGER_RESOURCE_TABLE, self._workflow_id)
 
         # Remove all applicable entries from the deployment resources table
         # (Managing caribou workflow config + IAM roles, functions, ECR repositories)
@@ -238,6 +238,12 @@ class Client:
         # (This table is produced by the log syncer for the FORGETTING_NUMBER
         # most recent and or relevant workflow runs)
         self._endpoints.get_datastore_client().remove_key(WORKFLOW_SUMMARY_TABLE, self._workflow_id)
+
+        # Remove entry from the deployment manager resource table
+        # (Managing configured resources for each function the workflow)
+        ## This should be done last to ensure that all resources are removed before the workflow is removed
+        ## If the process fails at any point, we can still retry deleting the workflow
+        self._endpoints.get_deployment_manager_client().remove_key(DEPLOYMENT_MANAGER_RESOURCE_TABLE, self._workflow_id)
 
         print(f"Removed workflow {self._workflow_id}")
 

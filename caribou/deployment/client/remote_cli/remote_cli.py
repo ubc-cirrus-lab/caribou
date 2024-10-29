@@ -220,8 +220,19 @@ def _get_timer_rule_name(function_name: str) -> str:
     return f"{function_name}-timer-rule"
 
 
-def get_cli_invoke_payload(function_name: str) -> str:
+def get_cli_invoke_payload(function_name: str) -> dict[str, str]:
     function_name_to_payload = {
+        "log_syncer": {
+            "action": "log_sync",
+        },
+        "deployment_manager": {
+            "action": "manage_deployments",
+            "deployment_metrics_calculator_type": "simple",  # Set to "simple" for python calculator
+        },
+        "deployment_migrator": {
+            "action": "run_deployment_migrator",
+        },
+        ## Various data collectors (Single collector run)
         "provider_collector": {
             "action": "data_collect",
             "collector": "provider",
@@ -234,20 +245,36 @@ def get_cli_invoke_payload(function_name: str) -> str:
             "action": "data_collect",
             "collector": "performance",
         },
-        "log_syncer": {
-            "action": "log_sync",
+        ## Below are actions that need additional parameters
+        "data_collector": {
+            "action": "data_collect",
         },
-        "deployment_manager": {
-            "action": "manage_deployments",
-            "deployment_metrics_calculator_type": "simple",  # Set to "simple" for python calculator
-        },
-        "deployment_migrator": {
-            "action": "run_deployment_migrator",
+        "remove_workflow": {
+            "action": "remove",
         },
     }
 
-    return json.dumps(function_name_to_payload[function_name])
+    return function_name_to_payload[function_name]
 
+def action_type_to_function_name(action_type: str) -> str:
+    '''
+    Only for direct translations of action types to function names.
+    Aka: No custom logic or additional parameters nor data collection.
+    '''
+    action_type_to_function_name = {
+        "log_sync": "log_syncer",
+        "manage_deployments": "deployment_manager",
+        "run_deployment_migrator": "deployment_migrator",
+        "data_collect": "data_collector",
+        "remove_workflow": "remove_workflow"
+    }
+
+    function_name: Optional[str] = action_type_to_function_name.get(action_type, None)
+
+    if function_name is None:
+        raise ValueError(f"Invalid or no directly translation action type: {action_type}")
+
+    return function_name
 
 def setup_aws_timers(new_rules: list[tuple[str, str]]) -> None:
     """Create or update CloudWatch Event rules for Lambda functions."""
@@ -265,7 +292,7 @@ def setup_aws_timers(new_rules: list[tuple[str, str]]) -> None:
     # Next, we can create the timer rules
     for function_name, schedule_expression in new_rules:
         rule_name = _get_timer_rule_name(function_name)
-        event_payload = get_cli_invoke_payload(function_name)
+        event_payload = json.dumps(get_cli_invoke_payload(function_name))
 
         try:
             aws_remote_client.create_timer_rule(

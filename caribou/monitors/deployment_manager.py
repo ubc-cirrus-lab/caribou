@@ -78,24 +78,22 @@ class DeploymentManager(Monitor):
     def remote_check_workflow(self, workflow_id: str) -> None:
         framework_cli_remote_client = self._endpoints.get_framework_cli_remote_client()
 
-        framework_cli_remote_client.invoke_remote_framework_with_action(
-            "special_action",
-            {"workflow_id": workflow_id, "deployment_metrics_calculator_type": self._deployment_metrics_calculator_type},
+        framework_cli_remote_client.invoke_remote_framework_internal_action(
             "check_workflow",
+            {"workflow_id": workflow_id, "deployment_metrics_calculator_type": self._deployment_metrics_calculator_type},
         )
 
     def remote_run_deployment_algorithm(self, workflow_id: str, solve_hours: list[str], leftover_tokens: int) -> None:
         framework_cli_remote_client = self._endpoints.get_framework_cli_remote_client()
 
-        framework_cli_remote_client.invoke_remote_framework_with_action(
-            "special_action",
+        framework_cli_remote_client.invoke_remote_framework_internal_action(
+            "run_deployment_algorithm",
             {
                 "workflow_id": workflow_id,
                 "solve_hours": solve_hours,
                 "leftover_tokens": leftover_tokens,
                 "deployment_metrics_calculator_type": self._deployment_metrics_calculator_type,
-            },
-            "run_deployment_algorithm",
+            }
         )
 
     def check_workflow(self, workflow_id: str) -> None:
@@ -162,7 +160,7 @@ class DeploymentManager(Monitor):
             return
 
         solve_hours = self._get_solve_hours(affordable_deployment_algorithm_run["number_of_solves"])
-        logger.info(f"Running deployment algorithm with solve hours: {solve_hours}")
+        logger.info(f"Desired solve hours: {solve_hours}")
 
         leftover_tokens: int = affordable_deployment_algorithm_run["leftover_tokens"]
         if self._deployed_remotely:
@@ -173,6 +171,7 @@ class DeploymentManager(Monitor):
             self.run_deployment_algorithm(workflow_id, solve_hours, leftover_tokens)
 
     def run_deployment_algorithm(self, workflow_id: str, solve_hours: list[str], leftover_tokens: int) -> None:
+        logger.info(f"Running deployment algorithm with solve hours: {solve_hours}")
         expiry_delta_seconds = self._calculate_expiry_delta_seconds(leftover_tokens)
         workflow_config = self._get_workflow_config(workflow_id)
         self._run_deployment_algorithm(workflow_config, solve_hours, expiry_delta_seconds)

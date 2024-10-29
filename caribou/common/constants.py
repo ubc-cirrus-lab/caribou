@@ -137,10 +137,11 @@ TIME_FORMAT_DAYS = "%Y-%m-%d%z"
 FORGETTING_TIME_DAYS = 130  # 30 days
 FORGETTING_NUMBER = 5000  # 5000 invocations
 KEEP_ALIVE_DATA_COUNT = 10  # Keep sample it is part of any of the 10 samples for any execution or transmission
+MIN_TIME_BETWEEN_SYNC = 15  # 15 Minutes
 
 ## Grace period for the log-syncer
 ## Used as lambda insights can be delayed
-BUFFER_LAMBDA_INSIGHTS_GRACE_PERIOD = 5
+BUFFER_LAMBDA_INSIGHTS_GRACE_PERIOD = 15  # 15 minutes
 
 ## Successor task types
 REDIRECT_ONLY_TASK_TYPE = "REDIRECT_ONLY"

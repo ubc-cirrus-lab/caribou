@@ -22,7 +22,7 @@ class TestLogSyncer(unittest.TestCase):
         log_syncer = LogSyncer()
 
         # Check that the attributes are set as expected
-        self.assertEqual(log_syncer.endpoints, mock_endpoints.return_value)
+        self.assertEqual(log_syncer._endpoints, mock_endpoints.return_value)
         self.assertEqual(log_syncer._workflow_summary_client, mock_datastore_client)
         self.assertEqual(log_syncer._region_clients, {})
 

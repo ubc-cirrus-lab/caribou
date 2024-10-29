@@ -1139,7 +1139,16 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
             Targets=[{"Id": f"{lambda_function_name}-target", "Arn": lambda_arn, "Input": event_payload}],
         )
 
-    def invoke_remote_framework_with_action(self, action: str, action_events: dict[Any], action_type: Optional[str] = None) -> None:
+    def invoke_remote_framework_internal_action(self, action_type: str, action_events: dict[Any]) -> None:
+        payload = {
+            "action": "internal_action",
+            "type": action_type,
+            "event": action_events,
+        }
+
+        self.invoke_remote_framework_with_payload(payload, invocation_type="Event")
+
+    def invoke_remote_framework_with_payload(self, payload: dict[Any], invocation_type: str = "Event") -> None:
         # Get the boto3 lambda client
         lambda_client = self._client("lambda")
         remote_framework_cli_name = REMOTE_CARIBOU_CLI_FUNCTION_NAME
@@ -1147,12 +1156,6 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         # Invoke the lambda function with the payload
         lambda_client.invoke(
             FunctionName=remote_framework_cli_name,
-            InvocationType="Event",
-            Payload=json.dumps(
-                {
-                    "action": action,
-                    "type": action_type,
-                    "event": action_events,
-                }
-            ),
+            InvocationType=invocation_type,
+            Payload=json.dumps(payload)
         )
