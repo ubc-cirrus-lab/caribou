@@ -17,6 +17,10 @@ Make sure you first have the necessary dependencies according to how you intend 
 
 ## Client side CLI
 
+Some client-side commands can be executed in the `AWS Remote CLI`, provided it is deployed. 
+
+**Note:** Remote CLI features, including all remote CLI commands and timer functionalities, are experimental. Please use them with caution and at your own risk.
+
 ### Setup a new workflow
 
 To set up a new workflow, in your command line, navigate to the directory where you want to create the new workflow and run:
@@ -106,6 +110,8 @@ poetry run caribou remove <workflow_id>
 
 Where `<workflow_id>` is the id of the workflow you want to remove.
 
+**Note:** May be executed remotely with the `-r` or `--remote` flag to execute them remotely and asynchronously. 
+
 ## Local Framework Component Execution
 
 The Caribou framework components can be run locally for fast prototyping and development.
@@ -119,7 +125,9 @@ poetry run caribou log_sync
 ```
 
 This might take a while, depending on the number of workflows and the amount of logs that need to be synced.
-Also, there is an inherent buffer of five minutes, meaning that logs are only synced if they are at least five minutes old.
+Also, there is an inherent buffer of fifteen minutes, meaning that logs are only synced if they are at least fifteen minutes old.
+
+**Note:** May be executed remotely with the `-r` or `--remote` flag to execute them remotely and asynchronously. 
 
 ### Data Collecting
 
@@ -155,6 +163,7 @@ Before we can generate a new deployment, we need to collect data from the provid
 
 The workflow collector is invoked by the manager and collects data for the workflows that are currently being solved.
 
+**Note:** May be executed remotely with the `-r` or `--remote` flag to execute them remotely and asynchronously. 
 **Note:** For the data collectors to work locally, you must set some environment variables.
 **Note:** The `all` collector does not collect `workflow` information, as `manage_deployments` would perform this automatically, the `all` collector performs `provider`, `carbon`, and `performance` collector in that order. 
 
@@ -178,6 +187,8 @@ poetry run caribou manage_deployments
 Refer to section 5.2 of the paper to learn about how we make this calculation.
 If you execute this command and nothing happens it might be that the minimal threshold for the number of invocations has not been reached yet, which is set to 10 invocations.
 
+**Note:** May be executed remotely with the `-r` or `--remote` flag to execute them remotely and asynchronously. 
+
 ### Run Deployment Migrator
 
 Make sure that you have the crane dependency installed.
@@ -190,6 +201,8 @@ poetry run caribou run_deployment_migrator
 ```
 
 This will check if a new deployment is required for any workflow, and, if so, migrate the functions according to this new deployment.
+
+**Note:** May be executed remotely with the `-r` or `--remote` flag to execute them remotely and asynchronously. 
 
 ## Deployment to AWS (AWS Remote CLI)
 To deploy the framework to AWS after completing the local setup process, use the following command while inside the main `caribou` directory. 
@@ -217,91 +230,6 @@ Additionally, the following environment variables must be set before remote depl
 ```bash
 export ELECTRICITY_MAPS_AUTH_TOKEN=<your_token>
 export GOOGLE_API_KEY=<your_key>
-```
-
-### How to Invoke the AWS Remote CLI
-After deploying the `AWS Remote CLI`, you can run Caribou components by invoking the deployed lambda function using the returned Lambda ARN with the following event parameters.
-
-- List workflows:
-```json
-{
-  "action": "list"
-}
-```
-
-- Invoke workflow:
-
-Where `argument` is the payload of the application.
-
-```json
-{
-  "action": "run",
-  "workflow_id": "workflow_name-version_number",
-  "argument": {}
-}
-```
-
-- Remove Workflow:
-```json
-{
-  "action": "remove",
-  "workflow_id": "workflow_name-version_number"
-}
-```
-
-- Perform Log Sync:
-```json
-{
-  "action": "log_sync"
-}
-```
-
-- Perform Data collect:
-
-`collector` can be one of the following options: `provider`, `carbon`, `performance`, `workflow`, or `all`.
-
-`workflow_id` is only required for the `workflow` collector option.
-
-```json
-{
-    "action": "data_collect",
-    "collector": "all"
-}
-```
-
-```json
-{
-    "action": "data_collect",
-    "collector": "workflow",
-    "workflow_id": "workflow_name-version_number"
-}
-```
-
-**Note:** The `all` collector does not collect `workflow` information, as `manage_deployments` would perform this automatically, the `all` collector performs `provider`, `carbon`, and `performance` collector in that order. 
-
-- Manage Deployments:
-
-`deployment_metrics_calculator_type` can be either `simple` (for the Python solver) or `go` (to use the Go solver) for deployment metrics determination.
-
-```json
-{
-  "action": "manage_deployments",
-  "deployment_metrics_calculator_type": "simple"
-}
-```
-
-- Deployment Migration:
-```json
-{
-  "action": "run_deployment_migrator"
-}
-```
-
-- Inquire Caribou Version:
-```json
-{
-  "action": "version"
-}
 ```
 
 ## Setup Automatic Components (For AWS Remote CLI)

@@ -289,40 +289,47 @@ def deploy_remote_cli(
             "This directory should have a 'caribou', 'caribou-go', and 'pyproject.toml' file/folder in it."
         )
 
-    ## Memory
-    memory_mb: int = 1769  # 1 full vCPU (https://docs.aws.amazon.com/lambda/latest/dg/configuration-memory.html)
-    if memory is not None:
-        # Convert to int
-        memory_mb = int(memory)
+    # Print warning about experimental features, and ask for confirmation
+    print(
+        "Remote CLI features, including all remote CLI commands and timer functionalities, "
+        + "are experimental. Please use them with caution and at your own risk. "
+    )
+    confirm = input("Do you understand the risks and wishes to deploy framework remotely? [y/N]: ").strip().lower()
+    if confirm in ["y", "yes"]:
+        ## Memory
+        memory_mb: int = 1769  # 1 full vCPU (https://docs.aws.amazon.com/lambda/latest/dg/configuration-memory.html)
+        if memory is not None:
+            # Convert to int
+            memory_mb = int(memory)
 
-        # Now check if the memory is within the valid range
-        # 128 MB to 10240 MB
-        if memory_mb < 128 or memory_mb > 10240:
-            raise click.ClickException("Memory must be between 128 MB and 10240 MB (10 GB).")
+            # Now check if the memory is within the valid range
+            # 128 MB to 10240 MB
+            if memory_mb < 128 or memory_mb > 10240:
+                raise click.ClickException("Memory must be between 128 MB and 10240 MB (10 GB).")
 
-    ## Timeout
-    timeout_s = 900  # Maximum timeout (15 minutes)
-    if timeout is not None:
-        # Convert to int
-        timeout_s = int(timeout)
+        ## Timeout
+        timeout_s = 900  # Maximum timeout (15 minutes)
+        if timeout is not None:
+            # Convert to int
+            timeout_s = int(timeout)
 
-        # Now check if the timeout is within the valid range
-        # 1 second to 900 seconds
-        if timeout_s < 1 or timeout_s > 900:
-            raise click.ClickException("Timeout must be between 1 second and 900 seconds (15 minutes).")
+            # Now check if the timeout is within the valid range
+            # 1 second to 900 seconds
+            if timeout_s < 1 or timeout_s > 900:
+                raise click.ClickException("Timeout must be between 1 second and 900 seconds (15 minutes).")
 
-    ## Ephemeral Storage
-    ephemeral_storage_mb = 5120  # 5 GB (Should be enough for most use cases)
-    if ephemeral_storage is not None:
-        # Convert to int
-        ephemeral_storage_mb = int(ephemeral_storage)
+        ## Ephemeral Storage
+        ephemeral_storage_mb = 5120  # 5 GB (Should be enough for most use cases)
+        if ephemeral_storage is not None:
+            # Convert to int
+            ephemeral_storage_mb = int(ephemeral_storage)
 
-        # Now check if the ephemeral storage is within the valid range
-        # 512 MB to 10240 MB
-        if ephemeral_storage_mb < 512 or ephemeral_storage_mb > 10240:
-            raise click.ClickException("Ephemeral storage must be between 512 MB and 10240 MB (10 GB).")
+            # Now check if the ephemeral storage is within the valid range
+            # 512 MB to 10240 MB
+            if ephemeral_storage_mb < 512 or ephemeral_storage_mb > 10240:
+                raise click.ClickException("Ephemeral storage must be between 512 MB and 10240 MB (10 GB).")
 
-    deploy_remote_framework(project_dir, timeout_s, memory_mb, ephemeral_storage_mb)
+        deploy_remote_framework(project_dir, timeout_s, memory_mb, ephemeral_storage_mb)
 
 
 @cli.command("list_timers", help="See all available timers.")
