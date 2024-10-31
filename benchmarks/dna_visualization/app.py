@@ -16,7 +16,7 @@ workflow = CaribouWorkflow(name="dna_visualization", version="0.0.1")
 
 
 @workflow.serverless_function(
-    name="Visualize", 
+    name="visualize", 
     entry_point=True,
 )
 def visualize(event: dict[str, Any]) -> dict[str, Any]:

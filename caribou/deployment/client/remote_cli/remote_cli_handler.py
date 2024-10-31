@@ -39,6 +39,7 @@ def caribou_cli(event: dict[str, Any], context: dict[str, Any]) -> dict[str, Any
     handler = action_handlers.get(action, handle_default)
     return handler(event)
 
+
 def handle_run_deployment_migrator(event: dict[str, Any]) -> dict[str, Any]:  # pylint: disable=unused-argument
     function_deployment_monitor = DeploymentMigrator(deployed_remotely=True)
     function_deployment_monitor.check()
@@ -153,11 +154,11 @@ def handle_default(event: dict[str, Any]) -> dict[str, Any]:  # pylint: disable=
 
 
 def handle_internal_action(event: dict[str, Any]) -> dict[str, Any]:
-    '''
+    """
     Handle special actions that are not part of the standard CLI actions.
     These actions are apart of internal operations and are not intended for
     direct use by the user or timer.
-    '''
+    """
     action_type = event.get("type", None)
     if not action_type:
         logger.error("No action_type specified (Should never happen, please report this)!")
@@ -175,10 +176,12 @@ def handle_internal_action(event: dict[str, Any]) -> dict[str, Any]:
     action_event = event.get("event", None)
     return handler(action_event)
 
+
 ## Special action handlers (For specific actions that are not part of the standard CLI actions)
 def _handle_default_special(event: dict[str, Any]) -> dict[str, Any]:  # pylint: disable=unused-argument
     logger.error("Unknown special action (Should never happen, please report this)!")
     return {"status": 400, "message": "Unknown special action"}
+
 
 def _handle_check_workflow(event: dict[str, Any]) -> dict[str, Any]:
     workflow_id: Optional[str] = event.get("workflow_id", None)
@@ -193,10 +196,8 @@ def _handle_check_workflow(event: dict[str, Any]) -> dict[str, Any]:
 
     deployment_manager = DeploymentManager(deployment_metrics_calculator_type, deployed_remotely=True)
     deployment_manager.check_workflow(workflow_id)
-    return {
-        "status": 200,
-        "message": f"Workflow {workflow_id} checked"
-    }
+    return {"status": 200, "message": f"Workflow {workflow_id} checked"}
+
 
 def _handle_run_deployment_algorithm(event: dict[str, Any]) -> dict[str, Any]:
     deployment_metrics_calculator_type: Optional[str] = event.get("deployment_metrics_calculator_type", None)
@@ -213,7 +214,7 @@ def _handle_run_deployment_algorithm(event: dict[str, Any]) -> dict[str, Any]:
     if solve_hours is None:
         logger.error("No solve_hours specified")
         return {"status": 400, "message": "No solve_hours specified"}
-    
+
     leftover_tokens: Optional[int] = event.get("leftover_tokens", None)
     if leftover_tokens is None:
         logger.error("No leftover_tokens specified")
@@ -221,10 +222,8 @@ def _handle_run_deployment_algorithm(event: dict[str, Any]) -> dict[str, Any]:
 
     deployment_manager = DeploymentManager(deployment_metrics_calculator_type, deployed_remotely=True)
     deployment_manager.run_deployment_algorithm(workflow_id, solve_hours, leftover_tokens)
-    return {
-        "status": 200,
-        "message": f"Deployment algorithm performed on {workflow_id}"
-    }
+    return {"status": 200, "message": f"Deployment algorithm performed on {workflow_id}"}
+
 
 def _handle_re_deploy_workflow(event: dict[str, Any]) -> dict[str, Any]:
     workflow_id: Optional[str] = event.get("workflow_id", None)
@@ -234,10 +233,8 @@ def _handle_re_deploy_workflow(event: dict[str, Any]) -> dict[str, Any]:
 
     re_deployment_server = ReDeploymentServer(workflow_id)
     re_deployment_server.run()
-    return {
-        "status": 200,
-        "message": f"Workflow {workflow_id} re-deployed"
-    }
+    return {"status": 200, "message": f"Workflow {workflow_id} re-deployed"}
+
 
 def _handle_sync_workflow(event: dict[str, Any]) -> dict[str, Any]:
     workflow_id: Optional[str] = event.get("workflow_id", None)
@@ -247,7 +244,4 @@ def _handle_sync_workflow(event: dict[str, Any]) -> dict[str, Any]:
 
     log_syncer = LogSyncer(deployed_remotely=True)
     log_syncer.sync_workflow(workflow_id)
-    return {
-        "status": 200,
-        "message": f"Workflow {workflow_id} synced"
-    }
+    return {"status": 200, "message": f"Workflow {workflow_id} synced"}

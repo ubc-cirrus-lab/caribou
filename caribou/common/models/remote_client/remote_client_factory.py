@@ -4,6 +4,7 @@ from caribou.common.models.remote_client.mock_remote_client import MockRemoteCli
 from caribou.common.models.remote_client.remote_client import RemoteClient
 from caribou.common.provider import Provider
 
+
 class RemoteClientFactory:
     @staticmethod
     def get_remote_client(provider: str, region: str) -> RemoteClient:

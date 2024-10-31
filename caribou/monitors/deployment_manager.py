@@ -55,18 +55,19 @@ deployment_algorithm_mapping = {
     "stochastic_heuristic_deployment_algorithm": StochasticHeuristicDeploymentAlgorithm,
 }
 
+
 class DeploymentManager(Monitor):
     def __init__(self, deployment_metrics_calculator_type: str = "simple", deployed_remotely: bool = False) -> None:
         super().__init__()
         self.workflow_collector = WorkflowCollector()
         self._deployment_metrics_calculator_type: str = deployment_metrics_calculator_type
-        self._deployed_remotely: bool = deployed_remotely # Indicates if the deployment algorithm is deployed remotely
+        self._deployed_remotely: bool = deployed_remotely  # Indicates if the deployment algorithm is deployed remotely
 
     def check(self) -> None:
         logger.info("Running Deployment Manager: Manage Deployments")
         deployment_manager_client = self._endpoints.get_deployment_manager_client()
         workflow_ids = deployment_manager_client.get_keys(DEPLOYMENT_MANAGER_RESOURCE_TABLE)
-        
+
         for workflow_id in workflow_ids:
             if self._deployed_remotely:
                 # Initiate the deployment manager on a remote lambda function (AWS Lambda)
@@ -80,7 +81,10 @@ class DeploymentManager(Monitor):
 
         framework_cli_remote_client.invoke_remote_framework_internal_action(
             "check_workflow",
-            {"workflow_id": workflow_id, "deployment_metrics_calculator_type": self._deployment_metrics_calculator_type},
+            {
+                "workflow_id": workflow_id,
+                "deployment_metrics_calculator_type": self._deployment_metrics_calculator_type,
+            },
         )
 
     def remote_run_deployment_algorithm(self, workflow_id: str, solve_hours: list[str], leftover_tokens: int) -> None:
@@ -93,7 +97,7 @@ class DeploymentManager(Monitor):
                 "solve_hours": solve_hours,
                 "leftover_tokens": leftover_tokens,
                 "deployment_metrics_calculator_type": self._deployment_metrics_calculator_type,
-            }
+            },
         )
 
     def check_workflow(self, workflow_id: str) -> None:

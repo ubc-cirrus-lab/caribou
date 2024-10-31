@@ -35,7 +35,6 @@ class DeploymentMigrator(Monitor):
                 # Invoke locally/same lambda function
                 self.re_deploy_workflow(workflow_id)
 
-
     def remote_re_deploy_workflow(self, workflow_id: str) -> None:
         framework_cli_remote_client = self._endpoints.get_framework_cli_remote_client()
 

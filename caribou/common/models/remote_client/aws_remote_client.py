@@ -15,9 +15,9 @@ from caribou.common.constants import (
     CARIBOU_WORKFLOW_IMAGES_TABLE,
     DEPLOYMENT_RESOURCES_BUCKET,
     GLOBAL_SYSTEM_REGION,
+    REMOTE_CARIBOU_CLI_FUNCTION_NAME,
     SYNC_MESSAGES_TABLE,
     SYNC_PREDECESSOR_COUNTER_TABLE,
-    REMOTE_CARIBOU_CLI_FUNCTION_NAME
 )
 from caribou.common.models.remote_client.remote_client import RemoteClient
 from caribou.common.utils import compress_json_str, decompress_json_str
@@ -1139,7 +1139,7 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
             Targets=[{"Id": f"{lambda_function_name}-target", "Arn": lambda_arn, "Input": event_payload}],
         )
 
-    def invoke_remote_framework_internal_action(self, action_type: str, action_events: dict[Any]) -> None:
+    def invoke_remote_framework_internal_action(self, action_type: str, action_events: dict[str, Any]) -> None:
         payload = {
             "action": "internal_action",
             "type": action_type,
@@ -1148,14 +1148,12 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
 
         self.invoke_remote_framework_with_payload(payload, invocation_type="Event")
 
-    def invoke_remote_framework_with_payload(self, payload: dict[Any], invocation_type: str = "Event") -> None:
+    def invoke_remote_framework_with_payload(self, payload: dict[str, Any], invocation_type: str = "Event") -> None:
         # Get the boto3 lambda client
         lambda_client = self._client("lambda")
         remote_framework_cli_name = REMOTE_CARIBOU_CLI_FUNCTION_NAME
 
         # Invoke the lambda function with the payload
         lambda_client.invoke(
-            FunctionName=remote_framework_cli_name,
-            InvocationType=invocation_type,
-            Payload=json.dumps(payload)
+            FunctionName=remote_framework_cli_name, InvocationType=invocation_type, Payload=json.dumps(payload)
         )

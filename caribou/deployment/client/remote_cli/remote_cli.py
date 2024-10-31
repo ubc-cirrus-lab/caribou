@@ -256,17 +256,18 @@ def get_cli_invoke_payload(function_name: str) -> dict[str, str]:
 
     return function_name_to_payload[function_name]
 
+
 def action_type_to_function_name(action_type: str) -> str:
-    '''
+    """
     Only for direct translations of action types to function names.
     Aka: No custom logic or additional parameters nor data collection.
-    '''
+    """
     action_type_to_function_name = {
         "log_sync": "log_syncer",
         "manage_deployments": "deployment_manager",
         "run_deployment_migrator": "deployment_migrator",
         "data_collect": "data_collector",
-        "remove_workflow": "remove_workflow"
+        "remove_workflow": "remove_workflow",
     }
 
     function_name: Optional[str] = action_type_to_function_name.get(action_type, None)
@@ -275,6 +276,7 @@ def action_type_to_function_name(action_type: str) -> str:
         raise ValueError(f"Invalid or no directly translation action type: {action_type}")
 
     return function_name
+
 
 def setup_aws_timers(new_rules: list[tuple[str, str]]) -> None:
     """Create or update CloudWatch Event rules for Lambda functions."""

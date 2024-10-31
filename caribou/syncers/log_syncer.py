@@ -10,9 +10,9 @@ from caribou.common.constants import (
     DEPLOYMENT_RESOURCES_TABLE,
     FORGETTING_TIME_DAYS,
     GLOBAL_TIME_ZONE,
+    MIN_TIME_BETWEEN_SYNC,
     TIME_FORMAT,
     WORKFLOW_SUMMARY_TABLE,
-    MIN_TIME_BETWEEN_SYNC,
 )
 from caribou.common.models.endpoints import Endpoints
 from caribou.common.models.remote_client.remote_client import RemoteClient
@@ -35,12 +35,12 @@ class LogSyncer:
         self._region_clients: dict[tuple[str, str], RemoteClient] = {}
 
         # Indicates if the deployment algorithm is deployed remotely
-        self._deployed_remotely: bool = deployed_remotely 
+        self._deployed_remotely: bool = deployed_remotely
 
     def sync(self) -> None:
         logger.info("Running Log Syncer: Sync Workflow Logs")
         workflow_ids = self._deployment_manager_client.get_keys(DEPLOYMENT_MANAGER_RESOURCE_TABLE)
-        
+
         for workflow_id in workflow_ids:
             if self._deployed_remotely:
                 # Initiate the deployment manager on a remote lambda function (AWS Lambda)
@@ -64,7 +64,7 @@ class LogSyncer:
         deployment_manager_config_str, _ = self._deployment_manager_client.get_value_from_table(
             DEPLOYMENT_RESOURCES_TABLE, workflow_id
         )
-       
+
         previous_data_str, _ = self._workflow_summary_client.get_value_from_table(
             WORKFLOW_SUMMARY_TABLE, workflow_id, convert_from_bytes=True
         )
@@ -75,9 +75,7 @@ class LogSyncer:
             None,
         )
 
-        time_intervals_to_sync = self._get_time_intervals_to_sync(
-            last_sync_time
-        )
+        time_intervals_to_sync = self._get_time_intervals_to_sync(last_sync_time)
 
         if len(time_intervals_to_sync) == 0:
             return
@@ -94,7 +92,11 @@ class LogSyncer:
         log_sync_workflow.sync_workflow()
 
     def _get_time_intervals_to_sync(
-        self, last_sync_time: Optional[str], buffer_minutes: float = BUFFER_LAMBDA_INSIGHTS_GRACE_PERIOD, forget_days: int = FORGETTING_TIME_DAYS, min_minutes_between_sync: int = MIN_TIME_BETWEEN_SYNC
+        self,
+        last_sync_time: Optional[str],
+        buffer_minutes: float = BUFFER_LAMBDA_INSIGHTS_GRACE_PERIOD,
+        forget_days: int = FORGETTING_TIME_DAYS,
+        min_minutes_between_sync: int = MIN_TIME_BETWEEN_SYNC,
     ) -> list[tuple[datetime, datetime]]:
         current_time = datetime.now(GLOBAL_TIME_ZONE)
         buffered_time = current_time - timedelta(minutes=buffer_minutes)
@@ -102,12 +104,12 @@ class LogSyncer:
 
         if last_sync_time is not None:
             last_sync_time_datetime = datetime.strptime(last_sync_time, TIME_FORMAT)
-            
+
             # Verify that the last sync time is at least some interval before the buffered time
             # This is to reduce wasted invocations
             if buffered_time - last_sync_time_datetime < timedelta(minutes=min_minutes_between_sync):
                 return []
-            
+
             start_time = max(start_time, last_sync_time_datetime)
 
         time_intervals_to_sync = []

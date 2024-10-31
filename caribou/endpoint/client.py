@@ -200,7 +200,9 @@ class Client:
         )
 
         # Remove entry from the deployment manager workflow info table
-        self._endpoints.get_deployment_manager_client().remove_key(DEPLOYMENT_MANAGER_WORKFLOW_INFO_TABLE, self._workflow_id)
+        self._endpoints.get_deployment_manager_client().remove_key(
+            DEPLOYMENT_MANAGER_WORKFLOW_INFO_TABLE, self._workflow_id
+        )
 
         # Remove entry from the workflow staging area table (Pending re-deployment queue)
         self._endpoints.get_deployment_manager_client().remove_key(

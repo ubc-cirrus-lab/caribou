@@ -14,12 +14,12 @@ from typing import Optional
 import boto3
 import pip
 import yaml
+import zstandard
 
 import caribou
 from caribou.common.models.remote_client.remote_client import RemoteClient
 from caribou.deployment.common.config.config import Config
 from caribou.deployment.common.deploy.models.workflow import Workflow
-import zstandard
 
 
 class DeploymentPackager:

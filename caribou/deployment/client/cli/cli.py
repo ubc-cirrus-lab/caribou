@@ -1,11 +1,10 @@
-import json
 import os
-from typing import Optional
+from typing import Any, Optional
 
-from caribou.common.models.endpoints import Endpoints
 import click
 from cron_descriptor import Options, get_description
 
+from caribou.common.models.endpoints import Endpoints
 from caribou.common.setup.setup_tables import main as setup_tables_func
 from caribou.common.teardown.teardown_tables import main as teardown_tables_func
 from caribou.data_collector.components.carbon.carbon_collector import CarbonCollector
@@ -15,17 +14,17 @@ from caribou.data_collector.components.workflow.workflow_collector import Workfl
 from caribou.deployment.client import __version__ as CARIBOU_VERSION
 from caribou.deployment.client.cli.new_workflow import create_new_workflow_directory
 from caribou.deployment.client.remote_cli.remote_cli import (
+    action_type_to_function_name,
     deploy_remote_framework,
     get_all_available_timed_cli_functions,
     get_all_default_timed_cli_functions,
+    get_cli_invoke_payload,
+    is_aws_framework_deployed,
     remove_aws_timers,
     remove_remote_framework,
     report_timer_schedule_expression,
     setup_aws_timers,
     valid_framework_dir,
-    is_aws_framework_deployed,
-    get_cli_invoke_payload,
-    action_type_to_function_name,
 )
 from caribou.deployment.common.config.config import Config
 from caribou.deployment.common.deploy.deployer import Deployer
@@ -90,22 +89,18 @@ def run(_: click.Context, argument: Optional[str], workflow_id: str) -> None:
 @click.option("-r", "--remote", is_flag=True, help="Run the command on the remote framework.")
 @click.pass_context
 def data_collect(_: click.Context, collector: str, workflow_id: Optional[str], remote: bool) -> None:
-    if collector in ("workflow"):
-        if workflow_id is None:
-            raise click.ClickException("Workflow id must be provided for the workflow collector.")
-            
     if remote:
         framework_cli_remote_client = Endpoints().get_framework_cli_remote_client()
         framework_deployed: bool = is_aws_framework_deployed(framework_cli_remote_client, verbose=False)
         if not framework_deployed:
             raise click.ClickException("The remote framework is not deployed.")
-        
+
         print(f"Running {collector} collector on the remote framework.")
 
         # Now we know the framework is deployed, we can run the command
         action: str = "data_collect"
         function_type: str = action_type_to_function_name(action)
-        event_payload = get_cli_invoke_payload(function_type)
+        event_payload: dict[str, Any] = get_cli_invoke_payload(function_type)
 
         # Now add the collector and workflow_id
         event_payload["collector"] = collector
@@ -126,7 +121,10 @@ def data_collect(_: click.Context, collector: str, workflow_id: Optional[str], r
             print("Running performance collector")
             performance_collector = PerformanceCollector()
             performance_collector.run()
-        if collector in ("workflow"): # For workflow collector, we need to provide the workflow_id
+        if collector in ("workflow"):
+            if workflow_id is None:
+                raise click.ClickException("Workflow id must be provided for the workflow collector.")
+
             print("Running workflow collector")
             workflow_collector = WorkflowCollector()
             workflow_collector.run_on_workflow(workflow_id)
@@ -140,7 +138,7 @@ def log_sync(remote: bool) -> None:
         framework_deployed: bool = is_aws_framework_deployed(framework_cli_remote_client, verbose=False)
         if not framework_deployed:
             raise click.ClickException("The remote framework is not deployed.")
-        
+
         print("Running log syncer on the remote framework.")
 
         # Now we know the framework is deployed, we can run the command
@@ -161,7 +159,7 @@ def manage_deployments(remote: bool) -> None:
         framework_deployed: bool = is_aws_framework_deployed(framework_cli_remote_client, verbose=False)
         if not framework_deployed:
             raise click.ClickException("The remote framework is not deployed.")
-        
+
         print("Running deployment manager on the remote framework.")
 
         # Now we know the framework is deployed, we can run the command
@@ -253,7 +251,7 @@ def remove(workflow_id: str, remote: bool) -> None:
         framework_deployed: bool = is_aws_framework_deployed(framework_cli_remote_client, verbose=False)
         if not framework_deployed:
             raise click.ClickException("The remote framework is not deployed.")
-        
+
         print(f"Removing workflow {workflow_id} on the remote framework.")
 
         # Now we know the framework is deployed, we can run the command
