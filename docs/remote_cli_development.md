@@ -2,7 +2,11 @@
 For most users, this may not be necessary, as they can invoke remote CLI components by simply using the `-r` or `--remote` flag with applicable commands. 
 This information is primarily intended for internal documentation useful to Caribou developers. 
 
+**Note:** Remote CLI features, including all remote CLI commands and timer functionalities, are experimental. Please use them with caution and at your own risk.
+
 **Note:** Exercise caution when developing or modifying source code related to such events to prevent the risk of infinite or recurring loops!
+
+**Note:** Many commands in the Remote CLI are designed to separate and concurrently execute different workflows on distinct AWS Lambda function instances of the Caribou Remote CLI to address the 15-minute Lambda time limit. However, this approach has limitations: complex workflows with numerous regions or frequent invocations may encounter issues with log syncing that exceeds the time limit or with the deployment migrator taking too long to complete a full migration. This is a current limitation of the Remote CLI.
 
 ## How to Invoke the AWS Remote CLI Through events
 After deploying the `AWS Remote CLI`, you can run Caribou components by invoking the deployed lambda function using the returned Lambda ARN with the following event parameters.

@@ -548,6 +548,8 @@ Below is an example of the `workflow_instance_table` output for a workflow with 
 }
 ```
 
+**Note:** Both the Workflow collector input (produced by the log syncer) and the Workflow collector output (used later by the deployment manager) are compressed using zStandard to reduce file size and comply with the 400KB item size limit in DynamoDB tables. While this approach minimizes file size, very complex functions with numerous invocations across multiple regions may encounter issues with log sync when output size exceeds the limit. A possible mitigation is to reduce the maximum number of logs in constants or to implement new features to address this limitation.
+
 ## Deployment Solver Input
 
 Solver Input is a subcomponent of Deployment Solver responsible for providing input to the Solver.
