@@ -146,11 +146,11 @@ class RemoteClient(ABC):  # pylint: disable=too-many-public-methods
         raise NotImplementedError()
 
     @abstractmethod
-    def set_value_in_table(self, table_name: str, key: str, value: str) -> None:
+    def set_value_in_table(self, table_name: str, key: str, value: str, convert_to_bytes: bool = False) -> None:
         raise NotImplementedError()
 
     @abstractmethod
-    def update_value_in_table(self, table_name: str, key: str, value: str) -> None:
+    def update_value_in_table(self, table_name: str, key: str, value: str, convert_to_bytes: bool = False) -> None:
         raise NotImplementedError()
 
     @abstractmethod
@@ -160,7 +160,9 @@ class RemoteClient(ABC):  # pylint: disable=too-many-public-methods
         raise NotImplementedError()
 
     @abstractmethod
-    def get_value_from_table(self, table_name: str, key: str, consistent_read: bool = True) -> tuple[str, float]:
+    def get_value_from_table(
+        self, table_name: str, key: str, consistent_read: bool = True, convert_from_bytes: bool = False
+    ) -> tuple[str, float]:
         raise NotImplementedError()
 
     @abstractmethod
@@ -168,7 +170,7 @@ class RemoteClient(ABC):  # pylint: disable=too-many-public-methods
         raise NotImplementedError()
 
     @abstractmethod
-    def get_all_values_from_table(self, table_name: str) -> dict[str, Any]:
+    def get_all_values_from_table(self, table_name: str, convert_from_bytes: bool = False) -> dict[str, Any]:
         raise NotImplementedError()
 
     @abstractmethod

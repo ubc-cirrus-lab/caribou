@@ -15,10 +15,12 @@ from caribou.common.constants import (
     CARIBOU_WORKFLOW_IMAGES_TABLE,
     DEPLOYMENT_RESOURCES_BUCKET,
     GLOBAL_SYSTEM_REGION,
+    REMOTE_CARIBOU_CLI_FUNCTION_NAME,
     SYNC_MESSAGES_TABLE,
     SYNC_PREDECESSOR_COUNTER_TABLE,
 )
 from caribou.common.models.remote_client.remote_client import RemoteClient
+from caribou.common.utils import compress_json_str, decompress_json_str
 from caribou.deployment.common.deploy.models.resource import Resource
 
 logger = logging.getLogger(__name__)
@@ -612,18 +614,28 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         client = self._client("sns")
         client.publish(TopicArn=identifier, Message=message)
 
-    def set_value_in_table(self, table_name: str, key: str, value: str) -> None:
+    def set_value_in_table(self, table_name: str, key: str, value: str, convert_to_bytes: bool = False) -> None:
         client = self._client("dynamodb")
-        client.put_item(TableName=table_name, Item={"key": {"S": key}, "value": {"S": value}})
 
-    def update_value_in_table(self, table_name: str, key: str, value: str) -> None:
+        if convert_to_bytes:
+            client.put_item(TableName=table_name, Item={"key": {"S": key}, "value": {"B": compress_json_str(value)}})
+        else:
+            client.put_item(TableName=table_name, Item={"key": {"S": key}, "value": {"S": value}})
+
+    def update_value_in_table(self, table_name: str, key: str, value: str, convert_to_bytes: bool = False) -> None:
         client = self._client("dynamodb")
+        expression_attribute_values: dict[str, Any]
+        if convert_to_bytes:
+            expression_attribute_values = {":value": {"B": compress_json_str(value)}}
+        else:
+            expression_attribute_values = {":value": {"S": value}}
+
         client.update_item(
             TableName=table_name,
             Key={"key": {"S": key}},
             UpdateExpression="SET #v = :value",
             ExpressionAttributeNames={"#v": "value"},
-            ExpressionAttributeValues={":value": {"S": value}},
+            ExpressionAttributeValues=expression_attribute_values,
         )
 
     def set_value_in_table_column(
@@ -646,7 +658,9 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
             UpdateExpression=update_expression,
         )
 
-    def get_value_from_table(self, table_name: str, key: str, consistent_read: bool = True) -> tuple[str, float]:
+    def get_value_from_table(
+        self, table_name: str, key: str, consistent_read: bool = True, convert_from_bytes: bool = False
+    ) -> tuple[str, float]:
         client = self._client("dynamodb")
         response = client.get_item(
             TableName=table_name,
@@ -663,6 +677,9 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
 
         item = response.get("Item")
         if item is not None and "value" in item:
+            if convert_from_bytes:
+                return decompress_json_str(item["value"]["B"]), consumed_read_capacity
+
             return item["value"]["S"], consumed_read_capacity
 
         return "", consumed_read_capacity
@@ -671,14 +688,18 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         client = self._client("dynamodb")
         client.delete_item(TableName=table_name, Key={"key": {"S": key}})
 
-    def get_all_values_from_table(self, table_name: str) -> dict[str, Any]:
+    def get_all_values_from_table(self, table_name: str, convert_from_bytes: bool = False) -> dict[str, Any]:
         client = self._client("dynamodb")
         response = client.scan(TableName=table_name)
         if "Items" not in response:
             return {}
         items = response.get("Items")
         if items is not None:
+            if convert_from_bytes:
+                return {item["key"]["S"]: decompress_json_str(item["value"]["B"]) for item in items}
+
             return {item["key"]["S"]: item["value"]["S"] for item in items}
+
         return {}
 
     def get_key_present_in_table(self, table_name: str, key: str, consistent_read: bool = True) -> bool:
@@ -1116,4 +1137,23 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         events_client.put_targets(
             Rule=rule_name,
             Targets=[{"Id": f"{lambda_function_name}-target", "Arn": lambda_arn, "Input": event_payload}],
+        )
+
+    def invoke_remote_framework_internal_action(self, action_type: str, action_events: dict[str, Any]) -> None:
+        payload = {
+            "action": "internal_action",
+            "type": action_type,
+            "event": action_events,
+        }
+
+        self.invoke_remote_framework_with_payload(payload, invocation_type="Event")
+
+    def invoke_remote_framework_with_payload(self, payload: dict[str, Any], invocation_type: str = "Event") -> None:
+        # Get the boto3 lambda client
+        lambda_client = self._client("lambda")
+        remote_framework_cli_name = REMOTE_CARIBOU_CLI_FUNCTION_NAME
+
+        # Invoke the lambda function with the payload
+        lambda_client.invoke(
+            FunctionName=remote_framework_cli_name, InvocationType=invocation_type, Payload=json.dumps(payload)
         )

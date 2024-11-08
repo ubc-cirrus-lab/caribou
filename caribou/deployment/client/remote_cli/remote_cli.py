@@ -23,7 +23,7 @@ def remove_remote_framework() -> None:
 
     # Remove all timer rules
     verbose_remove_timers: bool = True
-    if not _is_aws_framework_deployed(aws_remote_client, verbose=False):
+    if not is_aws_framework_deployed(aws_remote_client, verbose=False):
         print("AWS Remote CLI framework is not (properly) deployed. But checking for components to remove.")
         verbose_remove_timers = False
     remove_aws_timers(get_all_available_timed_cli_functions(), verbose=verbose_remove_timers)
@@ -191,7 +191,7 @@ def get_all_default_timed_cli_functions() -> dict[str, str]:
     return default_schedule_expressions
 
 
-def _is_aws_framework_deployed(
+def is_aws_framework_deployed(
     aws_remote_client: AWSRemoteClient = AWSRemoteClient(GLOBAL_SYSTEM_REGION), verbose: bool = True
 ) -> bool:
     if not aws_remote_client.resource_exists(Resource(REMOTE_CARIBOU_CLI_IAM_POLICY_NAME, "iam_role")):  # For iam role
@@ -220,8 +220,19 @@ def _get_timer_rule_name(function_name: str) -> str:
     return f"{function_name}-timer-rule"
 
 
-def _get_aws_timer_payload(function_name: str) -> str:
+def get_cli_invoke_payload(function_name: str) -> dict[str, str]:
     function_name_to_payload = {
+        "log_syncer": {
+            "action": "log_sync",
+        },
+        "deployment_manager": {
+            "action": "manage_deployments",
+            "deployment_metrics_calculator_type": "simple",  # Set to "simple" for python calculator
+        },
+        "deployment_migrator": {
+            "action": "run_deployment_migrator",
+        },
+        ## Various data collectors (Single collector run)
         "provider_collector": {
             "action": "data_collect",
             "collector": "provider",
@@ -234,19 +245,37 @@ def _get_aws_timer_payload(function_name: str) -> str:
             "action": "data_collect",
             "collector": "performance",
         },
-        "log_syncer": {
-            "action": "log_sync",
+        ## Below are actions that need additional parameters
+        "data_collector": {
+            "action": "data_collect",
         },
-        "deployment_manager": {
-            "action": "manage_deployments",
-            "deployment_metrics_calculator_type": "go",  # Set to "simple" for python calculator
-        },
-        "deployment_migrator": {
-            "action": "run_deployment_migrator",
+        "remove_workflow": {
+            "action": "remove",
         },
     }
 
-    return json.dumps(function_name_to_payload[function_name])
+    return function_name_to_payload[function_name]
+
+
+def action_type_to_function_name(action_type: str) -> str:
+    """
+    Only for direct translations of action types to function names.
+    Aka: No custom logic or additional parameters nor data collection.
+    """
+    action_type_to_function_name = {
+        "log_sync": "log_syncer",
+        "manage_deployments": "deployment_manager",
+        "run_deployment_migrator": "deployment_migrator",
+        "data_collect": "data_collector",
+        "remove_workflow": "remove_workflow",
+    }
+
+    function_name: Optional[str] = action_type_to_function_name.get(action_type, None)
+
+    if function_name is None:
+        raise ValueError(f"Invalid or no directly translation action type: {action_type}")
+
+    return function_name
 
 
 def setup_aws_timers(new_rules: list[tuple[str, str]]) -> None:
@@ -258,14 +287,14 @@ def setup_aws_timers(new_rules: list[tuple[str, str]]) -> None:
     cron_descriptor_options.verbose = True
 
     # First check if the AWS framework is deployed
-    if not _is_aws_framework_deployed(aws_remote_client):
+    if not is_aws_framework_deployed(aws_remote_client):
         print("AWS framework is not deployed. Please deploy the framework first.")
         return
 
     # Next, we can create the timer rules
     for function_name, schedule_expression in new_rules:
         rule_name = _get_timer_rule_name(function_name)
-        event_payload = _get_aws_timer_payload(function_name)
+        event_payload = json.dumps(get_cli_invoke_payload(function_name))
 
         try:
             aws_remote_client.create_timer_rule(
@@ -299,7 +328,7 @@ def remove_aws_timers(desired_remove_rules: list[str], verbose: bool = True) -> 
     aws_remote_client = AWSRemoteClient(GLOBAL_SYSTEM_REGION)
 
     # First check if the AWS framework is deployed
-    if not _is_aws_framework_deployed(aws_remote_client, verbose=verbose):
+    if not is_aws_framework_deployed(aws_remote_client, verbose=verbose):
         if verbose:
             print("AWS framework is not (properly) deployed. No timer rules to remove.")
         return

@@ -21,7 +21,9 @@ class WorkflowRetriever(DataRetriever):
 
     def retrieve_workflow_summary(self, workflow_unique_id: str) -> dict[str, Any]:
         # Load the summarized logs from the workflow summary table
-        workflow_summarized, _ = self._client.get_value_from_table(self._workflow_summary_table, workflow_unique_id)
+        workflow_summarized, _ = self._client.get_value_from_table(
+            self._workflow_summary_table, workflow_unique_id, convert_from_bytes=True
+        )
 
         # Consolidate all the timestamps together to one summary and return the result
         return self._transform_workflow_summary(workflow_summarized)

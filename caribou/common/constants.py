@@ -137,10 +137,11 @@ TIME_FORMAT_DAYS = "%Y-%m-%d%z"
 FORGETTING_TIME_DAYS = 30  # 30 days
 FORGETTING_NUMBER = 5000  # 5000 invocations
 KEEP_ALIVE_DATA_COUNT = 10  # Keep sample it is part of any of the 10 samples for any execution or transmission
+MIN_TIME_BETWEEN_SYNC = 15  # In Minutes
 
 ## Grace period for the log-syncer
 ## Used as lambda insights can be delayed
-BUFFER_LAMBDA_INSIGHTS_GRACE_PERIOD = 5
+BUFFER_LAMBDA_INSIGHTS_GRACE_PERIOD = 15  # In minutes
 
 ## Successor task types
 REDIRECT_ONLY_TASK_TYPE = "REDIRECT_ONLY"
@@ -161,4 +162,6 @@ MAX_TRANSFER_SIZE = 256000  # In bytes
 GO_PATH = pathlib.Path(__file__).parents[2].resolve() / "caribou-go"
 
 # AWS Lambda Timeout
-AWS_TIMEOUT_SECONDS = 850  # Lambda functions must terminate in 900 seconds, we leave 50 seconds as buffer time
+AWS_TIMEOUT_SECONDS = (
+    800  # Lambda functions must terminate in 900 seconds, we leave some time as buffer time (For other operations)
+)

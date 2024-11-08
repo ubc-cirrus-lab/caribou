@@ -40,10 +40,10 @@ class MockRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
     def upload_predecessor_data_at_sync_node(self, function_name, workflow_instance_id, message):
         pass
 
-    def set_value_in_table(self, table_name, key, value):
+    def set_value_in_table(self, table_name, key, value, convert_to_bytes: bool = False):
         pass
 
-    def get_value_from_table(self, table_name, key, consistent_read: bool = True):
+    def get_value_from_table(self, table_name, key, consistent_read: bool = True, convert_from_bytes: bool = False):
         pass
 
     def upload_resource(self, key, resource):
@@ -74,7 +74,7 @@ class MockRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
     ) -> list[bool]:
         pass
 
-    def get_all_values_from_table(self, table_name: str) -> dict:
+    def get_all_values_from_table(self, table_name: str, convert_from_bytes: bool = False) -> dict:
         pass
 
     def set_value_in_table_column(
@@ -112,7 +112,7 @@ class MockRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
     def remove_resource(self, key: str) -> None:
         pass
 
-    def update_value_in_table(self, table_name: str, key: str, value: str) -> None:
+    def update_value_in_table(self, table_name: str, key: str, value: str, convert_to_bytes: bool = False) -> None:
         pass
 
     def get_logs_between(self, function_instance: str, start: datetime, end: datetime) -> list[str]:
