@@ -211,6 +211,7 @@ class TestProviderRetriever(unittest.TestCase):
                 <table>
                     <tr><td>us-east-1</td><td>US East (N. Virginia)</td><td>Some other data</td></tr>
                     <tr><td>eu-west-1</td><td>EU (Ireland)</td><td>Some other data</td></tr>
+                    <tr><td>no-nons-1</td><td>Nowhere</td><td>Some other data</td></tr>
                 </table>
             </body>
         </html>
@@ -231,10 +232,13 @@ class TestProviderRetriever(unittest.TestCase):
             mock_str_to_bool.return_value = False
             provider_retriever = ProviderRetriever(None)  # Assuming None can be passed as a dummy RemoteClient
 
+            provider_retriever._retrieve_enabled_aws_regions = Mock(return_value=["us-east-1", "eu-west-1"])
+
         regions = provider_retriever.retrieve_aws_regions()
 
         self.assertIn("aws:us-east-1", regions)
         self.assertIn("aws:eu-west-1", regions)
+        self.assertNotIn("aws:no-nons-1", regions)
         self.assertEqual(regions["aws:us-east-1"]["name"], "US East (N. Virginia)")
         self.assertEqual(regions["aws:us-east-1"]["latitude"], 37.7749)
         self.assertEqual(regions["aws:us-east-1"]["longitude"], -122.4194)
@@ -791,6 +795,69 @@ class TestProviderRetriever(unittest.TestCase):
 
         result = self.provider_retriever.get_aws_product_skus(price_list_json)
         self.assertEqual(result, ("", "", "", "", "", ""))
+
+    @patch("caribou.data_collector.components.provider.provider_retriever.boto3.client")
+    def test_retrieve_enabled_aws_regions_success(self, mock_boto3_client):
+        mock_ec2_client = MagicMock()
+
+        mock_boto3_client.return_value = mock_ec2_client
+
+        mock_ec2_client.describe_regions.return_value = {
+            "Regions": [
+                {"RegionName": "us-east-1"},
+                {"RegionName": "us-west-2"},
+                {"RegionName": "eu-west-1"},
+            ]
+        }
+
+        with patch("os.environ.get") as mock_os_environ_get, patch(
+            "caribou.common.utils.str_to_bool"
+        ) as mock_str_to_bool:
+            mock_os_environ_get.return_value = "test_key"
+            mock_str_to_bool.return_value = False
+            provider_retriever = ProviderRetriever(client=mock_boto3_client)
+
+        expected_regions = ["us-east-1", "us-west-2", "eu-west-1"]
+
+        actual_regions = provider_retriever._retrieve_enabled_aws_regions()
+        self.assertEqual(actual_regions, expected_regions)
+
+    @patch("caribou.data_collector.components.provider.provider_retriever.boto3.client")
+    def test_retrieve_enabled_aws_regions_empty(self, mock_boto3_client):
+        mock_ec2_client = MagicMock()
+        mock_boto3_client.return_value = mock_ec2_client
+
+        mock_ec2_client.describe_regions.return_value = {"Regions": []}
+
+        with patch("os.environ.get") as mock_os_environ_get, patch(
+            "caribou.common.utils.str_to_bool"
+        ) as mock_str_to_bool:
+            mock_os_environ_get.return_value = "test_key"
+            mock_str_to_bool.return_value = False
+            provider_retriever = ProviderRetriever(client=mock_boto3_client)
+
+        expected_regions = []
+
+        actual_regions = provider_retriever._retrieve_enabled_aws_regions()
+        self.assertEqual(actual_regions, expected_regions)
+
+    @patch("caribou.data_collector.components.provider.provider_retriever.boto3.client")
+    def test_retrieve_enabled_aws_regions_api_failure(self, mock_boto3_client):
+        mock_ec2_client = MagicMock()
+        mock_boto3_client.return_value = mock_ec2_client
+
+        mock_ec2_client.describe_regions.side_effect = Exception("AWS API error")
+
+        with patch("os.environ.get") as mock_os_environ_get, patch(
+            "caribou.common.utils.str_to_bool"
+        ) as mock_str_to_bool:
+            mock_os_environ_get.return_value = "test_key"
+            mock_str_to_bool.return_value = False
+            provider_retriever = ProviderRetriever(client=mock_boto3_client)
+
+        with self.assertRaises(Exception) as context:
+            provider_retriever._retrieve_enabled_aws_regions()
+        self.assertTrue("AWS API error" in str(context.exception))
 
 
 if __name__ == "__main__":

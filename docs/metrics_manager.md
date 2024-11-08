@@ -548,6 +548,8 @@ Below is an example of the `workflow_instance_table` output for a workflow with 
 }
 ```
 
+**Note:** Both the Workflow collector input (produced by the log syncer) and the Workflow collector output (used later by the deployment manager) are compressed using zStandard to reduce file size and comply with the 400KB item size limit in DynamoDB tables. While this approach minimizes file size, very complex functions with numerous invocations across multiple regions may encounter issues with log sync when output size exceeds the limit. A possible mitigation is to reduce the maximum number of logs in constants or to implement new features to address this limitation.
+
 ## Deployment Solver Input
 
 Solver Input is a subcomponent of Deployment Solver responsible for providing input to the Solver.
@@ -563,3 +565,65 @@ The data calculators, including the "Runtime Calculator", "Cost Calculator", and
 Below is a diagram showing the overall access of data in the Solver Inputs:
 
 ![Solver Input Data Flow](./img/solver_input_architecture.png)
+
+
+## Carbon Methodology
+Carbon footprint has operational and embodied components.
+We only models the operational carbon.
+Considering embodied carbon is essential for carbon accounting, but including it in scheduling decisions is not always accurate.
+In our setting, as long as capacity is available to host a function execution, embodied carbon for both the current and future host nodes will be incurred regardless of Caribou's offloading decision.
+In economic terms, this is referred to as sunk cost. 
+And if there is no capacity to offload, there won't be any offloading.
+Furthermore, without extensive publicly available data (including for building construction, land, etc.) to reliably model the embodied carbon for each region, the most meaningful approach would be to associate the same embedded carbon per unit of resource to all regions.
+Adding the resulting equal embodied carbon baseline to all regions does not affect their relative carbon differential, the element leveraged by Caribou. 
+
+The operational carbon footprint of execution ($ Carbon_{ex} $) can be estimated by the power consumed adjusted by power usage effectiveness (PUE) and the carbon intensity of grid ($I_{\text{grid}}$). $I_{\text{grid}}$ can either be the average carbon intensity (ACI) or marginal carbon intensity (MCI). Prior work has used both ACI and MCI for scheduling-related tasks and analysis. 
+There is growing interest in using MCI for carbon-aware optimization, but it can lead to different decisions, highlighting the importance of continued research. 
+We opted to use ACI due to the high uncertainty of the MCI signals and the difficulty of verifying MCI as opposed to ACI, which can be measured from electricity production data.
+
+$Carbon_{operational} = Carbon_{ex} + Carbon_{tran}$
+
+### Execution Carbon
+$Carbon_{ex} = I_{\text{grid}} \times \left( E_{proc} + E_{mem} \right) \times PUE$
+
+During the execution, CPU and memory are the predominant carbon contributors, as modeled in previous research.
+The contribution of other components is shown to be relatively negligible.
+We use a PUE of 1.11, the average of the 1.07-1.15 range reported for AWS datacenters. 
+
+$E_{mem} = P_{mem} \times \left( mem/1024 \right) \times t/3600$
+
+Where $mem$ is the configured memory size ($mem$) in megabyte and ($t$) is the execution time in seconds. 
+
+We use the 3.725e-4kW/GB, estimated and used by the community, as a basis for energy usage associated with the serverless function's memory usage ($P_{mem}$).
+
+$ E_{proc} = P_{vcpu} \times n_{vcpu} \times t/3600 $
+
+
+$P_{vcpu} = P_{min} + \frac{\text{cpu\_total\_time}}{t \times n_{vcpu} } \times \left ( P_{max} - P_{min} \right )$
+
+The number of vCPUs of an AWS Lambda function is based on its memory size $(n_{vcpu} = mem/1,769)$.
+Caribou uses AWS Lambda Insights to collect $\textit{cpu\_total\_time}$, needed to calculate average vCPU utilization.
+
+The power consumption per vCPU ($P_{vcpu}$) is then derived using a linear utilization-based power model.
+A prior study estimated that the average power draw per core in AWS datacenters is 7.5e-4 kW when idle ($ P_{min} $) and 3.5e-3kW when fully utilized ($ P_{max} $).
+
+### Transmission Carbon
+$ Carbon_{\text{tran}} =  I_{\text{route}} \times EF_{trans} \times S $
+
+
+The operational carbon footprint of data transmission $Carbon_{\text{tran}}$ can be estimated by the size of data moved ($S$), the energy consumption of the data transfer ($EF_{trans}$), and the average carbon intensity of the route between source and destination $I_{\text{route}}$.
+
+Estimates of $EF_{trans}$ vary greatly across studies.
+As the energy efficiency of data transfer doubles approximately every two years, we extrapolate $EF_{trans}$ based on these studies to be in the range of 0.001 to 0.005 kWh/GB.
+To account for this uncertainty due to limitations of today's network energy models, we included a best-case scenario for offloading (0.001kWh/GB for any transmission) and a worst-case scenario (0.005 kWh/GB inter- and 0 kWh/GB intra-region transmission).
+Future more accurate models will most likely not be out of this range for the next few years. 
+Caribou's Metrics Manager can seamlessly integrate alternative models.
+
+#### Data Transmission Methodology
+For any data transmission between two known regions, the $I_{\text{route}}$ is estimated as the $I_{\text{grid}}$ of the source and destination.
+If the source or destination of the data transmission is unknown, $I_{\text{route}}$ is estimated as the average carbon intensity of consumption across the contiguous United States for a given year.
+The size of input and output data between functions is measured then logged using AWS CloudWatch, and the total network transfer amount during the execution is captured by Lambda Insights. 
+Any mismatch between the two can be attributed to data transfer during the execution to/from other sources (e.g., an API). 
+
+As Caribou does not have enough visibility to know the location of the endpoints for this communication, we made the simple assumption that 50% of this data may be located at or near the home initially deployed region and 50% are from an unknown location.
+It is important to note that this is a limitation stemming from the third-party middleware nature of Caribou, and if a more detailed logging capability and more accurate carbon modeling are introduced in the future, Caribou's carbon model can easily be updated to incorporate this information.

@@ -91,7 +91,10 @@ class TestLogSyncWorkflow(unittest.TestCase):
 
         # Check that update_value_in_table was called with the correct arguments
         self.workflow_summary_client.update_value_in_table.assert_called_once_with(
-            WORKFLOW_SUMMARY_TABLE, self.workflow_id, data_for_upload
+            WORKFLOW_SUMMARY_TABLE,
+            self.workflow_id,
+            data_for_upload,
+            convert_to_bytes=True,
         )
 
     @patch.object(LogSyncWorkflow, "_process_logs_for_instance_for_one_region")

@@ -88,6 +88,8 @@ class DeploymentAlgorithm(ABC):  # pylint: disable=too-many-instance-attributes
         ]
 
         self._timeout = AWS_TIMEOUT_SECONDS if lambda_timeout else float("inf")
+        if lambda_timeout:
+            print(f"Remote Deployment: Setting timeout to {AWS_TIMEOUT_SECONDS} seconds")
 
     def run(self, hours_to_run: Optional[list[str]] = None) -> None:
         hour_to_run_to_result: dict[str, Any] = {"time_keys_to_staging_area_data": {}, "deployment_metrics": {}}

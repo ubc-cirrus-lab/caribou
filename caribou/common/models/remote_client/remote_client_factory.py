@@ -21,3 +21,7 @@ class RemoteClientFactory:
         if provider_enum == Provider.INTEGRATION_TEST_PROVIDER:
             return IntegrationTestRemoteClient()
         raise RuntimeError(f"Unknown provider {provider}")
+
+    @staticmethod
+    def get_framework_cli_remote_client(region: str) -> AWSRemoteClient:
+        return AWSRemoteClient(region)

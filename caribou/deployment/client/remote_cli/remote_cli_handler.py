@@ -6,6 +6,7 @@ from caribou.data_collector.components.performance.performance_collector import 
 from caribou.data_collector.components.provider.provider_collector import ProviderCollector
 from caribou.data_collector.components.workflow.workflow_collector import WorkflowCollector
 from caribou.deployment.client import __version__ as CARIBOU_VERSION
+from caribou.deployment.server.re_deployment_server import ReDeploymentServer
 from caribou.endpoint.client import Client
 from caribou.monitors.deployment_manager import DeploymentManager
 from caribou.monitors.deployment_migrator import DeploymentMigrator
@@ -32,6 +33,7 @@ def caribou_cli(event: dict[str, Any], context: dict[str, Any]) -> dict[str, Any
         "manage_deployments": handle_manage_deployments,
         "remove": handle_remove_workflow,
         "run_deployment_migrator": handle_run_deployment_migrator,
+        "internal_action": handle_internal_action,
     }
 
     handler = action_handlers.get(action, handle_default)
@@ -39,10 +41,10 @@ def caribou_cli(event: dict[str, Any], context: dict[str, Any]) -> dict[str, Any
 
 
 def handle_run_deployment_migrator(event: dict[str, Any]) -> dict[str, Any]:  # pylint: disable=unused-argument
-    function_deployment_monitor = DeploymentMigrator()
+    function_deployment_monitor = DeploymentMigrator(deployed_remotely=True)
     function_deployment_monitor.check()
 
-    return {"status": 200, "message": "Deployment migrator completed"}
+    return {"status": 200, "message": "Deployment migrator started"}
 
 
 def handle_remove_workflow(event: dict[str, Any]) -> dict[str, Any]:
@@ -54,7 +56,7 @@ def handle_remove_workflow(event: dict[str, Any]) -> dict[str, Any]:
     client = Client(workflow_id)
     client.remove()
 
-    return {"status": 200, "message": f"Workflow {workflow_id} removed"}
+    return {"status": 200, "message": f"Workflow {workflow_id} removal started"}
 
 
 def handle_manage_deployments(event: dict[str, Any]) -> dict[str, Any]:
@@ -67,18 +69,21 @@ def handle_manage_deployments(event: dict[str, Any]) -> dict[str, Any]:
             "message": "Invalid deployment_metrics_calculator_type specified. Allowed values are 'simple', 'go'",
         }
 
-    deployment_manager = DeploymentManager(deployment_metrics_calculator_type)
+    logger.info("Deployment check started, using %s calculator", deployment_metrics_calculator_type)
+    # Declare the deployment manager with parameter of deployed_remotely=True
+    deployment_manager = DeploymentManager(deployment_metrics_calculator_type, deployed_remotely=True)
+
     deployment_manager.check()
     return {
         "status": 200,
-        "message": f"Deployment check completed, using {deployment_metrics_calculator_type} calculator",
+        "message": f"Deployment check started, using {deployment_metrics_calculator_type} calculator",
     }
 
 
 def handle_log_sync(event: dict[str, Any]) -> dict[str, Any]:  # pylint: disable=unused-argument
-    log_syncer = LogSyncer()
+    log_syncer = LogSyncer(deployed_remotely=True)
     log_syncer.sync()
-    return {"status": 200, "message": "Log sync completed"}
+    return {"status": 200, "message": "Log sync started"}
 
 
 def handle_data_collect(event: dict[str, Any]) -> dict[str, Any]:
@@ -95,6 +100,8 @@ def handle_data_collect(event: dict[str, Any]) -> dict[str, Any]:
             "message": "Invalid collector specified, Allowed values are provider, carbon, performance, workflow, all",
         }
 
+    logger.info("Performing data collection for collector: %s", collector)
+
     if collector in ("provider", "all"):
         provider_collector = ProviderCollector()
         provider_collector.run()
@@ -104,14 +111,14 @@ def handle_data_collect(event: dict[str, Any]) -> dict[str, Any]:
     if collector in ("performance", "all"):
         performance_collector = PerformanceCollector()
         performance_collector.run()
-    if collector in ("workflow", "all"):
+    if collector in ("workflow"):
         if workflow_id is None:
-            logger.error("Workflow_id must be provided for the workflow and all collectors.")
-            return {"status": 400, "message": "Workflow_id must be provided for the workflow and all collectors."}
+            logger.error("Workflow_id must be provided for the workflow collector.")
+            return {"status": 400, "message": "Workflow_id must be provided for the workflow collector."}
         workflow_collector = WorkflowCollector()
         workflow_collector.run_on_workflow(workflow_id)
 
-    return {"status": 200, "ran_collector": collector, "workflow_id": workflow_id}
+    return {"status": 200, "scheduled_collector": collector, "workflow_id": workflow_id}
 
 
 def handle_list_caribou_version(event: dict[str, Any]) -> dict[str, Any]:  # pylint: disable=unused-argument
@@ -142,5 +149,99 @@ def handle_run(event: dict[str, Any]) -> dict[str, Any]:
 
 
 def handle_default(event: dict[str, Any]) -> dict[str, Any]:  # pylint: disable=unused-argument
-    print("Unknown action")
+    logger.error("Unknown action")
     return {"status": 400, "message": "Unknown action"}
+
+
+def handle_internal_action(event: dict[str, Any]) -> dict[str, Any]:
+    """
+    Handle special actions that are not part of the standard CLI actions.
+    These actions are apart of internal operations and are not intended for
+    direct use by the user or timer.
+    """
+    action_type = event.get("type", None)
+    if not action_type:
+        logger.error("No action_type specified (Should never happen, please report this)!")
+        return {"status": 400, "message": "No special_action specified"}
+
+    logger.info("Received request with special_action: %s", action_type)
+    special_action_handlers = {
+        "check_workflow": _handle_check_workflow,
+        "run_deployment_algorithm": _handle_run_deployment_algorithm,
+        "re_deploy_workflow": _handle_re_deploy_workflow,
+        "sync_workflow": _handle_sync_workflow,
+    }
+
+    handler = special_action_handlers.get(action_type, _handle_default_special)
+    action_event = event.get("event", None)
+    return handler(action_event)
+
+
+## Special action handlers (For specific actions that are not part of the standard CLI actions)
+def _handle_default_special(event: dict[str, Any]) -> dict[str, Any]:  # pylint: disable=unused-argument
+    logger.error("Unknown special action (Should never happen, please report this)!")
+    return {"status": 400, "message": "Unknown special action"}
+
+
+def _handle_check_workflow(event: dict[str, Any]) -> dict[str, Any]:
+    workflow_id: Optional[str] = event.get("workflow_id", None)
+    if workflow_id is None:
+        logger.error("No workflow_id specified")
+        return {"status": 400, "message": "No workflow_id specified"}
+
+    deployment_metrics_calculator_type: Optional[str] = event.get("deployment_metrics_calculator_type", None)
+    if deployment_metrics_calculator_type is None:
+        logger.error("No deployment_metrics_calculator_type specified")
+        return {"status": 400, "message": "No deployment_metrics_calculator_type specified"}
+
+    deployment_manager = DeploymentManager(deployment_metrics_calculator_type, deployed_remotely=True)
+    deployment_manager.check_workflow(workflow_id)
+    return {"status": 200, "message": f"Workflow {workflow_id} checked"}
+
+
+def _handle_run_deployment_algorithm(event: dict[str, Any]) -> dict[str, Any]:
+    deployment_metrics_calculator_type: Optional[str] = event.get("deployment_metrics_calculator_type", None)
+    if deployment_metrics_calculator_type is None:
+        logger.error("No deployment_metrics_calculator_type specified")
+        return {"status": 400, "message": "No deployment_metrics_calculator_type specified"}
+
+    workflow_id: Optional[str] = event.get("workflow_id", None)
+    if workflow_id is None:
+        logger.error("No workflow_id specified")
+        return {"status": 400, "message": "No workflow_id specified"}
+
+    solve_hours: Optional[list[str]] = event.get("solve_hours", None)
+    if solve_hours is None:
+        logger.error("No solve_hours specified")
+        return {"status": 400, "message": "No solve_hours specified"}
+
+    leftover_tokens: Optional[int] = event.get("leftover_tokens", None)
+    if leftover_tokens is None:
+        logger.error("No leftover_tokens specified")
+        return {"status": 400, "message": "No leftover_tokens specified"}
+
+    deployment_manager = DeploymentManager(deployment_metrics_calculator_type, deployed_remotely=True)
+    deployment_manager.run_deployment_algorithm(workflow_id, solve_hours, leftover_tokens)
+    return {"status": 200, "message": f"Deployment algorithm performed on {workflow_id}"}
+
+
+def _handle_re_deploy_workflow(event: dict[str, Any]) -> dict[str, Any]:
+    workflow_id: Optional[str] = event.get("workflow_id", None)
+    if workflow_id is None:
+        logger.error("No workflow_id specified")
+        return {"status": 400, "message": "No workflow_id specified"}
+
+    re_deployment_server = ReDeploymentServer(workflow_id)
+    re_deployment_server.run()
+    return {"status": 200, "message": f"Workflow {workflow_id} re-deployed"}
+
+
+def _handle_sync_workflow(event: dict[str, Any]) -> dict[str, Any]:
+    workflow_id: Optional[str] = event.get("workflow_id", None)
+    if workflow_id is None:
+        logger.error("No workflow_id specified")
+        return {"status": 400, "message": "No workflow_id specified"}
+
+    log_syncer = LogSyncer(deployed_remotely=True)
+    log_syncer.sync_workflow(workflow_id)
+    return {"status": 200, "message": f"Workflow {workflow_id} synced"}

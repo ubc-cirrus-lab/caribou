@@ -14,6 +14,7 @@ from typing import Optional
 import boto3
 import pip
 import yaml
+import zstandard
 
 import caribou
 from caribou.common.models.remote_client.remote_client import RemoteClient
@@ -82,6 +83,8 @@ class DeploymentPackager:
                 file.write(f"\npyyaml=={yaml.__version__}\n")
             if "pytz" not in requirements:
                 file.write(f"\npytz=={self._pytz_version}\n")
+            if "zstandard" not in requirements:
+                file.write(f"\nzstandard=={zstandard.__version__}\n")
 
     @property
     def _pytz_version(self) -> str:
@@ -240,6 +243,10 @@ class DeploymentPackager:
 
         if "pytz" not in requirements:
             requirements.append(f"pytz=={self._pytz_version}")
+
+        # Add version of z_standard if not present in requirements
+        if "zstandard" not in requirements:
+            requirements.append(f"zstandard=={zstandard.__version__}")
 
         temp_install_dir = tempfile.mkdtemp(dir=temp_dir, prefix="temp_install_")
 

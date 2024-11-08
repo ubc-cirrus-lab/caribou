@@ -23,7 +23,9 @@ class TestWorkflowExporter(unittest.TestCase):
         workflow_summary_data = {"key1": {"data": "data1"}}
         self.exporter._export_data = MagicMock()
         self.exporter._export_workflow_summary(workflow_summary_data)
-        self.exporter._export_data.assert_called_once_with("workflow_instance_table", workflow_summary_data, False)
+        self.exporter._export_data.assert_called_once_with(
+            "workflow_instance_table", workflow_summary_data, False, convert_to_bytes=True
+        )
 
 
 if __name__ == "__main__":

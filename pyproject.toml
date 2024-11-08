@@ -36,6 +36,8 @@ shortuuid = "^1.0.13"
 langchain-community = "^0.2.16"
 langchain-postgres = "^0.0.9"
 faiss-cpu = "^1.8.0.post1"
+cron-descriptor = "^1.4.5"
+zstandard = "^0.23.0"
 
 [tool.poetry.extras]
 # This can be used for a more fine-grained dependency management in the future
