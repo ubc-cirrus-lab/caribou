@@ -124,9 +124,7 @@ class DeploymentManager(Monitor):
 
         workflow_config = self._get_workflow_config(workflow_id)
 
-        workflow_summary_raw, _ = data_collector_client.get_value_from_table(
-            WORKFLOW_INSTANCE_TABLE, workflow_id, convert_from_bytes=True
-        )
+        workflow_summary_raw, _ = data_collector_client.get_value_from_table(WORKFLOW_INSTANCE_TABLE, workflow_id)
 
         workflow_summary = json.loads(workflow_summary_raw)
 

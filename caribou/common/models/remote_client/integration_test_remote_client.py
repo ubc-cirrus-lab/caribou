@@ -215,9 +215,7 @@ class IntegrationTestRemoteClient(RemoteClient):  # pylint: disable=too-many-pub
         conn.commit()
         conn.close()
 
-    def get_value_from_table(
-        self, table_name: str, key: str, consistent_read: bool = True, convert_from_bytes: bool = False
-    ) -> tuple[str, float]:
+    def get_value_from_table(self, table_name: str, key: str, consistent_read: bool = True) -> tuple[str, float]:
         conn = self._db_connection()
         cursor = conn.cursor()
         cursor.execute(f"SELECT value FROM {table_name} WHERE key=?", (key,))
@@ -267,7 +265,7 @@ class IntegrationTestRemoteClient(RemoteClient):  # pylint: disable=too-many-pub
         conn.close()
         return [bool(res) for res in result], 0.0, 0.0
 
-    def get_all_values_from_table(self, table_name: str, convert_from_bytes: bool = False) -> dict:
+    def get_all_values_from_table(self, table_name: str) -> dict:
         conn = self._db_connection()
         cursor = conn.cursor()
         cursor.execute(f"SELECT key, value FROM {table_name}")

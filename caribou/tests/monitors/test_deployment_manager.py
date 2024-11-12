@@ -438,7 +438,7 @@ class TestDeploymentManager(unittest.TestCase):
         mock_client.get_value_from_table.assert_has_calls(
             [
                 call(DEPLOYMENT_MANAGER_WORKFLOW_INFO_TABLE, workflow_id),
-                call(WORKFLOW_INSTANCE_TABLE, workflow_id, convert_from_bytes=True),
+                call(WORKFLOW_INSTANCE_TABLE, workflow_id),
             ]
         )
         mock_get_last_solved.assert_called_once()
@@ -503,7 +503,7 @@ class TestDeploymentManager(unittest.TestCase):
         mock_client.get_value_from_table.assert_has_calls(
             [
                 call(DEPLOYMENT_MANAGER_WORKFLOW_INFO_TABLE, workflow_id),
-                call(WORKFLOW_INSTANCE_TABLE, workflow_id, convert_from_bytes=True),
+                call(WORKFLOW_INSTANCE_TABLE, workflow_id),
             ]
         )
         mock_get_last_solved.assert_called_once()
@@ -571,7 +571,7 @@ class TestDeploymentManager(unittest.TestCase):
         mock_client.get_value_from_table.assert_has_calls(
             [
                 call(DEPLOYMENT_MANAGER_WORKFLOW_INFO_TABLE, workflow_id),
-                call(WORKFLOW_INSTANCE_TABLE, workflow_id, convert_from_bytes=True),
+                call(WORKFLOW_INSTANCE_TABLE, workflow_id),
             ]
         )
         mock_get_last_solved.assert_called_once()

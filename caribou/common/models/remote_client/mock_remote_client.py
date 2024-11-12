@@ -43,7 +43,7 @@ class MockRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
     def set_value_in_table(self, table_name, key, value, convert_to_bytes: bool = False):
         pass
 
-    def get_value_from_table(self, table_name, key, consistent_read: bool = True, convert_from_bytes: bool = False):
+    def get_value_from_table(self, table_name, key, consistent_read: bool = True):
         pass
 
     def upload_resource(self, key, resource):
@@ -74,7 +74,7 @@ class MockRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
     ) -> list[bool]:
         pass
 
-    def get_all_values_from_table(self, table_name: str, convert_from_bytes: bool = False) -> dict:
+    def get_all_values_from_table(self, table_name: str) -> dict:
         pass
 
     def set_value_in_table_column(
