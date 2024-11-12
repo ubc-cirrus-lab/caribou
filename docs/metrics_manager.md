@@ -548,7 +548,14 @@ Below is an example of the `workflow_instance_table` output for a workflow with 
 }
 ```
 
-**Note:** Both the Workflow collector input (produced by the log syncer) and the Workflow collector output (used later by the deployment manager) are compressed using zStandard to reduce file size and comply with the 400KB item size limit in DynamoDB tables. While this approach minimizes file size, very complex functions with numerous invocations across multiple regions may encounter issues with log sync when output size exceeds the limit. A possible mitigation is to reduce the maximum number of logs in constants or to implement new features to address this limitation.
+**Note:** Both the Workflow collector input (produced by the log syncer) and the Workflow collector output (used later by the deployment manager) are compressed using Zstandard to reduce file size and comply with the 400KB item size limit in DynamoDB tables. 
+While this approach minimizes file size, very complex functions with numerous invocations across multiple regions may encounter issues with log sync when output size exceeds the limit. 
+A possible mitigation is to reduce the maximum number of logs in constants or to implement new features to address this limitation.
+
+
+##### Choice of Compression (Zstandard) 
+The lossless data compression algorithm Zstandard was chosen due to its high compression ratio at or near the maximum compression level and its incredibly fast decompression time. 
+We selected Zstandard with a compression level of 21, as it achieves a compression ratio similar to the maximum level of 22 while performing reasonably fast at compression in most practical use cases.
 
 ## Deployment Solver Input
 
