@@ -165,3 +165,7 @@ GO_PATH = pathlib.Path(__file__).parents[2].resolve() / "caribou-go"
 AWS_TIMEOUT_SECONDS = (
     800  # Lambda functions must terminate in 900 seconds, we leave some time as buffer time (For other operations)
 )
+
+# TTL for dynamodb synchronization tables
+SYNC_TABLE_TTL_ATTRIBUTE_NAME = "cb_ttl_expiration_time"
+SYNC_TABLE_TTL = 86400  # Equivalent to 1 day (24 hours) in seconds

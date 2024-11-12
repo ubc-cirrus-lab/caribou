@@ -18,6 +18,8 @@ from caribou.common.constants import (
     REMOTE_CARIBOU_CLI_FUNCTION_NAME,
     SYNC_MESSAGES_TABLE,
     SYNC_PREDECESSOR_COUNTER_TABLE,
+    SYNC_TABLE_TTL,
+    SYNC_TABLE_TTL_ATTRIBUTE_NAME,
 )
 from caribou.common.models.remote_client.remote_client import RemoteClient
 from caribou.common.utils import compress_json_str, decompress_json_str
@@ -89,6 +91,9 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
     ) -> tuple[list[bool], float, float]:
         client = self._client("dynamodb")
 
+        # Calculate the expiration time for the sync node
+        expiration_time = int(time.time()) + SYNC_TABLE_TTL
+
         # Record the consumed capacity (Write Capacity Units) for this operation
         # Refer to: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/read-write-operations.html
         consumed_write_capacity = 0.0
@@ -97,9 +102,15 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         mc_response = client.update_item(
             TableName=SYNC_PREDECESSOR_COUNTER_TABLE,
             Key={"id": {"S": workflow_instance_id}},
-            UpdateExpression="SET #s = if_not_exists(#s, :empty_map)",
-            ExpressionAttributeNames={"#s": sync_node_name},
-            ExpressionAttributeValues={":empty_map": {"M": {}}},
+            UpdateExpression="SET #s = if_not_exists(#s, :empty_map), #ttl = :ttl",
+            ExpressionAttributeNames={
+                "#s": sync_node_name,
+                "#ttl": SYNC_TABLE_TTL_ATTRIBUTE_NAME,  # TTL attribute
+            },
+            ExpressionAttributeValues={
+                ":empty_map": {"M": {}},
+                ":ttl": {"N": str(expiration_time)},  # TTL as a number
+            },
             ReturnConsumedCapacity="TOTAL",
         )
 
@@ -155,21 +166,48 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
                 else:
                     raise
 
+        # Setup TTL for the sync tables
+        self._setup_ttl_for_sync_tables()
+
+    def _setup_ttl_for_sync_tables(self) -> None:
+        # Now also enable the expiration of items in the table
+        client = self._client("dynamodb")
+        for table in [SYNC_MESSAGES_TABLE, SYNC_PREDECESSOR_COUNTER_TABLE]:
+            # Check if the table creation is complete (Wait for table to be created)
+            client.get_waiter("table_exists").wait(TableName=table)
+
+            # Check if TTL is already enabled
+            ttl_description = client.describe_time_to_live(TableName=table)
+            ttl_status = ttl_description.get("TimeToLiveDescription", {}).get("TimeToLiveStatus", "DISABLED")
+
+            if ttl_status != "ENABLED":
+                # Now also enable the expiration of items in the table
+                client.update_time_to_live(
+                    TableName=table,
+                    TimeToLiveSpecification={"Enabled": True, "AttributeName": SYNC_TABLE_TTL_ATTRIBUTE_NAME},
+                )
+
     def upload_predecessor_data_at_sync_node(
         self, function_name: str, workflow_instance_id: str, message: str
     ) -> float:
         client = self._client("dynamodb")
+
+        # Calculate the expiration time for the sync node
+        expiration_time = int(time.time()) + SYNC_TABLE_TTL
+
         sync_node_id = f"{function_name}:{workflow_instance_id}"
         response = client.update_item(
             TableName=SYNC_MESSAGES_TABLE,
             Key={"id": {"S": sync_node_id}},
+            UpdateExpression="ADD #M :m SET #ttl = :ttl",
             ExpressionAttributeNames={
                 "#M": "message",
+                "#ttl": SYNC_TABLE_TTL_ATTRIBUTE_NAME,  # TTL attribute
             },
             ExpressionAttributeValues={
                 ":m": {"SS": [message]},
+                ":ttl": {"N": str(expiration_time)},
             },
-            UpdateExpression="ADD #M :m",
             ReturnConsumedCapacity="TOTAL",
         )
 
