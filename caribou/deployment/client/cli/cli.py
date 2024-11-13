@@ -53,9 +53,6 @@ def _execute_remote_command(
     if not framework_deployed:
         raise click.ClickException("The remote framework is not deployed.")
 
-    if verbose:
-        click.echo(f"Running {action} on the remote framework CLI.")
-
     function_type = action_type_to_function_name(action)
     event_payload = get_cli_invoke_payload(function_type)
 
@@ -66,6 +63,9 @@ def _execute_remote_command(
         if not workflow_id:
             raise click.ClickException("Workflow ID must be provided for this command.")
         event_payload["workflow_id"] = workflow_id
+
+    if verbose:
+        click.echo(f"Running {action} on the remote framework CLI.")
 
     framework_cli_remote_client.invoke_remote_framework_with_payload(event_payload)
 

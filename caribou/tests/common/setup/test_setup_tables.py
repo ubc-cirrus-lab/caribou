@@ -84,9 +84,8 @@ class TestSetupTables(unittest.TestCase):
 
             setup_tables.main()
 
-            mock_create_table.assert_any_call(mock_dynamodb, "sync_messages_table")
-            mock_create_table.assert_any_call(mock_dynamodb, "sync_predecessor_counter_table")
             mock_create_table.assert_any_call(mock_dynamodb, "other_table")
+            self.assertEqual(mock_create_table.call_count, 1)
 
 
 if __name__ == "__main__":
