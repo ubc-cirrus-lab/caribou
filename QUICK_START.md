@@ -243,13 +243,14 @@ The user may simply set up all the component timers automatically through the fo
 ```bash
 poetry run caribou setup_all_timers
 ```
-You may also specify the time configurations of any of the following components:
- - `provider_collector`: Use `--provider_collector` or `-prc`. By default, invokes the Lambda function at 12:05 AM on the first day of the month. Schedule expression: 'cron(5 0 1 * ? *)'
- - `carbon_collector`: Use `--carbon_collector` or `-cac`. By default, invokes the Lambda function daily at 12:30 AM. Schedule expression: 'cron(30 0 * * ? *)'
- - `performance_collector`: Use `--performance_collector` or `-pec`. By default, invokes the Lambda function daily at 12:30 AM. Schedule expression: 'cron(30 0 * * ? *)'
- - `log_syncer`: Use `--log_syncer` or `-los`. By default, invokes the Lambda function daily at 12:05 AM. Schedule expression: 'cron(5 0 * * ? *)'
- - `deployment_manager`: Use `--deployment_manager` or `-dma`. By default, invokes the Lambda function daily at 01:00 AM. Schedule expression: 'cron(0 1 * * ? *)'
- - `deployment_migrator`: Use `--deployment_migrator` or `-dmi`. By default, invokes the Lambda function daily at 02:00 AM. Schedule expression: 'cron(0 2 * * ? *)'
+This configures the timers in the default expressions listed below:
+ - `provider_collector`: By default, invokes the Lambda function at 12:05 AM on the first day of the month. Schedule expression: 'cron(5 0 1 * ? *)'
+ - `carbon_collector`: By default, invokes the Lambda function daily at 12:30 AM. Schedule expression: 'cron(30 0 * * ? *)'
+ - `performance_collector`: By default, invokes the Lambda function daily at 12:30 AM. Schedule expression: 'cron(30 0 * * ? *)'
+ - `log_syncer`: By default, invokes the Lambda function daily at 12:05 AM. Schedule expression: 'cron(5 0 * * ? *)'
+ - `deployment_manager`: By default, invokes the Lambda function daily at 01:00 AM. Schedule expression: 'cron(0 1 * * ? *)'
+ - `deployment_migrator`: By default, invokes the Lambda function daily at 02:00 AM. Schedule expression: 'cron(0 2 * * ? *)'
+
 
 **Note:** Running this command will reset all previously customized time configurations.
 
