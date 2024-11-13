@@ -22,6 +22,8 @@ from caribou.common.constants import (
     CARIBOU_WORKFLOW_IMAGES_TABLE,
     GLOBAL_TIME_ZONE,
     DEPLOYMENT_RESOURCES_BUCKET,
+    SYNC_TABLE_TTL,
+    SYNC_TABLE_TTL_ATTRIBUTE_NAME,
 )
 
 
@@ -360,24 +362,6 @@ class TestAWSRemoteClient(unittest.TestCase):
 
         mock_get_lambda_function.side_effect = ClientError({}, "get_lambda_function")
         self.assertFalse(self.aws_client.lambda_function_exists(resource))
-
-    @patch.object(AWSRemoteClient, "_client")
-    def test_upload_message_for_sync(self, mock_client):
-        function_name = "test_function"
-        workflow_instance_id = "test_workflow_instance_id"
-        message = "test_message"
-
-        self.aws_client.upload_predecessor_data_at_sync_node(function_name, workflow_instance_id, message)
-
-        mock_client.assert_called_with("dynamodb")
-        mock_client.return_value.update_item.assert_called_once_with(
-            TableName=SYNC_MESSAGES_TABLE,
-            Key={"id": {"S": f"{function_name}:{workflow_instance_id}"}},
-            ExpressionAttributeNames={"#M": "message"},
-            ExpressionAttributeValues={":m": {"SS": [message]}},
-            UpdateExpression="ADD #M :m",
-            ReturnConsumedCapacity="TOTAL",
-        )
 
     @patch.object(AWSRemoteClient, "_client")
     def test_get_predecessor_data(self, mock_client):
@@ -1641,6 +1625,234 @@ class TestAWSRemoteClient(unittest.TestCase):
                 ExpressionAttributeNames={"#v": "value"},
                 ExpressionAttributeValues={":value": {"B": b"compressed_value"}},
             )
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_create_sync_tables_table_exists(self, mock_client):
+        # Mocking the scenario where the tables already exist
+        mock_dynamodb_client = MagicMock()
+        mock_client.return_value = mock_dynamodb_client
+
+        client = AWSRemoteClient("region1")
+
+        # Mock the return value of describe_table to simulate existing tables
+        mock_dynamodb_client.describe_table.return_value = {"Table": {"TableStatus": "ACTIVE"}}
+
+        client.create_sync_tables()
+
+        # Check that describe_table was called twice
+        self.assertEqual(mock_dynamodb_client.describe_table.call_count, 2)
+
+        # Check that create_table was not called since the tables already exist
+        mock_dynamodb_client.create_table.assert_not_called()
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_create_sync_tables_table_not_exists(self, mock_client):
+        # Mocking the scenario where the tables do not exist and need to be created
+        mock_dynamodb_client = MagicMock()
+        mock_client.return_value = mock_dynamodb_client
+
+        client = AWSRemoteClient("region1")
+
+        # Mock the side effect of describe_table to raise a ResourceNotFoundException
+        mock_dynamodb_client.describe_table.side_effect = ClientError(
+            {"Error": {"Code": "ResourceNotFoundException"}}, "describe_table"
+        )
+
+        client.create_sync_tables()
+
+        # Check that describe_table was called twice
+        self.assertEqual(mock_dynamodb_client.describe_table.call_count, 2)
+
+        # Check that create_table was called twice since the tables do not exist
+        self.assertEqual(mock_dynamodb_client.create_table.call_count, 2)
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_create_sync_tables_other_client_error(self, mock_client):
+        # Mocking the scenario where another ClientError occurs
+        mock_dynamodb_client = MagicMock()
+        mock_client.return_value = mock_dynamodb_client
+
+        client = AWSRemoteClient("region1")
+
+        # Mock the side effect of describe_table to raise a different ClientError
+        mock_dynamodb_client.describe_table.side_effect = ClientError(
+            {"Error": {"Code": "InternalError"}}, "describe_table"
+        )
+
+        with self.assertRaises(ClientError):
+            client.create_sync_tables()
+
+        # Check that describe_table was called once
+        mock_dynamodb_client.describe_table.assert_called_once()
+
+        # Check that create_table was not called since a different ClientError occurred
+        mock_dynamodb_client.create_table.assert_not_called()
+
+    @patch.object(AWSRemoteClient, "_client")
+    @patch.object(AWSRemoteClient, "_setup_ttl_for_sync_tables")
+    def test_create_sync_tables_setup_ttl_called(self, mock_setup_ttl, mock_client):
+        # Mocking the scenario where the tables are created successfully and TTL setup is called
+        mock_dynamodb_client = MagicMock()
+        mock_client.return_value = mock_dynamodb_client
+
+        client = AWSRemoteClient("region1")
+
+        # Mock the side effect of describe_table to raise a ResourceNotFoundException
+        mock_dynamodb_client.describe_table.side_effect = ClientError(
+            {"Error": {"Code": "ResourceNotFoundException"}}, "describe_table"
+        )
+
+        client.create_sync_tables()
+
+        # Check that describe_table was called twice
+        self.assertEqual(mock_dynamodb_client.describe_table.call_count, 2)
+
+        # Check that create_table was called twice since the tables do not exist
+        self.assertEqual(mock_dynamodb_client.create_table.call_count, 2)
+
+        # Check that _setup_ttl_for_sync_tables was called once
+        mock_setup_ttl.assert_called_once()
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_setup_ttl_for_sync_tables(self, mock_client):
+        # Mocking the scenario where TTL is enabled successfully
+        mock_dynamodb_client = MagicMock()
+        mock_client.return_value = mock_dynamodb_client
+
+        client = AWSRemoteClient("region1")
+
+        # Mock the return value of describe_time_to_live to simulate TTL not enabled
+        mock_dynamodb_client.describe_time_to_live.return_value = {
+            "TimeToLiveDescription": {"TimeToLiveStatus": "DISABLED"}
+        }
+
+        client._setup_ttl_for_sync_tables()
+
+        # Check that get_waiter was called twice
+        self.assertEqual(mock_dynamodb_client.get_waiter.call_count, 2)
+
+        # Check that describe_time_to_live was called twice
+        self.assertEqual(mock_dynamodb_client.describe_time_to_live.call_count, 2)
+
+        # Check that update_time_to_live was called twice
+        self.assertEqual(mock_dynamodb_client.update_time_to_live.call_count, 2)
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_setup_ttl_for_sync_tables_already_enabled(self, mock_client):
+        # Mocking the scenario where TTL is already enabled
+        mock_dynamodb_client = MagicMock()
+        mock_client.return_value = mock_dynamodb_client
+
+        client = AWSRemoteClient("region1")
+
+        # Mock the return value of describe_time_to_live to simulate TTL already enabled
+        mock_dynamodb_client.describe_time_to_live.return_value = {
+            "TimeToLiveDescription": {"TimeToLiveStatus": "ENABLED"}
+        }
+
+        client._setup_ttl_for_sync_tables()
+
+        # Check that get_waiter was called twice
+        self.assertEqual(mock_dynamodb_client.get_waiter.call_count, 2)
+
+        # Check that describe_time_to_live was called twice
+        self.assertEqual(mock_dynamodb_client.describe_time_to_live.call_count, 2)
+
+        # Check that update_time_to_live was not called since TTL is already enabled
+        mock_dynamodb_client.update_time_to_live.assert_not_called()
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_setup_ttl_for_sync_tables_waiter_error(self, mock_client):
+        # Mocking the scenario where the waiter raises an error
+        mock_dynamodb_client = MagicMock()
+        mock_client.return_value = mock_dynamodb_client
+
+        client = AWSRemoteClient("region1")
+
+        # Mock the side effect of get_waiter to raise an exception
+        mock_dynamodb_client.get_waiter.side_effect = Exception("Waiter error")
+
+        with self.assertRaises(Exception):
+            client._setup_ttl_for_sync_tables()
+
+        # Check that get_waiter was called once before raising the exception
+        mock_dynamodb_client.get_waiter.assert_called_once()
+
+        # Check that describe_time_to_live was not called due to the exception
+        mock_dynamodb_client.describe_time_to_live.assert_not_called()
+
+        # Check that update_time_to_live was not called due to the exception
+        mock_dynamodb_client.update_time_to_live.assert_not_called()
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_setup_ttl_for_sync_tables_describe_error(self, mock_client):
+        # Mocking the scenario where describe_time_to_live raises an error
+        mock_dynamodb_client = MagicMock()
+        mock_client.return_value = mock_dynamodb_client
+
+        client = AWSRemoteClient("region1")
+
+        # Mock the side effect of describe_time_to_live to raise an exception
+        mock_dynamodb_client.describe_time_to_live.side_effect = Exception("Describe error")
+
+        with self.assertRaises(Exception):
+            client._setup_ttl_for_sync_tables()
+
+        # Check that get_waiter was called twice
+        ## Only 1 is called because the first call raises an exception
+        self.assertEqual(mock_dynamodb_client.get_waiter.call_count, 1)
+
+        # Check that describe_time_to_live was called once before raising the exception
+        mock_dynamodb_client.describe_time_to_live.assert_called_once()
+
+        # Check that update_time_to_live was not called due to the exception
+        mock_dynamodb_client.update_time_to_live.assert_not_called()
+
+    @patch.object(AWSRemoteClient, "_client")
+    @patch("time.time", return_value=1609459200)  # Mocking time to return a fixed timestamp
+    def test_upload_predecessor_data_at_sync_node(self, mock_time, mock_client):
+        function_name = "test_function"
+        workflow_instance_id = "test_workflow_instance_id"
+        message = "test_message"
+        expiration_time = 1609459200 + SYNC_TABLE_TTL
+
+        mock_client.return_value.update_item.return_value = {"ConsumedCapacity": {"CapacityUnits": 1.0}}
+
+        result = self.aws_client.upload_predecessor_data_at_sync_node(function_name, workflow_instance_id, message)
+
+        mock_client.assert_called_with("dynamodb")
+        mock_client.return_value.update_item.assert_called_once_with(
+            TableName=SYNC_MESSAGES_TABLE,
+            Key={"id": {"S": f"{function_name}:{workflow_instance_id}"}},
+            UpdateExpression="ADD #M :m SET #ttl = :ttl",
+            ExpressionAttributeNames={"#M": "message", "#ttl": SYNC_TABLE_TTL_ATTRIBUTE_NAME},
+            ExpressionAttributeValues={":m": {"SS": [message]}, ":ttl": {"N": str(expiration_time)}},
+            ReturnConsumedCapacity="TOTAL",
+        )
+        self.assertEqual(result, 1.0)
+
+    @patch.object(AWSRemoteClient, "_client")
+    @patch("time.time", return_value=1609459200)  # Mocking time to return a fixed timestamp
+    def test_upload_predecessor_data_at_sync_node_no_consumed_capacity(self, mock_time, mock_client):
+        function_name = "test_function"
+        workflow_instance_id = "test_workflow_instance_id"
+        message = "test_message"
+        expiration_time = 1609459200 + SYNC_TABLE_TTL
+
+        mock_client.return_value.update_item.return_value = {}
+
+        result = self.aws_client.upload_predecessor_data_at_sync_node(function_name, workflow_instance_id, message)
+
+        mock_client.assert_called_with("dynamodb")
+        mock_client.return_value.update_item.assert_called_once_with(
+            TableName=SYNC_MESSAGES_TABLE,
+            Key={"id": {"S": f"{function_name}:{workflow_instance_id}"}},
+            UpdateExpression="ADD #M :m SET #ttl = :ttl",
+            ExpressionAttributeNames={"#M": "message", "#ttl": SYNC_TABLE_TTL_ATTRIBUTE_NAME},
+            ExpressionAttributeValues={":m": {"SS": [message]}, ":ttl": {"N": str(expiration_time)}},
+            ReturnConsumedCapacity="TOTAL",
+        )
+        self.assertEqual(result, 0.0)
 
 
 if __name__ == "__main__":

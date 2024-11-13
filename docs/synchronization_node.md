@@ -21,3 +21,8 @@ If this is the case, the predecessor will add the name of the corresponding succ
 This ensures that the synchronization node is called even if some of the predecessors do not call the synchronization node due to conditional calls.
 
 As previously mentioned, the code in the synchronization node is only executed once all predecessors have written their responses to the distributed key-value store and the counter has been incremented to the number of predecessors, i.e., the synchronization node is only called once all predecessors have called the synchronization node.
+
+**Note:** The key-value store (`sync_messages_table` and `sync_predecessor_counter_table`) associated with the synchronization node uses a Time-To-Live (TTL) mechanism to automatically remove sync entries 24 hours after their creation time (configurable in `constants.py`).
+
+**Note:** In the current implementation, the `sync_messages_table` stores all the output of predecessor nodes (predecessors of synchronization nodes) in a single DynamoDB item entry using the update command. This approach has two major limitations: (1) The combined data of predecessor nodes cannot exceed the 400KB item size limit in DynamoDB tables ([Service Quota](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ServiceQuotas.html)), and (2) DynamoDB consumes the full provisioned throughput for the entire item, even if only a subset of the item's attributes is updated ([Cost Documentation](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/read-write-operations.html#write-operation-consumption)).
+
