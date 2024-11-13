@@ -50,7 +50,9 @@
         "dynamodb:PutItem",
         "dynamodb:CreateTable",
         "dynamodb:DescribeTable",
-        "dynamodb:DeleteItem"
+        "dynamodb:DeleteItem",
+        "dynamodb:DescribeTimeToLive",
+        "dynamodb:UpdateTimeToLive"
        ],
        "Resource": "arn:aws:dynamodb:*:*:*",
        "Effect": "Allow"
