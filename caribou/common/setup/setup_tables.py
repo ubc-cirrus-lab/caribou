@@ -1,5 +1,6 @@
 import logging
 import os
+import time
 
 import boto3
 from botocore.exceptions import ClientError
@@ -15,26 +16,27 @@ if "AWS_LAMBDA_FUNCTION_NAME" not in os.environ:
         logger.addHandler(logging.StreamHandler())
 
 
-def create_table(dynamodb, table_name):
+def create_table(dynamodb, table_name) -> bool:
     # Check if the table already exists
     try:
         dynamodb.describe_table(TableName=table_name)
         logger.info("Table %s already exists", table_name)
-        return
+        return False
     except ClientError as e:
         if e.response["Error"]["Code"] != "ResourceNotFoundException":
             raise
 
-    if table_name not in [constants.SYNC_MESSAGES_TABLE, constants.SYNC_PREDECESSOR_COUNTER_TABLE]:
-        # Create all non sync tables with on-demand billing mode
-        dynamodb.create_table(
-            TableName=table_name,
-            AttributeDefinitions=[
-                {"AttributeName": "key", "AttributeType": "S"},
-            ],
-            KeySchema=[{"AttributeName": "key", "KeyType": "HASH"}],
-            BillingMode="PAY_PER_REQUEST",
-        )
+    # Create all non sync tables with on-demand billing mode
+    dynamodb.create_table(
+        TableName=table_name,
+        AttributeDefinitions=[
+            {"AttributeName": "key", "AttributeType": "S"},
+        ],
+        KeySchema=[{"AttributeName": "key", "KeyType": "HASH"}],
+        BillingMode="PAY_PER_REQUEST",
+    )
+
+    return True
 
 
 def create_bucket(s3, bucket_name):
@@ -62,17 +64,24 @@ def main():
         # If the attribute name ends with '_TABLE', create a DynamoDB table
         if attr.endswith("_TABLE"):
             table_name = getattr(constants, attr)
-            logger.info("Creating table: %s", table_name)
+            if table_name in [constants.SYNC_MESSAGES_TABLE, constants.SYNC_PREDECESSOR_COUNTER_TABLE]:
+                continue
+
+            created_table: bool = False
             try:
-                create_table(dynamodb, table_name)
+                created_table = create_table(dynamodb, table_name)
             except Exception as e:  # pylint: disable=broad-except
                 logger.error("Error creating table %s: %s", table_name, e)
                 logger.error("Trying to create table again")
                 try:
-                    create_table(dynamodb, table_name)
+                    time.sleep(1)  # Sleep for 1 second before trying to create the table again
+                    created_table = create_table(dynamodb, table_name)
                 except Exception as e:  # pylint: disable=broad-except
                     logger.error("Error creating table %s: %s", table_name, e)
                     logger.error("Skipping table creation")
+
+            if created_table:
+                logger.info("Created table: %s", table_name)
 
         # Disabled as part of issue #293
         # # If the attribute name ends with '_BUCKET', create an S3 bucket

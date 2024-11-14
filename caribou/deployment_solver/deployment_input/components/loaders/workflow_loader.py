@@ -389,7 +389,7 @@ class WorkflowLoader(InputLoader):
         )  # Default to x86_64
 
     def _retrieve_workflow_data(self, workflow_id: str) -> dict[str, Any]:
-        return self._retrieve_data(self._primary_table, workflow_id, convert_from_bytes=True)
+        return self._retrieve_data(self._primary_table, workflow_id)
 
     def _round_to_kb(self, number: float, round_to: int = 10, round_up: bool = True) -> float:
         """

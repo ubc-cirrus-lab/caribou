@@ -124,9 +124,7 @@ class DeploymentManager(Monitor):
 
         workflow_config = self._get_workflow_config(workflow_id)
 
-        workflow_summary_raw, _ = data_collector_client.get_value_from_table(
-            WORKFLOW_INSTANCE_TABLE, workflow_id, convert_from_bytes=True
-        )
+        workflow_summary_raw, _ = data_collector_client.get_value_from_table(WORKFLOW_INSTANCE_TABLE, workflow_id)
 
         workflow_summary = json.loads(workflow_summary_raw)
 
@@ -278,8 +276,9 @@ class DeploymentManager(Monitor):
         home_region_carbon_info_raw, _ = self._endpoints.get_deployment_manager_client().get_value_from_table(
             CARBON_REGION_TABLE, home_region
         )
-        if home_region_carbon_info_raw is None:
-            raise ValueError("Invalid home region carbon info")
+        if home_region_carbon_info_raw is None or home_region_carbon_info_raw == "":
+            raise ValueError(f"Invalid/Missing home region carbon info for: {home_region}")
+
         home_region_carbon_info = json.loads(home_region_carbon_info_raw)
 
         potential_offloading_regions = []

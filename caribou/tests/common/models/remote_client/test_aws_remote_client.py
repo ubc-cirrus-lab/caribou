@@ -449,7 +449,7 @@ class TestAWSRemoteClient(unittest.TestCase):
         table_name = "test_table"
         key = "test_key"
 
-        # Scenario 1: Item exists and convert_from_bytes is False
+        # Scenario 1: Item exists and is of type byte is False
         mock_client.return_value.get_item.return_value = {
             "Item": {"key": {"S": key}, "value": {"S": "test_value"}},
             "ConsumedCapacity": {"CapacityUnits": 1.0},
@@ -458,7 +458,7 @@ class TestAWSRemoteClient(unittest.TestCase):
         self.assertEqual(result, "test_value")
         self.assertEqual(consumed_capacity, 1.0)
 
-        # Scenario 2: Item exists and convert_from_bytes is True
+        # Scenario 2: Item exists and is of type byte is True
         mock_client.return_value.get_item.return_value = {
             "Item": {"key": {"S": key}, "value": {"B": b"compressed_value"}},
             "ConsumedCapacity": {"CapacityUnits": 1.0},
@@ -467,7 +467,7 @@ class TestAWSRemoteClient(unittest.TestCase):
             "caribou.common.models.remote_client.aws_remote_client.decompress_json_str",
             return_value="decompressed_value",
         ):
-            result, consumed_capacity = self.aws_client.get_value_from_table(table_name, key, convert_from_bytes=True)
+            result, consumed_capacity = self.aws_client.get_value_from_table(table_name, key)
             self.assertEqual(result, "decompressed_value")
             self.assertEqual(consumed_capacity, 1.0)
 
@@ -500,7 +500,7 @@ class TestAWSRemoteClient(unittest.TestCase):
     def test_get_all_values_from_table(self, mock_client):
         table_name = "test_table"
 
-        # Scenario 1: Items exist and convert_from_bytes is False
+        # Scenario 1: Items exist and is of type byte is False
         mock_client.return_value.scan.return_value = {
             "Items": [
                 {"key": {"S": "key1"}, "value": {"S": "value1"}},
@@ -510,7 +510,7 @@ class TestAWSRemoteClient(unittest.TestCase):
         result = self.aws_client.get_all_values_from_table(table_name)
         self.assertEqual(result, {"key1": "value1", "key2": "value2"})
 
-        # Scenario 2: Items exist and convert_from_bytes is True
+        # Scenario 2: Items exist and is of type byte is True
         mock_client.return_value.scan.return_value = {
             "Items": [
                 {"key": {"S": "key1"}, "value": {"B": b"compressed_value1"}},
@@ -521,7 +521,7 @@ class TestAWSRemoteClient(unittest.TestCase):
             "caribou.common.models.remote_client.aws_remote_client.decompress_json_str",
             side_effect=["decompressed_value1", "decompressed_value2"],
         ):
-            result = self.aws_client.get_all_values_from_table(table_name, convert_from_bytes=True)
+            result = self.aws_client.get_all_values_from_table(table_name)
             self.assertEqual(result, {"key1": "decompressed_value1", "key2": "decompressed_value2"})
 
         # Scenario 3: No items in response

@@ -4,6 +4,7 @@ from typing import Any, Optional
 import click
 from cron_descriptor import Options, get_description
 
+# Caribou imports
 from caribou.common.models.endpoints import Endpoints
 from caribou.common.setup.setup_tables import main as setup_tables_func
 from caribou.common.teardown.teardown_tables import main as teardown_tables_func
@@ -34,7 +35,55 @@ from caribou.monitors.deployment_manager import DeploymentManager
 from caribou.monitors.deployment_migrator import DeploymentMigrator
 from caribou.syncers.log_syncer import LogSyncer
 
+# Define constants
+AVAILABLE_CLI_FUNCTIONS = get_all_available_timed_cli_functions()
 
+
+# Helper function to execute a command on the remote framework
+def _execute_remote_command(
+    action: str,
+    additional_payload: Optional[dict[str, Any]] = None,
+    verbose: bool = True,
+    requires_workflow_id: bool = False,
+    workflow_id: Optional[str] = None,
+) -> None:
+    """Helper function to execute a command on the remote framework."""
+    framework_cli_remote_client = Endpoints().get_framework_cli_remote_client()
+    framework_deployed = is_aws_framework_deployed(framework_cli_remote_client, verbose=verbose)
+    if not framework_deployed:
+        raise click.ClickException("The remote framework is not deployed.")
+
+    function_type = action_type_to_function_name(action)
+    event_payload = get_cli_invoke_payload(function_type)
+
+    if additional_payload:
+        event_payload.update(additional_payload)
+
+    if requires_workflow_id:
+        if not workflow_id:
+            raise click.ClickException("Workflow ID must be provided for this command.")
+        event_payload["workflow_id"] = workflow_id
+
+    if verbose:
+        click.echo(f"Running {action} on the remote framework CLI.")
+
+    framework_cli_remote_client.invoke_remote_framework_with_payload(event_payload)
+
+
+def _validate_parameter(
+    value: Optional[str], default: int, min_value: int, max_value: int, name: str, unit: str = ""
+) -> int:
+    if value is not None:
+        int_value = int(value)
+        if not min_value <= int_value <= max_value:
+            if unit != "":
+                unit = f" {unit}"
+            raise click.ClickException(f"{name} must be between {min_value} and {max_value}{unit}.")
+        return int_value
+    return default
+
+
+# Main CLI functions
 @click.group()
 @click.option("--workflow-dir", "-p", help="The project directory.")
 @click.pass_context
@@ -50,7 +99,10 @@ def cli(ctx: click.Context, workflow_dir: str) -> None:
 
 @cli.command(
     "new_workflow",
-    help="Create a new workflow directory from template. The workflow name must be a valid, non-existing directory name in the current directory.",  # pylint: disable=line-too-long
+    help=(
+        "Create a new workflow directory from template. The workflow name must be a valid, "
+        "non-existing directory name in the current directory."
+    ),
 )
 @click.argument("workflow_name", required=True)
 @click.pass_context
@@ -75,12 +127,7 @@ def deploy(ctx: click.Context) -> None:
 @click.option("--argument", "-a", help="The input to the workflow. Must be a valid JSON string.")
 @click.pass_context
 def run(_: click.Context, argument: Optional[str], workflow_id: str) -> None:
-    client = Client(workflow_id)
-
-    if argument:
-        client.run(argument)
-    else:
-        client.run()
+    Client(workflow_id).run(argument)
 
 
 @cli.command("data_collect", help="Run data collection.")
@@ -90,107 +137,56 @@ def run(_: click.Context, argument: Optional[str], workflow_id: str) -> None:
 @click.pass_context
 def data_collect(_: click.Context, collector: str, workflow_id: Optional[str], remote: bool) -> None:
     if remote:
-        framework_cli_remote_client = Endpoints().get_framework_cli_remote_client()
-        framework_deployed: bool = is_aws_framework_deployed(framework_cli_remote_client, verbose=False)
-        if not framework_deployed:
-            raise click.ClickException("The remote framework is not deployed.")
-
-        print(f"Running {collector} collector on the remote framework.")
-
-        # Now we know the framework is deployed, we can run the command
-        action: str = "data_collect"
-        function_type: str = action_type_to_function_name(action)
-        event_payload: dict[str, Any] = get_cli_invoke_payload(function_type)
-
-        # Now add the collector and workflow_id
-        event_payload["collector"] = collector
-        event_payload["workflow_id"] = workflow_id
-
-        framework_cli_remote_client.invoke_remote_framework_with_payload(event_payload)
+        _execute_remote_command(
+            "data_collect",
+            additional_payload={"collector": collector},
+            requires_workflow_id=(collector == "workflow"),
+            workflow_id=workflow_id,
+        )
     else:
-        print("Running data collector locally.")
+        click.echo("Running data collector locally.")
         if collector in ("provider", "all"):
-            print("Running provider collector")
-            provider_collector = ProviderCollector()
-            provider_collector.run()
+            click.echo("Running provider collector")
+            ProviderCollector().run()
         if collector in ("carbon", "all"):
-            print("Running carbon collector")
-            carbon_collector = CarbonCollector()
-            carbon_collector.run()
+            click.echo("Running carbon collector")
+            CarbonCollector().run()
         if collector in ("performance", "all"):
-            print("Running performance collector")
-            performance_collector = PerformanceCollector()
-            performance_collector.run()
-        if collector in ("workflow"):
+            click.echo("Running performance collector")
+            PerformanceCollector().run()
+        if collector == "workflow":
             if workflow_id is None:
                 raise click.ClickException("Workflow id must be provided for the workflow collector.")
 
-            print("Running workflow collector")
-            workflow_collector = WorkflowCollector()
-            workflow_collector.run_on_workflow(workflow_id)
+            click.echo("Running workflow collector")
+            WorkflowCollector().run_on_workflow(workflow_id)
 
 
 @cli.command("log_sync", help="Run log synchronization.")
 @click.option("-r", "--remote", is_flag=True, help="Run the command on the remote framework.")
 def log_sync(remote: bool) -> None:
     if remote:
-        framework_cli_remote_client = Endpoints().get_framework_cli_remote_client()
-        framework_deployed: bool = is_aws_framework_deployed(framework_cli_remote_client, verbose=False)
-        if not framework_deployed:
-            raise click.ClickException("The remote framework is not deployed.")
-
-        print("Running log syncer on the remote framework.")
-
-        # Now we know the framework is deployed, we can run the command
-        action: str = "log_sync"
-        function_type: str = action_type_to_function_name(action)
-        event_payload = get_cli_invoke_payload(function_type)
-        framework_cli_remote_client.invoke_remote_framework_with_payload(event_payload)
+        _execute_remote_command("log_sync")
     else:
-        log_syncer = LogSyncer(deployed_remotely=False)
-        log_syncer.sync()
+        LogSyncer(deployed_remotely=False).sync()
 
 
 @cli.command("manage_deployments", help="Check if the deployment algorithm should be run.")
 @click.option("-r", "--remote", is_flag=True, help="Run the command on the remote framework.")
 def manage_deployments(remote: bool) -> None:
     if remote:
-        framework_cli_remote_client = Endpoints().get_framework_cli_remote_client()
-        framework_deployed: bool = is_aws_framework_deployed(framework_cli_remote_client, verbose=False)
-        if not framework_deployed:
-            raise click.ClickException("The remote framework is not deployed.")
-
-        print("Running deployment manager on the remote framework.")
-
-        # Now we know the framework is deployed, we can run the command
-        action: str = "manage_deployments"
-        function_type: str = action_type_to_function_name(action)
-        event_payload = get_cli_invoke_payload(function_type)
-        framework_cli_remote_client.invoke_remote_framework_with_payload(event_payload)
+        _execute_remote_command("manage_deployments")
     else:
-        deployment_manager = DeploymentManager(deployed_remotely=False)
-        deployment_manager.check()
+        DeploymentManager(deployed_remotely=False).check()
 
 
 @cli.command("run_deployment_migrator", help="Check if the DP of a function should be updated.")
 @click.option("-r", "--remote", is_flag=True, help="Run the command on the remote framework.")
 def run_deployment_migrator(remote: bool) -> None:
     if remote:
-        framework_cli_remote_client = Endpoints().get_framework_cli_remote_client()
-        framework_deployed: bool = is_aws_framework_deployed(framework_cli_remote_client, verbose=False)
-        if not framework_deployed:
-            raise click.ClickException("The remote framework is not deployed.")
-
-        print("Running deployment migrator on the remote framework.")
-
-        # Now we know the framework is deployed, we can run the command
-        action: str = "run_deployment_migrator"
-        function_type: str = action_type_to_function_name(action)
-        event_payload = get_cli_invoke_payload(function_type)
-        framework_cli_remote_client.invoke_remote_framework_with_payload(event_payload)
+        _execute_remote_command("run_deployment_migrator")
     else:
-        function_deployment_monitor = DeploymentMigrator(deployed_remotely=False)
-        function_deployment_monitor.check()
+        DeploymentMigrator(deployed_remotely=False).check()
 
 
 @cli.command("setup_tables", help="Setup the tables.")
@@ -201,34 +197,24 @@ def setup_tables() -> None:
 @cli.command("teardown_framework", help="Teardown the framework.")
 @click.option("-y", "--yes", is_flag=True, help="Skip confirmation prompt.")
 def teardown_framework(yes: bool) -> None:
-    if yes:
-        confirm = "y"
-    else:
-        confirm = (
-            input("Are you sure you want to teardown the framework? This action cannot be undone. [y/N]: ")
-            .strip()
-            .lower()
-        )
-    print(f"confirm: {confirm}")
-    if confirm in ["y", "yes"]:
+    if yes or click.confirm("Are you sure you want to teardown the framework? This action cannot be undone."):
         ## First remove remote framework cli
         ## This also removes all timers
         remove_remote_framework()
 
         ## Then remove all deployed workflows
-        print("\nRemoving all deployed workflows")
+        click.echo("\nRemoving all deployed workflows")
         deployed_workflows: list[str] = Client().list_workflows()
         for workflow_id in deployed_workflows:
-            client = Client(workflow_id)
-            client.remove()
+            Client(workflow_id).remove()
 
         # Finally teardown ALL the tables
-        print("\nTearing down all framework tables and buckets (if any)")
+        click.echo("\nTearing down all framework tables and buckets (if any)")
         teardown_tables_func()
 
-        print("\nFramework teardown attempt has been completed.")
+        click.echo("\nFramework teardown attempt has been completed.")
     else:
-        print("Teardown aborted.")
+        click.echo("Teardown aborted.")
 
 
 @cli.command("version", help="Print the version of caribou.")
@@ -238,8 +224,7 @@ def version() -> None:
 
 @cli.command("list", help="List the workflows.")
 def list_workflows() -> None:
-    client = Client()
-    client.list_workflows()
+    Client().list_workflows()
 
 
 @cli.command("remove", help="Remove the workflow.")
@@ -247,25 +232,9 @@ def list_workflows() -> None:
 @click.option("-r", "--remote", is_flag=True, help="Run the command on the remote framework.")
 def remove(workflow_id: str, remote: bool) -> None:
     if remote:
-        framework_cli_remote_client = Endpoints().get_framework_cli_remote_client()
-        framework_deployed: bool = is_aws_framework_deployed(framework_cli_remote_client, verbose=False)
-        if not framework_deployed:
-            raise click.ClickException("The remote framework is not deployed.")
-
-        print(f"Removing workflow {workflow_id} on the remote framework.")
-
-        # Now we know the framework is deployed, we can run the command
-        action: str = "remove_workflow"
-        function_type: str = action_type_to_function_name(action)
-        event_payload = get_cli_invoke_payload(function_type)
-
-        # Now add the workflow_id
-        event_payload["workflow_id"] = workflow_id
-
-        framework_cli_remote_client.invoke_remote_framework_with_payload(event_payload)
+        _execute_remote_command("remove_workflow", requires_workflow_id=True, workflow_id=workflow_id)
     else:
-        client = Client(workflow_id)
-        client.remove()
+        Client(workflow_id).remove()
 
 
 @cli.command("deploy_remote_cli", help="Deploy the remote framework cli to AWS Lambda.")
@@ -290,44 +259,23 @@ def deploy_remote_cli(
         )
 
     # Print warning about experimental features, and ask for confirmation
-    print(
+    if click.confirm(
         "Remote CLI features, including all remote CLI commands and timer functionalities, "
         + "are experimental. Please use them with caution and at your own risk. "
-    )
-    confirm = input("Do you understand the risks and wishes to deploy framework remotely? [y/N]: ").strip().lower()
-    if confirm in ["y", "yes"]:
-        ## Memory
-        memory_mb: int = 1769  # 1 full vCPU (https://docs.aws.amazon.com/lambda/latest/dg/configuration-memory.html)
-        if memory is not None:
-            # Convert to int
-            memory_mb = int(memory)
+        + "\nDo you wish to deploy the framework remotely?"
+    ):
+        # Memory
+        ## Default 1769 == 1 full vCPU (https://docs.aws.amazon.com/lambda/latest/dg/configuration-memory.html)
+        memory_mb: int = _validate_parameter(memory, 1769, 128, 10240, "Memory", "MB")
 
-            # Now check if the memory is within the valid range
-            # 128 MB to 10240 MB
-            if memory_mb < 128 or memory_mb > 10240:
-                raise click.ClickException("Memory must be between 128 MB and 10240 MB (10 GB).")
+        # Timeout
+        ## Default 900 == 15 minutes Maximum timeout (15 minutes)
+        ## (https://docs.aws.amazon.com/lambda/latest/dg/configuration-timeout.html)
+        timeout_s: int = _validate_parameter(timeout, 900, 1, 900, "Timeout", "seconds")
 
-        ## Timeout
-        timeout_s = 900  # Maximum timeout (15 minutes)
-        if timeout is not None:
-            # Convert to int
-            timeout_s = int(timeout)
-
-            # Now check if the timeout is within the valid range
-            # 1 second to 900 seconds
-            if timeout_s < 1 or timeout_s > 900:
-                raise click.ClickException("Timeout must be between 1 second and 900 seconds (15 minutes).")
-
-        ## Ephemeral Storage
-        ephemeral_storage_mb = 5120  # 5 GB (Should be enough for most use cases)
-        if ephemeral_storage is not None:
-            # Convert to int
-            ephemeral_storage_mb = int(ephemeral_storage)
-
-            # Now check if the ephemeral storage is within the valid range
-            # 512 MB to 10240 MB
-            if ephemeral_storage_mb < 512 or ephemeral_storage_mb > 10240:
-                raise click.ClickException("Ephemeral storage must be between 512 MB and 10240 MB (10 GB).")
+        # Ephemeral Storage
+        ## Default 5120 == 5 GB (Should be enough for most use cases)
+        ephemeral_storage_mb: int = _validate_parameter(ephemeral_storage, 5120, 512, 10240, "Ephemeral Storage", "MB")
 
         deploy_remote_framework(project_dir, timeout_s, memory_mb, ephemeral_storage_mb)
 
@@ -339,9 +287,8 @@ def list_timers() -> None:
     cron_descriptor_options.verbose = True
 
     # Get all available timers
-    all_available_timed_cli_functions = get_all_available_timed_cli_functions()
-    print("Available Timers:")
-    for function_name in all_available_timed_cli_functions:
+    click.echo("Available Timers:")
+    for function_name in AVAILABLE_CLI_FUNCTIONS:
         schedule_expression = report_timer_schedule_expression(function_name)
 
         description_text: str = ""
@@ -361,23 +308,14 @@ def list_timers() -> None:
                 description_text = schedule_expression
 
         schedule_expression = description_text if schedule_expression is not None else "Not Configured"
-        print(f"  {function_name}: {schedule_expression}")
+        click.echo(f"  {function_name}: {schedule_expression}")
 
 
 @cli.command("setup_timer", help="Setup or modify existing timer. Use list_timers to see available timers.")
 @click.argument(
     "timer",
     required=True,
-    type=click.Choice(
-        [
-            "provider_collector",
-            "carbon_collector",
-            "performance_collector",
-            "log_syncer",
-            "deployment_manager",
-            "deployment_migrator",
-        ]
-    ),
+    type=click.Choice(AVAILABLE_CLI_FUNCTIONS),
 )
 @click.option(
     "--schedule_expression",
@@ -390,13 +328,7 @@ def setup_timer(
     timer: str,
     schedule_expression: Optional[str],
 ) -> None:
-    # Check if the timer is valid
-    all_available_timed_cli_functions = get_all_available_timed_cli_functions()
-    if timer not in all_available_timed_cli_functions:
-        print("Invalid timer. Use list_timers to see available timers.")
-        return
-
-    # Now check if the schedule_expressions is defined
+    # Check if the schedule_expressions is defined
     # If not, revert to default settings
     if schedule_expression is None:
         schedule_expression = get_all_default_timed_cli_functions()[timer]
@@ -405,68 +337,24 @@ def setup_timer(
     setup_aws_timers([(timer, schedule_expression)])
 
 
-@cli.command("setup_all_timers", help="Setup ALL automatic timer for AWS remote CLI.")
-@click.option(
-    "--provider_collector",
-    "-prc",
-    help="Provider collector function. Refer to doc for default. Example Default: 'cron(5 0 1 * ? *)'.",
-)
-@click.option(
-    "--carbon_collector",
-    "-cac",
-    help="Carbon collector function. Refer to doc for default. Example Default: 'cron(30 0 * * ? *)'.",
-)
-@click.option(
-    "--performance_collector",
-    "-pec",
-    help="Performance collector function. Refer to doc for default. Example Default: 'cron(30 0 * * ? *)'.",
-)
-@click.option(
-    "--log_syncer", "-los", help="Log syncer function. Refer to doc for default. Example Default: 'cron(5 0 * * ? *)'."
-)
-@click.option(
-    "--deployment_manager",
-    "-dma",
-    help="Deployment manager function. Refer to doc for default. Example Default: 'cron(0 1 * * ? *)'.",
-)
-@click.option(
-    "--deployment_migrator",
-    "-dmi",
-    help="Deployment migrator function. Refer to doc for default. Example Default: 'cron(0 2 * * ? *)'.",
+@cli.command(
+    "setup_all_timers",
+    help=(
+        "Setup ALL automatic timer for AWS remote CLI with default rules. "
+        "Use list_timers to see available timers, and setup_timer to modify."
+    ),
 )
 @click.pass_context
-def setup_all_timers(
-    _: click.Context,
-    provider_collector: Optional[str],
-    carbon_collector: Optional[str],
-    performance_collector: Optional[str],
-    log_syncer: Optional[str],
-    deployment_manager: Optional[str],
-    deployment_migrator: Optional[str],
-) -> None:
+def setup_all_timers(_: click.Context) -> None:
     """
     Setup automatic timers for AWS Lambda functions. (Use cron(...) or rate(...) expressions)
     Format Info:
     https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-scheduled-rule-pattern.html
     """
-    function_names = {
-        "provider_collector": provider_collector,
-        "carbon_collector": carbon_collector,
-        "performance_collector": performance_collector,
-        "log_syncer": log_syncer,
-        "deployment_manager": deployment_manager,
-        "deployment_migrator": deployment_migrator,
-    }
-
     default_schedule_expressions = get_all_default_timed_cli_functions()
     new_rules: list[tuple[str, str]] = []
-    for function_name in get_all_available_timed_cli_functions():
-        user_input: Optional[str] = function_names.get(function_name)
-        if user_input is not None:
-            schedule_expr = user_input
-        else:
-            schedule_expr = default_schedule_expressions[function_name]
-
+    for function_name in AVAILABLE_CLI_FUNCTIONS:
+        schedule_expr = default_schedule_expressions[function_name]
         new_rules.append((function_name, schedule_expr))
 
     setup_aws_timers(new_rules)
@@ -476,24 +364,9 @@ def setup_all_timers(
 @click.argument(
     "timer",
     required=True,
-    type=click.Choice(
-        [
-            "provider_collector",
-            "carbon_collector",
-            "performance_collector",
-            "log_syncer",
-            "deployment_manager",
-            "deployment_migrator",
-        ]
-    ),
+    type=click.Choice(AVAILABLE_CLI_FUNCTIONS),
 )
 def remove_timer(timer: str) -> None:
-    # Check if the timer is valid
-    all_available_timed_cli_functions = get_all_available_timed_cli_functions()
-    if timer not in all_available_timed_cli_functions:
-        print("Invalid timer. Use list_timers to see available timers.")
-        return
-
     # Remove the timer
     remove_aws_timers([timer])
 
@@ -503,8 +376,7 @@ def remove_all_timers() -> None:
     """
     Remove all automatic timers for AWS Lambda functions.
     """
-    all_available_timed_cli_functions = get_all_available_timed_cli_functions()
-    remove_aws_timers(all_available_timed_cli_functions)
+    remove_aws_timers(AVAILABLE_CLI_FUNCTIONS)
 
 
 @cli.command("remove_remote_cli", help="Deploy the remote framework from AWS Lambda.")

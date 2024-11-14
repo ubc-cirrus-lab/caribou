@@ -36,9 +36,7 @@ class TestWorkflowRetriever(unittest.TestCase):
 
             # Assertions
             self.assertEqual(result, {"transformed": "data"})
-            self.mock_client.get_value_from_table.assert_called_once_with(
-                WORKFLOW_SUMMARY_TABLE, "workflow_id", convert_from_bytes=True
-            )
+            self.mock_client.get_value_from_table.assert_called_once_with(WORKFLOW_SUMMARY_TABLE, "workflow_id")
             mock_transform.assert_called_once_with(json.dumps({"logs": []}))
 
     @patch.object(WorkflowRetriever, "_reorganize_instance_summary")
