@@ -1,4 +1,6 @@
+from io import StringIO
 import os
+import sys
 import unittest
 from unittest.mock import patch
 from unittest.mock import MagicMock
@@ -15,10 +17,13 @@ from botocore.exceptions import ClientError
 from unittest.mock import call
 
 from caribou.common.constants import (
+    REMOTE_CARIBOU_CLI_FUNCTION_NAME,
     SYNC_MESSAGES_TABLE,
     CARIBOU_WORKFLOW_IMAGES_TABLE,
     GLOBAL_TIME_ZONE,
     DEPLOYMENT_RESOURCES_BUCKET,
+    SYNC_TABLE_TTL,
+    SYNC_TABLE_TTL_ATTRIBUTE_NAME,
 )
 
 
@@ -359,24 +364,6 @@ class TestAWSRemoteClient(unittest.TestCase):
         self.assertFalse(self.aws_client.lambda_function_exists(resource))
 
     @patch.object(AWSRemoteClient, "_client")
-    def test_upload_message_for_sync(self, mock_client):
-        function_name = "test_function"
-        workflow_instance_id = "test_workflow_instance_id"
-        message = "test_message"
-
-        self.aws_client.upload_predecessor_data_at_sync_node(function_name, workflow_instance_id, message)
-
-        mock_client.assert_called_with("dynamodb")
-        mock_client.return_value.update_item.assert_called_once_with(
-            TableName=SYNC_MESSAGES_TABLE,
-            Key={"id": {"S": f"{function_name}:{workflow_instance_id}"}},
-            ExpressionAttributeNames={"#M": "message"},
-            ExpressionAttributeValues={":m": {"SS": [message]}},
-            UpdateExpression="ADD #M :m",
-            ReturnConsumedCapacity="TOTAL",
-        )
-
-    @patch.object(AWSRemoteClient, "_client")
     def test_get_predecessor_data(self, mock_client):
         current_instance_name = "test_current_instance_name"
         workflow_instance_id = "test_workflow_instance_id"
@@ -429,11 +416,24 @@ class TestAWSRemoteClient(unittest.TestCase):
         table_name = "test_table"
         key = "test_key"
         value = "test_value"
+
+        # Test without convert_to_bytes
         self.aws_client.set_value_in_table(table_name, key, value)
         mock_client.assert_called_with("dynamodb")
         mock_client.return_value.put_item.assert_called_once_with(
             TableName=table_name, Item={"key": {"S": key}, "value": {"S": value}}
         )
+
+        # Test with convert_to_bytes
+        mock_client.reset_mock()
+        with patch(
+            "caribou.common.models.remote_client.aws_remote_client.compress_json_str", return_value=b"compressed_value"
+        ):
+            self.aws_client.set_value_in_table(table_name, key, value, convert_to_bytes=True)
+            mock_client.assert_called_with("dynamodb")
+            mock_client.return_value.put_item.assert_called_once_with(
+                TableName=table_name, Item={"key": {"S": key}, "value": {"B": b"compressed_value"}}
+            )
 
     @patch.object(AWSRemoteClient, "_client")
     def test_set_value_in_table_column(self, mock_client):
@@ -448,9 +448,45 @@ class TestAWSRemoteClient(unittest.TestCase):
     def test_get_value_from_table(self, mock_client):
         table_name = "test_table"
         key = "test_key"
-        mock_client.return_value.get_item.return_value = {"Item": {"key": {"S": key}, "value": {"S": "test_value"}}}
-        result, _ = self.aws_client.get_value_from_table(table_name, key)
+
+        # Scenario 1: Item exists and is of type byte is False
+        mock_client.return_value.get_item.return_value = {
+            "Item": {"key": {"S": key}, "value": {"S": "test_value"}},
+            "ConsumedCapacity": {"CapacityUnits": 1.0},
+        }
+        result, consumed_capacity = self.aws_client.get_value_from_table(table_name, key)
         self.assertEqual(result, "test_value")
+        self.assertEqual(consumed_capacity, 1.0)
+
+        # Scenario 2: Item exists and is of type byte is True
+        mock_client.return_value.get_item.return_value = {
+            "Item": {"key": {"S": key}, "value": {"B": b"compressed_value"}},
+            "ConsumedCapacity": {"CapacityUnits": 1.0},
+        }
+        with patch(
+            "caribou.common.models.remote_client.aws_remote_client.decompress_json_str",
+            return_value="decompressed_value",
+        ):
+            result, consumed_capacity = self.aws_client.get_value_from_table(table_name, key)
+            self.assertEqual(result, "decompressed_value")
+            self.assertEqual(consumed_capacity, 1.0)
+
+        # Scenario 3: Item does not exist
+        mock_client.return_value.get_item.return_value = {
+            "ConsumedCapacity": {"CapacityUnits": 1.0},
+        }
+        result, consumed_capacity = self.aws_client.get_value_from_table(table_name, key)
+        self.assertEqual(result, "")
+        self.assertEqual(consumed_capacity, 1.0)
+
+        # Scenario 4: Item exists but no value field
+        mock_client.return_value.get_item.return_value = {
+            "Item": {"key": {"S": key}},
+            "ConsumedCapacity": {"CapacityUnits": 1.0},
+        }
+        result, consumed_capacity = self.aws_client.get_value_from_table(table_name, key)
+        self.assertEqual(result, "")
+        self.assertEqual(consumed_capacity, 1.0)
 
     @patch.object(AWSRemoteClient, "_client")
     def test_remove_value_from_table(self, mock_client):
@@ -463,11 +499,40 @@ class TestAWSRemoteClient(unittest.TestCase):
     @patch.object(AWSRemoteClient, "_client")
     def test_get_all_values_from_table(self, mock_client):
         table_name = "test_table"
+
+        # Scenario 1: Items exist and is of type byte is False
         mock_client.return_value.scan.return_value = {
-            "Items": [{"key": {"S": "key1"}, "value": {"S": json.dumps("value1")}}]
+            "Items": [
+                {"key": {"S": "key1"}, "value": {"S": "value1"}},
+                {"key": {"S": "key2"}, "value": {"S": "value2"}},
+            ]
         }
         result = self.aws_client.get_all_values_from_table(table_name)
-        self.assertEqual(result, {"key1": '"value1"'})
+        self.assertEqual(result, {"key1": "value1", "key2": "value2"})
+
+        # Scenario 2: Items exist and is of type byte is True
+        mock_client.return_value.scan.return_value = {
+            "Items": [
+                {"key": {"S": "key1"}, "value": {"B": b"compressed_value1"}},
+                {"key": {"S": "key2"}, "value": {"B": b"compressed_value2"}},
+            ]
+        }
+        with patch(
+            "caribou.common.models.remote_client.aws_remote_client.decompress_json_str",
+            side_effect=["decompressed_value1", "decompressed_value2"],
+        ):
+            result = self.aws_client.get_all_values_from_table(table_name)
+            self.assertEqual(result, {"key1": "decompressed_value1", "key2": "decompressed_value2"})
+
+        # Scenario 3: No items in response
+        mock_client.return_value.scan.return_value = {}
+        result = self.aws_client.get_all_values_from_table(table_name)
+        self.assertEqual(result, {})
+
+        # Scenario 4: Items key is None
+        mock_client.return_value.scan.return_value = {"Items": None}
+        result = self.aws_client.get_all_values_from_table(table_name)
+        self.assertEqual(result, {})
 
     @patch.object(AWSRemoteClient, "_client")
     def test_get_key_present_in_table(self, mock_client):
@@ -1127,6 +1192,667 @@ class TestAWSRemoteClient(unittest.TestCase):
 
         # Assert that the describe_repositories method was called with the correct parameters
         mock_client.return_value.describe_repositories.assert_called_once_with(repositoryNames=["test_repository"])
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_get_timer_rule_schedule_expression_exists(self, mock_client):
+        # Mocking the scenario where the timer rule exists
+        mock_events_client = MagicMock()
+        mock_client.return_value = mock_events_client
+
+        client = AWSRemoteClient("region1")
+
+        # Mock the return value of describe_rule
+        mock_events_client.describe_rule.return_value = {"ScheduleExpression": "rate(5 minutes)"}
+
+        result = client.get_timer_rule_schedule_expression("test_rule")
+
+        # Check that the return value is correct
+        self.assertEqual(result, "rate(5 minutes)")
+
+        # Check that describe_rule was called with the correct arguments
+        mock_events_client.describe_rule.assert_called_once_with(Name="test_rule")
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_get_timer_rule_schedule_expression_not_exists(self, mock_client):
+        # Mocking the scenario where the timer rule does not exist
+        mock_events_client = MagicMock()
+        mock_client.return_value = mock_events_client
+
+        client = AWSRemoteClient("region1")
+
+        # Mock the side effect of describe_rule to raise a ResourceNotFoundException
+        mock_events_client.describe_rule.side_effect = ClientError(
+            {"Error": {"Code": "ResourceNotFoundException"}}, "describe_rule"
+        )
+
+        result = client.get_timer_rule_schedule_expression("test_rule")
+
+        # Check that the return value is None
+        self.assertIsNone(result)
+
+        # Check that describe_rule was called with the correct arguments
+        mock_events_client.describe_rule.assert_called_once_with(Name="test_rule")
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_get_timer_rule_schedule_expression_other_error(self, mock_client):
+        # Mocking the scenario where another error occurs
+        mock_events_client = MagicMock()
+        mock_client.return_value = mock_events_client
+
+        client = AWSRemoteClient("region1")
+
+        # Mock the side effect of describe_rule to raise a different ClientError
+        mock_events_client.describe_rule.side_effect = ClientError(
+            {"Error": {"Code": "InternalError"}}, "describe_rule"
+        )
+
+        # Capture stdout
+        captured_output = StringIO()
+        sys.stdout = captured_output
+
+        result = client.get_timer_rule_schedule_expression("test_rule")
+
+        # Reset redirect.
+        sys.stdout = sys.__stdout__
+
+        # Check that the return value is None
+        self.assertIsNone(result)
+
+        # Check that describe_rule was called with the correct arguments
+        mock_events_client.describe_rule.assert_called_once_with(Name="test_rule")
+
+        # Check that the error message was logged
+        self.assertIn(
+            "Error removing the EventBridge rule test_rule: An error occurred (InternalError)",
+            captured_output.getvalue(),
+        )
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_remove_timer_rule_success(self, mock_client):
+        # Mocking the scenario where the timer rule is removed successfully
+        mock_events_client = MagicMock()
+        mock_client.return_value = mock_events_client
+
+        client = AWSRemoteClient("region1")
+
+        # Call the method with test values
+        client.remove_timer_rule("lambda_function_name", "rule_name")
+
+        # Check that the remove_targets and delete_rule methods were called
+        mock_events_client.remove_targets.assert_called_once_with(Rule="rule_name", Ids=["lambda_function_name-target"])
+        mock_events_client.delete_rule.assert_called_once_with(Name="rule_name", Force=True)
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_remove_timer_rule_not_found(self, mock_client):
+        # Mocking the scenario where the timer rule does not exist
+        mock_events_client = MagicMock()
+        mock_client.return_value = mock_events_client
+
+        client = AWSRemoteClient("region1")
+
+        # Mock the side effect of remove_targets to raise a ResourceNotFoundException
+        mock_events_client.remove_targets.side_effect = ClientError(
+            {"Error": {"Code": "ResourceNotFoundException"}}, "remove_targets"
+        )
+
+        # Call the method with test values
+        client.remove_timer_rule("lambda_function_name", "rule_name")
+
+        # Check that the remove_targets method was called
+        mock_events_client.remove_targets.assert_called_once_with(Rule="rule_name", Ids=["lambda_function_name-target"])
+
+        # Check that the delete_rule method was not called
+        mock_events_client.delete_rule.assert_not_called()
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_remove_timer_rule_other_error(self, mock_client):
+        # Mocking the scenario where another error occurs
+        mock_events_client = MagicMock()
+        mock_client.return_value = mock_events_client
+
+        client = AWSRemoteClient("region1")
+
+        # Mock the side effect of remove_targets to raise a different ClientError
+        mock_events_client.remove_targets.side_effect = ClientError(
+            {"Error": {"Code": "InternalError"}}, "remove_targets"
+        )
+
+        # Capture stdout
+        captured_output = StringIO()
+        sys.stdout = captured_output
+
+        # Call the method with test values
+        client.remove_timer_rule("lambda_function_name", "rule_name")
+
+        # Reset redirect.
+        sys.stdout = sys.__stdout__
+
+        # Check that the remove_targets method was called
+        mock_events_client.remove_targets.assert_called_once_with(Rule="rule_name", Ids=["lambda_function_name-target"])
+
+        # Check that the delete_rule method was not called
+        mock_events_client.delete_rule.assert_not_called()
+
+        # Check that the error message was logged
+        self.assertIn(
+            "Error removing the EventBridge rule rule_name: An error occurred (InternalError)",
+            captured_output.getvalue(),
+        )
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_event_bridge_permission_exists_true(self, mock_client):
+        # Mocking the scenario where the permission exists
+        mock_lambda_client = MagicMock()
+        mock_client.return_value = mock_lambda_client
+
+        client = AWSRemoteClient("region1")
+
+        # Mock the return value of get_policy
+        mock_lambda_client.get_policy.return_value = {
+            "Policy": json.dumps({"Statement": [{"Sid": "existing_statement_id"}]})
+        }
+
+        result = client.event_bridge_permission_exists("lambda_function_name", "existing_statement_id")
+
+        # Check that the return value is True
+        self.assertTrue(result)
+
+        # Check that get_policy was called with the correct arguments
+        mock_lambda_client.get_policy.assert_called_once_with(FunctionName="lambda_function_name")
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_event_bridge_permission_exists_false(self, mock_client):
+        # Mocking the scenario where the permission does not exist
+        mock_lambda_client = MagicMock()
+        mock_client.return_value = mock_lambda_client
+
+        client = AWSRemoteClient("region1")
+
+        # Mock the return value of get_policy
+        mock_lambda_client.get_policy.return_value = {
+            "Policy": json.dumps({"Statement": [{"Sid": "different_statement_id"}]})
+        }
+
+        result = client.event_bridge_permission_exists("lambda_function_name", "non_existing_statement_id")
+
+        # Check that the return value is False
+        self.assertFalse(result)
+
+        # Check that get_policy was called with the correct arguments
+        mock_lambda_client.get_policy.assert_called_once_with(FunctionName="lambda_function_name")
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_event_bridge_permission_exists_client_error(self, mock_client):
+        # Mocking the scenario where a ClientError occurs
+        mock_lambda_client = MagicMock()
+        mock_client.return_value = mock_lambda_client
+
+        client = AWSRemoteClient("region1")
+
+        # Mock the side effect of get_policy to raise a ClientError
+        mock_lambda_client.get_policy.side_effect = ClientError({"Error": {"Code": "InternalError"}}, "get_policy")
+
+        # Capture stdout
+        captured_output = StringIO()
+        sys.stdout = captured_output
+
+        result = client.event_bridge_permission_exists("lambda_function_name", "statement_id")
+
+        # Reset redirect.
+        sys.stdout = sys.__stdout__
+
+        # Check that the return value is False
+        self.assertFalse(result)
+
+        # Check that get_policy was called with the correct arguments
+        mock_lambda_client.get_policy.assert_called_once_with(FunctionName="lambda_function_name")
+
+        # Check that the error message was logged
+        self.assertIn(
+            "Error in asserting if permission exists lambda_function_name - statement_id", captured_output.getvalue()
+        )
+
+    @patch.object(AWSRemoteClient, "_client")
+    @patch.object(AWSRemoteClient, "event_bridge_permission_exists")
+    @patch.object(AWSRemoteClient, "get_lambda_function")
+    def test_create_timer_rule(self, mock_get_lambda_function, mock_event_bridge_permission_exists, mock_client):
+        # Mocking the scenario where the timer rule is created successfully
+        mock_events_client = MagicMock()
+        mock_lambda_client = MagicMock()
+        mock_client.side_effect = [mock_events_client, mock_lambda_client]
+
+        client = AWSRemoteClient("region1")
+
+        # Define the input
+        lambda_function_name = "test_lambda_function"
+        schedule_expression = "rate(5 minutes)"
+        rule_name = "test_rule"
+        event_payload = '{"key": "value"}'
+
+        # Mock the return value of put_rule
+        mock_events_client.put_rule.return_value = {"RuleArn": "arn:aws:events:region:123456789012:rule/test_rule"}
+
+        # Mock the return value of event_bridge_permission_exists
+        mock_event_bridge_permission_exists.return_value = False
+
+        # Mock the return value of get_lambda_function
+        mock_get_lambda_function.return_value = {
+            "FunctionArn": "arn:aws:lambda:region:123456789012:function:test_lambda_function"
+        }
+
+        # Call the method with test values
+        client.create_timer_rule(lambda_function_name, schedule_expression, rule_name, event_payload)
+
+        # Check that put_rule was called with the correct arguments
+        mock_events_client.put_rule.assert_called_once_with(
+            Name=rule_name, ScheduleExpression=schedule_expression, State="ENABLED"
+        )
+
+        # Check that add_permission was called with the correct arguments
+        mock_lambda_client.add_permission.assert_called_once_with(
+            FunctionName=lambda_function_name,
+            StatementId=f"{rule_name}-invoke-lambda",
+            Action="lambda:InvokeFunction",
+            Principal="events.amazonaws.com",
+            SourceArn="arn:aws:events:region:123456789012:rule/test_rule",
+        )
+
+        # Check that put_targets was called with the correct arguments
+        mock_events_client.put_targets.assert_called_once_with(
+            Rule=rule_name,
+            Targets=[
+                {
+                    "Id": f"{lambda_function_name}-target",
+                    "Arn": "arn:aws:lambda:region:123456789012:function:test_lambda_function",
+                    "Input": event_payload,
+                }
+            ],
+        )
+
+    @patch.object(AWSRemoteClient, "_client")
+    @patch.object(AWSRemoteClient, "event_bridge_permission_exists")
+    @patch.object(AWSRemoteClient, "get_lambda_function")
+    def test_create_timer_rule_permission_exists(
+        self, mock_get_lambda_function, mock_event_bridge_permission_exists, mock_client
+    ):
+        # Mocking the scenario where the permission already exists
+        mock_events_client = MagicMock()
+        mock_lambda_client = MagicMock()
+        mock_client.side_effect = [mock_events_client, mock_lambda_client]
+
+        client = AWSRemoteClient("region1")
+
+        # Define the input
+        lambda_function_name = "test_lambda_function"
+        schedule_expression = "rate(5 minutes)"
+        rule_name = "test_rule"
+        event_payload = '{"key": "value"}'
+
+        # Mock the return value of put_rule
+        mock_events_client.put_rule.return_value = {"RuleArn": "arn:aws:events:region:123456789012:rule/test_rule"}
+
+        # Mock the return value of event_bridge_permission_exists
+        mock_event_bridge_permission_exists.return_value = True
+
+        # Mock the return value of get_lambda_function
+        mock_get_lambda_function.return_value = {
+            "FunctionArn": "arn:aws:lambda:region:123456789012:function:test_lambda_function"
+        }
+
+        # Call the method with test values
+        client.create_timer_rule(lambda_function_name, schedule_expression, rule_name, event_payload)
+
+        # Check that put_rule was called with the correct arguments
+        mock_events_client.put_rule.assert_called_once_with(
+            Name=rule_name, ScheduleExpression=schedule_expression, State="ENABLED"
+        )
+
+        # Check that add_permission was not called since the permission already exists
+        mock_lambda_client.add_permission.assert_not_called()
+
+        # Check that put_targets was called with the correct arguments
+        mock_events_client.put_targets.assert_called_once_with(
+            Rule=rule_name,
+            Targets=[
+                {
+                    "Id": f"{lambda_function_name}-target",
+                    "Arn": "arn:aws:lambda:region:123456789012:function:test_lambda_function",
+                    "Input": event_payload,
+                }
+            ],
+        )
+
+    @patch.object(AWSRemoteClient, "_client")
+    @patch("json.dumps")
+    def test_invoke_remote_framework_with_payload(self, mock_json_dumps, mock_client):
+        # Mocking the scenario where the Lambda function is invoked successfully
+        mock_lambda_client = MagicMock()
+        mock_client.return_value = mock_lambda_client
+
+        client = AWSRemoteClient("region1")
+
+        # Define the input
+        payload = {"key": "value"}
+        invocation_type = "Event"
+
+        # Mock the return value of json.dumps
+        mock_json_dumps.return_value = '{"key": "value"}'
+
+        # Call the method with test values
+        client.invoke_remote_framework_with_payload(payload, invocation_type)
+
+        # Check that the _client method was called with the correct arguments
+        mock_client.assert_called_once_with("lambda")
+
+        # Check that the invoke method was called with the correct arguments
+        mock_lambda_client.invoke.assert_called_once_with(
+            FunctionName=REMOTE_CARIBOU_CLI_FUNCTION_NAME,
+            InvocationType=invocation_type,
+            Payload='{"key": "value"}',
+        )
+
+    @patch.object(AWSRemoteClient, "_client")
+    @patch("json.dumps")
+    def test_invoke_remote_framework_with_payload_default_invocation_type(self, mock_json_dumps, mock_client):
+        # Mocking the scenario where the Lambda function is invoked successfully with default invocation type
+        mock_lambda_client = MagicMock()
+        mock_client.return_value = mock_lambda_client
+
+        client = AWSRemoteClient("region1")
+
+        # Define the input
+        payload = {"key": "value"}
+
+        # Mock the return value of json.dumps
+        mock_json_dumps.return_value = '{"key": "value"}'
+
+        # Call the method with test values
+        client.invoke_remote_framework_with_payload(payload)
+
+        # Check that the _client method was called with the correct arguments
+        mock_client.assert_called_once_with("lambda")
+
+        # Check that the invoke method was called with the correct arguments
+        mock_lambda_client.invoke.assert_called_once_with(
+            FunctionName=REMOTE_CARIBOU_CLI_FUNCTION_NAME,
+            InvocationType="Event",
+            Payload='{"key": "value"}',
+        )
+
+    @patch.object(AWSRemoteClient, "invoke_remote_framework_with_payload")
+    def test_invoke_remote_framework_internal_action(self, mock_invoke_remote_framework_with_payload):
+        action_type = "test_action_type"
+        action_events = {"key": "value"}
+
+        self.aws_client.invoke_remote_framework_internal_action(action_type, action_events)
+
+        expected_payload = {
+            "action": "internal_action",
+            "type": action_type,
+            "event": action_events,
+        }
+
+        mock_invoke_remote_framework_with_payload.assert_called_once_with(expected_payload, invocation_type="Event")
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_update_value_in_table(self, mock_client):
+        table_name = "test_table"
+        key = "test_key"
+        value = "test_value"
+
+        # Test without convert_to_bytes
+        self.aws_client.update_value_in_table(table_name, key, value)
+        mock_client.assert_called_with("dynamodb")
+        mock_client.return_value.update_item.assert_called_once_with(
+            TableName=table_name,
+            Key={"key": {"S": key}},
+            UpdateExpression="SET #v = :value",
+            ExpressionAttributeNames={"#v": "value"},
+            ExpressionAttributeValues={":value": {"S": value}},
+        )
+
+        # Test with convert_to_bytes
+        mock_client.reset_mock()
+        with patch(
+            "caribou.common.models.remote_client.aws_remote_client.compress_json_str", return_value=b"compressed_value"
+        ):
+            self.aws_client.update_value_in_table(table_name, key, value, convert_to_bytes=True)
+            mock_client.assert_called_with("dynamodb")
+            mock_client.return_value.update_item.assert_called_once_with(
+                TableName=table_name,
+                Key={"key": {"S": key}},
+                UpdateExpression="SET #v = :value",
+                ExpressionAttributeNames={"#v": "value"},
+                ExpressionAttributeValues={":value": {"B": b"compressed_value"}},
+            )
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_create_sync_tables_table_exists(self, mock_client):
+        # Mocking the scenario where the tables already exist
+        mock_dynamodb_client = MagicMock()
+        mock_client.return_value = mock_dynamodb_client
+
+        client = AWSRemoteClient("region1")
+
+        # Mock the return value of describe_table to simulate existing tables
+        mock_dynamodb_client.describe_table.return_value = {"Table": {"TableStatus": "ACTIVE"}}
+
+        client.create_sync_tables()
+
+        # Check that describe_table was called twice
+        self.assertEqual(mock_dynamodb_client.describe_table.call_count, 2)
+
+        # Check that create_table was not called since the tables already exist
+        mock_dynamodb_client.create_table.assert_not_called()
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_create_sync_tables_table_not_exists(self, mock_client):
+        # Mocking the scenario where the tables do not exist and need to be created
+        mock_dynamodb_client = MagicMock()
+        mock_client.return_value = mock_dynamodb_client
+
+        client = AWSRemoteClient("region1")
+
+        # Mock the side effect of describe_table to raise a ResourceNotFoundException
+        mock_dynamodb_client.describe_table.side_effect = ClientError(
+            {"Error": {"Code": "ResourceNotFoundException"}}, "describe_table"
+        )
+
+        client.create_sync_tables()
+
+        # Check that describe_table was called twice
+        self.assertEqual(mock_dynamodb_client.describe_table.call_count, 2)
+
+        # Check that create_table was called twice since the tables do not exist
+        self.assertEqual(mock_dynamodb_client.create_table.call_count, 2)
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_create_sync_tables_other_client_error(self, mock_client):
+        # Mocking the scenario where another ClientError occurs
+        mock_dynamodb_client = MagicMock()
+        mock_client.return_value = mock_dynamodb_client
+
+        client = AWSRemoteClient("region1")
+
+        # Mock the side effect of describe_table to raise a different ClientError
+        mock_dynamodb_client.describe_table.side_effect = ClientError(
+            {"Error": {"Code": "InternalError"}}, "describe_table"
+        )
+
+        with self.assertRaises(ClientError):
+            client.create_sync_tables()
+
+        # Check that describe_table was called once
+        mock_dynamodb_client.describe_table.assert_called_once()
+
+        # Check that create_table was not called since a different ClientError occurred
+        mock_dynamodb_client.create_table.assert_not_called()
+
+    @patch.object(AWSRemoteClient, "_client")
+    @patch.object(AWSRemoteClient, "_setup_ttl_for_sync_tables")
+    def test_create_sync_tables_setup_ttl_called(self, mock_setup_ttl, mock_client):
+        # Mocking the scenario where the tables are created successfully and TTL setup is called
+        mock_dynamodb_client = MagicMock()
+        mock_client.return_value = mock_dynamodb_client
+
+        client = AWSRemoteClient("region1")
+
+        # Mock the side effect of describe_table to raise a ResourceNotFoundException
+        mock_dynamodb_client.describe_table.side_effect = ClientError(
+            {"Error": {"Code": "ResourceNotFoundException"}}, "describe_table"
+        )
+
+        client.create_sync_tables()
+
+        # Check that describe_table was called twice
+        self.assertEqual(mock_dynamodb_client.describe_table.call_count, 2)
+
+        # Check that create_table was called twice since the tables do not exist
+        self.assertEqual(mock_dynamodb_client.create_table.call_count, 2)
+
+        # Check that _setup_ttl_for_sync_tables was called once
+        mock_setup_ttl.assert_called_once()
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_setup_ttl_for_sync_tables(self, mock_client):
+        # Mocking the scenario where TTL is enabled successfully
+        mock_dynamodb_client = MagicMock()
+        mock_client.return_value = mock_dynamodb_client
+
+        client = AWSRemoteClient("region1")
+
+        # Mock the return value of describe_time_to_live to simulate TTL not enabled
+        mock_dynamodb_client.describe_time_to_live.return_value = {
+            "TimeToLiveDescription": {"TimeToLiveStatus": "DISABLED"}
+        }
+
+        client._setup_ttl_for_sync_tables()
+
+        # Check that get_waiter was called twice
+        self.assertEqual(mock_dynamodb_client.get_waiter.call_count, 2)
+
+        # Check that describe_time_to_live was called twice
+        self.assertEqual(mock_dynamodb_client.describe_time_to_live.call_count, 2)
+
+        # Check that update_time_to_live was called twice
+        self.assertEqual(mock_dynamodb_client.update_time_to_live.call_count, 2)
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_setup_ttl_for_sync_tables_already_enabled(self, mock_client):
+        # Mocking the scenario where TTL is already enabled
+        mock_dynamodb_client = MagicMock()
+        mock_client.return_value = mock_dynamodb_client
+
+        client = AWSRemoteClient("region1")
+
+        # Mock the return value of describe_time_to_live to simulate TTL already enabled
+        mock_dynamodb_client.describe_time_to_live.return_value = {
+            "TimeToLiveDescription": {"TimeToLiveStatus": "ENABLED"}
+        }
+
+        client._setup_ttl_for_sync_tables()
+
+        # Check that get_waiter was called twice
+        self.assertEqual(mock_dynamodb_client.get_waiter.call_count, 2)
+
+        # Check that describe_time_to_live was called twice
+        self.assertEqual(mock_dynamodb_client.describe_time_to_live.call_count, 2)
+
+        # Check that update_time_to_live was not called since TTL is already enabled
+        mock_dynamodb_client.update_time_to_live.assert_not_called()
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_setup_ttl_for_sync_tables_waiter_error(self, mock_client):
+        # Mocking the scenario where the waiter raises an error
+        mock_dynamodb_client = MagicMock()
+        mock_client.return_value = mock_dynamodb_client
+
+        client = AWSRemoteClient("region1")
+
+        # Mock the side effect of get_waiter to raise an exception
+        mock_dynamodb_client.get_waiter.side_effect = Exception("Waiter error")
+
+        with self.assertRaises(Exception):
+            client._setup_ttl_for_sync_tables()
+
+        # Check that get_waiter was called once before raising the exception
+        mock_dynamodb_client.get_waiter.assert_called_once()
+
+        # Check that describe_time_to_live was not called due to the exception
+        mock_dynamodb_client.describe_time_to_live.assert_not_called()
+
+        # Check that update_time_to_live was not called due to the exception
+        mock_dynamodb_client.update_time_to_live.assert_not_called()
+
+    @patch.object(AWSRemoteClient, "_client")
+    def test_setup_ttl_for_sync_tables_describe_error(self, mock_client):
+        # Mocking the scenario where describe_time_to_live raises an error
+        mock_dynamodb_client = MagicMock()
+        mock_client.return_value = mock_dynamodb_client
+
+        client = AWSRemoteClient("region1")
+
+        # Mock the side effect of describe_time_to_live to raise an exception
+        mock_dynamodb_client.describe_time_to_live.side_effect = Exception("Describe error")
+
+        with self.assertRaises(Exception):
+            client._setup_ttl_for_sync_tables()
+
+        # Check that get_waiter was called twice
+        ## Only 1 is called because the first call raises an exception
+        self.assertEqual(mock_dynamodb_client.get_waiter.call_count, 1)
+
+        # Check that describe_time_to_live was called once before raising the exception
+        mock_dynamodb_client.describe_time_to_live.assert_called_once()
+
+        # Check that update_time_to_live was not called due to the exception
+        mock_dynamodb_client.update_time_to_live.assert_not_called()
+
+    @patch.object(AWSRemoteClient, "_client")
+    @patch("time.time", return_value=1609459200)  # Mocking time to return a fixed timestamp
+    def test_upload_predecessor_data_at_sync_node(self, mock_time, mock_client):
+        function_name = "test_function"
+        workflow_instance_id = "test_workflow_instance_id"
+        message = "test_message"
+        expiration_time = 1609459200 + SYNC_TABLE_TTL
+
+        mock_client.return_value.update_item.return_value = {"ConsumedCapacity": {"CapacityUnits": 1.0}}
+
+        result = self.aws_client.upload_predecessor_data_at_sync_node(function_name, workflow_instance_id, message)
+
+        mock_client.assert_called_with("dynamodb")
+        mock_client.return_value.update_item.assert_called_once_with(
+            TableName=SYNC_MESSAGES_TABLE,
+            Key={"id": {"S": f"{function_name}:{workflow_instance_id}"}},
+            UpdateExpression="ADD #M :m SET #ttl = :ttl",
+            ExpressionAttributeNames={"#M": "message", "#ttl": SYNC_TABLE_TTL_ATTRIBUTE_NAME},
+            ExpressionAttributeValues={":m": {"SS": [message]}, ":ttl": {"N": str(expiration_time)}},
+            ReturnConsumedCapacity="TOTAL",
+        )
+        self.assertEqual(result, 1.0)
+
+    @patch.object(AWSRemoteClient, "_client")
+    @patch("time.time", return_value=1609459200)  # Mocking time to return a fixed timestamp
+    def test_upload_predecessor_data_at_sync_node_no_consumed_capacity(self, mock_time, mock_client):
+        function_name = "test_function"
+        workflow_instance_id = "test_workflow_instance_id"
+        message = "test_message"
+        expiration_time = 1609459200 + SYNC_TABLE_TTL
+
+        mock_client.return_value.update_item.return_value = {}
+
+        result = self.aws_client.upload_predecessor_data_at_sync_node(function_name, workflow_instance_id, message)
+
+        mock_client.assert_called_with("dynamodb")
+        mock_client.return_value.update_item.assert_called_once_with(
+            TableName=SYNC_MESSAGES_TABLE,
+            Key={"id": {"S": f"{function_name}:{workflow_instance_id}"}},
+            UpdateExpression="ADD #M :m SET #ttl = :ttl",
+            ExpressionAttributeNames={"#M": "message", "#ttl": SYNC_TABLE_TTL_ATTRIBUTE_NAME},
+            ExpressionAttributeValues={":m": {"SS": [message]}, ":ttl": {"N": str(expiration_time)}},
+            ReturnConsumedCapacity="TOTAL",
+        )
+        self.assertEqual(result, 0.0)
 
 
 if __name__ == "__main__":

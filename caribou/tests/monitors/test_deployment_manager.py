@@ -29,48 +29,6 @@ class TestDeploymentManager(unittest.TestCase):
         self.deployment_manager._endpoints = self.mock_endpoints
 
     @patch("caribou.monitors.deployment_manager.datetime")
-    @patch("caribou.monitors.deployment_manager.WorkflowConfig")
-    def test_check(self, mock_workflow_config, mock_datetime):
-        # Arrange
-        mock_datetime.now.return_value = datetime(2022, 1, 2, tzinfo=GLOBAL_TIME_ZONE)
-        mock_datetime.strptime = datetime.strptime
-        mock_client = MagicMock()
-        self.mock_endpoints.get_deployment_manager_client.return_value = mock_client
-        self.mock_endpoints.get_data_collector_client.return_value = mock_client
-        mock_client.get_keys.return_value = ["workflow1"]
-        mock_client.get_value_from_table.side_effect = [
-            (json.dumps({"next_check": "2022-01-01 00:00:00,000+00:00"}), 0.0),  # workflow_info_raw
-            (
-                json.dumps({"workflow_config": json.dumps({"home_region": "region1", "instances": [1, 2, 3]})}),
-                0.0,
-            ),  # workflow_config_from_table
-            (json.dumps({}), 0.0),  # workflow_summary_raw
-        ]
-        self.deployment_manager._get_last_solved = MagicMock(return_value=datetime(2022, 1, 1))
-        self.deployment_manager._get_total_invocation_counts_since_last_solved = MagicMock(return_value=10)
-        self.deployment_manager._calculate_positive_carbon_savings_token = MagicMock(return_value=100)
-        self.deployment_manager._calculate_affordable_deployment_algorithm_run = MagicMock(return_value=None)
-        self.deployment_manager._get_cost = MagicMock(return_value=50)
-        self.deployment_manager._update_workflow_info = MagicMock()
-
-        # Act
-        self.deployment_manager.check()
-
-        # Assert
-        self.mock_endpoints.get_deployment_manager_client.assert_called()
-        mock_client.get_keys.assert_called_once_with(DEPLOYMENT_MANAGER_RESOURCE_TABLE)
-        mock_client.get_value_from_table.assert_has_calls(
-            [
-                call(DEPLOYMENT_MANAGER_WORKFLOW_INFO_TABLE, "workflow1"),
-                call(DEPLOYMENT_MANAGER_RESOURCE_TABLE, "workflow1"),
-                call(WORKFLOW_INSTANCE_TABLE, "workflow1"),
-            ]
-        )
-        mock_workflow_config.assert_called_once_with(
-            json.loads(json.dumps({"home_region": "region1", "instances": [1, 2, 3]}))
-        )
-
-    @patch("caribou.monitors.deployment_manager.datetime")
     def test_update_workflow_info(self, mock_datetime):
         self.deployment_manager._get_sigmoid_scale = MagicMock(return_value=1)
         # Arrange
@@ -92,35 +50,6 @@ class TestDeploymentManager(unittest.TestCase):
                     "next_check": (datetime(2022, 1, 1) + timedelta(seconds=int(DEFAULT_MONITOR_COOLDOWN))).strftime(
                         TIME_FORMAT
                     )
-                }
-            ),
-        )
-
-    @patch("caribou.monitors.deployment_manager.datetime")
-    def test_upload_new_workflow_info(self, mock_datetime):
-        self.deployment_manager._get_sigmoid_scale = MagicMock(return_value=1)
-        # Arrange
-        mock_datetime.now.return_value = datetime(2022, 1, 1)
-        mock_client = MagicMock()
-        self.mock_endpoints.get_deployment_manager_client.return_value = mock_client
-
-        # Act
-        result = self.deployment_manager._upload_new_workflow_info(10, "workflow1")
-
-        # Assert
-        self.assertEqual(result, int(DEFAULT_MONITOR_COOLDOWN))
-        self.deployment_manager._get_sigmoid_scale.assert_called_once_with(10)
-        self.mock_endpoints.get_deployment_manager_client.assert_called_once()
-        mock_client.set_value_in_table.assert_called_once_with(
-            DEPLOYMENT_MANAGER_WORKFLOW_INFO_TABLE,
-            "workflow1",
-            json.dumps(
-                {
-                    "last_solved": datetime(2022, 1, 1).strftime(TIME_FORMAT),
-                    "tokens_left": 10,
-                    "next_check": (datetime(2022, 1, 1) + timedelta(seconds=int(DEFAULT_MONITOR_COOLDOWN))).strftime(
-                        TIME_FORMAT
-                    ),
                 }
             ),
         )
@@ -316,6 +245,404 @@ class TestDeploymentManager(unittest.TestCase):
 
         # Assert
         self.assertEqual(result, ["0", "6", "12", "18"])  # This is the expected result for the given number_of_solves
+
+    def test_calculate_expiry_delta_seconds(self):
+        # Arrange
+        tokens_left = 10
+        self.deployment_manager._get_sigmoid_scale = MagicMock(return_value=1)
+
+        # Act
+        result = self.deployment_manager._calculate_expiry_delta_seconds(tokens_left)
+
+        # Assert
+        self.assertEqual(result, int(DEFAULT_MONITOR_COOLDOWN))
+        self.deployment_manager._get_sigmoid_scale.assert_called_once_with(tokens_left)
+
+    def test_calculate_expiry_delta_seconds_with_scale(self):
+        # Arrange
+        tokens_left = 10
+        self.deployment_manager._get_sigmoid_scale = MagicMock(return_value=0.5)
+
+        # Act
+        result = self.deployment_manager._calculate_expiry_delta_seconds(tokens_left)
+
+        # Assert
+        self.assertEqual(result, int(DEFAULT_MONITOR_COOLDOWN * 0.5))
+        self.deployment_manager._get_sigmoid_scale.assert_called_once_with(tokens_left)
+
+    @patch("caribou.monitors.deployment_manager.datetime")
+    def test_upload_new_workflow_info(self, mock_datetime):
+        # Arrange
+        self.deployment_manager._calculate_expiry_delta_seconds = MagicMock(return_value=3600)
+        mock_datetime.now.return_value = datetime(2022, 1, 1, tzinfo=GLOBAL_TIME_ZONE)
+        mock_client = MagicMock()
+        self.mock_endpoints.get_deployment_manager_client.return_value = mock_client
+
+        # Act
+        self.deployment_manager._upload_new_workflow_info(10, "workflow1")
+
+        # Assert
+        self.deployment_manager._calculate_expiry_delta_seconds.assert_called_once_with(10)
+        self.mock_endpoints.get_deployment_manager_client.assert_called_once()
+        mock_client.set_value_in_table.assert_called_once_with(
+            DEPLOYMENT_MANAGER_WORKFLOW_INFO_TABLE,
+            "workflow1",
+            json.dumps(
+                {
+                    "last_solved": datetime(2022, 1, 1, tzinfo=GLOBAL_TIME_ZONE).strftime(TIME_FORMAT),
+                    "tokens_left": 10,
+                    "next_check": (datetime(2022, 1, 1, tzinfo=GLOBAL_TIME_ZONE) + timedelta(seconds=3600)).strftime(
+                        TIME_FORMAT
+                    ),
+                }
+            ),
+        )
+
+    @patch("caribou.monitors.deployment_manager.DeploymentManager.remote_check_workflow")
+    @patch("caribou.monitors.deployment_manager.DeploymentManager.check_workflow")
+    def test_check(self, mock_check_workflow, mock_remote_check_workflow):
+        # Arrange
+        mock_client = MagicMock()
+        self.mock_endpoints.get_deployment_manager_client.return_value = mock_client
+        mock_client.get_keys.return_value = ["workflow1", "workflow2"]
+
+        # Act
+        self.deployment_manager.check()
+
+        # Assert
+        self.mock_endpoints.get_deployment_manager_client.assert_called_once()
+        mock_client.get_keys.assert_called_once_with(DEPLOYMENT_MANAGER_RESOURCE_TABLE)
+        mock_check_workflow.assert_has_calls([call("workflow1"), call("workflow2")])
+        mock_remote_check_workflow.assert_not_called()
+
+    @patch("caribou.monitors.deployment_manager.DeploymentManager.remote_check_workflow")
+    @patch("caribou.monitors.deployment_manager.DeploymentManager.check_workflow")
+    def test_check_deployed_remotely(self, mock_check_workflow, mock_remote_check_workflow):
+        # Arrange
+        self.deployment_manager._deployed_remotely = True
+        mock_client = MagicMock()
+        self.mock_endpoints.get_deployment_manager_client.return_value = mock_client
+        mock_client.get_keys.return_value = ["workflow1", "workflow2"]
+
+        # Act
+        self.deployment_manager.check()
+
+        # Assert
+        self.mock_endpoints.get_deployment_manager_client.assert_called_once()
+        mock_client.get_keys.assert_called_once_with(DEPLOYMENT_MANAGER_RESOURCE_TABLE)
+        mock_remote_check_workflow.assert_has_calls([call("workflow1"), call("workflow2")])
+        mock_check_workflow.assert_not_called()
+
+    def test_remote_check_workflow(self):
+        # Arrange
+        workflow_id = "workflow1"
+        mock_framework_cli_remote_client = MagicMock()
+
+        mock_endpoints = MagicMock()
+        mock_endpoints.get_framework_cli_remote_client.return_value = mock_framework_cli_remote_client
+
+        self.deployment_manager._endpoints = mock_endpoints
+
+        # Act
+        self.deployment_manager.remote_check_workflow(workflow_id)
+
+        # Assert
+        mock_endpoints.get_framework_cli_remote_client.assert_called_once()
+        mock_framework_cli_remote_client.invoke_remote_framework_internal_action.assert_called_once_with(
+            "check_workflow",
+            {
+                "workflow_id": workflow_id,
+                "deployment_metrics_calculator_type": self.deployment_manager._deployment_metrics_calculator_type,
+            },
+        )
+
+    def test_remote_run_deployment_algorithm(self):
+        # Arrange
+        workflow_id = "workflow1"
+        solve_hours = ["0", "6", "12", "18"]
+        leftover_tokens = 10
+        mock_framework_cli_remote_client = MagicMock()
+
+        mock_endpoints = MagicMock()
+        mock_endpoints.get_framework_cli_remote_client.return_value = mock_framework_cli_remote_client
+
+        self.deployment_manager._endpoints = mock_endpoints
+
+        # Act
+        self.deployment_manager.remote_run_deployment_algorithm(workflow_id, solve_hours, leftover_tokens)
+
+        # Assert
+        mock_endpoints.get_framework_cli_remote_client.assert_called_once()
+        mock_framework_cli_remote_client.invoke_remote_framework_internal_action.assert_called_once_with(
+            "run_deployment_algorithm",
+            {
+                "workflow_id": workflow_id,
+                "solve_hours": solve_hours,
+                "leftover_tokens": leftover_tokens,
+                "deployment_metrics_calculator_type": self.deployment_manager._deployment_metrics_calculator_type,
+            },
+        )
+
+    @patch("caribou.monitors.deployment_manager.datetime")
+    @patch("caribou.monitors.deployment_manager.DeploymentManager._get_workflow_config")
+    @patch("caribou.monitors.deployment_manager.DeploymentManager._get_last_solved")
+    @patch("caribou.monitors.deployment_manager.DeploymentManager._get_total_invocation_counts_since_last_solved")
+    @patch("caribou.monitors.deployment_manager.DeploymentManager._calculate_positive_carbon_savings_token")
+    @patch("caribou.monitors.deployment_manager.DeploymentManager._calculate_affordable_deployment_algorithm_run")
+    @patch("caribou.monitors.deployment_manager.DeploymentManager._get_cost")
+    @patch("caribou.monitors.deployment_manager.DeploymentManager._update_workflow_info")
+    @patch("caribou.monitors.deployment_manager.DeploymentManager.run_deployment_algorithm")
+    @patch("caribou.monitors.deployment_manager.DeploymentManager.remote_run_deployment_algorithm")
+    def test_check_workflow(
+        self,
+        mock_remote_run_deployment_algorithm,
+        mock_run_deployment_algorithm,
+        mock_update_workflow_info,
+        mock_get_cost,
+        mock_calculate_affordable_deployment_algorithm_run,
+        mock_calculate_positive_carbon_savings_token,
+        mock_get_total_invocation_counts_since_last_solved,
+        mock_get_last_solved,
+        mock_get_workflow_config,
+        mock_datetime,
+    ):
+        # Arrange
+        workflow_id = "workflow1"
+        mock_datetime.now.return_value = datetime(2022, 1, 2, tzinfo=GLOBAL_TIME_ZONE)
+        mock_datetime.strptime = datetime.strptime
+        mock_client = MagicMock()
+        self.mock_endpoints.get_deployment_manager_client.return_value = mock_client
+        self.mock_endpoints.get_data_collector_client.return_value = mock_client
+        mock_client.get_value_from_table.side_effect = [
+            (json.dumps({"next_check": "2022-01-01 00:00:00,000+00:00"}), 0.0),  # workflow_info_raw
+            (
+                json.dumps({"workflow_config": json.dumps({"home_region": "region1", "instances": [1, 2, 3]})}),
+                0.0,
+            ),  # workflow_config_from_table
+            (json.dumps({}), 0.0),  # workflow_summary_raw
+        ]
+        mock_get_last_solved.return_value = datetime(2022, 1, 1)
+        mock_get_total_invocation_counts_since_last_solved.return_value = 10
+        mock_calculate_positive_carbon_savings_token.return_value = 100
+        mock_calculate_affordable_deployment_algorithm_run.return_value = {
+            "number_of_solves": 1,
+            "leftover_tokens": 50,
+        }
+        mock_get_workflow_config.return_value = MagicMock()
+
+        # Act
+        self.deployment_manager.check_workflow(workflow_id)
+
+        # Assert
+        self.mock_endpoints.get_deployment_manager_client.assert_called()
+        mock_client.get_value_from_table.assert_has_calls(
+            [
+                call(DEPLOYMENT_MANAGER_WORKFLOW_INFO_TABLE, workflow_id),
+                call(WORKFLOW_INSTANCE_TABLE, workflow_id),
+            ]
+        )
+        mock_get_last_solved.assert_called_once()
+        mock_get_total_invocation_counts_since_last_solved.assert_called_once()
+        mock_calculate_positive_carbon_savings_token.assert_called_once()
+        mock_calculate_affordable_deployment_algorithm_run.assert_called_once()
+        mock_get_cost.assert_not_called()
+        mock_update_workflow_info.assert_not_called()
+        mock_run_deployment_algorithm.assert_called_once()
+        mock_remote_run_deployment_algorithm.assert_not_called()
+
+    @patch("caribou.monitors.deployment_manager.datetime")
+    @patch("caribou.monitors.deployment_manager.DeploymentManager._get_workflow_config")
+    @patch("caribou.monitors.deployment_manager.DeploymentManager._get_last_solved")
+    @patch("caribou.monitors.deployment_manager.DeploymentManager._get_total_invocation_counts_since_last_solved")
+    @patch("caribou.monitors.deployment_manager.DeploymentManager._calculate_positive_carbon_savings_token")
+    @patch("caribou.monitors.deployment_manager.DeploymentManager._calculate_affordable_deployment_algorithm_run")
+    @patch("caribou.monitors.deployment_manager.DeploymentManager._get_cost")
+    @patch("caribou.monitors.deployment_manager.DeploymentManager._update_workflow_info")
+    @patch("caribou.monitors.deployment_manager.DeploymentManager.run_deployment_algorithm")
+    @patch("caribou.monitors.deployment_manager.DeploymentManager.remote_run_deployment_algorithm")
+    def test_check_workflow_not_enough_tokens(
+        self,
+        mock_remote_run_deployment_algorithm,
+        mock_run_deployment_algorithm,
+        mock_update_workflow_info,
+        mock_get_cost,
+        mock_calculate_affordable_deployment_algorithm_run,
+        mock_calculate_positive_carbon_savings_token,
+        mock_get_total_invocation_counts_since_last_solved,
+        mock_get_last_solved,
+        mock_get_workflow_config,
+        mock_datetime,
+    ):
+        # Arrange
+        workflow_id = "workflow1"
+        mock_datetime.now.return_value = datetime(2022, 1, 2, tzinfo=GLOBAL_TIME_ZONE)
+        mock_datetime.strptime = datetime.strptime
+        mock_client = MagicMock()
+        self.mock_endpoints.get_deployment_manager_client.return_value = mock_client
+        self.mock_endpoints.get_data_collector_client.return_value = mock_client
+        mock_client.get_value_from_table.side_effect = [
+            (json.dumps({"next_check": "2022-01-01 00:00:00,000+00:00"}), 0.0),  # workflow_info_raw
+            (
+                json.dumps({"workflow_config": json.dumps({"home_region": "region1", "instances": [1, 2, 3]})}),
+                0.0,
+            ),  # workflow_config_from_table
+            (json.dumps({}), 0.0),  # workflow_summary_raw
+        ]
+        mock_get_last_solved.return_value = datetime(2022, 1, 1)
+        mock_get_total_invocation_counts_since_last_solved.return_value = 10
+        mock_calculate_positive_carbon_savings_token.return_value = 100
+        mock_calculate_affordable_deployment_algorithm_run.return_value = None
+        mock_get_cost.return_value = 50
+        mock_get_workflow_config.return_value = MagicMock()
+
+        # Act
+        self.deployment_manager.check_workflow(workflow_id)
+
+        # Assert
+        self.mock_endpoints.get_deployment_manager_client.assert_called()
+        mock_client.get_value_from_table.assert_has_calls(
+            [
+                call(DEPLOYMENT_MANAGER_WORKFLOW_INFO_TABLE, workflow_id),
+                call(WORKFLOW_INSTANCE_TABLE, workflow_id),
+            ]
+        )
+        mock_get_last_solved.assert_called_once()
+        mock_get_total_invocation_counts_since_last_solved.assert_called_once()
+        mock_calculate_positive_carbon_savings_token.assert_called_once()
+        mock_calculate_affordable_deployment_algorithm_run.assert_called_once()
+        mock_get_cost.assert_called_once()
+        mock_update_workflow_info.assert_called_once()
+        mock_run_deployment_algorithm.assert_not_called()
+        mock_remote_run_deployment_algorithm.assert_not_called()
+
+    @patch("caribou.monitors.deployment_manager.datetime")
+    @patch("caribou.monitors.deployment_manager.DeploymentManager._get_workflow_config")
+    @patch("caribou.monitors.deployment_manager.DeploymentManager._get_last_solved")
+    @patch("caribou.monitors.deployment_manager.DeploymentManager._get_total_invocation_counts_since_last_solved")
+    @patch("caribou.monitors.deployment_manager.DeploymentManager._calculate_positive_carbon_savings_token")
+    @patch("caribou.monitors.deployment_manager.DeploymentManager._calculate_affordable_deployment_algorithm_run")
+    @patch("caribou.monitors.deployment_manager.DeploymentManager._get_cost")
+    @patch("caribou.monitors.deployment_manager.DeploymentManager._update_workflow_info")
+    @patch("caribou.monitors.deployment_manager.DeploymentManager.run_deployment_algorithm")
+    @patch("caribou.monitors.deployment_manager.DeploymentManager.remote_run_deployment_algorithm")
+    def test_check_workflow_deployed_remotely(
+        self,
+        mock_remote_run_deployment_algorithm,
+        mock_run_deployment_algorithm,
+        mock_update_workflow_info,
+        mock_get_cost,
+        mock_calculate_affordable_deployment_algorithm_run,
+        mock_calculate_positive_carbon_savings_token,
+        mock_get_total_invocation_counts_since_last_solved,
+        mock_get_last_solved,
+        mock_get_workflow_config,
+        mock_datetime,
+    ):
+        # Arrange
+        self.deployment_manager._deployed_remotely = True
+        workflow_id = "workflow1"
+        mock_datetime.now.return_value = datetime(2022, 1, 2, tzinfo=GLOBAL_TIME_ZONE)
+        mock_datetime.strptime = datetime.strptime
+        mock_client = MagicMock()
+        self.mock_endpoints.get_deployment_manager_client.return_value = mock_client
+        self.mock_endpoints.get_data_collector_client.return_value = mock_client
+        mock_client.get_value_from_table.side_effect = [
+            (json.dumps({"next_check": "2022-01-01 00:00:00,000+00:00"}), 0.0),  # workflow_info_raw
+            (
+                json.dumps({"workflow_config": json.dumps({"home_region": "region1", "instances": [1, 2, 3]})}),
+                0.0,
+            ),  # workflow_config_from_table
+            (json.dumps({}), 0.0),  # workflow_summary_raw
+        ]
+        mock_get_last_solved.return_value = datetime(2022, 1, 1)
+        mock_get_total_invocation_counts_since_last_solved.return_value = 10
+        mock_calculate_positive_carbon_savings_token.return_value = 100
+        mock_calculate_affordable_deployment_algorithm_run.return_value = {
+            "number_of_solves": 1,
+            "leftover_tokens": 50,
+        }
+        mock_get_workflow_config.return_value = MagicMock()
+
+        # Act
+        self.deployment_manager.check_workflow(workflow_id)
+
+        # Assert
+        self.mock_endpoints.get_deployment_manager_client.assert_called()
+        mock_client.get_value_from_table.assert_has_calls(
+            [
+                call(DEPLOYMENT_MANAGER_WORKFLOW_INFO_TABLE, workflow_id),
+                call(WORKFLOW_INSTANCE_TABLE, workflow_id),
+            ]
+        )
+        mock_get_last_solved.assert_called_once()
+        mock_get_total_invocation_counts_since_last_solved.assert_called_once()
+        mock_calculate_positive_carbon_savings_token.assert_called_once()
+        mock_calculate_affordable_deployment_algorithm_run.assert_called_once()
+        mock_get_cost.assert_not_called()
+        mock_update_workflow_info.assert_not_called()
+        mock_run_deployment_algorithm.assert_not_called()
+        mock_remote_run_deployment_algorithm.assert_called_once()
+
+    @patch("caribou.monitors.deployment_manager.DeploymentManager._calculate_expiry_delta_seconds")
+    @patch("caribou.monitors.deployment_manager.DeploymentManager._get_workflow_config")
+    @patch("caribou.monitors.deployment_manager.DeploymentManager._run_deployment_algorithm")
+    @patch("caribou.monitors.deployment_manager.DeploymentManager._upload_new_workflow_info")
+    def test_run_deployment_algorithm(
+        self,
+        mock_upload_new_workflow_info,
+        mock_run_deployment_algorithm,
+        mock_get_workflow_config,
+        mock_calculate_expiry_delta_seconds,
+    ):
+        # Arrange
+        workflow_id = "workflow1"
+        solve_hours = ["0", "6", "12", "18"]
+        leftover_tokens = 10
+        mock_calculate_expiry_delta_seconds.return_value = 3600
+        mock_get_workflow_config.return_value = MagicMock()
+
+        # Act
+        self.deployment_manager.run_deployment_algorithm(workflow_id, solve_hours, leftover_tokens)
+
+        # Assert
+        mock_calculate_expiry_delta_seconds.assert_called_once_with(leftover_tokens)
+        mock_get_workflow_config.assert_called_once_with(workflow_id)
+        mock_run_deployment_algorithm.assert_called_once_with(mock_get_workflow_config.return_value, solve_hours, 3600)
+        mock_upload_new_workflow_info.assert_called_once_with(leftover_tokens, workflow_id)
+
+    @patch("caribou.monitors.deployment_manager.WorkflowConfig")
+    def test_get_workflow_config(self, mock_workflow_config):
+        # Arrange
+        workflow_id = "workflow1"
+        mock_client = MagicMock()
+        self.mock_endpoints.get_data_collector_client.return_value = mock_client
+        workflow_config_from_table = json.dumps({"workflow_config": json.dumps({"key": "value"})})
+        mock_client.get_value_from_table.return_value = (workflow_config_from_table, 0.0)
+
+        # Act
+        result = self.deployment_manager._get_workflow_config(workflow_id)
+
+        # Assert
+        self.mock_endpoints.get_data_collector_client.assert_called_once()
+        mock_client.get_value_from_table.assert_called_once_with(DEPLOYMENT_MANAGER_RESOURCE_TABLE, workflow_id)
+        mock_workflow_config.assert_called_once_with({"key": "value"})
+        self.assertEqual(result, mock_workflow_config.return_value)
+
+    def test_get_workflow_config_invalid_config(self):
+        # Arrange
+        workflow_id = "workflow1"
+        mock_client = MagicMock()
+        self.mock_endpoints.get_data_collector_client.return_value = mock_client
+        workflow_config_from_table = json.dumps({})
+        mock_client.get_value_from_table.return_value = (workflow_config_from_table, 0.0)
+
+        # Act & Assert
+        with self.assertRaises(ValueError) as context:
+            self.deployment_manager._get_workflow_config(workflow_id)
+
+        self.assertEqual(str(context.exception), "Invalid workflow config")
+        self.mock_endpoints.get_data_collector_client.assert_called_once()
+        mock_client.get_value_from_table.assert_called_once_with(DEPLOYMENT_MANAGER_RESOURCE_TABLE, workflow_id)
 
 
 if __name__ == "__main__":

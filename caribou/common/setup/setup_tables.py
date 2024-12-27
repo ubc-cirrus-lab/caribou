@@ -1,24 +1,32 @@
 import logging
+import os
+import time
 
 import boto3
+from botocore.exceptions import ClientError
 
 from caribou.common import constants
-from caribou.common.models.remote_client.aws_remote_client import AWSRemoteClient
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+# Only add a StreamHandler if not running in AWS Lambda
+if "AWS_LAMBDA_FUNCTION_NAME" not in os.environ:
+    if not logger.handlers:
+        logger.addHandler(logging.StreamHandler())
 
 
-def create_table(dynamodb, table_name):
+def create_table(dynamodb, table_name) -> bool:
     # Check if the table already exists
     try:
         dynamodb.describe_table(TableName=table_name)
         logger.info("Table %s already exists", table_name)
-        return
-    except dynamodb.exceptions.ResourceNotFoundException:
-        pass
-    if table_name in [constants.SYNC_MESSAGES_TABLE, constants.SYNC_PREDECESSOR_COUNTER_TABLE]:
-        client = AWSRemoteClient(constants.GLOBAL_SYSTEM_REGION)
-        client.create_sync_tables()
+        return False
+    except ClientError as e:
+        if e.response["Error"]["Code"] != "ResourceNotFoundException":
+            raise
+
+    # Create all non sync tables with on-demand billing mode
     dynamodb.create_table(
         TableName=table_name,
         AttributeDefinitions=[
@@ -28,6 +36,8 @@ def create_table(dynamodb, table_name):
         BillingMode="PAY_PER_REQUEST",
     )
 
+    return True
+
 
 def create_bucket(s3, bucket_name):
     # Check if the bucket already exists
@@ -35,7 +45,7 @@ def create_bucket(s3, bucket_name):
         s3.head_bucket(Bucket=bucket_name)
         logger.info("Bucket %s already exists", bucket_name)
         return
-    except s3.exceptions.ClientError as e:
+    except ClientError as e:
         if e.response["Error"]["Code"] != "404" and e.response["Error"]["Code"] != "403":
             raise
     s3.create_bucket(
@@ -54,17 +64,24 @@ def main():
         # If the attribute name ends with '_TABLE', create a DynamoDB table
         if attr.endswith("_TABLE"):
             table_name = getattr(constants, attr)
-            logger.info("Creating table: %s", table_name)
+            if table_name in [constants.SYNC_MESSAGES_TABLE, constants.SYNC_PREDECESSOR_COUNTER_TABLE]:
+                continue
+
+            created_table: bool = False
             try:
-                create_table(dynamodb, table_name)
+                created_table = create_table(dynamodb, table_name)
             except Exception as e:  # pylint: disable=broad-except
                 logger.error("Error creating table %s: %s", table_name, e)
                 logger.error("Trying to create table again")
                 try:
-                    create_table(dynamodb, table_name)
+                    time.sleep(1)  # Sleep for 1 second before trying to create the table again
+                    created_table = create_table(dynamodb, table_name)
                 except Exception as e:  # pylint: disable=broad-except
                     logger.error("Error creating table %s: %s", table_name, e)
                     logger.error("Skipping table creation")
+
+            if created_table:
+                logger.info("Created table: %s", table_name)
 
         # Disabled as part of issue #293
         # # If the attribute name ends with '_BUCKET', create an S3 bucket

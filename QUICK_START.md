@@ -17,6 +17,10 @@ Make sure you first have the necessary dependencies according to how you intend 
 
 ## Client side CLI
 
+Some client-side commands can be executed in the `AWS Remote CLI`, provided it is deployed. 
+
+**Note:** Remote CLI features, including all remote CLI commands and timer functionalities, are experimental. Please use them with caution and at your own risk.
+
 ### Setup a new workflow
 
 To set up a new workflow, in your command line, navigate to the directory where you want to create the new workflow and run:
@@ -112,6 +116,8 @@ poetry run caribou remove <workflow_id>
 
 Where `<workflow_id>` is the id of the workflow you want to remove.
 
+**Note:** May be executed remotely with the `-r` or `--remote` flag to execute them remotely and asynchronously. 
+
 ## Local Framework Component Execution
 
 The Caribou framework components can be run locally for fast prototyping and development.
@@ -125,7 +131,9 @@ poetry run caribou log_sync
 ```
 
 This might take a while, depending on the number of workflows and the amount of logs that need to be synced.
-Also, there is an inherent buffer of five minutes, meaning that logs are only synced if they are at least five minutes old.
+Also, there is an inherent buffer of fifteen minutes, meaning that logs are only synced if they are at least fifteen minutes old.
+
+**Note:** May be executed remotely with the `-r` or `--remote` flag to execute them remotely and asynchronously. 
 
 ### Data Collecting
 
@@ -140,7 +148,7 @@ Before we can generate a new deployment, we need to collect data from the provid
 2. Collect data from the other collectors:
 
     ```bash
-    poetry run caribou data_collect all --workflow_id <workflow_id>
+    poetry run caribou data_collect all
     ```
 
     Or collect data for a specific collector:
@@ -157,11 +165,13 @@ Before we can generate a new deployment, we need to collect data from the provid
     - `workflow`
     - `all`
 
-    The `all` and `workflow` collectors need a workflow id to be passed as an argument with `--workflow_id` or `-w`.
+    The `workflow` collectors need a workflow id to be passed as an argument with `--workflow_id` or `-w`.
 
 The workflow collector is invoked by the manager and collects data for the workflows that are currently being solved.
 
+**Note:** May be executed remotely with the `-r` or `--remote` flag to execute them remotely and asynchronously. 
 **Note:** For the data collectors to work locally, you must set some environment variables.
+**Note:** The `all` collector does not collect `workflow` information, as `manage_deployments` would perform this automatically, the `all` collector performs `provider`, `carbon`, and `performance` collector in that order. 
 
 ```bash
 export ELECTRICITY_MAPS_AUTH_TOKEN=<your_token>
@@ -183,6 +193,8 @@ poetry run caribou manage_deployments
 Refer to section 5.2 of the paper to learn about how we make this calculation.
 If you execute this command and nothing happens it might be that the minimal threshold for the number of invocations has not been reached yet, which is set to 10 invocations.
 
+**Note:** May be executed remotely with the `-r` or `--remote` flag to execute them remotely and asynchronously. 
+
 ### Run Deployment Migrator
 
 Make sure that you have the crane dependency installed.
@@ -195,6 +207,8 @@ poetry run caribou run_deployment_migrator
 ```
 
 This will check if a new deployment is required for any workflow, and, if so, migrate the functions according to this new deployment.
+
+**Note:** May be executed remotely with the `-r` or `--remote` flag to execute them remotely and asynchronously. 
 
 ## Deployment to AWS (AWS Remote CLI)
 To deploy the framework to AWS after completing the local setup process, use the following command while inside the main `caribou` directory. 
@@ -224,78 +238,68 @@ export ELECTRICITY_MAPS_AUTH_TOKEN=<your_token>
 export GOOGLE_API_KEY=<your_key>
 ```
 
-### How to Invoke the AWS Remote CLI
-After deploying the `AWS Remote CLI`, you can run Caribou components by invoking the deployed lambda function using the returned Lambda ARN with the following event parameters.
+## Setup Automatic Components (For AWS Remote CLI)
+After deploying the AWS remote CLI `deploy_remote_cli`, the user can set up automatic timers for all relevant Caribou components.
+This includes automating data collection (provider, performance, carbon, etc.), log synchronization, deployment management (solving for new deployments when needed), and deployment migration.
+This is implemented through the use of `EventBridge` which execute the Caribou remote framework Lambda function with customized JSON inputs.
 
-- List workflows:
-```json
-{
-  "action": "list"
-}
+The user may simply set up all the component timers automatically through the following command:
+
+
+```bash
+poetry run caribou setup_all_timers
+```
+This configures the timers in the default expressions listed below:
+ - `provider_collector`: By default, invokes the Lambda function at 12:05 AM on the first day of the month. Schedule expression: 'cron(5 0 1 * ? *)'
+ - `carbon_collector`: By default, invokes the Lambda function daily at 12:30 AM. Schedule expression: 'cron(30 0 * * ? *)'
+ - `performance_collector`: By default, invokes the Lambda function daily at 12:30 AM. Schedule expression: 'cron(30 0 * * ? *)'
+ - `log_syncer`: By default, invokes the Lambda function daily at 12:05 AM. Schedule expression: 'cron(5 0 * * ? *)'
+ - `deployment_manager`: By default, invokes the Lambda function daily at 01:00 AM. Schedule expression: 'cron(0 1 * * ? *)'
+ - `deployment_migrator`: By default, invokes the Lambda function daily at 02:00 AM. Schedule expression: 'cron(0 2 * * ? *)'
+
+
+**Note:** Running this command will reset all previously customized time configurations.
+
+At any time, the user can see all available timers and their configurations (and if setup) by running the following command:
+```bash
+poetry run caribou list_timers
 ```
 
-- Invoke workflow:
+Optionally, if the user wishes to have only some components run automatically or to modify the timer of any specific components, they can use the following command:
+```bash
+poetry run caribou setup_timer <timer>
+```
+Where `<timer>` is the name of the timer you want to configure or modify. It can be one of the following options:
+  - `provider_collector`
+  - `carbon_collector`
+  - `performance_collector`
+  - `log_syncer`
+  - `deployment_manager`
+  - `deployment_migrator`
 
-Where `argument` is the payload of the application.
+Optionally, you may also specify the time configurations using the following parameter:
+ - `schedule_expression`: Use `--schedule_expression` or `-se`. Default: The same default times set for `setup_all_timers` for each individual timer.
 
-```json
-{
-  "action": "run",
-  "workflow_id": "workflow_name-version_number",
-  "argument": {}
-}
+To remove a specific timer, use the following command:
+```bash
+poetry run caribou remove_timer <timer>
+```
+Where `<timer>` is the name of the timer you want to remove, using the same names as in `setup_timer`.
+
+
+To remove all the configured timers, use the following command:
+
+```bash
+poetry run caribou remove_all_timers
 ```
 
-- Remove Workflow:
-```json
-{
-  "action": "remove",
-  "workflow_id": "workflow_name-version_number"
-}
+## Teardown Framework
+Teardown of the Caribou framework is a very simple and automated process. All workflows, system components, and necessary tables for Caribou can be removed simply with the following command:
+
+```bash
+poetry run caribou teardown_framework
 ```
 
-- Perform Log Sync:
-```json
-{
-  "action": "log_sync"
-}
-```
+**Note:** This command cannot be undone, and all data will be removed (with the exception of CloudWatch data). The user will have to perform the `Setup AWS Environment` process from [Installation](INSTALL.md) again to use the capabilities of Caribou.
 
-- Perform Data collect:
-
-`collector` can be one of the following options: `provider`, `carbon`, `performance`, `workflow`, or `all`.
-
-`workflow_id` is only required for the `workflow` or `all` collector options.
-
-```json
-{
-    "action": "data_collect",
-    "collector": "all",
-    "workflow_id": "workflow_name-version_number"
-}
-```
-
-- Manage Deployments:
-
-`deployment_metrics_calculator_type` can be either `simple` (for the Python solver) or `go` (to use the Go solver) for deployment metrics determination.
-
-```json
-{
-  "action": "manage_deployments",
-  "deployment_metrics_calculator_type": "simple"
-}
-```
-
-- Deployment Migration:
-```json
-{
-  "action": "run_deployment_migrator"
-}
-```
-
-- Inquire Caribou Version:
-```json
-{
-  "action": "version"
-}
-```
+**Note:** This does not delete any custom data buckets that the user manually created for benchmarking or other purposes; this only concerns components and data that are automatically created by Caribou.

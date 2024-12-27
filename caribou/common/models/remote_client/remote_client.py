@@ -146,11 +146,11 @@ class RemoteClient(ABC):  # pylint: disable=too-many-public-methods
         raise NotImplementedError()
 
     @abstractmethod
-    def set_value_in_table(self, table_name: str, key: str, value: str) -> None:
+    def set_value_in_table(self, table_name: str, key: str, value: str, convert_to_bytes: bool = False) -> None:
         raise NotImplementedError()
 
     @abstractmethod
-    def update_value_in_table(self, table_name: str, key: str, value: str) -> None:
+    def update_value_in_table(self, table_name: str, key: str, value: str, convert_to_bytes: bool = False) -> None:
         raise NotImplementedError()
 
     @abstractmethod

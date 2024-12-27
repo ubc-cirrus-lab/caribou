@@ -50,7 +50,9 @@
         "dynamodb:PutItem",
         "dynamodb:CreateTable",
         "dynamodb:DescribeTable",
-        "dynamodb:DeleteItem"
+        "dynamodb:DeleteItem",
+        "dynamodb:DescribeTimeToLive",
+        "dynamodb:UpdateTimeToLive"
        ],
        "Resource": "arn:aws:dynamodb:*:*:*",
        "Effect": "Allow"
@@ -92,11 +94,34 @@
               "iam:ListRoles",
               "iam:AttachRolePolicy",
               "iam:CreatePolicy",
-              "iam:PassRole"
+              "iam:PassRole",
+              "iam:ListAttachedRolePolicies",
+              "iam:ListRolePolicies",
+              "iam:DeleteRolePolicy",
+              "iam:DeleteRole",
+              "iam:DetachRolePolicy",
+              "iam:DeletePolicy",
+              "iam:GetPolicy",
+              "iam:ListPolicies"
           ],
           "Resource": "*",
           "Effect": "Allow"
+      },
+      {
+        "Action": [
+            "ec2:DescribeRegions"
+        ],
+        "Resource": "*",
+        "Effect": "Allow"
+      },
+      {
+        "Action": [
+            "pricing:ListPriceLists",
+            "pricing:GetPriceListFileUrl"
+        ],
+        "Resource": "*",
+        "Effect": "Allow"
       }
-     ]
+    ]
   }
 }

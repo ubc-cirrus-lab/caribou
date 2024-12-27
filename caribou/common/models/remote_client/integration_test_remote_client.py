@@ -208,7 +208,7 @@ class IntegrationTestRemoteClient(RemoteClient):  # pylint: disable=too-many-pub
 
         return 0.0
 
-    def set_value_in_table(self, table_name: str, key: str, value: str) -> None:
+    def set_value_in_table(self, table_name: str, key: str, value: str, convert_to_bytes: bool = False) -> None:
         conn = self._db_connection()
         cursor = conn.cursor()
         cursor.execute(f"INSERT INTO {table_name} (key, value) VALUES (?, ?)", (key, value))
@@ -457,7 +457,7 @@ class IntegrationTestRemoteClient(RemoteClient):  # pylint: disable=too-many-pub
         conn.commit()
         conn.close()
 
-    def update_value_in_table(self, table_name: str, key: str, value: str) -> None:
+    def update_value_in_table(self, table_name: str, key: str, value: str, convert_to_bytes: bool = False) -> None:
         conn = self._db_connection()
         cursor = conn.cursor()
         cursor.execute(f"UPDATE {table_name} SET value=? WHERE key=?", (value, key))

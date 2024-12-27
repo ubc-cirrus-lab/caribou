@@ -1,11 +1,13 @@
 import unittest
 from datetime import datetime
 from unittest.mock import Mock, patch, MagicMock
+from caribou.common.models.remote_client.aws_remote_client import AWSRemoteClient
 from caribou.endpoint.client import Client
 import json
 from caribou.common.models.endpoints import Endpoints
 from unittest.mock import call
 from caribou.common.models.remote_client.remote_client_factory import RemoteClientFactory
+import botocore
 
 
 class TestClient(unittest.TestCase):
@@ -168,16 +170,17 @@ class TestClient(unittest.TestCase):
         client = Client()
         client._workflow_id = "workflow_id"
 
-        # Mock the return value of get_all_values_from_table
-        mock_deployment_manager_client.get_all_values_from_table.return_value = {
-            "workflow_id": json.dumps(
+        # Mock the return value of get_value_from_table
+        mock_deployment_manager_client.get_value_from_table.return_value = (
+            json.dumps(
                 {
                     "deployed_regions": json.dumps(
                         {"function_instance": {"deploy_region": {"provider": "provider", "region": "region"}}}
                     )
                 }
-            )
-        }
+            ),
+            0.0,
+        )
 
         # Capture the output of the print statements
         with patch("builtins.print") as mocked_print:
@@ -210,25 +213,6 @@ class TestClient(unittest.TestCase):
         # Check that the print statement was executed
         mocked_print.assert_called_with("Removed function function_instance from provider provider in region region")
 
-    @patch.object(RemoteClientFactory, "get_remote_client")
-    def test_remove_function_instance(self, mock_get_remote_client):
-        # Mocking the scenario where the function instance is removed successfully
-        mock_remote_client = MagicMock()
-        mock_get_remote_client.return_value = mock_remote_client
-
-        client = Client()
-
-        # Mock the input to _remove_function_instance
-        function_instance = "function_instance"
-        provider_region = {"provider": "provider", "region": "region"}
-
-        # Capture the output of the print statements
-        with patch("builtins.print") as mocked_print:
-            client._remove_function_instance(function_instance, provider_region)
-
-        # Check that the print statement was executed
-        mocked_print.assert_called_with("Removed function function_instance from provider provider in region region")
-
     @patch("caribou.endpoint.client.datetime")
     def test_get_deployment_key(self, mock_datetime):
         # Arrange
@@ -250,6 +234,132 @@ class TestClient(unittest.TestCase):
         # Test with no expiry time
         workflow_placement_decision["workflow_placement"]["current_deployment"]["expiry_time"] = None
         self.assertEqual(client._get_deployment_key(workflow_placement_decision, False), "home_deployment")
+
+    @patch.object(RemoteClientFactory, "get_remote_client")
+    def test_remove_function_instance_success(self, mock_get_remote_client):
+        # Mocking the scenario where the function instance is removed successfully
+        mock_remote_client = MagicMock()
+        mock_get_remote_client.return_value = mock_remote_client
+
+        client = Client()
+
+        # Mock the input to _remove_function_instance
+        function_instance = "function_instance"
+        provider_region = {"provider": "provider", "region": "region"}
+
+        # Capture the output of the print statements
+        with patch("builtins.print") as mocked_print:
+            client._remove_function_instance(function_instance, provider_region)
+
+        # Check that the print statement was executed
+        mocked_print.assert_called_with("Removed function function_instance from provider provider in region region")
+
+    @patch.object(RemoteClientFactory, "get_remote_client")
+    def test_remove_function_instance_ecr_repository_error(self, mock_get_remote_client):
+        # Mocking the scenario where removing the ECR repository raises an error
+        mock_remote_client = MagicMock(spec=AWSRemoteClient)
+        mock_remote_client.remove_ecr_repository.side_effect = RuntimeError("ECR error")
+        mock_get_remote_client.return_value = mock_remote_client
+
+        client = Client()
+
+        # Mock the input to _remove_function_instance
+        function_instance = "function_instance"
+        provider_region = {"provider": "provider", "region": "region"}
+
+        # Capture the output of the print statements
+        with patch("builtins.print") as mocked_print:
+            client._remove_function_instance(function_instance, provider_region)
+
+        # Check that the print statement was executed
+        mocked_print.assert_any_call("Could not remove ecr repository function_instance: ECR error")
+
+    @patch.object(RemoteClientFactory, "get_remote_client")
+    def test_remove_function_instance_messaging_topic_error(self, mock_get_remote_client):
+        # Mocking the scenario where removing the messaging topic raises an error
+        mock_remote_client = MagicMock()
+        mock_remote_client.get_topic_identifier.return_value = "topic_identifier"
+        mock_remote_client.remove_messaging_topic.side_effect = RuntimeError("Messaging topic error")
+        mock_get_remote_client.return_value = mock_remote_client
+
+        client = Client()
+
+        # Mock the input to _remove_function_instance
+        function_instance = "function_instance"
+        provider_region = {"provider": "provider", "region": "region"}
+
+        # Capture the output of the print statements
+        with patch("builtins.print") as mocked_print:
+            client._remove_function_instance(function_instance, provider_region)
+
+        # Check that the print statement was executed
+        mocked_print.assert_any_call(
+            "Could not remove messaging topic function_instance_messaging_topic: Messaging topic error"
+        )
+
+    @patch.object(RemoteClientFactory, "get_remote_client")
+    def test_remove_function_instance_function_error(self, mock_get_remote_client):
+        # Mocking the scenario where removing the function raises an error
+        mock_remote_client = MagicMock()
+        mock_remote_client.remove_function.side_effect = RuntimeError("Function error")
+        mock_get_remote_client.return_value = mock_remote_client
+
+        client = Client()
+
+        # Mock the input to _remove_function_instance
+        function_instance = "function_instance"
+        provider_region = {"provider": "provider", "region": "region"}
+
+        # Capture the output of the print statements
+        with patch("builtins.print") as mocked_print:
+            client._remove_function_instance(function_instance, provider_region)
+
+        # Check that the print statement was executed
+        mocked_print.assert_any_call("Could not remove function function_instance: Function error")
+
+    @patch.object(RemoteClientFactory, "get_remote_client")
+    def test_remove_function_instance_role_error(self, mock_get_remote_client):
+        # Mocking the scenario where removing the IAM role raises an error
+        mock_remote_client = MagicMock()
+        mock_remote_client.remove_role.side_effect = RuntimeError("Role error")
+        mock_get_remote_client.return_value = mock_remote_client
+
+        client = Client()
+
+        # Mock the input to _remove_function_instance
+        function_instance = "function_instance"
+        provider_region = {"provider": "provider", "region": "region"}
+
+        # Capture the output of the print statements
+        with patch("builtins.print") as mocked_print:
+            client._remove_function_instance(function_instance, provider_region)
+
+        # Check that the print statement was executed
+        mocked_print.assert_any_call("Could not remove role function_instance-role: Role error")
+
+    @patch.object(RemoteClientFactory, "get_remote_client")
+    def test_remove_function_instance_botocore_client_error(self, mock_get_remote_client):
+        # Mocking the scenario where botocore client error is raised
+        mock_remote_client = MagicMock(spec=AWSRemoteClient)
+        mock_remote_client.remove_ecr_repository.side_effect = botocore.exceptions.ClientError(
+            error_response={"Error": {"Code": "ClientError"}}, operation_name="RemoveECRRepository"
+        )
+        mock_get_remote_client.return_value = mock_remote_client
+
+        client = Client()
+
+        # Mock the input to _remove_function_instance
+        function_instance = "function_instance"
+        provider_region = {"provider": "provider", "region": "region"}
+
+        # Capture the output of the print statements
+        with patch("builtins.print") as mocked_print:
+            client._remove_function_instance(function_instance, provider_region)
+
+        # Check that the print statement was executed
+        mocked_print.assert_any_call(
+            "Could not remove ecr repository function_instance: An error occurred (ClientError) when calling the RemoveECRRepository operation: Unknown"
+        )
 
 
 if __name__ == "__main__":

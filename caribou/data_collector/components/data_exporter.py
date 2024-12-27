@@ -32,7 +32,13 @@ class DataExporter(ABC):
     def _update_modified_regions(self, provider: str, region: str) -> None:
         self._modified_regions.add(f"{provider}:{region}")
 
-    def _export_data(self, table_name: str, data: dict[str, Any], update_modified_regions: bool = False) -> None:
+    def _export_data(
+        self,
+        table_name: str,
+        data: dict[str, Any],
+        update_modified_regions: bool = False,
+        convert_to_bytes: bool = False,
+    ) -> None:
         """
         Exports all the processed data to all appropriate tables.
 
@@ -46,9 +52,9 @@ class DataExporter(ABC):
             data_json: str = json.dumps(value)
             is_key_in_table: bool = self._client.get_key_present_in_table(table_name, key)
             if is_key_in_table:
-                self._client.update_value_in_table(table_name, key, data_json)
+                self._client.update_value_in_table(table_name, key, data_json, convert_to_bytes=convert_to_bytes)
             else:
-                self._client.set_value_in_table(table_name, key, data_json)
+                self._client.set_value_in_table(table_name, key, data_json, convert_to_bytes=convert_to_bytes)
 
             if update_modified_regions:
                 provider, region = key.split(":")

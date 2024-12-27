@@ -215,9 +215,6 @@ class WorkflowInstance:  # pylint: disable=too-many-instance-attributes
                 current_node.cumulative_runtimes,
                 current_node.execution_time,
                 data_transfer_during_execution,
-                # ) = self._input_manager.get_node_runtimes_and_data_transfer(
-                #     instance_index, current_node.region_id, cumulative_runtime
-                # )
             ) = self._input_manager.get_node_runtimes_and_data_transfer(
                 actual_instance_id, current_node.region_id, cumulative_runtime, current_node.is_redirector
             )
