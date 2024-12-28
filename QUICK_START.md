@@ -33,6 +33,12 @@ Where `<workflow_name>` is the name of the new workflow.
 
 You can then use the Caribou Python API to define and develop the workflow.
 
+### Workflow ID
+
+When a new workflow is set up, it is initialized with the semantic version `0.0.1` as configured in the config and `app.py` workflow initialization.
+This, together with the `<workflow_name>`, will constitute the workflow ID (`<workflow_name>-<version_number>`).
+A workflow ID is unique in the Caribou middleware component, meaning if an ID is already deployed ([Deployment Utility](#deployment-utility)) it cannot be deployed again unless it is deleted ([Remove a workflow](#remove-a-workflow)).
+
 ### Example Workflow
 
 In the `examples/small_sync_example` directory, you can find an example workflow that you can use to get started.
