@@ -90,33 +90,32 @@ class ProviderRetriever(DataRetriever):
         if len(tables) == 0:
             raise ValueError("Could not find any tables on the AWS regions page")
 
-        for table in tables:
-            if not table.find_previous("h3").text.strip() == "Available Regions":
+        # Process the first table (which is the regions table)
+        table = tables[0]
+        table_rows = table.find_all("tr")[1:]  # Skip header row
+
+        for table_row in table_rows:
+            table_cells = table_row.find_all("td")
+            if len(table_cells) < 2:  # We only need first two columns (Code and Name)
+                continue
+            
+            region_code = table_cells[0].text.strip()
+            region_name = table_cells[1].text.strip()
+
+            if region_code not in all_enabled_regions:
+                # Skip regions that are not enabled for the current account
                 continue
 
-            table_rows = table.find_all("tr")
-
-            for table_row in table_rows:
-                table_cells = table_row.find_all("td")
-                if len(table_cells) != 3:
-                    continue
-                region_code = table_cells[0].text.strip()
-                region_name = table_cells[1].text.strip()
-
-                if region_code not in all_enabled_regions:
-                    # Skip regions that are not enabled for the current account
-                    continue
-
-                coordinates = self.retrieve_location(region_name)
-                regions[f"{Provider.AWS.value}:{region_code}"] = {
-                    "name": region_name,
-                    "provider": Provider.AWS.value,
-                    "code": region_code,
-                    "latitude": coordinates[0],
-                    "longitude": coordinates[1],
-                }
-                self._aws_region_name_to_code[region_name] = region_code
-
+            coordinates = self.retrieve_location(region_name)
+            print(f"Coordinates for {region_name}: {coordinates}")
+            regions[f"{Provider.AWS.value}:{region_code}"] = {
+                "name": region_name,
+                "provider": Provider.AWS.value,
+                "code": region_code,
+                "latitude": coordinates[0],
+                "longitude": coordinates[1],
+            }
+            self._aws_region_name_to_code[region_name] = region_code
         return regions
 
     def retrieve_integrationtest_regions(self) -> dict[str, dict[str, Any]]:
