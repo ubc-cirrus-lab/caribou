@@ -1036,7 +1036,7 @@ class TestAWSRemoteClient(unittest.TestCase):
         # Mock the return value of check_output
         mock_check_output.return_value = b"my_password"
 
-        result = client._copy_image_to_region(deployed_image_uri)
+        result = client._copy_image_if_not_exists(deployed_image_uri)
 
         # Check that the return value is correct
         expected_result = "123456789012.dkr.ecr.region1.amazonaws.com/my-web-app:latest"
