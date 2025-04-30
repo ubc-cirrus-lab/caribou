@@ -107,7 +107,6 @@ class ProviderRetriever(DataRetriever):
                 continue
 
             coordinates = self.retrieve_location(region_name)
-            print(f"Coordinates for {region_name}: {coordinates}")
             regions[f"{Provider.AWS.value}:{region_code}"] = {
                 "name": region_name,
                 "provider": Provider.AWS.value,
