@@ -98,7 +98,7 @@ class ProviderRetriever(DataRetriever):
             table_cells = table_row.find_all("td")
             if len(table_cells) < 2:  # We only need first two columns (Code and Name)
                 continue
-            
+
             region_code = table_cells[0].text.strip()
             region_name = table_cells[1].text.strip()
 
