@@ -207,12 +207,42 @@ class TestProviderRetriever(unittest.TestCase):
         mock_html_content = """
         <html>
             <body>
-                <h3>Available Regions</h3>
-                <table>
-                    <tr><td>us-east-1</td><td>US East (N. Virginia)</td><td>Some other data</td></tr>
-                    <tr><td>eu-west-1</td><td>EU (Ireland)</td><td>Some other data</td></tr>
-                    <tr><td>no-nons-1</td><td>Nowhere</td><td>Some other data</td></tr>
-                </table>
+                <div class="table-container">
+                    <div class="table-contents disable-scroll">
+                        <table id="w136aab7c13b7">
+                            <thead>
+                                <tr>
+                                    <th>Code</th>
+                                    <th>Name</th>
+                                    <th>AZs</th>
+                                    <th>Geography</th>
+                                    <th>Opt-in status</th>
+                                </tr>
+                            </thead>
+                            <tr>
+                                <td tabindex="-1">us-east-1</td>
+                                <td tabindex="-1">US East (N. Virginia)</td>
+                                <td tabindex="-1">6</td>
+                                <td tabindex="-1">United States of America</td>
+                                <td tabindex="-1">Not required</td>
+                            </tr>
+                            <tr>
+                                <td tabindex="-1">us-west-1</td>
+                                <td tabindex="-1">US West (N. California)</td>
+                                <td tabindex="-1">3</td>
+                                <td tabindex="-1">United States of America</td>
+                                <td tabindex="-1">Not required</td>
+                            </tr>
+                            <tr>
+                                <td tabindex="-1">eu-west-1</td>
+                                <td tabindex="-1">EU (Ireland)</td>
+                                <td tabindex="-1">3</td>
+                                <td tabindex="-1">Ireland</td>
+                                <td tabindex="-1">Not required</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
             </body>
         </html>
         """
@@ -232,16 +262,26 @@ class TestProviderRetriever(unittest.TestCase):
             mock_str_to_bool.return_value = False
             provider_retriever = ProviderRetriever(None)  # Assuming None can be passed as a dummy RemoteClient
 
-            provider_retriever._retrieve_enabled_aws_regions = Mock(return_value=["us-east-1", "eu-west-1"])
+            provider_retriever._retrieve_enabled_aws_regions = Mock(return_value=["us-east-1", "us-west-1"])
 
         regions = provider_retriever.retrieve_aws_regions()
 
+        # Verify the regions dictionary structure
         self.assertIn("aws:us-east-1", regions)
-        self.assertIn("aws:eu-west-1", regions)
-        self.assertNotIn("aws:no-nons-1", regions)
-        self.assertEqual(regions["aws:us-east-1"]["name"], "US East (N. Virginia)")
-        self.assertEqual(regions["aws:us-east-1"]["latitude"], 37.7749)
-        self.assertEqual(regions["aws:us-east-1"]["longitude"], -122.4194)
+        self.assertIn("aws:us-west-1", regions)
+        self.assertNotIn("aws:eu-west-1", regions)  # Should not be included as it's not in enabled regions
+
+        # Verify the region data structure
+        us_east_region = regions["aws:us-east-1"]
+        self.assertEqual(us_east_region["name"], "US East (N. Virginia)")
+        self.assertEqual(us_east_region["provider"], "aws")
+        self.assertEqual(us_east_region["code"], "us-east-1")
+        self.assertEqual(us_east_region["latitude"], 37.7749)
+        self.assertEqual(us_east_region["longitude"], -122.4194)
+
+        # Verify the region name to code mapping
+        self.assertEqual(provider_retriever._aws_region_name_to_code["US East (N. Virginia)"], "us-east-1")
+        self.assertEqual(provider_retriever._aws_region_name_to_code["US West (N. California)"], "us-west-1")
 
     @patch("requests.get")
     @patch("caribou.data_collector.components.provider.provider_retriever.boto3.client")

@@ -44,6 +44,8 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ !github.event.pull_request.draft }}
     timeout-minutes: 5
+    permissions:
+      pull-requests: write
     steps:
       - uses: actions/checkout@v2
       - name: Setup poetry
@@ -54,6 +56,7 @@ jobs:
           poetry run pytest --cache-clear --cov=caribou/ --cov-fail-under=80
           poetry run pytest --junitxml=pytest.xml --cov-report=term-missing:skip-covered --cov-fail-under=80 --cov=caribou caribou/tests | tee pytest-coverage.txt
       - name: Pytest coverage comment
+        if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
         uses: MishaKav/pytest-coverage-comment@main
         with:
           pytest-coverage-path: ./pytest-coverage.txt
