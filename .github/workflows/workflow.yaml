@@ -44,6 +44,8 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ !github.event.pull_request.draft }}
     timeout-minutes: 5
+    permissions:
+      pull-requests: write
     steps:
       - uses: actions/checkout@v2
       - name: Setup poetry
