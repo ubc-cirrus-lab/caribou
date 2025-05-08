@@ -2,7 +2,6 @@ from typing import Any, Optional
 
 import numpy as np
 import requests
-from bs4 import BeautifulSoup
 from scipy import optimize, stats
 
 from caribou.data_collector.utils.constants import CLOUD_PING
@@ -17,40 +16,21 @@ class AWSLatencyRetriever(LatencyRetriever):
 
         percentile_information: dict[str, Any] = {}
         for percentile in percentiles:
-            cloud_ping_url = f"{CLOUD_PING}{percentile}/timeframe/1W"
+            params = {"percentile": percentile, "timeframe": "1W"}
+            cloud_ping_response = requests.get(CLOUD_PING, params=params, timeout=10)
+            cloud_ping_json = cloud_ping_response.json()
 
-            cloud_ping_page = requests.get(cloud_ping_url, timeout=10)
-
-            soup = BeautifulSoup(cloud_ping_page.content, "html.parser")
-
-            parsed_table = self._parse_table(soup)
-
-            for from_region, to_regions in parsed_table.items():
-                if from_region not in percentile_information:
-                    percentile_information[from_region] = {}
-                for to_region, latency in to_regions.items():
-                    if to_region not in percentile_information[from_region]:
-                        percentile_information[from_region][to_region] = {}
-                    percentile_information[from_region][to_region][percentile] = latency
+            if "data" in cloud_ping_json:
+                api_data = cloud_ping_json["data"]
+                for from_region, to_regions in api_data.items():
+                    if from_region not in percentile_information:
+                        percentile_information[from_region] = {}
+                    for to_region, latency in to_regions.items():
+                        if to_region not in percentile_information[from_region]:
+                            percentile_information[from_region][to_region] = {}
+                        percentile_information[from_region][to_region][percentile] = latency
 
         return percentile_information
-
-    def _parse_table(self, soup: BeautifulSoup) -> dict[str, dict[str, float]]:
-        table = soup.find("table", class_="table table-bordered table-sm")
-
-        headers = table.find_all("th", class_="region_title")
-        columns = [header.find("em").get_text(strip=True) for header in headers]  # Skip first header
-
-        data: dict[str, dict[str, float]] = {}
-        rows = table.find_all("tr")[3:]  # Skip header row
-        for row in rows:
-            cols = row.find_all("td")
-            region_code = row.find("th", class_="region_title").find("em").get_text(strip=True)
-            for i, col in enumerate(cols):
-                if i == 0:
-                    data[region_code] = {}
-                data[region_code][columns[i]] = float(col.get_text(strip=True))
-        return data
 
     def get_latency_distribution(self, region_from: dict[str, Any], region_to: dict[str, Any]) -> list[float]:
         # Retrieve _percentile_information if not already retrieved
