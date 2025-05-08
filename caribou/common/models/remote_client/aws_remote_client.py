@@ -256,7 +256,7 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
     ) -> str:
         workflow_instance_id = "-".join(function_name.split("-")[0:2])
         deployed_image_uri = self._get_deployed_image_uri(function_name)
-        
+
         if len(deployed_image_uri) > 0:
             # If image exists, just copy it to the current region
             image_uri = self._copy_image_if_not_exists(deployed_image_uri)
