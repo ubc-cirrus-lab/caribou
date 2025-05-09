@@ -679,7 +679,8 @@ class TestAWSRemoteClient(unittest.TestCase):
         COPY app.py ./
         COPY src ./src
         COPY caribou ./caribou
-        CMD ["handler.handler"]
+        COPY generic_handler.py ./
+        CMD ["generic_handler.lambda_handler"]
         """
         self.assertEqual(result.strip(), expected_result.strip())
 
@@ -693,7 +694,8 @@ class TestAWSRemoteClient(unittest.TestCase):
         COPY app.py ./
         COPY src ./src
         COPY caribou ./caribou
-        CMD ["handler.handler"]
+        COPY generic_handler.py ./
+        CMD ["generic_handler.lambda_handler"]
         """
         self.assertEqual(result.strip(), expected_result.strip())
 
@@ -730,9 +732,9 @@ class TestAWSRemoteClient(unittest.TestCase):
         mock_dynamodb_client.update_item.assert_any_call(
             TableName=CARIBOU_WORKFLOW_IMAGES_TABLE,
             Key={"key": {"S": "image_processing-0_0_1"}},
-            UpdateExpression="SET #v = if_not_exists(#v, :empty_map)",
+            UpdateExpression="SET #v = :value",
             ExpressionAttributeNames={"#v": "value"},
-            ExpressionAttributeValues={":empty_map": {"M": {}}},
+            ExpressionAttributeValues={":value": {"S": image_name}},
         )
 
     @patch.object(AWSRemoteClient, "_client")
@@ -1005,7 +1007,7 @@ class TestAWSRemoteClient(unittest.TestCase):
         mock_dynamodb_client.get_item.return_value = {
             "Item": {
                 "key": {"S": "image_processing-0_0_1"},
-                "value": {"M": {"getinput": {"S": "image_uri"}}},
+                "value": {"S": "image_uri"}
             }
         }
 
