@@ -1120,7 +1120,7 @@ class TestCaribouWorkflow(unittest.TestCase):
             )
 
             self.workflow._inform_sync_node_of_conditional_non_execution(
-                workflow_placement_decision, "not_called_instance:sync:", "current_node::"
+                workflow_placement_decision, "not_called_instance:sync:", "current_node::", "next_instance"
             )
 
             mock_factory_class.get_remote_client.assert_called_with("provider1", "region1")
@@ -1162,7 +1162,7 @@ class TestCaribouWorkflow(unittest.TestCase):
             return_value=mock_remote_client_factory,
         ) as mock_factory_class:
             self.workflow._inform_sync_node_of_conditional_non_execution(
-                workflow_placement_decision, "not_called_instance::", "current_node::"
+                workflow_placement_decision, "not_called_instance::", "current_node::", "next_instance"
             )
 
             mock_factory_class.get_remote_client.assert_not_called()
@@ -1220,7 +1220,7 @@ class TestCaribouWorkflow(unittest.TestCase):
         mock_worker = Mock(return_value=future)
         self.workflow._thread_pool.submit = mock_worker
 
-        with patch.object(self.workflow, "get_successor_instance_name", return_value=("successor", {})):
+        with patch.object(self.workflow, "get_successor_instance_name", return_value=("successor", {}, "next_function")):
             with patch.object(
                 self.workflow,
                 "get_successor_workflow_placement_decision",
