@@ -986,7 +986,6 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         with zipfile.ZipFile(zip_path, "r") as zip_ref:
             zip_ref.extractall(tmpdirname)
 
-
         # Step 2: Create a Dockerfile in the temporary directory
         dockerfile_content = self._generate_framework_dockerfile(handler, env_vars)
         with open(os.path.join(tmpdirname, "Dockerfile"), "w", encoding="utf-8") as f_dockerfile:
