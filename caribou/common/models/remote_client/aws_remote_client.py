@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import shutil
 import subprocess
 import tempfile
 import time
@@ -986,6 +987,12 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         with zipfile.ZipFile(zip_path, "r") as zip_ref:
             zip_ref.extractall(tmpdirname)
 
+        readme_src = os.path.join(os.getcwd(), "README.md")
+        if os.path.exists(readme_src):
+            shutil.copy(readme_src, os.path.join(tmpdirname, "README.md"))
+        else:
+            raise RuntimeError("README.md not found in project root; package‑mode needs it")
+
         # Step 2: Create a Dockerfile in the temporary directory
         dockerfile_content = self._generate_framework_dockerfile(handler, env_vars)
         with open(os.path.join(tmpdirname, "Dockerfile"), "w", encoding="utf-8") as f_dockerfile:
@@ -1050,7 +1057,11 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
 
         # Copy Python dependency management files
         COPY pyproject.toml poetry.lock ./
-
+        COPY README.md ./ 
+        
+        COPY caribou ./caribou
+        COPY caribou-go ./caribou-go
+        
         # Configure Poetry settings and install dependencies
         RUN poetry config virtualenvs.create false
         RUN poetry install --only main
@@ -1059,7 +1070,6 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         {env_statements}
 
         # Copy application code
-        COPY caribou ./caribou
         COPY app.py ./
 
         # Command to run the application
