@@ -4,7 +4,7 @@ from pathlib import Path
 from caribou.data_collector.utils.ec_maps_zone_finder.utils import reverse_geocode
 
 
-async def main():
+async def find_zone() -> None:
     _this_file_dir = Path(__file__).resolve().parent
     _finder_data_csv_path = _this_file_dir / "data.csv"
     with open(_finder_data_csv_path, "r", encoding="utf-8") as file:
@@ -17,10 +17,12 @@ async def main():
         if len(row.split(",")) == 2:
             lon, lat = row.split(",")
         elif len(row.split(",")) == 3:
-            lon, lat, zone = row.split(",")
+            lon, lat, _ = row.split(",")
         else:
             raise ValueError(f"Invalid row: {row}")
-        zone = await reverse_geocode(float(lon), float(lat))
+        zone: str | None = await reverse_geocode(float(lon), float(lat))
+        if zone is None:
+            zone = ""
         results.append(f"{lon},{lat},{zone}")
 
     with open(_finder_data_csv_path, "w", encoding="utf-8") as file:
@@ -28,4 +30,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(find_zone())

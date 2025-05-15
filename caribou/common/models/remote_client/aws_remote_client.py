@@ -1,7 +1,6 @@
 import json
 import logging
 import os
-import shutil
 import subprocess
 import tempfile
 import time
@@ -987,11 +986,6 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         with zipfile.ZipFile(zip_path, "r") as zip_ref:
             zip_ref.extractall(tmpdirname)
 
-        readme_src = os.path.join(os.getcwd(), "README.md")
-        if os.path.exists(readme_src):
-            shutil.copy(readme_src, os.path.join(tmpdirname, "README.md"))
-        else:
-            raise RuntimeError("README.md not found in project root; package‑mode needs it")
 
         # Step 2: Create a Dockerfile in the temporary directory
         dockerfile_content = self._generate_framework_dockerfile(handler, env_vars)

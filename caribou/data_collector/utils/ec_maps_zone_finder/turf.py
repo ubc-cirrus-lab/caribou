@@ -1,4 +1,5 @@
 import math
+from typing import Any
 
 # Constants
 EARTH_RADIUS = 6371008.8
@@ -8,6 +9,9 @@ FACTORS = {
     "metres": EARTH_RADIUS,
     "degrees": EARTH_RADIUS / 111325,
 }
+
+CoordInput = list[float] | dict[str, Any] | None
+PointCoordinates = list[float]
 
 
 # Helper Functions
@@ -23,7 +27,7 @@ def radians_to_length(radians: float, units: str = "kilometers") -> float:
     return radians * factor
 
 
-def get_coord(coord):
+def get_coord(coord: CoordInput) -> PointCoordinates:
     if coord is None:
         raise ValueError("coord is required")
 
@@ -51,7 +55,7 @@ def get_coord(coord):
     raise ValueError("coord must be GeoJSON Point or an Array of numbers")
 
 
-def feature(geom, properties=None):
+def feature(geom: dict[str, Any], properties: dict[str, Any] | None = None) -> dict[str, Any]:
     if properties is None:
         properties = {}
     return {
@@ -62,7 +66,7 @@ def feature(geom, properties=None):
 
 
 # Main Functions
-def point(coordinates, properties=None):
+def point(coordinates: list[float], properties: dict[str, Any] | None = None) -> dict[str, Any]:
     if properties is None:
         properties = {}
     if coordinates is None:
@@ -79,7 +83,7 @@ def point(coordinates, properties=None):
     )
 
 
-def distance(from_pt, to_pt, options=None):
+def distance(from_pt: Any, to_pt: Any, options: dict[str, Any] | None = None) -> float:
     if options is None:
         options = {}
 
@@ -96,11 +100,13 @@ def distance(from_pt, to_pt, options=None):
     return radians_to_length(2 * math.atan2(math.sqrt(a), math.sqrt(1 - a)))
 
 
-def dot(u, v):
+def dot(u: list[float], v: list[float]) -> float:
     return u[0] * v[0] + u[1] * v[1]
 
 
-def distance_to_segment(p, a, b, options_for_distance_call=None):
+def distance_to_segment(
+    p: list[float], a: list[float], b: list[float], options_for_distance_call: dict[str, Any] | None = None
+) -> float:
     if options_for_distance_call is None:
         options_for_distance_call = {}
 
@@ -121,7 +127,7 @@ def distance_to_segment(p, a, b, options_for_distance_call=None):
     return distance(p, pb, options_for_distance_call)
 
 
-def point_to_line_distance(pt_input, line_input, options: str = None) -> float:
+def point_to_line_distance(pt_input: Any, line_input: Any, options: dict[str, Any] | None = None) -> float:
     if options is None:
         options = {}
 
@@ -154,7 +160,7 @@ def point_to_line_distance(pt_input, line_input, options: str = None) -> float:
     if len(line_coords_list) == 1:
         return distance(p_coords, line_coords_list[0], {"units": units_for_final_result_if_conversion_was_done})
 
-    distance_options_for_segment = {}
+    distance_options_for_segment: dict[str, Any] = {}
 
     for i in range(len(line_coords_list) - 1):
         a = line_coords_list[i]
@@ -169,7 +175,7 @@ def point_to_line_distance(pt_input, line_input, options: str = None) -> float:
     return min_dist_val
 
 
-def _get_pt_feature(pt_input):
+def _get_pt_feature(pt_input: Any) -> dict[str, Any]:
     if isinstance(pt_input, list):
         return feature({"type": "Point", "coordinates": pt_input})
 
@@ -179,7 +185,7 @@ def _get_pt_feature(pt_input):
     raise TypeError("pt_input must be a list or a dict")
 
 
-def _get_line_feature(line_input):
+def _get_line_feature(line_input: Any) -> dict[str, Any]:
     if isinstance(line_input, list):
         return feature({"type": "LineString", "coordinates": line_input})
 
@@ -189,7 +195,7 @@ def _get_line_feature(line_input):
     raise TypeError("line_input must be a list of coordinates or a dict")
 
 
-def in_ring(pt_coords, ring_coords) -> bool:
+def in_ring(pt_coords: list[float], ring_coords: list[list[float]]) -> bool:
     inside = False
     x = pt_coords[0]
     y = pt_coords[1]
@@ -216,7 +222,7 @@ def in_ring(pt_coords, ring_coords) -> bool:
     return inside
 
 
-def boolean_point_in_polygon(point_input_bip, polygon_input_bip) -> bool:
+def boolean_point_in_polygon(point_input_bip: Any, polygon_input_bip: dict[str, Any]) -> bool:
     pt = get_coord(point_input_bip)
 
     polys_rings = None

@@ -2,8 +2,9 @@ import asyncio
 import math
 import os
 import time
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from functools import partial
+from os import mkdir
 from pathlib import Path
 from typing import Any, Callable, Optional
 
@@ -16,7 +17,7 @@ from caribou.common.models.remote_client.remote_client import RemoteClient
 from caribou.common.utils import str_to_bool
 from caribou.data_collector.components.data_retriever import DataRetriever
 from caribou.data_collector.utils.constants import EC_MAPS_HISTORICAL_BASE_URL
-from caribou.data_collector.utils.ec_maps_zone_finder.index import main as finder
+from caribou.data_collector.utils.ec_maps_zone_finder.index import find_zone as finder
 
 
 class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attributes
@@ -303,7 +304,7 @@ class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attri
         self._carbon_intensity_cache[(latitude, longitude)] = result
         return result
 
-    async def _get_ecmaps_zone_from_coordinates(self, latitude: float, longitude: float):
+    async def _get_ecmaps_zone_from_coordinates(self, latitude: float, longitude: float) -> str | None:
         header = "lon,lat,zone"
         results = [header]
         results.append(f"{longitude},{latitude},")
@@ -322,7 +323,10 @@ class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attri
 
     def _get_ec_maps_historical_carbon_intensity_csv(self, zone: str) -> None:
         url = EC_MAPS_HISTORICAL_BASE_URL + zone + "_2024_hourly.csv"
-        filename = self._finder_data_path / url.split("/")[-1]
+        filename = self._finder_data_path / "hourly_data" / url.split("/")[-1]
+        hourly_path = self._finder_data_path / "hourly_data"
+        if not hourly_path.exists():
+            mkdir(hourly_path)
 
         with requests.get(url, timeout=10, stream=True) as response:
             response.raise_for_status()
@@ -333,11 +337,13 @@ class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attri
 
     def _get_co2_historical_json(self, zone: str) -> list[dict[str, str]]:
         # print("zone: ", zone)
-        my_file = Path(f"{self._finder_data_path}/{zone}_2024_hourly.csv")
+        my_file = Path(f"{self._finder_data_path}/hourly_data/{zone}_2024_hourly.csv")
         if not my_file.is_file():
             self._get_ec_maps_historical_carbon_intensity_csv(zone)
 
-        data = pd.read_csv(f"{self._finder_data_path}/{zone}_2024_hourly.csv", dtype={"Datetime (UTC)": str})
+        data = pd.read_csv(
+            f"{self._finder_data_path}/hourly_data/{zone}_2024_hourly.csv", dtype={"Datetime (UTC)": str}
+        )
 
         datetime_col_name = "Datetime (UTC)"
         carbon_intensity_col_name = "Carbon intensity gCO₂eq/kWh (Life cycle)"
@@ -354,7 +360,7 @@ class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attri
         else:
             selected["Datetime (UTC)"] = selected["Datetime (UTC)"].dt.tz_convert("UTC")
 
-        start_date = datetime.now(UTC) - timedelta(days=365)
+        start_date = datetime.now(timezone.utc) - timedelta(days=365)
         start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
         end_date = start_date + timedelta(days=7)
 

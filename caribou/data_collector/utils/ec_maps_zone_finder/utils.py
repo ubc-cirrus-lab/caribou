@@ -1,7 +1,7 @@
 import asyncio
 import json
 import os
-from typing import Optional
+from typing import Any
 
 from caribou.data_collector.utils.ec_maps_zone_finder import turf
 
@@ -11,15 +11,15 @@ GEO_GENERATED_FILE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__)
 
 
 class GeoFeatureLoader:
-    _feature_future: Optional[asyncio.Future] = None
+    _feature_future: asyncio.Future | None = None
     _load_lock = asyncio.Lock()
 
-    async def _actual_load_data_internal(self):
+    async def _actual_load_data_internal(self) -> dict[str, Any]:
         """Helper function to perform the actual file reading and parsing."""
         loop = asyncio.get_running_loop()
         try:
 
-            def read_and_parse():
+            def read_and_parse() -> dict[str, Any]:
                 with open(GEO_GENERATED_FILE_PATH, "r", encoding="utf-8") as f:
                     data_str = f.read()
                 return json.loads(data_str)
@@ -37,7 +37,7 @@ class GeoFeatureLoader:
             print(f"An unexpected error occurred while loading geo features: {e}")
             raise
 
-    async def get_features(self):
+    async def get_features(self) -> dict[str, Any]:
         if GeoFeatureLoader._feature_future is None:
             async with GeoFeatureLoader._load_lock:
                 # Double-check after acquiring the lock (double-checked locking pattern)
@@ -61,19 +61,19 @@ class GeoFeatureLoader:
 _geo_loader_instance = GeoFeatureLoader()
 
 
-async def load_geometry_features_cached():  # This now uses the class instance
+async def load_geometry_features_cached() -> dict[str, Any]:  # This now uses the class instance
     return await _geo_loader_instance.get_features()
 
 
 _load_lock = asyncio.Lock()
 
 
-async def _actual_load_data():
+async def _actual_load_data() -> dict[str, Any]:
     """Helper function to perform the actual file reading and parsing."""
     loop = asyncio.get_running_loop()
     try:
 
-        def read_and_parse():
+        def read_and_parse() -> dict[str, Any]:
             with open(GEO_GENERATED_FILE_PATH, "r", encoding="utf-8") as f:
                 data_str = f.read()
             return json.loads(data_str)
@@ -92,7 +92,9 @@ async def _actual_load_data():
         raise
 
 
-def get_nearest_zone(potential_zones: list[str], zone_to_lines, target_point):
+def get_nearest_zone(
+    potential_zones: list[str], zone_to_lines: dict[str, list[Any]], target_point: Any
+) -> dict[str, Any] | None:
     """
     Finds the nearest zone to the target point from a list of potential zones.
 
@@ -125,7 +127,7 @@ def get_nearest_zone(potential_zones: list[str], zone_to_lines, target_point):
     return result
 
 
-async def reverse_geocode(lon: float, lat: float) -> Optional[str]:
+async def reverse_geocode(lon: float, lat: float) -> str | None:
     """
     Performs reverse geocoding for the given longitude and latitude.
 
