@@ -309,7 +309,7 @@ class DeploymentManager(Monitor):
         mean = np.array(workflow_summary["workflow_runtime_samples"]).mean()
         if math.isnan(mean):
             return 0.0
-        else :
+        else:
             return mean
 
     def _calculate_affordable_deployment_algorithm_run(

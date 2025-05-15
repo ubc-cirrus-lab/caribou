@@ -2,7 +2,7 @@ import asyncio
 import math
 import os
 import time
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from functools import partial
 from pathlib import Path
 from typing import Any, Callable, Optional
@@ -15,8 +15,9 @@ from caribou.common.constants import GLOBAL_TIME_ZONE
 from caribou.common.models.remote_client.remote_client import RemoteClient
 from caribou.common.utils import str_to_bool
 from caribou.data_collector.components.data_retriever import DataRetriever
-from caribou.data_collector.utils.ec_maps_zone_finder.index import main as finder
 from caribou.data_collector.utils.constants import EC_MAPS_HISTORICAL_BASE_URL
+from caribou.data_collector.utils.ec_maps_zone_finder.index import main as finder
+
 
 class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attributes
     def __init__(self, client: RemoteClient) -> None:
@@ -47,11 +48,11 @@ class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attri
 
         self._carbon_intensity_cache: dict[tuple[float, float], float] = {}
 
-        self._THIS_FILE_DIR = Path(__file__).resolve().parent
-        self._PROJECT_ROOT = self._THIS_FILE_DIR.parent.parent.parent
-        self._FINDER_DATA_PATH = self._PROJECT_ROOT / "data_collector" / "utils" / "ec_maps_zone_finder"
-        self._FINDER_DATA_CSV_PATH = self._FINDER_DATA_PATH / "data.csv"
-        self._FINDER_DATA_CSV_PATH.parent.mkdir(parents=True, exist_ok=True)
+        self._this_file_dir = Path(__file__).resolve().parent
+        self._project_root = self._this_file_dir.parent.parent.parent
+        self._finder_data_path = self._project_root / "data_collector" / "utils" / "ec_maps_zone_finder"
+        self._finder_data_csv_path = self._finder_data_path / "data.csv"
+        self._finder_data_csv_path.parent.mkdir(parents=True, exist_ok=True)
 
     def retrieve_carbon_region_data(self) -> dict[str, dict[str, Any]]:
         result_dict: dict[str, dict[str, Any]] = {}
@@ -194,10 +195,10 @@ class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attri
         carbon_values = []
         for entry in sorted_data:
             if "carbonIntensity" in entry and entry["carbonIntensity"] is not None:
-                    carbon_values.append(float(entry["carbonIntensity"]))
+                carbon_values.append(float(entry["carbonIntensity"]))
 
         first_prediction_hour = datetime.fromisoformat(sorted_data[-1]["datetime"].replace("Z", "")) + timedelta(
-                hours=1
+            hours=1
         )
 
         model = ExponentialSmoothing(carbon_values, trend=None, seasonal="additive", seasonal_periods=24).fit()
@@ -253,23 +254,14 @@ class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attri
                 result = json_data["data"]
 
         else:
-            # print("API call failed or returned no data. Check your auth key. Attempting fallback to historical data...")
-
             try:
                 ecmaps_zone = asyncio.run(self._get_ecmaps_zone_from_coordinates(latitude, longitude))
             except RuntimeError as e:
-                if "cannot be called from a running event loop" in str(e):
-                    print("ERROR: Fallback failed because asyncio.run() was called from an already running event loop.")
-                    return []
-                else:
-                    print(f"ERROR during zone finding: {e}")
-                    return []
-            except Exception as e_general:
-                print(f"ERROR during fallback zone retrieval: {e_general}")
+                print(f"ERROR during fallback zone retrieval: {e}")
                 return []
 
             if not isinstance(ecmaps_zone, str) or not ecmaps_zone:
-                print(f"Fallback: Failed to obtain a valid zone. Value was: {ecmaps_zone}")
+                print(f"Fallback: Failed to obtain a valid zone {ecmaps_zone}")
                 return []
 
             self._get_ec_maps_historical_carbon_intensity_csv(ecmaps_zone)
@@ -315,79 +307,64 @@ class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attri
         header = "lon,lat,zone"
         results = [header]
         results.append(f"{longitude},{latitude},")
-        zone_csv = self._FINDER_DATA_CSV_PATH
-        with open(zone_csv, 'w') as file:
-            file.write('\n'.join(results) + '\n')
+        zone_csv = self._finder_data_csv_path
+        with open(zone_csv, "w", encoding="utf-8") as file:
+            file.write("\n".join(results) + "\n")
 
         await finder()
 
-        with open(zone_csv, 'r') as file:
-            lines = file.read().strip().split('\n')
+        with open(zone_csv, "r", encoding="utf-8") as file:
+            lines = file.read().strip().split("\n")
             rows = lines[1:]
             row = rows[0]
-            lon, lat, zone = row.split(',')
+            _, _, zone = row.split(",")
         return zone
 
-    def _get_ec_maps_historical_carbon_intensity_csv(self, zone):
+    def _get_ec_maps_historical_carbon_intensity_csv(self, zone: str) -> None:
         url = EC_MAPS_HISTORICAL_BASE_URL + zone + "_2024_hourly.csv"
-        filename = self._FINDER_DATA_PATH / url.split("/")[-1]
-        try:
-            with requests.get(url, timeout=10, stream=True) as response:
-                response.raise_for_status()
+        filename = self._finder_data_path / url.split("/")[-1]
 
-                with open(filename, 'wb') as out_file:
-                    for chunk in response.iter_content(chunk_size=8192):
-                        out_file.write(chunk)
+        with requests.get(url, timeout=10, stream=True) as response:
+            response.raise_for_status()
 
-        except requests.exceptions.HTTPError as e:
-            print(f"HTTP Error (requests): {e.response.status_code} - {e.response.reason} for URL: {e.request.url}")
-        except requests.exceptions.ConnectionError as e:
-            print(f"Connection Error (requests) for URL {e.request.url}: {e}")
-        except requests.exceptions.Timeout as e:
-            print(f"Timeout Error (requests) for URL {e.request.url}: {e}")
-        except IOError as e:
-            print(f"File I/O error for '{filename}': {e}")
-        except Exception as e:
-            print(f"An unexpected error occurred during download: {type(e).__name__} - {e}")
+            with open(filename, "wb") as out_file:
+                for chunk in response.iter_content(chunk_size=8192):
+                    out_file.write(chunk)
 
-
-    def _get_co2_historical_json(self, zone) -> list[dict[str, str]]:
+    def _get_co2_historical_json(self, zone: str) -> list[dict[str, str]]:
         # print("zone: ", zone)
-        my_file = Path(f'{self._FINDER_DATA_PATH}/{zone}_2024_hourly.csv')
+        my_file = Path(f"{self._finder_data_path}/{zone}_2024_hourly.csv")
         if not my_file.is_file():
-            # print(f"File {my_file} not found. Downloading...")
-            self._get_ec_maps_historical_carbon_intensity_csv()
+            self._get_ec_maps_historical_carbon_intensity_csv(zone)
 
-        data = pd.read_csv(f'{self._FINDER_DATA_PATH}/{zone}_2024_hourly.csv', dtype={"Datetime (UTC)": str})
+        data = pd.read_csv(f"{self._finder_data_path}/{zone}_2024_hourly.csv", dtype={"Datetime (UTC)": str})
 
         datetime_col_name = "Datetime (UTC)"
         carbon_intensity_col_name = "Carbon intensity gCO₂eq/kWh (Life cycle)"
         selected = data[[datetime_col_name, carbon_intensity_col_name]].copy()
 
-        try:
-            selected[datetime_col_name] = pd.to_datetime(selected[datetime_col_name], errors="coerce",
-                                                         format='%Y-%m-%d %H:%M:%S')
-        except Exception as e:
-            print(f"Error during pd.to_datetime: {e}")
+        selected[datetime_col_name] = pd.to_datetime(
+            selected[datetime_col_name], errors="coerce", format="%Y-%m-%d %H:%M:%S"
+        )
 
         if selected["Datetime (UTC)"].dt.tz is None:
-            selected["Datetime (UTC)"] = selected["Datetime (UTC)"].dt.tz_localize('UTC', ambiguous='infer',
-                                                                                   nonexistent='shift_forward')
+            selected["Datetime (UTC)"] = selected["Datetime (UTC)"].dt.tz_localize(
+                "UTC", ambiguous="infer", nonexistent="shift_forward"
+            )
         else:
-            selected["Datetime (UTC)"] = selected["Datetime (UTC)"].dt.tz_convert('UTC')
+            selected["Datetime (UTC)"] = selected["Datetime (UTC)"].dt.tz_convert("UTC")
 
         start_date = datetime.now(UTC) - timedelta(days=365)
         start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
         end_date = start_date + timedelta(days=7)
 
         in_one_week = selected[
-            (selected["Datetime (UTC)"] > start_date) &
-            (selected["Datetime (UTC)"] < end_date)
-            ].copy()
+            (selected["Datetime (UTC)"] > start_date) & (selected["Datetime (UTC)"] < end_date)
+        ].copy()
 
         raw_carbon_intensity_history_list = []
 
-        for index, row in in_one_week.iterrows():
+        for _, row in in_one_week.iterrows():
             datetime_utc = row["Datetime (UTC)"]
             carbon_intensity_value = row["Carbon intensity gCO₂eq/kWh (Life cycle)"]
 
@@ -395,9 +372,8 @@ class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attri
 
             carbon_intensity_str = str(carbon_intensity_value)
 
-            raw_carbon_intensity_history_list.append({
-                "datetime": datetime_str,
-                "carbonIntensity": carbon_intensity_str
-            })
+            raw_carbon_intensity_history_list.append(
+                {"datetime": datetime_str, "carbonIntensity": carbon_intensity_str}
+            )
 
         return raw_carbon_intensity_history_list

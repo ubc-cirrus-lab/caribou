@@ -4,55 +4,60 @@ import math
 EARTH_RADIUS = 6371008.8
 
 FACTORS = {
-    'kilometers': EARTH_RADIUS / 1000,
-    'metres': EARTH_RADIUS,
-    'degrees': EARTH_RADIUS / 111325,
+    "kilometers": EARTH_RADIUS / 1000,
+    "metres": EARTH_RADIUS,
+    "degrees": EARTH_RADIUS / 111325,
 }
 
+
 # Helper Functions
-def degrees_to_radians(degrees):
+def degrees_to_radians(degrees: float) -> float:
     radians = degrees % 360
     return (radians * math.pi) / 180
 
 
-def radians_to_length(radians, units='kilometers'):
+def radians_to_length(radians: float, units: str = "kilometers") -> float:
     factor = FACTORS.get(units)
     if factor is None:
-        raise ValueError(units + ' units is invalid')
+        raise ValueError(units + " units is invalid")
     return radians * factor
 
 
 def get_coord(coord):
     if coord is None:
-        raise ValueError('coord is required')
+        raise ValueError("coord is required")
 
     if not isinstance(coord, list):
-        if (isinstance(coord, dict) and
-                coord.get('type') == 'Feature' and
-                coord.get('geometry') is not None and
-                isinstance(coord.get('geometry'), dict) and
-                coord['geometry'].get('type') == 'Point'):
-            return coord['geometry']['coordinates']
-        if isinstance(coord, dict) and coord.get('type') == 'Point':
-            return coord['coordinates']
+        if (
+            isinstance(coord, dict)
+            and coord.get("type") == "Feature"
+            and coord.get("geometry") is not None
+            and isinstance(coord.get("geometry"), dict)
+            and coord["geometry"].get("type") == "Point"
+        ):
+            return coord["geometry"]["coordinates"]
+        if isinstance(coord, dict) and coord.get("type") == "Point":
+            return coord["coordinates"]
 
-    if (isinstance(coord, list) and
-            len(coord) >= 2 and
-            not isinstance(coord[0], list) and
-            not isinstance(coord[1], list)):
+    if (
+        isinstance(coord, list)
+        and len(coord) >= 2
+        and not isinstance(coord[0], list)
+        and not isinstance(coord[1], list)
+    ):
         if all(isinstance(c, (int, float)) for c in coord[:2]):
             return coord
 
-    raise ValueError('coord must be GeoJSON Point or an Array of numbers')
+    raise ValueError("coord must be GeoJSON Point or an Array of numbers")
 
 
 def feature(geom, properties=None):
     if properties is None:
         properties = {}
     return {
-        'type': 'Feature',
-        'properties': properties,
-        'geometry': geom,
+        "type": "Feature",
+        "properties": properties,
+        "geometry": geom,
     }
 
 
@@ -61,16 +66,16 @@ def point(coordinates, properties=None):
     if properties is None:
         properties = {}
     if coordinates is None:
-        raise ValueError('coordinates is required')
+        raise ValueError("coordinates is required")
     if not isinstance(coordinates, list):
-        raise ValueError('coordinates must be a list')
+        raise ValueError("coordinates must be a list")
 
     return feature(
         {
-            'type': 'Point',
-            'coordinates': coordinates,
+            "type": "Point",
+            "coordinates": coordinates,
         },
-        properties
+        properties,
     )
 
 
@@ -86,13 +91,14 @@ def distance(from_pt, to_pt, options=None):
     lat1 = degrees_to_radians(coordinates1[1])
     lat2 = degrees_to_radians(coordinates2[1])
 
-    a = (math.pow(math.sin(d_lat / 2), 2) +
-         math.pow(math.sin(d_lon / 2), 2) * math.cos(lat1) * math.cos(lat2))
+    a = math.pow(math.sin(d_lat / 2), 2) + math.pow(math.sin(d_lon / 2), 2) * math.cos(lat1) * math.cos(lat2)
 
     return radians_to_length(2 * math.atan2(math.sqrt(a), math.sqrt(1 - a)))
 
+
 def dot(u, v):
     return u[0] * v[0] + u[1] * v[1]
+
 
 def distance_to_segment(p, a, b, options_for_distance_call=None):
     if options_for_distance_call is None:
@@ -114,49 +120,39 @@ def distance_to_segment(p, a, b, options_for_distance_call=None):
     pb = [a[0] + b2 * v[0], a[1] + b2 * v[1]]
     return distance(p, pb, options_for_distance_call)
 
-def point_to_line_distance(pt_input, line_input, options=None):
-    if options is None: options = {}
 
-    _method = options.get('method', 'geodesic')
-    units_for_final_result_if_conversion_was_done = options.get('units', 'kilometers')
+def point_to_line_distance(pt_input, line_input, options: str = None) -> float:
+    if options is None:
+        options = {}
 
-    _pt_feature_like = {}
-    if isinstance(pt_input, list):
-        _pt_feature_like = feature({'type': 'Point', 'coordinates': pt_input})
-    elif isinstance(pt_input, dict):
-        _pt_feature_like = pt_input
-    else:
-        raise TypeError("pt_input must be a list or a dict")
+    _method = options.get("method", "geodesic")
+    units_for_final_result_if_conversion_was_done = options.get("units", "kilometers")
 
-    _line_feature_like = {}
-    if isinstance(line_input, list):
-        _line_feature_like = feature({'type': 'LineString', 'coordinates': line_input})
-    elif isinstance(line_input, dict):
-        _line_feature_like = line_input
-    else:
-        raise TypeError("line_input must be a list of coordinates or a dict")
+    _pt_feature_like = _get_pt_feature(pt_input)
 
-    if 'geometry' in _pt_feature_like and isinstance(_pt_feature_like['geometry'], dict):
-        p_coords = _pt_feature_like['geometry']['coordinates']
-    elif _pt_feature_like.get('type') == 'Point' and 'coordinates' in _pt_feature_like:
-        p_coords = _pt_feature_like['coordinates']
+    _line_feature_like = _get_line_feature(line_input)
+
+    if "geometry" in _pt_feature_like and isinstance(_pt_feature_like["geometry"], dict):
+        p_coords = _pt_feature_like["geometry"]["coordinates"]
+    elif _pt_feature_like.get("type") == "Point" and "coordinates" in _pt_feature_like:
+        p_coords = _pt_feature_like["coordinates"]
     else:
         raise ValueError("Cannot extract coordinates from pt_input")
 
-    if 'geometry' in _line_feature_like and isinstance(_line_feature_like['geometry'], dict):
-        line_coords_list = _line_feature_like['geometry']['coordinates']
-    elif _line_feature_like.get('type') == 'LineString' and 'coordinates' in _line_feature_like:
-        line_coords_list = _line_feature_like['coordinates']
+    if "geometry" in _line_feature_like and isinstance(_line_feature_like["geometry"], dict):
+        line_coords_list = _line_feature_like["geometry"]["coordinates"]
+    elif _line_feature_like.get("type") == "LineString" and "coordinates" in _line_feature_like:
+        line_coords_list = _line_feature_like["coordinates"]
     else:
         raise ValueError("Cannot extract coordinates from line_input")
 
-    min_dist_val = float('inf')
+    min_dist_val = float("inf")
 
     if not line_coords_list or len(line_coords_list) < 1:
         raise ValueError("LineString must have at least one point.")
 
     if len(line_coords_list) == 1:
-        return distance(p_coords, line_coords_list[0], {'units': units_for_final_result_if_conversion_was_done})
+        return distance(p_coords, line_coords_list[0], {"units": units_for_final_result_if_conversion_was_done})
 
     distance_options_for_segment = {}
 
@@ -164,16 +160,36 @@ def point_to_line_distance(pt_input, line_input, options=None):
         a = line_coords_list[i]
         b = line_coords_list[i + 1]
         d = distance_to_segment(p_coords, a, b, distance_options_for_segment)
-        if d < min_dist_val:
-            min_dist_val = d
+        min_dist_val = min(min_dist_val, d)
 
-    if min_dist_val != float('inf') and units_for_final_result_if_conversion_was_done != 'kilometers':
-        radians_val = min_dist_val / FACTORS['kilometers']
+    if min_dist_val != float("inf") and units_for_final_result_if_conversion_was_done != "kilometers":
+        radians_val = min_dist_val / FACTORS["kilometers"]
         return radians_to_length(radians_val, units_for_final_result_if_conversion_was_done)
 
     return min_dist_val
 
-def in_ring(pt_coords, ring_coords):
+
+def _get_pt_feature(pt_input):
+    if isinstance(pt_input, list):
+        return feature({"type": "Point", "coordinates": pt_input})
+
+    if isinstance(pt_input, dict):
+        return pt_input
+
+    raise TypeError("pt_input must be a list or a dict")
+
+
+def _get_line_feature(line_input):
+    if isinstance(line_input, list):
+        return feature({"type": "LineString", "coordinates": line_input})
+
+    if isinstance(line_input, dict):
+        return line_input
+
+    raise TypeError("line_input must be a list of coordinates or a dict")
+
+
+def in_ring(pt_coords, ring_coords) -> bool:
     inside = False
     x = pt_coords[0]
     y = pt_coords[1]
@@ -199,67 +215,42 @@ def in_ring(pt_coords, ring_coords):
 
     return inside
 
-def boolean_point_in_polygon(point_input_bip, polygon_input_bip):
+
+def boolean_point_in_polygon(point_input_bip, polygon_input_bip) -> bool:
     pt = get_coord(point_input_bip)
 
     polys_rings = None
 
     if not isinstance(polygon_input_bip, dict):
-        raise TypeError(
-            "Polygon input must be a dictionary (GeoJSON Polygon Feature or Polygon Geometry)."
-        )
+        raise TypeError("Polygon input must be a dictionary (GeoJSON Polygon Feature or Polygon Geometry).")
 
-    input_type = polygon_input_bip.get('type')
+    input_type = polygon_input_bip.get("type")
 
-    if input_type == 'Feature':
-        geometry = polygon_input_bip.get('geometry')
+    if input_type == "Feature":
+        geometry = polygon_input_bip.get("geometry")
         if not isinstance(geometry, dict):
-            raise ValueError(
-                "Input GeoJSON Feature's 'geometry' must be a dictionary."
-            )
+            raise ValueError("Input GeoJSON Feature's 'geometry' must be a dictionary.")
 
-        geometry_type = geometry.get('type')
-        if geometry_type == 'Polygon':
-            polys_rings = geometry.get('coordinates')
+        geometry_type = geometry.get("type")
+        if geometry_type == "Polygon":
+            polys_rings = geometry.get("coordinates")
         else:
-            raise ValueError(
-                f"Input Feature's geometry type must be 'Polygon'. Got: {geometry_type}"
-            )
-    elif input_type == 'Polygon':
-        polys_rings = polygon_input_bip.get('coordinates')
+            raise ValueError(f"Input Feature's geometry type must be 'Polygon'. Got: {geometry_type}")
+    elif input_type == "Polygon":
+        polys_rings = polygon_input_bip.get("coordinates")
     else:
-        raise ValueError(
-            f"Input polygon must be a GeoJSON Feature (with Polygon geometry) or a Polygon geometry. Got type: {input_type}"
-        )
+        raise ValueError(f"Input must be a GeoJSON Feature or a Polygon geometry. Type: {input_type}")
 
-    if polys_rings is None:
-        raise ValueError("Could not extract 'coordinates' from the polygon input.")
-
-    if not isinstance(polys_rings, list):
+    if polys_rings is None or not isinstance(polys_rings, list):
         raise ValueError("Polygon 'coordinates' must be a list of rings (e.g., [[[lon, lat],...]]).")
 
     inside = False
     for ring_coords in polys_rings:
         if not isinstance(ring_coords, list):
             raise ValueError("Each ring in polygon coordinates must be a list of coordinate pairs.")
-        if not ring_coords: continue
+        if not ring_coords:
+            continue
         if in_ring(pt, ring_coords):
             inside = not inside
 
     return inside
-
-
-__all__ = [
-    'point',
-    'distance',
-    'point_to_line_distance',
-    'boolean_point_in_polygon',
-    'degrees_to_radians',
-    'radians_to_length',
-    'get_coord',
-    'feature',
-    'EARTH_RADIUS',
-    'FACTORS',
-    'in_ring',
-    'dot'
-]
