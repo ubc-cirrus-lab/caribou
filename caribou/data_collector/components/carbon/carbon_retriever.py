@@ -331,7 +331,6 @@ class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attri
     def _get_ec_maps_historical_carbon_intensity_csv(self, zone):
         url = EC_MAPS_HISTORICAL_BASE_URL + zone + "_2024_hourly.csv"
         filename = self._FINDER_DATA_PATH / url.split("/")[-1]
-        user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
         try:
             with requests.get(url, timeout=10, stream=True) as response:
                 response.raise_for_status()
@@ -346,9 +345,9 @@ class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attri
             print(f"Connection Error (requests) for URL {e.request.url}: {e}")
         except requests.exceptions.Timeout as e:
             print(f"Timeout Error (requests) for URL {e.request.url}: {e}")
-        except IOError as e:  # For issues related to file writing
+        except IOError as e:
             print(f"File I/O error for '{filename}': {e}")
-        except Exception as e:  # A general catch-all for other unexpected errors
+        except Exception as e:
             print(f"An unexpected error occurred during download: {type(e).__name__} - {e}")
 
 
@@ -371,7 +370,6 @@ class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attri
         except Exception as e:
             print(f"Error during pd.to_datetime: {e}")
 
-        # Assuming 'selected["Datetime (UTC)"]' is now datetime64[ns]
         if selected["Datetime (UTC)"].dt.tz is None:
             selected["Datetime (UTC)"] = selected["Datetime (UTC)"].dt.tz_localize('UTC', ambiguous='infer',
                                                                                    nonexistent='shift_forward')
