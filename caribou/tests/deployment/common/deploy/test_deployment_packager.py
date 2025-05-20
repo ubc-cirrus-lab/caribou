@@ -95,9 +95,9 @@ class TestDeploymentPackager(unittest.TestCase):
 
         config = MagicMock()
         packager = DeploymentPackager(config)
-        packager._add_application_files(mock_zipfile, "/app_dir")
+        packager._add_application_files(mock_zipfile, "/app_dir")  # 2 files + 1 generic handler
 
-        self.assertEqual(mock_zipfile.write.call_count, 2)
+        self.assertEqual(mock_zipfile.write.call_count, 3)
 
     @patch("zipfile.ZipFile")
     def test__add_mutli_x_serverless_dependency(self, mock_zipfile):

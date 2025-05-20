@@ -199,6 +199,9 @@ class DeploymentPackager:
                     zip_path = full_path[len(project_dir) + 1 :]
                     zip_file.write(full_path, zip_path)
 
+        generic_handler_path = os.path.join(os.path.dirname(__file__), "../..", "client", "generic_handler.py")
+        zip_file.write(generic_handler_path, "generic_handler.py")
+
     def _get_package_filename(self, project_dir: str, python_version: str) -> str:
         requirements = self._get_requirements_filename(project_dir)
         hashed_project_dir = self._hash_project_dir(requirements, project_dir)
