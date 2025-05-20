@@ -527,7 +527,7 @@ class CaribouWorkflow:  # pylint: disable=too-many-instance-attributes
         self,
         function: Callable[..., Any],
         workflow_placement_decision: dict[str, Any],
-    ) -> tuple[str, dict[str, Any]]:
+    ) -> tuple[str, dict[str, Any], str]:
         # Get the name of the successor function
         successor_function_name = self.functions[function.original_function.__name__].name  # type: ignore
 

@@ -44,6 +44,40 @@ class TestCaribouWorkflow(unittest.TestCase):
             return_value=("provider1", "region", "test_func", "123")
         )
 
+        # Save the original serverless_function method
+        self._original_serverless_function = self.workflow.serverless_function
+
+        # Create a wrapper for the serverless_function method
+        def mock_serverless_function(
+            name=None,
+            entry_point=False,
+            regions_and_providers=None,
+            environment_variables=None,
+            allow_placement_decision_override=False,
+        ):
+            # Get the original decorator
+            original_decorator = self._original_serverless_function(
+                name, entry_point, regions_and_providers, environment_variables, allow_placement_decision_override
+            )
+
+            # Create a wrapper for the decorator
+            def decorator_wrapper(func):
+                # Create a mock function with a set_wrapped_function method
+                mock_func = Mock()
+                mock_func.set_wrapped_function = Mock()
+
+                # Add the function to self.functions BEFORE the original decorator tries to access it
+                if func.__name__ not in self.workflow.functions:
+                    self.workflow.functions[func.__name__] = mock_func
+
+                # Call the original decorator
+                return original_decorator(func)
+
+            return decorator_wrapper
+
+        # Replace the serverless_function method with our wrapper
+        self.workflow.serverless_function = mock_serverless_function
+
     def test_serverless_function(self):
         self.workflow.register_function = Mock()
         self.workflow.get_workflow_placement_decision_from_platform = Mock(
@@ -308,14 +342,14 @@ class TestCaribouWorkflow(unittest.TestCase):
 
                 # Check if invoke_serverless_function was called with the correct arguments
                 mock_remote_client.invoke_function.assert_called_once_with(
-                    message='{"workflow_placement_decision": {"run_id": "123", "time_key": "1", "workflow_placement": {"current_deployment": {"instances": {"1": {"test_func": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}, "test-workflow-0_0_1-test_func::": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}}}}}, "current_instance_name": "test-workflow-0_0_1-test_func::", "instances": {"test_func": {"instance_name": "test_func", "succeeding_instances": ["test-workflow-0_0_1-test_func::"]}}}, "transmission_taint": "37a5262", "number_of_hops_from_client_request": 1, "payload": 2}',
+                    message='{"workflow_placement_decision": {"run_id": "123", "time_key": "1", "workflow_placement": {"current_deployment": {"instances": {"1": {"test_func": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}, "test-workflow-0_0_1-test_func::": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}}}}}, "current_instance_name": "test-workflow-0_0_1-test_func::", "instances": {"test_func": {"instance_name": "test_func", "succeeding_instances": ["test-workflow-0_0_1-test_func::"]}}}, "transmission_taint": "37a5262", "number_of_hops_from_client_request": 1, "target": "test_func", "payload": 2}',
                     identifier="test_identifier",
                     workflow_instance_id="123",
                     sync=False,
                     function_name="test-workflow-0_0_1-test_func::",
                     expected_counter=-1,
                     current_instance_name="test_func",
-                    alternative_message='{"workflow_placement_decision": {"run_id": "123", "time_key": "1", "workflow_placement": {"current_deployment": {"instances": {"1": {"test_func": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}, "test-workflow-0_0_1-test_func::": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}}}}}, "current_instance_name": "test-workflow-0_0_1-test_func::", "instances": {"test_func": {"instance_name": "test_func", "succeeding_instances": ["test-workflow-0_0_1-test_func::"]}}}, "transmission_taint": "37a5262", "number_of_hops_from_client_request": 1}',
+                    alternative_message='{"workflow_placement_decision": {"run_id": "123", "time_key": "1", "workflow_placement": {"current_deployment": {"instances": {"1": {"test_func": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}, "test-workflow-0_0_1-test_func::": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}}}}}, "current_instance_name": "test-workflow-0_0_1-test_func::", "instances": {"test_func": {"instance_name": "test_func", "succeeding_instances": ["test-workflow-0_0_1-test_func::"]}}}, "transmission_taint": "37a5262", "number_of_hops_from_client_request": 1, "target": "test_func"}',
                 )
 
                 # Check if the response from invoke_serverless_function is correct
@@ -403,14 +437,14 @@ class TestCaribouWorkflow(unittest.TestCase):
 
                 # Check if invoke_serverless_function was called with the correct arguments
                 mock_remote_client.invoke_function.assert_called_once_with(
-                    message='{"workflow_placement_decision": {"run_id": "123", "time_key": "1", "workflow_placement": {"current_deployment": {"instances": {"1": {"test_func": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}, "test-workflow-0_0_1-sync_func:sync:": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}}}}}, "current_instance_name": "test-workflow-0_0_1-sync_func:sync:", "instances": {"test_func": {"instance_name": "test_func", "succeeding_instances": ["test-workflow-0_0_1-sync_func:sync:"]}, "test-workflow-0_0_1-sync_func:sync:": {"instance_name": "test-workflow-0_0_1-sync_func:sync:", "preceding_instances": ["test_func"]}}}, "transmission_taint": "37a5262", "number_of_hops_from_client_request": 1, "payload": 2}',
+                    message='{"workflow_placement_decision": {"run_id": "123", "time_key": "1", "workflow_placement": {"current_deployment": {"instances": {"1": {"test_func": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}, "test-workflow-0_0_1-sync_func:sync:": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}}}}}, "current_instance_name": "test-workflow-0_0_1-sync_func:sync:", "instances": {"test_func": {"instance_name": "test_func", "succeeding_instances": ["test-workflow-0_0_1-sync_func:sync:"]}, "test-workflow-0_0_1-sync_func:sync:": {"instance_name": "test-workflow-0_0_1-sync_func:sync:", "preceding_instances": ["test_func"]}}}, "transmission_taint": "37a5262", "number_of_hops_from_client_request": 1, "target": "sync_func", "payload": 2}',
                     identifier="test_identifier",
                     workflow_instance_id="123",
                     sync=True,
                     function_name="test-workflow-0_0_1-sync_func:sync:",
                     expected_counter=1,
                     current_instance_name="test_func",
-                    alternative_message='{"workflow_placement_decision": {"run_id": "123", "time_key": "1", "workflow_placement": {"current_deployment": {"instances": {"1": {"test_func": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}, "test-workflow-0_0_1-sync_func:sync:": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}}}}}, "current_instance_name": "test-workflow-0_0_1-sync_func:sync:", "instances": {"test_func": {"instance_name": "test_func", "succeeding_instances": ["test-workflow-0_0_1-sync_func:sync:"]}, "test-workflow-0_0_1-sync_func:sync:": {"instance_name": "test-workflow-0_0_1-sync_func:sync:", "preceding_instances": ["test_func"]}}}, "transmission_taint": "37a5262", "number_of_hops_from_client_request": 1}',
+                    alternative_message='{"workflow_placement_decision": {"run_id": "123", "time_key": "1", "workflow_placement": {"current_deployment": {"instances": {"1": {"test_func": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}, "test-workflow-0_0_1-sync_func:sync:": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}}}}}, "current_instance_name": "test-workflow-0_0_1-sync_func:sync:", "instances": {"test_func": {"instance_name": "test_func", "succeeding_instances": ["test-workflow-0_0_1-sync_func:sync:"]}, "test-workflow-0_0_1-sync_func:sync:": {"instance_name": "test-workflow-0_0_1-sync_func:sync:", "preceding_instances": ["test_func"]}}}, "transmission_taint": "37a5262", "number_of_hops_from_client_request": 1, "target": "sync_func"}',
                 )
 
                 # Check if the response from invoke_serverless_function is correct
@@ -521,14 +555,14 @@ class TestCaribouWorkflow(unittest.TestCase):
 
                 # Check if invoke_serverless_function was called with the correct arguments
                 mock_remote_client.invoke_function.assert_called_once_with(
-                    message='{"workflow_placement_decision": {"run_id": "123", "time_key": "1", "workflow_placement": {"current_deployment": {"instances": {"1": {"test_func": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}, "test_func2": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}, "test-workflow-0_0_1-sync_func:sync:": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}}}}}, "current_instance_name": "test-workflow-0_0_1-sync_func:sync:", "instances": {"test_func": {"instance_name": "test_func", "succeeding_instances": ["test-workflow-0_0_1-sync_func:sync:"]}, "test_func2": {"instance_name": "test_func2", "succeeding_instances": ["test-workflow-0_0_1-sync_func:sync:"]}, "test-workflow-0_0_1-sync_func:sync:": {"instance_name": "test-workflow-0_0_1-sync_func:sync:", "preceding_instances": ["test_func", "test_func2"]}}}, "transmission_taint": "37a5262", "number_of_hops_from_client_request": 1, "payload": 2}',
+                    message='{"workflow_placement_decision": {"run_id": "123", "time_key": "1", "workflow_placement": {"current_deployment": {"instances": {"1": {"test_func": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}, "test_func2": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}, "test-workflow-0_0_1-sync_func:sync:": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}}}}}, "current_instance_name": "test-workflow-0_0_1-sync_func:sync:", "instances": {"test_func": {"instance_name": "test_func", "succeeding_instances": ["test-workflow-0_0_1-sync_func:sync:"]}, "test_func2": {"instance_name": "test_func2", "succeeding_instances": ["test-workflow-0_0_1-sync_func:sync:"]}, "test-workflow-0_0_1-sync_func:sync:": {"instance_name": "test-workflow-0_0_1-sync_func:sync:", "preceding_instances": ["test_func", "test_func2"]}}}, "transmission_taint": "37a5262", "number_of_hops_from_client_request": 1, "target": "sync_func", "payload": 2}',
                     identifier="test_identifier",
                     workflow_instance_id="123",
                     sync=True,
                     function_name="test-workflow-0_0_1-sync_func:sync:",
                     expected_counter=2,
                     current_instance_name="test_func",
-                    alternative_message='{"workflow_placement_decision": {"run_id": "123", "time_key": "1", "workflow_placement": {"current_deployment": {"instances": {"1": {"test_func": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}, "test_func2": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}, "test-workflow-0_0_1-sync_func:sync:": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}}}}}, "current_instance_name": "test-workflow-0_0_1-sync_func:sync:", "instances": {"test_func": {"instance_name": "test_func", "succeeding_instances": ["test-workflow-0_0_1-sync_func:sync:"]}, "test_func2": {"instance_name": "test_func2", "succeeding_instances": ["test-workflow-0_0_1-sync_func:sync:"]}, "test-workflow-0_0_1-sync_func:sync:": {"instance_name": "test-workflow-0_0_1-sync_func:sync:", "preceding_instances": ["test_func", "test_func2"]}}}, "transmission_taint": "37a5262", "number_of_hops_from_client_request": 1}',
+                    alternative_message='{"workflow_placement_decision": {"run_id": "123", "time_key": "1", "workflow_placement": {"current_deployment": {"instances": {"1": {"test_func": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}, "test_func2": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}, "test-workflow-0_0_1-sync_func:sync:": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}}}}}, "current_instance_name": "test-workflow-0_0_1-sync_func:sync:", "instances": {"test_func": {"instance_name": "test_func", "succeeding_instances": ["test-workflow-0_0_1-sync_func:sync:"]}, "test_func2": {"instance_name": "test_func2", "succeeding_instances": ["test-workflow-0_0_1-sync_func:sync:"]}, "test-workflow-0_0_1-sync_func:sync:": {"instance_name": "test-workflow-0_0_1-sync_func:sync:", "preceding_instances": ["test_func", "test_func2"]}}}, "transmission_taint": "37a5262", "number_of_hops_from_client_request": 1, "target": "sync_func"}',
                 )
 
                 # Check if the response from invoke_serverless_function is correct
@@ -599,7 +633,7 @@ class TestCaribouWorkflow(unittest.TestCase):
 
                 # Check if invoke_serverless_function was called with the correct arguments
                 mock_remote_client.invoke_function.assert_called_once_with(
-                    message='{"workflow_placement_decision": {"run_id": "123", "time_key": "1", "workflow_placement": {"current_deployment": {"instances": {"1": {"test_func": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}, "test-workflow-0_0_1-test_func::": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}}}}}, "current_instance_name": "test-workflow-0_0_1-test_func::", "instances": {"test_func": {"instance_name": "test_func", "succeeding_instances": ["test-workflow-0_0_1-test_func::"]}}}, "transmission_taint": "37a5262", "number_of_hops_from_client_request": 1}',
+                    message='{"workflow_placement_decision": {"run_id": "123", "time_key": "1", "workflow_placement": {"current_deployment": {"instances": {"1": {"test_func": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}, "test-workflow-0_0_1-test_func::": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}}}}}, "current_instance_name": "test-workflow-0_0_1-test_func::", "instances": {"test_func": {"instance_name": "test_func", "succeeding_instances": ["test-workflow-0_0_1-test_func::"]}}}, "transmission_taint": "37a5262", "number_of_hops_from_client_request": 1, "target": "test_func"}',
                     identifier="test_identifier",
                     workflow_instance_id="123",
                     sync=False,
@@ -696,6 +730,7 @@ class TestCaribouWorkflow(unittest.TestCase):
             },
             "test-workflow-0_0_1-test_func::",
             "test_func",
+            "test_func",
         )
 
     # TODO: Look more into this function
@@ -769,14 +804,14 @@ class TestCaribouWorkflow(unittest.TestCase):
 
                 # Check if invoke_serverless_function was called with the correct arguments
                 mock_remote_client.invoke_function.assert_called_once_with(
-                    message='{"workflow_placement_decision": {"run_id": "123", "time_key": "1", "workflow_placement": {"current_deployment": {"instances": {"1": {"test_func": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}, "test-workflow-0_0_1-test_func::": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}}}}}, "current_instance_name": "test-workflow-0_0_1-test_func::", "instances": {"some_instance": {"instance_name": "some_instance", "succeeding_instances": ["test-workflow-0_0_1-test_func::"]}, "test_func": {"test_func": "instance_name", "succeeding_instances": ["test-workflow-0_0_1-test_func::"]}}}, "transmission_taint": "37a5262", "number_of_hops_from_client_request": 1, "payload": "{\\"key\\": \\"value\\"}"}',
+                    message='{"workflow_placement_decision": {"run_id": "123", "time_key": "1", "workflow_placement": {"current_deployment": {"instances": {"1": {"test_func": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}, "test-workflow-0_0_1-test_func::": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}}}}}, "current_instance_name": "test-workflow-0_0_1-test_func::", "instances": {"some_instance": {"instance_name": "some_instance", "succeeding_instances": ["test-workflow-0_0_1-test_func::"]}, "test_func": {"test_func": "instance_name", "succeeding_instances": ["test-workflow-0_0_1-test_func::"]}}}, "transmission_taint": "37a5262", "number_of_hops_from_client_request": 1, "target": "test_func", "payload": "{\\"key\\": \\"value\\"}"}',
                     identifier="test_identifier",
                     workflow_instance_id="123",
                     sync=False,
                     function_name="test-workflow-0_0_1-test_func::",
                     expected_counter=-1,
                     current_instance_name="test_func",
-                    alternative_message='{"workflow_placement_decision": {"run_id": "123", "time_key": "1", "workflow_placement": {"current_deployment": {"instances": {"1": {"test_func": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}, "test-workflow-0_0_1-test_func::": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}}}}}, "current_instance_name": "test-workflow-0_0_1-test_func::", "instances": {"some_instance": {"instance_name": "some_instance", "succeeding_instances": ["test-workflow-0_0_1-test_func::"]}, "test_func": {"test_func": "instance_name", "succeeding_instances": ["test-workflow-0_0_1-test_func::"]}}}, "transmission_taint": "37a5262", "number_of_hops_from_client_request": 1}',
+                    alternative_message='{"workflow_placement_decision": {"run_id": "123", "time_key": "1", "workflow_placement": {"current_deployment": {"instances": {"1": {"test_func": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}, "test-workflow-0_0_1-test_func::": {"provider_region": {"provider": "provider1", "region": "region"}, "identifier": "test_identifier"}}}}}, "current_instance_name": "test-workflow-0_0_1-test_func::", "instances": {"some_instance": {"instance_name": "some_instance", "succeeding_instances": ["test-workflow-0_0_1-test_func::"]}, "test_func": {"test_func": "instance_name", "succeeding_instances": ["test-workflow-0_0_1-test_func::"]}}}, "transmission_taint": "37a5262", "number_of_hops_from_client_request": 1, "target": "test_func"}',
                 )
 
                 # Check if the response from invoke_serverless_function is correct
