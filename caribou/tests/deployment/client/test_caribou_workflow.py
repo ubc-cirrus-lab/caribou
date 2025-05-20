@@ -1220,7 +1220,9 @@ class TestCaribouWorkflow(unittest.TestCase):
         mock_worker = Mock(return_value=future)
         self.workflow._thread_pool.submit = mock_worker
 
-        with patch.object(self.workflow, "get_successor_instance_name", return_value=("successor", {}, "next_function")):
+        with patch.object(
+            self.workflow, "get_successor_instance_name", return_value=("successor", {}, "next_function")
+        ):
             with patch.object(
                 self.workflow,
                 "get_successor_workflow_placement_decision",

@@ -1005,10 +1005,7 @@ class TestAWSRemoteClient(unittest.TestCase):
 
         # Mock the return value of get_item
         mock_dynamodb_client.get_item.return_value = {
-            "Item": {
-                "key": {"S": "image_processing-0_0_1"},
-                "value": {"S": "image_uri"}
-            }
+            "Item": {"key": {"S": "image_processing-0_0_1"}, "value": {"S": "image_uri"}}
         }
 
         result = client._get_deployed_image_uri(function_name)

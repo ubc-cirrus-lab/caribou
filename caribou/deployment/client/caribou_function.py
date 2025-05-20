@@ -3,7 +3,7 @@ from typing import Any, Callable
 from caribou.common.utils import get_function_source
 
 
-class CaribouFunction:
+class CaribouFunction:  # pylint: disable=too-many-instance-attributes
     """
     Class that represents a serverless function.
     """
