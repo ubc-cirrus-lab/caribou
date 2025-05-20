@@ -1,45 +1,28 @@
 import unittest
 from unittest.mock import patch, Mock
 from caribou.data_collector.utils.latency_retriever.aws_latency_retriever import AWSLatencyRetriever
-from bs4 import BeautifulSoup
 
 
 class TestAWSLatencyRetriever(unittest.TestCase):
     def setUp(self):
-        self.html_table = b"""
-        <table class="table table-bordered table-sm">
-            <thead class="thead-light">
-                <tr>
-                <th style="padding: 0px;" class="th_msg">
-                    <table align="left" style="width: 100%" class="loc_table">
-                    <tbody>
-                        <tr>
-                        <td class="destination">Destination Region</td>
-                        </tr>
-                        <tr>
-                        <td class="source" style="background-color: #fff;">Source Region</td>
-                        </tr>
-                    </tbody>
-                    </table>
-                </th>
-                <th scope="col" class="region_title">Africa (Cape Town)<br> <em>af-south-1</em></th>
-                <th scope="col" class="region_title">Asia Pacific (Hong Kong)<br> <em>ap-east-1</em></th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                <th scope="row" class="region_title">Africa (Cape Town)<br> <em>af-south-1</em></th>
-                <td class="green">11.56</td>
-                <td class="red">247.76</td>
-                </tr>
-                <tr>
-                <th scope="row" class="region_title">Asia Pacific (Hong Kong)<br> <em>ap-east-1</em></th>
-                <td class="red">256.59</td>
-                <td class="green">3.89</td>
-                </tr>
-            </tbody>
-        </table>
-        """
+        mock_latency_data = {
+            "af-south-1": {"af-south-1": 11.56, "ap-east-1": 247.76},
+            "ap-east-1": {"af-south-1": 256.59, "ap-east-1": 3.89},
+        }
+
+        percentiles = ["p_10", "p_25", "p_50", "p_75", "p_90", "p_98", "p_99"]
+        self.mock_responses = {}
+        for p in percentiles:
+            mock_json = {
+                "metadata": {"percentile": p, "timeframe": "1W", "unit": "milliseconds"},
+                "data": mock_latency_data,
+            }
+            mock_resp = Mock(status_code=200)
+            mock_resp.json.return_value = mock_json
+            mock_resp.raise_for_status.return_value = None
+            self.mock_responses[p] = mock_resp
+
+        self.mock_response_sequence = [self.mock_responses[p] for p in percentiles]
 
         self.percentile_information = {
             "us-west-2": {
@@ -87,9 +70,7 @@ class TestAWSLatencyRetriever(unittest.TestCase):
     @patch("requests.get")
     def test_get_percentile_information(self, mock_get):
         # Arrange
-        mock_response = Mock()
-        mock_response.content = self.html_table
-        mock_get.return_value = mock_response
+        mock_get.side_effect = self.mock_response_sequence
         aws_latency_retriever = AWSLatencyRetriever()
 
         # Act
@@ -140,22 +121,6 @@ class TestAWSLatencyRetriever(unittest.TestCase):
             },
         }
         self.assertEqual(percentile_information, expected_output)
-
-    def test_parse_table(self):
-        # Arrange
-        aws_latency_retriever = AWSLatencyRetriever()
-        soup = BeautifulSoup(self.html_table, "html.parser")
-
-        # Act
-        parsed_table = aws_latency_retriever._parse_table(soup)
-
-        # Assert
-        # Replace this with your actual expected output
-        expected_output = {
-            "af-south-1": {"af-south-1": 11.56, "ap-east-1": 247.76},
-            "ap-east-1": {"af-south-1": 256.59, "ap-east-1": 3.89},
-        }
-        self.assertEqual(parsed_table, expected_output)
 
     def test_get_latency_distribution(self):
         # Arrange
