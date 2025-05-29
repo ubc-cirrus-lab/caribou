@@ -10,8 +10,8 @@ This tool allows you to find the Electricity Maps zone for a set of coordinates 
 </p>
 
 ---
-## Disclaimer
-This code is modified from https://github.com/electricitymaps/zone-finder to use python
+## Acknowledgement
+This code is modified from https://github.com/electricitymaps/zone-finder to run on python
 
 ---
 
@@ -23,5 +23,5 @@ This small script replicates the coordinate look up functionality of the [Electr
 
 1. Clone or [download](https://github.com/electricitymaps/zone-finder/archive/refs/heads/main.zip) this repository
 2. Add your coordinates to the `data.csv` file (see example in file)
-3. Run `node index.js`
+3. Run `python3 index.py` on the directory containing index.py
 4. The coresponding Electricity Maps zone will be written to `data.csv` for each row
