@@ -1053,7 +1053,6 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         COPY README.md ./ 
         
         COPY caribou ./caribou
-        COPY caribou-go ./caribou-go
         
         # Configure Poetry settings and install dependencies
         RUN poetry config virtualenvs.create false

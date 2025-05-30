@@ -67,7 +67,6 @@ class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attri
                 available_region, self._get_overall_average_carbon_intensity
             )
 
-            # print("region: ", available_region, " data: ", overall_average_data)
             if overall_average_data is None:
                 continue
 
@@ -255,16 +254,7 @@ class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attri
                 result = json_data["data"]
 
         else:
-            try:
-                ecmaps_zone = asyncio.run(self._get_ecmaps_zone_from_coordinates(latitude, longitude))
-            except RuntimeError as e:
-                print(f"ERROR during fallback zone retrieval: {e}")
-                return []
-
-            if not isinstance(ecmaps_zone, str) or not ecmaps_zone:
-                print(f"Fallback: Failed to obtain a valid zone {ecmaps_zone}")
-                return []
-
+            ecmaps_zone = asyncio.run(self._get_ecmaps_zone_from_coordinates(latitude, longitude))
             self._get_ec_maps_historical_carbon_intensity_csv(ecmaps_zone)
             return self._get_co2_historical_json(ecmaps_zone)
 
@@ -336,7 +326,6 @@ class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attri
                     out_file.write(chunk)
 
     def _get_co2_historical_json(self, zone: str) -> list[dict[str, str]]:
-        # print("zone: ", zone)
         my_file = Path(f"{self._finder_data_path}/hourly_data/{zone}_2024_hourly.csv")
         if not my_file.is_file():
             self._get_ec_maps_historical_carbon_intensity_csv(zone)
