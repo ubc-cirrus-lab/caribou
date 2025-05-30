@@ -38,6 +38,14 @@ langchain-postgres = "^0.0.9"
 faiss-cpu = "^1.8.0.post1"
 cron-descriptor = "^1.4.5"
 zstandard = "^0.23.0"
+google-cloud-monitoring = "^2.27.1"
+google-cloud-iam = "^2.19.0"
+google-cloud-storage = "^3.1.0"
+google-cloud-run = "^0.10.18"
+google-cloud-pubsub = "^2.29.0"
+google-cloud-firestore = "^2.20.2"
+google-cloud-artifact-registry = "^1.16.0"
+scipy = "^1.15.3"
 
 [tool.poetry.extras]
 # This can be used for a more fine-grained dependency management in the future
