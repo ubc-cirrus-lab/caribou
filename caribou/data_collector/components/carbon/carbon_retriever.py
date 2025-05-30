@@ -255,6 +255,11 @@ class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attri
 
         else:
             ecmaps_zone = asyncio.run(self._get_ecmaps_zone_from_coordinates(latitude, longitude))
+
+            if not isinstance(ecmaps_zone, str) or not ecmaps_zone:
+                print(f"Fallback: Failed to obtain a valid zone {ecmaps_zone}")
+                return []
+
             self._get_ec_maps_historical_carbon_intensity_csv(ecmaps_zone)
             return self._get_co2_historical_json(ecmaps_zone)
 
