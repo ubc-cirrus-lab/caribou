@@ -48,9 +48,6 @@ class GCPLatencyRetriever(LatencyRetriever):
         interval.start_time = start_time
         interval.end_time = end_time
 
-        print(f"Querying metric: {GCP_GLOBAL_ZONE_PAIR_RTT_METRIC}")
-        print(f"Time window: {start_time.isoformat()}Z to {end_time.isoformat()}Z")
-
         results = client.list_time_series(
             request={
                 "name": project_name,
