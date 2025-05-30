@@ -150,6 +150,7 @@ disable = [
     "W0511", # TODO
     "R0903", # Too few public methods (we need this for our dataclasses)
     "R0914", # Too many local variables (too noisy)
+    "R0917", # Too many positional arguments (too noisy)
 ]
 ignore = ["tests", "caribou/deployment/client/cli/template"]
 
