@@ -306,11 +306,7 @@ class DeploymentManager(Monitor):
         return float(np.std(carbon_intensities) * CARBON_INTENSITY_TO_INVOCATION_SECOND_ESTIMATE)
 
     def _get_runtime_avg(self, workflow_summary: dict) -> float:
-        mean = np.array(workflow_summary["workflow_runtime_samples"]).mean()
-        if math.isnan(mean):
-            return 0.0
-        else:
-            return mean
+        return np.array(workflow_summary["workflow_runtime_samples"]).mean()
 
     def _calculate_affordable_deployment_algorithm_run(
         self, number_of_instances: int, token_budget: int

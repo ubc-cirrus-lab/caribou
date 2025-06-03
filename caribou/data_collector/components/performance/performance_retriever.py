@@ -4,7 +4,6 @@ from caribou.common.models.remote_client.remote_client import RemoteClient
 from caribou.common.provider import Provider
 from caribou.data_collector.components.data_retriever import DataRetriever
 from caribou.data_collector.utils.latency_retriever.aws_latency_retriever import AWSLatencyRetriever
-from caribou.data_collector.utils.latency_retriever.gcp_latency_retriever import GCPLatencyRetriever
 from caribou.data_collector.utils.latency_retriever.integration_test_latency_retriever import (
     IntegrationTestLatencyRetriever,
 )
@@ -14,7 +13,6 @@ class PerformanceRetriever(DataRetriever):
     def __init__(self, client: RemoteClient) -> None:
         super().__init__(client)
         self._aws_latency_retriever = AWSLatencyRetriever()
-        self._gcp_latency_retriever = GCPLatencyRetriever()
         self._integration_test_latency_retriever = IntegrationTestLatencyRetriever()
         self._modified_regions: set[str] = set()
         self._latency_distribution_cache: dict[str, list[float]] = {}
@@ -49,8 +47,6 @@ class PerformanceRetriever(DataRetriever):
             if region_from["provider"] == region_to["provider"]:
                 if region_from["provider"] == Provider.AWS.value:
                     latency_distribution = self._aws_latency_retriever.get_latency_distribution(region_from, region_to)
-                elif region_from["provider"] == Provider.GCP.value:
-                    latency_distribution = self._gcp_latency_retriever.get_latency_distribution(region_from, region_to)
                 elif region_from["provider"] == Provider.INTEGRATION_TEST_PROVIDER.value:
                     latency_distribution = self._integration_test_latency_retriever.get_latency_distribution(
                         region_from, region_to
