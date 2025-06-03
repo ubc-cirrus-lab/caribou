@@ -1,6 +1,3 @@
-import asyncio
-from pathlib import Path
-
 from caribou.data_collector.utils.ec_maps_zone_finder.utils import reverse_geocode
 
 

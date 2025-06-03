@@ -7,7 +7,7 @@ import numpy as np
 from google.cloud import monitoring_v3
 from scipy import optimize, stats
 
-from caribou.data_collector.utils.constants import GCP_GLOBAL_ZONE_PAIR_RTT_METRIC
+from caribou.data_collector.utils.constants import DEFAULT_LATENCY_VALUE, GCP_GLOBAL_ZONE_PAIR_RTT_METRIC
 from caribou.data_collector.utils.latency_retriever.latency_retriever import LatencyRetriever
 
 
@@ -102,14 +102,16 @@ class GCPLatencyRetriever(LatencyRetriever):
             region_from_code = region_from_code[:-1] + "1"
 
         if region_from_code not in self._percentile_information:
-            return [150, 150, 150, 150, 150, 150, 150]
+            print("Error parsing percentile information, origin region not found: ", region_from_code)
+            return [DEFAULT_LATENCY_VALUE]
 
         region_to_code = region_to["code"]
         if region_to["code"] not in self._percentile_information[region_from_code]:
+            print(f"Error getting latency: destination {region_to_code} not found in origin  {region_from_code}.")
             region_to_code = region_to_code[:-1] + "1"
 
         if region_to_code not in self._percentile_information[region_from_code]:
-            return [150, 150, 150, 150, 150, 150, 150]
+            return [DEFAULT_LATENCY_VALUE]
 
         latency_information = self._percentile_information[region_from_code][region_to_code]
 
