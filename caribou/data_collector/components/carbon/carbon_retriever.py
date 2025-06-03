@@ -300,20 +300,7 @@ class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attri
         return result
 
     async def _get_ecmaps_zone_from_coordinates(self, latitude: float, longitude: float) -> str | None:
-        header = "lon,lat,zone"
-        results = [header]
-        results.append(f"{longitude},{latitude},")
-        zone_csv = self._finder_data_csv_path
-        with open(zone_csv, "w", encoding="utf-8") as file:
-            file.write("\n".join(results) + "\n")
-
-        await finder()
-
-        with open(zone_csv, "r", encoding="utf-8") as file:
-            lines = file.read().strip().split("\n")
-            rows = lines[1:]
-            row = rows[0]
-            _, _, zone = row.split(",")
+        zone = await finder(latitude, longitude)
         return zone
 
     def _get_ec_maps_historical_carbon_intensity_csv(self, zone: str) -> None:
