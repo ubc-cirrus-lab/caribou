@@ -1,10 +1,14 @@
+import asyncio
 import math
 import os
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from functools import partial
+from os import mkdir
+from pathlib import Path
 from typing import Any, Callable, Optional
 
+import pandas as pd
 import requests
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
 
@@ -12,6 +16,8 @@ from caribou.common.constants import GLOBAL_TIME_ZONE
 from caribou.common.models.remote_client.remote_client import RemoteClient
 from caribou.common.utils import str_to_bool
 from caribou.data_collector.components.data_retriever import DataRetriever
+from caribou.data_collector.utils.constants import EC_MAPS_HISTORICAL_BASE_URL
+from caribou.data_collector.utils.ec_maps_zone_finder.index import find_zone as finder
 
 
 class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attributes
@@ -42,6 +48,12 @@ class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attri
         self._carbon_intensity_history_cache: dict[tuple[float, float], Optional[dict[str, Any]]] = {}
 
         self._carbon_intensity_cache: dict[tuple[float, float], float] = {}
+
+        self._this_file_dir = Path(__file__).resolve().parent
+        self._project_root = self._this_file_dir.parent.parent.parent
+        self._finder_data_path = self._project_root / "data_collector" / "utils" / "ec_maps_zone_finder"
+        self._finder_data_csv_path = self._finder_data_path / "data.csv"
+        self._finder_data_csv_path.parent.mkdir(parents=True, exist_ok=True)
 
     def retrieve_carbon_region_data(self) -> dict[str, dict[str, Any]]:
         result_dict: dict[str, dict[str, Any]] = {}
@@ -180,7 +192,10 @@ class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attri
         sorted_data = sorted(raw_carbon_intensity_history, key=lambda x: x["datetime"])
 
         # Extracting just the carbon intensity values for time series forecasting
-        carbon_values = [entry["carbonIntensity"] for entry in sorted_data]
+        carbon_values = []
+        for entry in sorted_data:
+            if "carbonIntensity" in entry and entry["carbonIntensity"] is not None:
+                carbon_values.append(float(entry["carbonIntensity"]))
 
         first_prediction_hour = datetime.fromisoformat(sorted_data[-1]["datetime"].replace("Z", "")) + timedelta(
             hours=1
@@ -206,7 +221,7 @@ class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attri
     def _get_raw_carbon_intensity_history_range(
         self, latitude: float, longitude: float, start_timestamp: str, end_timestamp: str
     ) -> list[dict[str, str]]:
-        electricitymaps = "https://api-access.electricitymaps.com/free-tier/carbon-intensity/past-range?"
+        electricitymaps = "https://api.electricitymap.org/v3/carbon-intensity/past-range?"
 
         if (datetime.now(GLOBAL_TIME_ZONE) - self._last_request).total_seconds() < self._request_backoff:
             time.sleep(self._request_backoff)
@@ -238,6 +253,16 @@ class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attri
             if "data" in json_data:
                 result = json_data["data"]
 
+        else:
+            ecmaps_zone = asyncio.run(self._get_ecmaps_zone_from_coordinates(latitude, longitude))
+
+            if not isinstance(ecmaps_zone, str) or not ecmaps_zone:
+                print(f"Fallback: Failed to obtain a valid zone {ecmaps_zone}")
+                return []
+
+            self._get_ec_maps_historical_carbon_intensity_csv(ecmaps_zone)
+            return self._get_co2_historical_json(ecmaps_zone)
+
         return result
 
     def _get_carbon_intensity_from_coordinates(self, latitude: float, longitude: float) -> float:
@@ -247,7 +272,7 @@ class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attri
 
         if (latitude, longitude) in self._carbon_intensity_cache:
             return self._carbon_intensity_cache[(latitude, longitude)]
-        electricitymaps = "https://api-access.electricitymaps.com/free-tier/carbon-intensity/latest?"
+        electricitymaps = "https://api.electricitymap.com/v3/carbon-intensity/latest?"
 
         if (datetime.now(GLOBAL_TIME_ZONE) - self._last_request).total_seconds() < self._request_backoff:
             time.sleep(self._request_backoff)
@@ -273,3 +298,69 @@ class CarbonRetriever(DataRetriever):  # pylint: disable=too-many-instance-attri
 
         self._carbon_intensity_cache[(latitude, longitude)] = result
         return result
+
+    async def _get_ecmaps_zone_from_coordinates(self, latitude: float, longitude: float) -> str | None:
+        zone = await finder(latitude, longitude)
+        return zone
+
+    def _get_ec_maps_historical_carbon_intensity_csv(self, zone: str) -> None:
+        url = EC_MAPS_HISTORICAL_BASE_URL + zone + "_2024_hourly.csv"
+        filename = self._finder_data_path / "hourly_data" / url.split("/")[-1]
+        hourly_path = self._finder_data_path / "hourly_data"
+        if not hourly_path.exists():
+            mkdir(hourly_path)
+
+        with requests.get(url, timeout=10, stream=True) as response:
+            response.raise_for_status()
+
+            with open(filename, "wb") as out_file:
+                for chunk in response.iter_content(chunk_size=8192):
+                    out_file.write(chunk)
+
+    def _get_co2_historical_json(self, zone: str) -> list[dict[str, str]]:
+        my_file = Path(f"{self._finder_data_path}/hourly_data/{zone}_2024_hourly.csv")
+        if not my_file.is_file():
+            self._get_ec_maps_historical_carbon_intensity_csv(zone)
+
+        data = pd.read_csv(
+            f"{self._finder_data_path}/hourly_data/{zone}_2024_hourly.csv", dtype={"Datetime (UTC)": str}
+        )
+
+        datetime_col_name = "Datetime (UTC)"
+        carbon_intensity_col_name = "Carbon intensity gCO₂eq/kWh (Life cycle)"
+        selected = data[[datetime_col_name, carbon_intensity_col_name]].copy()
+
+        selected[datetime_col_name] = pd.to_datetime(
+            selected[datetime_col_name], errors="coerce", format="%Y-%m-%d %H:%M:%S"
+        )
+
+        if selected["Datetime (UTC)"].dt.tz is None:
+            selected["Datetime (UTC)"] = selected["Datetime (UTC)"].dt.tz_localize(
+                "UTC", ambiguous="infer", nonexistent="shift_forward"
+            )
+        else:
+            selected["Datetime (UTC)"] = selected["Datetime (UTC)"].dt.tz_convert("UTC")
+
+        start_date = datetime.now(timezone.utc) - timedelta(days=365)
+        start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_date = start_date + timedelta(days=7)
+
+        in_one_week = selected[
+            (selected["Datetime (UTC)"] > start_date) & (selected["Datetime (UTC)"] < end_date)
+        ].copy()
+
+        raw_carbon_intensity_history_list = []
+
+        for _, row in in_one_week.iterrows():
+            datetime_utc = row["Datetime (UTC)"]
+            carbon_intensity_value = row["Carbon intensity gCO₂eq/kWh (Life cycle)"]
+
+            datetime_str = datetime_utc.isoformat().replace("+00:00", "Z")
+
+            carbon_intensity_str = str(carbon_intensity_value)
+
+            raw_carbon_intensity_history_list.append(
+                {"datetime": datetime_str, "carbonIntensity": carbon_intensity_str}
+            )
+
+        return raw_carbon_intensity_history_list

@@ -287,6 +287,7 @@ class DeploymentPackager:
                     or full_path.startswith(os.path.join(project_dir, "src"))
                     or filename == "pyproject.toml"
                     or filename == "poetry.lock"
+                    or filename == "README.md"
                 ):
                     zip_path = full_path[len(project_dir) + 1 :]
                     zip_file.write(full_path, zip_path)

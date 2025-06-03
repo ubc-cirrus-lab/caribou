@@ -27,6 +27,9 @@ share/python-wheels/
 *.egg
 MANIFEST
 
+# Historical data csv directory
+caribou/data_collector/utils/ec_maps_zone_finder/hourly_data/
+
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt
