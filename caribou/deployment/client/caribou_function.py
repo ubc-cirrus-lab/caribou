@@ -1,9 +1,9 @@
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 from caribou.common.utils import get_function_source
 
 
-class CaribouFunction:
+class CaribouFunction:  # pylint: disable=too-many-instance-attributes
     """
     Class that represents a serverless function.
     """
@@ -24,7 +24,18 @@ class CaribouFunction:
         self.regions_and_providers = regions_and_providers if len(regions_and_providers) > 0 else None
         self.environment_variables = environment_variables if len(environment_variables) > 0 else None
         self.allow_placement_decision_override = allow_placement_decision_override
+
+        # Will be set when the function is registered with a workflow
+        self.wrapped_function: Optional[Callable[..., Any]] = None
+
         self.validate_function_name()
+
+    def set_wrapped_function(self, wrapped_function: Callable[..., Any]) -> None:
+        """
+        Set the wrapped version of the function.
+        This is called when the function is registered with a workflow.
+        """
+        self.wrapped_function = wrapped_function
 
     def validate_function_name(self) -> None:
         """

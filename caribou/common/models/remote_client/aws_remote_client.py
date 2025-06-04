@@ -254,9 +254,12 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         memory_size: int,
         additional_docker_commands: Optional[list[str]] = None,
     ) -> str:
+        workflow_instance_id = "-".join(function_name.split("-")[0:2])
         deployed_image_uri = self._get_deployed_image_uri(function_name)
+
         if len(deployed_image_uri) > 0:
-            image_uri = self._copy_image_to_region(deployed_image_uri)
+            # If image exists, just copy it to the current region
+            image_uri = self._copy_image_if_not_exists(deployed_image_uri)
         else:
             if zip_contents is None:
                 raise RuntimeError("No deployed image AND No deployment package provided for function creation")
@@ -275,7 +278,7 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
                     f_dockerfile.write(dockerfile_content)
 
                 # Step 3: Build the Docker Image
-                image_name = f"{function_name.lower()}:latest"
+                image_name = f"{workflow_instance_id.lower()}:latest"
                 self._build_docker_image(tmpdirname, image_name)
 
                 # Step 4: Upload the Image to ECR
@@ -299,13 +302,16 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
 
         return arn
 
-    def _copy_image_to_region(self, deployed_image_uri: str) -> str:
+    def _copy_image_if_not_exists(self, deployed_image_uri: str) -> str:
         parts = deployed_image_uri.split("/")
         original_region = parts[0].split(".")[3]
         original_image_name = parts[1]
 
         ecr_client = self._client("ecr")
         new_region = ecr_client.meta.region_name
+        if new_region == original_region:
+            logger.info("Image already exists in the %s region, skipping copy", new_region)
+            return deployed_image_uri
         new_image_name = original_image_name.replace(original_region, new_region)
 
         # Assume AWS CLI is configured. Customize these commands based on your AWS setup.
@@ -369,40 +375,19 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
 
     def _store_deployed_image_uri(self, function_name: str, image_name: str) -> None:
         workflow_instance_id = "-".join(function_name.split("-")[0:2])
-
-        function_name_simple = function_name[len(workflow_instance_id) + 1 :].rsplit("_", 1)[0]
-
-        if workflow_instance_id not in self._workflow_image_cache:
-            self._workflow_image_cache[workflow_instance_id] = {}
-
-        self._workflow_image_cache[workflow_instance_id].update({function_name_simple: image_name})
-
         client = self._session.client("dynamodb", region_name=GLOBAL_SYSTEM_REGION)
 
-        # Check if the item exists and create dictionary if not
+        # Store the image URI under the workflow ID
         client.update_item(
             TableName=CARIBOU_WORKFLOW_IMAGES_TABLE,
             Key={"key": {"S": workflow_instance_id}},
-            UpdateExpression="SET #v = if_not_exists(#v, :empty_map)",
+            UpdateExpression="SET #v = :value",
             ExpressionAttributeNames={"#v": "value"},
-            ExpressionAttributeValues={":empty_map": {"M": {}}},
-        )
-
-        client.update_item(
-            TableName=CARIBOU_WORKFLOW_IMAGES_TABLE,
-            Key={"key": {"S": workflow_instance_id}},
-            UpdateExpression="SET #v.#f = :value",
-            ExpressionAttributeNames={"#v": "value", "#f": function_name_simple},
             ExpressionAttributeValues={":value": {"S": image_name}},
         )
 
     def _get_deployed_image_uri(self, function_name: str, consistent_read: bool = True) -> str:
         workflow_instance_id = "-".join(function_name.split("-")[0:2])
-
-        function_name_simple = function_name[len(workflow_instance_id) + 1 :].rsplit("_", 1)[0]
-
-        if function_name_simple in self._workflow_image_cache.get(workflow_instance_id, {}):
-            return self._workflow_image_cache[workflow_instance_id][function_name_simple]
 
         client = self._session.client("dynamodb", region_name=GLOBAL_SYSTEM_REGION)
 
@@ -417,15 +402,15 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
 
         item = response.get("Item")
         if item is not None and "value" in item:
-            if workflow_instance_id not in self._workflow_image_cache:
-                self._workflow_image_cache[workflow_instance_id] = {}
-            self._workflow_image_cache[workflow_instance_id].update(
-                {function_name_simple: item["value"]["M"].get(function_name_simple, {}).get("S", "")}
-            )
-            return item["value"]["M"].get(function_name_simple, {}).get("S", "")
+            return item["value"]["S"]
         return ""
 
-    def _generate_dockerfile(self, runtime: str, handler: str, additional_docker_commands: Optional[list[str]]) -> str:
+    def _generate_dockerfile(
+        self,
+        runtime: str,
+        handler: str,  # pylint: disable=unused-argument
+        additional_docker_commands: Optional[list[str]],
+    ) -> str:
         run_command = ""
         if additional_docker_commands and len(additional_docker_commands) > 0:
             run_command += " && ".join(additional_docker_commands)
@@ -449,7 +434,8 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         COPY app.py ./
         COPY src ./src
         COPY caribou ./caribou
-        CMD ["{handler}"]
+        COPY generic_handler.py ./
+        CMD ["generic_handler.lambda_handler"]
         """
 
     def _build_docker_image(self, context_path: str, image_name: str) -> None:
@@ -507,7 +493,7 @@ class AWSRemoteClient(RemoteClient):  # pylint: disable=too-many-public-methods
         deployed_image_uri = self._get_deployed_image_uri(function_name)
         client = self._client("lambda")
         if len(deployed_image_uri) > 0:
-            image_uri = self._copy_image_to_region(deployed_image_uri)
+            image_uri = self._copy_image_if_not_exists(deployed_image_uri)
         else:
             if zip_contents is None:
                 raise RuntimeError("No deployed image AND No deployment package provided for function update")
